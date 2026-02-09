@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
-import { ArrowUpDown, Building2, Loader2, Download } from "lucide-react";
+import { ArrowUpDown, Building2, Download } from "lucide-react";
 import { exportCompaniesCSV } from "@/lib/export";
 import { useTableNavigation } from "@/hooks/useHotkeys";
+import CompanyHoverCard from "@/components/CompanyHoverCard";
+import { TableSkeleton } from "@/components/SkeletonLoaders";
 
 const STAGES = ["All", "Late Stage", "Growth", "Series B", "Series C", "Series D", "Public"];
 const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3"];
@@ -65,8 +67,12 @@ const Companies = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="p-6 space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Companies</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Loading...</p>
+        </div>
+        <TableSkeleton rows={8} cols={7} />
       </div>
     );
   }
@@ -88,7 +94,6 @@ const Companies = () => {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <input
           type="text"
@@ -113,7 +118,6 @@ const Companies = () => {
         </select>
       </div>
 
-      {/* Table */}
       <div className="rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-data">
@@ -139,12 +143,25 @@ const Companies = () => {
                   onKeyDown={(e) => { if (e.key === "Enter") navigate(`/companies/${c.id}`); }}
                 >
                   <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
-                        <Building2 className="h-3 w-3 text-accent-foreground" />
+                    <CompanyHoverCard
+                      company={{
+                        id: c.id,
+                        name: c.name,
+                        sector: c.sector,
+                        stage: c.stage,
+                        hq_country: c.hq_country,
+                        employee_count: c.employee_count,
+                        valuation: c.latestRound?.valuation_post,
+                        arr: c.latestFinancials?.arr,
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
+                          <Building2 className="h-3 w-3 text-accent-foreground" />
+                        </div>
+                        <span className="text-foreground font-medium">{c.name}</span>
                       </div>
-                      <span className="text-foreground font-medium">{c.name}</span>
-                    </div>
+                    </CompanyHoverCard>
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right text-foreground font-medium font-mono">

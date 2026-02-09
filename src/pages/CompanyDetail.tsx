@@ -4,14 +4,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Building2, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer, Download } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer } from "lucide-react";
 import AIResearchChat from "@/components/AIResearchChat";
 import InvestmentMemo from "@/components/InvestmentMemo";
 import SharedNotes from "@/components/SharedNotes";
 import EnrichmentPanel from "@/components/EnrichmentPanel";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import DataProvenance from "@/components/DataProvenance";
+import { AddToWatchlistButton } from "@/components/WatchlistManager";
 import { printElement } from "@/lib/export";
+import { logActivity } from "@/lib/activityLogger";
 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,6 +41,21 @@ const CompanyDetail = () => {
     enabled: !!id && !!user,
   });
 
+  const { data: decisionTrail } = useQuery({
+    queryKey: ["decision-trail", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("team_activity")
+        .select("*")
+        .eq("entity_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id && !!user,
+  });
+
   const addNote = useMutation({
     mutationFn: async (content: string) => {
       const { error } = await supabase.from("user_notes").insert({
@@ -47,6 +64,13 @@ const CompanyDetail = () => {
         content,
       });
       if (error) throw error;
+      logActivity({
+        userId: user!.id,
+        action: "added a note on",
+        entityType: "company",
+        entityId: id,
+        entityName: company?.name,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-notes", id] });
@@ -62,6 +86,13 @@ const CompanyDetail = () => {
         stage: "sourced",
       });
       if (error) throw error;
+      logActivity({
+        userId: user!.id,
+        action: "added to pipeline",
+        entityType: "deal",
+        entityId: id,
+        entityName: company?.name,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
@@ -113,6 +144,7 @@ const CompanyDetail = () => {
           </div>
         </div>
         <div className="flex items-center gap-2 no-print">
+          <AddToWatchlistButton companyId={id!} />
           <button
             onClick={() => printElement(company.name)}
             className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
@@ -193,6 +225,7 @@ const CompanyDetail = () => {
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
+            {/* Funding table */}
             <div className="rounded-lg border border-border overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-card">
                 <h3 className="text-sm font-semibold text-foreground">Funding History</h3>
@@ -243,9 +276,32 @@ const CompanyDetail = () => {
                 </div>
               </div>
             )}
+
+            {/* Decision Trail */}
+            {decisionTrail && decisionTrail.length > 0 && (
+              <div className="rounded-lg border border-border bg-card">
+                <div className="px-4 py-3 border-b border-border">
+                  <h3 className="text-sm font-semibold text-foreground">Decision Trail</h3>
+                </div>
+                <div className="divide-y divide-border/50 max-h-48 overflow-y-auto">
+                  {decisionTrail.map((a) => (
+                    <div key={a.id} className="px-4 py-2.5 flex items-center gap-3">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                      <p className="text-xs text-foreground flex-1">
+                        {a.action} {a.entity_name && <span className="text-primary">{a.entity_name}</span>}
+                      </p>
+                      <span className="text-[10px] text-muted-foreground font-mono shrink-0">
+                        {new Date(a.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
+            {/* Activity */}
             <div className="rounded-lg border border-border bg-card">
               <div className="px-4 py-3 border-b border-border">
                 <h3 className="text-sm font-semibold text-foreground">Activity</h3>
@@ -303,14 +359,13 @@ const CompanyDetail = () => {
               </div>
             </div>
 
-            {/* Shared Notes */}
             <SharedNotes companyId={id!} />
           </div>
         </div>
       )}
 
       {activeTab === "research" && (
-        <AIResearchChat companyId={id!} companyName={company.name} />
+        <AIResearchChat companyId={id!} companyName={company.name} sector={company.sector} />
       )}
 
       {activeTab === "memo" && (

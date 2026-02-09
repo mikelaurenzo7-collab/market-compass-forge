@@ -3,8 +3,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/hooks/useData";
-import { GripVertical, Loader2, Building2, Trash2, Download } from "lucide-react";
+import { GripVertical, Building2, Trash2, Download } from "lucide-react";
 import { exportPipelineCSV } from "@/lib/export";
+import { logActivity } from "@/lib/activityLogger";
+import { useNavigate } from "react-router-dom";
+import PipelineTasks from "@/components/PipelineTasks";
+import CompanyHoverCard from "@/components/CompanyHoverCard";
+import { KanbanSkeleton } from "@/components/SkeletonLoaders";
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -36,6 +41,7 @@ type PipelineDeal = {
 const Deals = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [dragItem, setDragItem] = useState<string | null>(null);
 
   const { data: deals, isLoading } = useQuery({
@@ -55,14 +61,34 @@ const Deals = () => {
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
       const { error } = await supabase.from("deal_pipeline").update({ stage }).eq("id", id);
       if (error) throw error;
+      const deal = deals?.find((d) => d.id === id);
+      if (user && deal) {
+        logActivity({
+          userId: user.id,
+          action: `moved to ${STAGE_LABELS[stage]}`,
+          entityType: "deal",
+          entityId: deal.company_id,
+          entityName: deal.companies?.name ?? "Unknown",
+        });
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pipeline"] }),
   });
 
   const removeDeal = useMutation({
     mutationFn: async (id: string) => {
+      const deal = deals?.find((d) => d.id === id);
       const { error } = await supabase.from("deal_pipeline").delete().eq("id", id);
       if (error) throw error;
+      if (user && deal) {
+        logActivity({
+          userId: user.id,
+          action: "removed from pipeline",
+          entityType: "deal",
+          entityId: deal.company_id,
+          entityName: deal.companies?.name ?? "Unknown",
+        });
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pipeline"] }),
   });
@@ -86,8 +112,14 @@ const Deals = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground">Deal Pipeline</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Loading...</p>
+          </div>
+        </div>
+        <KanbanSkeleton />
       </div>
     );
   }
@@ -114,7 +146,7 @@ const Deals = () => {
         {STAGES.map((stage) => (
           <div
             key={stage}
-            className={`min-w-[260px] w-[260px] shrink-0 rounded-lg border border-border bg-card border-t-2 ${STAGE_COLORS[stage]}`}
+            className={`min-w-[280px] w-[280px] shrink-0 rounded-lg border border-border bg-card border-t-2 ${STAGE_COLORS[stage]}`}
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(stage)}
           >
@@ -130,14 +162,28 @@ const Deals = () => {
                   key={deal.id}
                   draggable
                   onDragStart={() => setDragItem(deal.id)}
-                  className="rounded-md border border-border bg-background p-3 cursor-grab active:cursor-grabbing hover:border-primary/30 transition-colors group"
+                  className="rounded-md border border-border bg-background p-3 cursor-grab active:cursor-grabbing hover:border-primary/30 transition-all group hover:shadow-md"
                 >
                   <div className="flex items-start gap-2">
                     <GripVertical className="h-4 w-4 text-muted-foreground/30 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <p className="text-sm font-medium text-foreground truncate">{deal.companies?.name ?? "Unknown"}</p>
+                        <CompanyHoverCard
+                          company={{
+                            id: deal.company_id,
+                            name: deal.companies?.name ?? "Unknown",
+                            sector: deal.companies?.sector,
+                            stage: deal.companies?.stage,
+                          }}
+                        >
+                          <button
+                            onClick={(e) => { e.stopPropagation(); navigate(`/companies/${deal.company_id}`); }}
+                            className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left"
+                          >
+                            {deal.companies?.name ?? "Unknown"}
+                          </button>
+                        </CompanyHoverCard>
                       </div>
                       {deal.companies?.sector && (
                         <p className="text-[11px] text-muted-foreground mt-0.5 ml-5">{deal.companies.sector}</p>
@@ -145,6 +191,7 @@ const Deals = () => {
                       {deal.notes && (
                         <p className="text-[11px] text-muted-foreground mt-1 ml-5 line-clamp-2">{deal.notes}</p>
                       )}
+                      <PipelineTasks dealId={deal.id} />
                     </div>
                     <button
                       onClick={() => removeDeal.mutate(deal.id)}
