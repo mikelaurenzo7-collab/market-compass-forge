@@ -1,233 +1,117 @@
 
 
-# Founder-Mode Audit: Laurenzo's Private Intelligence
+# Ship-Ready Sprint: 5 Fatal Flaw Fixes
 
-## Current State (Honest)
+## Step 1: Seed Demo Content on Signup
 
-**155 companies, 144 funding rounds, 111 financials, 35 investors, 65 activity events.** 14 sectors, 11 stages. 15 pages, 4 edge functions, full auth, dark theme, keyboard shortcuts, command palette.
+**Problem:** Every user-generated table is empty. New users see blank Kanban boards, empty watchlists, and no alerts. The product feels broken on first login.
 
-### What Works
-- Full Screen -> Research -> Memo -> Pipeline workflow with navigation between pages
-- AI Research chat (streaming, sector playbooks) and AI Investment Memo (structured tool-call output)
-- Company Detail with funding history, financials, enrichment, private notes, team notes, decision trail, watchlists, print
-- Kanban deal pipeline with drag-and-drop, tasks, CSV export
-- Network graph (d3-force canvas), Company Comparison (up to 4), Integrations (webhook configs in DB)
-- Analytics: deal flow, sector heatmap, valuation by stage, geographic distribution, ARR leaderboard
-- Alerts system with custom rules, notifications, mark-read
-- People/Investors with expandable portfolio rows
-- Dynamic sidebar badges, onboarding card, command palette (Cmd+K), keyboard shortcuts
-- Screening with 14 sector chips, 11 stage chips, ARR/valuation/employee/founded ranges, save/reset presets
-- CSV export on Companies + Pipeline, Print on Company Detail, Markdown export on Memos
+**Solution:** Extend the `onAuthStateChange` handler in `useAuth.tsx` to seed demo data when a new user signs up (`SIGNED_IN` event). Use a deferred `setTimeout` call (same pattern already used for profile upsert) to insert:
 
-### What's Broken or Missing
-
-1. **Companies page has stale filters** -- STAGES array is `["All", "Late Stage", "Growth", "Series B", "Series C", "Series D", "Public"]` but the database has 11 stages including Series A, E, F, G, H. Same issue with SECTORS missing Climate Tech, EdTech, E-Commerce.
-
-2. **44 companies have zero financials.** 54 companies have zero funding rounds. These show as blank dashes across the product.
-
-3. **Zero pipeline deals, zero pipeline tasks, zero team activity, zero watchlists, zero webhooks, zero user alerts, zero notifications.** Every user-generated table is empty. The Kanban board is blank. The Dashboard's "Recent Pipeline" shows nothing. The Settings "Team Activity" shows nothing.
-
-4. **Stage distribution is skewed.** 45 Public, 37 Late Stage, but only 5 Series A and 6 Growth. A private market intelligence tool should weight toward private companies.
-
-5. **No "Forgot Password" flow** on the auth page.
-
-6. **No data freshness indicator.** Users don't know if data is from 2024 or yesterday. The dashboard says "Updated live" but nothing is live.
-
-7. **No bulk actions.** Can't select multiple companies to add to pipeline, compare, or export at once.
-
-8. **No saved screening views.** Filter presets save to localStorage only. Can't name or share them.
-
-9. **Network Graph is limited to 100 companies** (hardcoded `.limit(100)`) and only shows companies with investor links (many companies have no investor_company rows).
-
-10. **No loading/empty states for several components** -- the dashboard "Sectors" metric card is hardcoded to "15".
-
-11. **Alerts page SECTOR_OPTIONS is stale** -- only 11 sectors, missing Climate Tech, EdTech, E-Commerce.
-
----
-
-## What We Could Expand Into
-
-### Near-Term (This Sprint)
-- **Saved Views / Screening Presets in DB** -- replace localStorage with a `saved_screens` table so users can name, save, and recall filter combos
-- **Bulk Pipeline Actions** -- multi-select checkboxes on Screening/Companies to "Add 5 to Pipeline" in one click
-- **"Last Updated" timestamps** on data cards so users know data age
-- **Watchlist Dashboard Widget** -- show watchlist companies with recent activity on the Dashboard
-
-### Medium-Term (Next 2 Sprints)
-- **Real-time collaborative notes** -- use Supabase Realtime on `shared_notes` so team members see updates live
-- **PDF memo export** -- generate formatted PDFs from investment memos (browser print is already close)
-- **Company scoring model** -- algorithmic ranking based on ARR growth, valuation multiples, sector momentum
-- **Historical financials charting** -- plot revenue/ARR over time for companies with multiple periods
-- **Deal pipeline analytics** -- conversion rates by stage, average time in stage, win/loss metrics
-
-### Long-Term (After First Customers)
-- **API access** -- let customers pull data programmatically
-- **Custom data ingestion** -- let users upload their own company data / portfolio
-- **Multi-tenant workspaces** -- team management with RBAC enforcement
-- **Mobile-responsive layout** -- currently desktop-only
-
----
-
-## The Plan: Ship-Ready Sprint
-
-### 1. Sync All Filter Arrays Across Pages
-
-The Companies page, Alerts page, and Screening page all have different sector/stage arrays. They should all reflect the actual database values.
+- 6 demo pipeline deals (one per Kanban stage) using real company IDs from the database
+- 1 default watchlist ("Top AI Companies") with 5 company IDs
+- 2 starter alerts ("AI/ML Funding" and "Series B+ Rounds")
 
 **Files to modify:**
-- `src/pages/Companies.tsx` -- Update STAGES and SECTORS arrays to include all 11 stages and 14 sectors
-- `src/pages/Alerts.tsx` -- Update SECTOR_OPTIONS to include Climate Tech, EdTech, E-Commerce
+- `src/hooks/useAuth.tsx` -- Add a `seedDemoContent(userId)` function called after profile upsert on `SIGNED_IN`. It checks if the user already has deals (to avoid re-seeding on re-login) and inserts demo data if count is 0.
 
-### 2. Fill Remaining Data Gaps
-
-44 companies still have no financials. 54 have no funding rounds. These gaps make the product feel incomplete on every page.
-
-**Database migration:**
-- INSERT estimated financials for 44 remaining companies (confidence_score: 'low', source: 'Estimates')
-- INSERT at least 1 funding round for the 54 companies missing them (based on known stage and publicly available data)
-
-### 3. Rebalance Stage Distribution
-
-45 Public + 37 Late Stage = 82 out of 155 companies are public/late. A private market intel tool should have more private companies.
-
-**Database migration:**
-- Move ~20 "Public" companies to their actual last private stage (e.g., Stripe is not Public, it's Late Stage)
-- Move ~10 "Late Stage" companies to more specific stages (Series D, Growth, etc.) based on their actual last round
-
-### 4. Add "Forgot Password" to Auth
-
-Currently no way to recover an account. This is a basic requirement.
-
-**File to modify:**
-- `src/pages/Auth.tsx` -- Add "Forgot password?" link that calls `supabase.auth.resetPasswordForEmail()`, plus a state to show "Check your email" confirmation
-
-### 5. Add Bulk Select to Screening
-
-Power users want to select multiple companies and add them all to pipeline at once.
-
-**File to modify:**
-- `src/pages/Screening.tsx` -- Add checkbox column, "X selected" counter, and "Add to Pipeline" bulk action button
-
-### 6. Add "Data as of" Timestamp to Dashboard
-
-Replace the misleading "Updated live" text with actual data freshness.
-
-**File to modify:**
-- `src/pages/Index.tsx` -- Query the most recent `activity_events.published_at` and display "Data as of [date]" instead of "Updated live"
-
-### 7. Fix Dashboard Hardcoded "15" Sectors
-
-The Sectors MetricCard shows "15" but the actual count is 14.
-
-**File to modify:**
-- `src/pages/Index.tsx` -- Query `SELECT count(DISTINCT sector) FROM companies` dynamically
-
-### 8. Remove Network Graph 100-Company Limit
-
-The Network Graph arbitrarily limits to 100 companies. With 155 companies this cuts out data.
-
-**File to modify:**
-- `src/pages/NetworkGraph.tsx` -- Remove `.limit(100)` on the companies query or increase to 200
-
-### 9. Add Watchlist Widget to Dashboard
-
-Watchlists exist but there's no visibility on the dashboard.
-
-**File to modify:**
-- `src/pages/Index.tsx` -- Add a "Watchlists" card next to RecentPipelineDeals that shows the user's watchlists with company counts
-
-### 10. Add "Last Updated" Indicators on Financial Data
-
-Users need to know how fresh the data is, especially since much of it is estimated.
-
-**File to modify:**
-- `src/components/DataProvenance.tsx` -- Already shows confidence/source; add a "Last updated" line showing the financials period
-- `src/pages/CompanyDetail.tsx` -- Show "Data as of {period}" next to financial metrics
+**Database changes:** None needed -- all tables already exist with correct RLS policies allowing user inserts.
 
 ---
 
-## Technical Details
+## Step 2: Secure All Edge Functions
 
-### Filter Array Updates
+**Problem:** All 4 edge functions have `verify_jwt = false` and 2 of them (`enrich-company`, `check-alerts`) perform no auth checks at all. Anyone can call them and consume AI credits or Firecrawl quota.
 
-Companies.tsx:
-```
-const STAGES = ["All", "Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage", "Public"];
-const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce"];
-```
+**Solution:** Add JWT validation to `enrich-company` and `check-alerts`. The `ai-research` and `generate-memo` functions already validate auth in code -- they're fine. Keep `verify_jwt = false` in config (required for signing-keys) but add code-level auth checks.
 
-Alerts.tsx:
-```
-const SECTOR_OPTIONS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce"];
-```
-
-### Forgot Password (Auth.tsx)
-Add a `forgotPassword` state. When active, show email input + "Send Reset Link" button that calls `supabase.auth.resetPasswordForEmail(email)`. Show success message on completion.
-
-### Bulk Select (Screening.tsx)
-- Add `selectedIds: Set<string>` state
-- Add checkbox column in the table
-- Add "Select All" in header
-- Show floating action bar when selectedIds.size > 0: "{N} selected -- Add to Pipeline"
-- Mutation does `Promise.all` of inserts
-
-### Dashboard Data Freshness (Index.tsx)
-Replace:
-```
-Updated <span className="font-mono text-primary">live</span>
-```
-With:
-```
-Data as of <span className="font-mono text-primary">{latestDate}</span>
-```
-Where `latestDate` comes from `SELECT MAX(published_at) FROM activity_events`.
-
-### Dashboard Sectors Count
-Replace hardcoded `"15"` with a query:
-```sql
-SELECT count(DISTINCT sector) FROM companies WHERE sector IS NOT NULL
-```
-
-### Network Graph Fix
-Change `.limit(100)` to `.limit(500)` in `NetworkGraph.tsx` line 41.
-
-### Stage Rebalancing Migration
-Audit each company against its actual known status. Companies like Stripe, SpaceX, Databricks are not "Public" -- they should be "Late Stage" or their actual last round stage.
-
-### Financial Gap Fill
-For the remaining 44 companies, insert 1 row each into `financials` with estimated data marked `confidence_score: 'low'`.
-
-### Funding Gap Fill
-For the 54 companies with no funding rounds, insert 1 row each into `funding_rounds` based on their stage and known public data, marked `confidence_score: 'low'`.
+**Files to modify:**
+- `supabase/functions/enrich-company/index.ts` -- Add auth header check + `getUser()` call at the top, return 401 if unauthorized
+- `supabase/functions/check-alerts/index.ts` -- This is a cron-style function. Add an auth check that accepts either a valid JWT OR a service-role key (for cron invocations)
+- `supabase/functions/api-access/index.ts` -- Already uses API key auth, no changes needed
 
 ---
 
-## Files Summary
+## Step 3: Implement Usage Tracking and Soft Paywall
+
+**Problem:** No monetization path. No usage limits. No way to differentiate free vs paid users.
+
+**Solution:** Create a `usage_tracking` table to log key actions (AI research queries, memo generations, enrichments). Add a client-side hook that checks usage against free-tier limits and shows an upgrade prompt when exceeded.
+
+**Database migration:**
+- Create `usage_tracking` table: `id`, `user_id`, `action` (text), `created_at`
+- RLS: users can insert own rows and select own rows
+- Create `subscription_tiers` table: `id`, `user_id`, `tier` (free/pro/enterprise), `created_at`
+- RLS: users can view own tier
+
+**Files to create/modify:**
+- `src/hooks/useUsageTracking.ts` -- Hook that inserts usage events and checks against limits (free tier: 10 AI queries/day, 3 memos/day, 5 enrichments/day)
+- `src/components/UpgradePrompt.tsx` -- Modal shown when limits are hit, with pricing tiers and a "Contact us" CTA (no Stripe integration yet -- just capture intent)
+- `src/components/AIResearchChat.tsx` -- Call `trackUsage('ai_research')` before each query
+- `src/components/InvestmentMemo.tsx` -- Call `trackUsage('memo_generation')` before generating
+- `src/pages/CompanyDetail.tsx` -- Call `trackUsage('enrichment')` before enriching
+
+---
+
+## Step 4: Add Second Financial Period for Top 50 Companies
+
+**Problem:** Every company has exactly 1 financial record. The `FinancialsChart` component requires `financials.length >= 2` to render, so NO company ever shows a chart. This feature is completely invisible.
+
+**Solution:** Insert a second financial period (prior year) for the top 50 companies by revenue. This makes the historical chart render for those companies, showing year-over-year trends.
+
+**Database insert (not migration):** Insert 50 rows into `financials` with:
+- `period`: prior year (e.g., "FY2024" if existing is "FY2025")
+- Revenue/ARR ~15-30% lower than current (to show growth)
+- `confidence_score`: 'low', `source`: 'Estimates'
+
+This is a data insert, not a schema change, so it uses the insert tool.
+
+---
+
+## Step 5: Automate Data Freshness via Scheduled Enrichment
+
+**Problem:** Data is static. No automated ingestion. The "Data as of" timestamp on the dashboard never changes.
+
+**Solution:** Create a new edge function `scheduled-refresh` that:
+1. Picks 5 random companies that haven't been enriched in 7+ days (or never)
+2. Calls the `enrich-company` function for each
+3. Inserts an activity event "Data refresh completed" so the dashboard timestamp updates
+
+Set up a `pg_cron` job to call this function daily.
+
+**Files to create:**
+- `supabase/functions/scheduled-refresh/index.ts` -- The refresh function (no JWT needed since called by cron, but validates a service header)
+
+**Config update:**
+- `supabase/config.toml` -- Add `[functions.scheduled-refresh]` with `verify_jwt = false`
+
+**Database:** Run SQL via insert tool to set up the cron job using `pg_cron` + `pg_net`.
+
+---
+
+## Summary of All Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/Companies.tsx` | Update STAGES + SECTORS arrays |
-| `src/pages/Alerts.tsx` | Update SECTOR_OPTIONS array |
-| `src/pages/Auth.tsx` | Add forgot password flow |
-| `src/pages/Screening.tsx` | Add bulk select + bulk pipeline action |
-| `src/pages/Index.tsx` | Dynamic sectors count, data freshness timestamp, watchlist widget |
-| `src/pages/NetworkGraph.tsx` | Remove 100-company limit |
-| Database migration | Fill financials for 44 companies, funding for 54 companies, rebalance stages |
+| `src/hooks/useAuth.tsx` | Add `seedDemoContent()` on signup |
+| `supabase/functions/enrich-company/index.ts` | Add JWT auth check |
+| `supabase/functions/check-alerts/index.ts` | Add auth check (JWT or service key) |
+| `src/hooks/useUsageTracking.ts` | New: usage tracking hook |
+| `src/components/UpgradePrompt.tsx` | New: soft paywall modal |
+| `src/components/AIResearchChat.tsx` | Add usage tracking call |
+| `src/components/InvestmentMemo.tsx` | Add usage tracking call |
+| `src/pages/CompanyDetail.tsx` | Add usage tracking for enrichment |
+| `supabase/functions/scheduled-refresh/index.ts` | New: daily data refresh function |
+| `supabase/config.toml` | Add scheduled-refresh function |
+| Database migration | Create `usage_tracking` + `subscription_tiers` tables with RLS |
+| Database insert | 50 rows of prior-year financials for top companies |
+| Database insert | pg_cron job for daily refresh |
 
----
-
-## What NOT to Build Yet
-- Real-time collaborative editing (premature without multiple users)
-- PDF generation (browser print works for now)
-- API access (no external consumers)
-- Mobile layout (desktop-first for institutional users)
-- Company scoring algorithm (need user feedback on what metrics matter)
-
-## Ship Criteria
-1. Every company has at least 1 financial record and 1 funding round
-2. All filter dropdowns match actual database values across every page
-3. Users can recover their password
-4. Users can bulk-select and add to pipeline
-5. Dashboard shows real data freshness, not "live"
-6. Network graph shows all companies, not just 100
+## Execution Order
+1. Database migration (usage tables) -- needs approval first
+2. Seed demo content in useAuth
+3. Secure edge functions
+4. Usage tracking hook + upgrade prompt
+5. Historical data insert
+6. Scheduled refresh function + cron setup
 
