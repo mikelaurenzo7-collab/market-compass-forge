@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Companies from "./pages/Companies";
+import CompanyDetail from "./pages/CompanyDetail";
 import Deals from "./pages/Deals";
 import Analytics from "./pages/Analytics";
 import Screening from "./pages/Screening";
@@ -38,6 +39,7 @@ const App = () => (
             >
               <Route path="/" element={<Index />} />
               <Route path="/companies" element={<Companies />} />
+              <Route path="/companies/:id" element={<CompanyDetail />} />
               <Route path="/deals" element={<Deals />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/screening" element={<Screening />} />
