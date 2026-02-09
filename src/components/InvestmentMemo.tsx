@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Loader2, Download, Sparkles, Copy, Check } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { FileText, Loader2, Download, Sparkles, Copy, Check, Plus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activityLogger";
@@ -31,7 +33,34 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [addedToPipeline, setAddedToPipeline] = useState(false);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const addToPipeline = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("deal_pipeline").insert({
+        company_id: companyId,
+        user_id: user!.id,
+        stage: "sourced",
+        notes: `Memo generated on ${memo?.date ?? new Date().toLocaleDateString()}`,
+      });
+      if (error) throw error;
+      logActivity({
+        userId: user!.id,
+        action: "added to pipeline after memo",
+        entityType: "deal",
+        entityId: companyId,
+        entityName: companyName,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      setAddedToPipeline(true);
+      toast({ title: "Added to pipeline" });
+    },
+  });
 
   const generate = async () => {
     setIsLoading(true);
@@ -147,6 +176,7 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
           </button>
         </div>
       </div>
+
       <div className="p-6 space-y-6 max-h-[600px] overflow-y-auto">
         {SECTIONS.map(({ key, label }) => (
           <div key={key}>
@@ -156,6 +186,32 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Add to Pipeline CTA */}
+      <div className="px-4 py-3 border-t border-border bg-muted/20 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {addedToPipeline ? "Added to pipeline ✓" : "Ready to track this deal?"}
+        </p>
+        <div className="flex items-center gap-2">
+          {addedToPipeline ? (
+            <button
+              onClick={() => navigate("/deals")}
+              className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-secondary text-foreground text-xs font-medium hover:bg-secondary/80 transition-colors"
+            >
+              View Pipeline →
+            </button>
+          ) : (
+            <button
+              onClick={() => addToPipeline.mutate()}
+              disabled={addToPipeline.isPending}
+              className="inline-flex items-center gap-1 h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              {addToPipeline.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              Add to Pipeline
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
-import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw } from "lucide-react";
+import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -266,12 +266,20 @@ const Screening = () => {
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{c.hq_country ?? "—"}</td>
                   <td className="px-4 py-2.5">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); addToPipeline.mutate(c.id); }}
-                      className="h-7 px-2 rounded text-[11px] font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1"
-                    >
-                      <Plus className="h-3 w-3" /> Pipeline
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/research?company=${c.id}&name=${encodeURIComponent(c.name)}&sector=${encodeURIComponent(c.sector ?? "")}`); }}
+                        className="h-7 px-2 rounded text-[11px] font-medium border border-border text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-colors flex items-center gap-1"
+                      >
+                        <FileText className="h-3 w-3" /> Research
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); addToPipeline.mutate(c.id); }}
+                        className="h-7 px-2 rounded text-[11px] font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1"
+                      >
+                        <Plus className="h-3 w-3" /> Pipeline
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

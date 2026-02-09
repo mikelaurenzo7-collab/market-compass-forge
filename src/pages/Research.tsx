@@ -1,14 +1,29 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { FileText, Sparkles, Search } from "lucide-react";
 import { useSearchCompanies } from "@/hooks/useData";
 import AIResearchChat from "@/components/AIResearchChat";
 import InvestmentMemo from "@/components/InvestmentMemo";
 
 const Research = () => {
+  const [searchParams] = useSearchParams();
   const [query, setQuery] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<{ id: string; name: string; sector?: string | null } | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "memo">("chat");
   const { data: searchResults } = useSearchCompanies(query);
+
+  // Auto-select company from query params (from Screening page)
+  useEffect(() => {
+    const companyId = searchParams.get("company");
+    const companyName = searchParams.get("name");
+    if (companyId && companyName && !selectedCompany) {
+      setSelectedCompany({
+        id: companyId,
+        name: companyName,
+        sector: searchParams.get("sector") || null,
+      });
+    }
+  }, [searchParams]);
 
   const selectCompany = (company: { id: string; name: string; sector?: string | null }) => {
     setSelectedCompany(company);

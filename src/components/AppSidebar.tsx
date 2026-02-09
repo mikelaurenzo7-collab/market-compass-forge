@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useUnreadCount } from "@/hooks/useUnreadCount";
 
 const modules = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/" },
@@ -23,13 +24,9 @@ const modules = [
   { id: "people", label: "People", icon: Users, path: "/people" },
 ];
 
-const bottomModules = [
-  { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: 3 },
-  { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
-];
-
 const AppSidebar = () => {
   const location = useLocation();
+  const { data: unreadCount } = useUnreadCount();
 
   const linkClass = (path: string) => {
     const isActive = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
@@ -39,6 +36,11 @@ const AppSidebar = () => {
         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
     }`;
   };
+
+  const bottomModules = [
+    { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
+    { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+  ];
 
   return (
     <aside className="w-16 lg:w-56 shrink-0 border-r border-border bg-sidebar flex flex-col h-screen sticky top-0">
@@ -77,7 +79,7 @@ const AppSidebar = () => {
           >
             <m.icon className="h-4 w-4 shrink-0" />
             <span className="hidden lg:block truncate">{m.label}</span>
-            {"badge" in m && m.badge && (
+            {"badge" in m && m.badge > 0 && (
               <span className="absolute right-2 top-1/2 -translate-y-1/2 h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-mono font-medium flex items-center justify-center px-1">
                 {m.badge}
               </span>

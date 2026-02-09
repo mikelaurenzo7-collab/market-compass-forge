@@ -6,6 +6,7 @@ import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import { useAuth } from "@/hooks/useAuth";
 import { useHotkeys } from "@/hooks/useHotkeys";
+import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Bell, LogOut, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -13,6 +14,7 @@ const AppLayout = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const { data: unreadCount } = useUnreadCount();
 
   const openPalette = () => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
@@ -40,7 +42,9 @@ const AppLayout = () => {
               className="relative p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
             >
               <Bell className="h-4 w-4" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
+              {(unreadCount ?? 0) > 0 && (
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
+              )}
             </button>
             <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-sm text-muted-foreground">
               <User className="h-4 w-4" />
@@ -56,7 +60,9 @@ const AppLayout = () => {
           </div>
         </header>
 
-        <Outlet />
+        <div className="animate-fade-in">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
