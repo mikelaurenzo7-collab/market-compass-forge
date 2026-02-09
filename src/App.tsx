@@ -18,6 +18,9 @@ import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import NetworkGraph from "./pages/NetworkGraph";
+import CompanyComparison from "./pages/CompanyComparison";
+import Integrations from "./pages/Integrations";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +57,9 @@ const App = () => (
               <Route path="/people" element={<People />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/network" element={<NetworkGraph />} />
+              <Route path="/compare" element={<CompanyComparison />} />
+              <Route path="/integrations" element={<Integrations />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

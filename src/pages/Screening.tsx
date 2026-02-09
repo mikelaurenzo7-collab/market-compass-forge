@@ -28,8 +28,8 @@ const EMPTY_FILTERS: Filters = {
   valuationMin: "", valuationMax: "", employeeMin: "", employeeMax: "",
 };
 
-const SECTORS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3"];
-const STAGES = ["Late Stage", "Growth", "Series B", "Series C", "Series D", "Public"];
+const SECTORS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce"];
+const STAGES = ["Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage", "Public"];
 
 const Screening = () => {
   const { data: companies, isLoading } = useCompaniesWithFinancials();
