@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
-import { ArrowUpDown, Building2, Loader2 } from "lucide-react";
+import { ArrowUpDown, Building2, Loader2, Download } from "lucide-react";
+import { exportCompaniesCSV } from "@/lib/export";
+import { useTableNavigation } from "@/hooks/useHotkeys";
 
 const STAGES = ["All", "Late Stage", "Growth", "Series B", "Series C", "Series D", "Public"];
 const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3"];
@@ -40,14 +42,18 @@ const Companies = () => {
       });
   }, [companies, search, sectorFilter, stageFilter, sortKey, sortAsc]);
 
+  useTableNavigation(filtered.length, (index) => {
+    if (filtered[index]) navigate(`/companies/${filtered[index].id}`);
+  });
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(false); }
   };
 
-  const SortHeader = ({ label, sortId }: { label: string; sortId: SortKey }) => (
+  const SortHeader = ({ label, sortId, align }: { label: string; sortId: SortKey; align?: string }) => (
     <th
-      className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors select-none"
+      className={`px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors select-none ${align === "right" ? "text-right" : "text-left"}`}
       onClick={() => toggleSort(sortId)}
     >
       <span className="inline-flex items-center gap-1">
@@ -67,11 +73,19 @@ const Companies = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Companies</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          <span className="font-mono text-primary">{filtered.length}</span> companies tracked
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Companies</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            <span className="font-mono text-primary">{filtered.length}</span> companies tracked
+          </p>
+        </div>
+        <button
+          onClick={() => exportCompaniesCSV(filtered)}
+          className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
       </div>
 
       {/* Filters */}
@@ -107,19 +121,22 @@ const Companies = () => {
               <tr className="border-b border-border bg-muted/30">
                 <SortHeader label="Company" sortId="name" />
                 <SortHeader label="Sector" sortId="sector" />
-                <SortHeader label="Valuation" sortId="valuation" />
-                <SortHeader label="ARR" sortId="arr" />
+                <SortHeader label="Valuation" sortId="valuation" align="right" />
+                <SortHeader label="ARR" sortId="arr" align="right" />
                 <SortHeader label="Stage" sortId="stage" />
                 <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">HQ</th>
                 <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">Last Round</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {filtered.map((c, i) => (
                 <tr
                   key={c.id}
+                  data-index={i}
                   onClick={() => navigate(`/companies/${c.id}`)}
-                  className="border-b border-border/50 hover:bg-secondary/50 cursor-pointer transition-colors"
+                  className="border-b border-border/50 hover:bg-secondary/50 cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === "Enter") navigate(`/companies/${c.id}`); }}
                 >
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2">

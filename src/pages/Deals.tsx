@@ -3,7 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/hooks/useData";
-import { Plus, GripVertical, Loader2, Building2, Trash2 } from "lucide-react";
+import { GripVertical, Loader2, Building2, Trash2, Download } from "lucide-react";
+import { exportPipelineCSV } from "@/lib/export";
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -93,11 +94,20 @@ const Deals = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Deal Pipeline</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          <span className="font-mono text-primary">{deals?.length ?? 0}</span> deals in pipeline · Drag to move between stages
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Deal Pipeline</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            <span className="font-mono text-primary">{deals?.length ?? 0}</span> deals in pipeline · Drag to move between stages
+          </p>
+        </div>
+        <button
+          onClick={() => deals && exportPipelineCSV(deals)}
+          disabled={!deals?.length}
+          className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2 disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
       </div>
 
       <div className="flex gap-4 overflow-x-auto pb-4">
