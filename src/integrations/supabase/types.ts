@@ -157,6 +157,56 @@ export type Database = {
         }
         Relationships: []
       }
+      company_enrichments: {
+        Row: {
+          company_id: string
+          confidence_score: string
+          created_at: string
+          data_type: string
+          id: string
+          raw_content: string | null
+          scraped_at: string
+          source_name: string
+          source_url: string
+          summary: string | null
+          title: string | null
+        }
+        Insert: {
+          company_id: string
+          confidence_score?: string
+          created_at?: string
+          data_type?: string
+          id?: string
+          raw_content?: string | null
+          scraped_at?: string
+          source_name?: string
+          source_url: string
+          summary?: string | null
+          title?: string | null
+        }
+        Update: {
+          company_id?: string
+          confidence_score?: string
+          created_at?: string
+          data_type?: string
+          id?: string
+          raw_content?: string | null
+          scraped_at?: string
+          source_name?: string
+          source_url?: string
+          summary?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_enrichments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_pipeline: {
         Row: {
           company_id: string

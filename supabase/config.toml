@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.check-alerts]
 verify_jwt = false
+
+[functions.enrich-company]
+verify_jwt = false

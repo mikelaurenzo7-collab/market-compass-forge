@@ -8,6 +8,9 @@ import { ArrowLeft, Building2, MapPin, Users, Calendar, Globe, Loader2, Plus, Se
 import AIResearchChat from "@/components/AIResearchChat";
 import InvestmentMemo from "@/components/InvestmentMemo";
 import SharedNotes from "@/components/SharedNotes";
+import EnrichmentPanel from "@/components/EnrichmentPanel";
+import ConfidenceBadge from "@/components/ConfidenceBadge";
+import DataProvenance from "@/components/DataProvenance";
 import { printElement } from "@/lib/export";
 
 const CompanyDetail = () => {
@@ -20,7 +23,7 @@ const CompanyDetail = () => {
   const { data: financials } = useCompanyFinancials(id!);
   const { data: events } = useActivityEvents(id);
   const [noteContent, setNoteContent] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "research" | "memo">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "research" | "memo" | "enrichment">("overview");
 
   const { data: notes } = useQuery({
     queryKey: ["user-notes", id],
@@ -172,7 +175,7 @@ const CompanyDetail = () => {
 
       {/* Tab navigation */}
       <div className="flex gap-1 border-b border-border no-print">
-        {(["overview", "research", "memo"] as const).map((tab) => (
+        {(["overview", "research", "memo", "enrichment"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -182,7 +185,7 @@ const CompanyDetail = () => {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "overview" ? "Overview" : tab === "research" ? "AI Research" : "Investment Memo"}
+            {tab === "overview" ? "Overview" : tab === "research" ? "AI Research" : tab === "memo" ? "Investment Memo" : "Enrichment"}
           </button>
         ))}
       </div>
@@ -204,6 +207,7 @@ const CompanyDetail = () => {
                         <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Amount</th>
                         <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Post-Val</th>
                         <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Lead Investors</th>
+                        <th className="text-center px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Conf.</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -214,6 +218,7 @@ const CompanyDetail = () => {
                           <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(r.amount)}</td>
                           <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(r.valuation_post)}</td>
                           <td className="px-4 py-2.5 text-muted-foreground">{r.lead_investors?.join(", ") ?? "—"}</td>
+                          <td className="px-4 py-2.5 text-center"><ConfidenceBadge level={r.confidence_score} compact /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -226,28 +231,16 @@ const CompanyDetail = () => {
 
             {latestFinancial && (
               <div className="rounded-lg border border-border bg-card p-4">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Financial Metrics ({latestFinancial.period})</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Revenue</p>
-                    <p className="text-lg font-mono font-semibold text-foreground">{formatCurrency(latestFinancial.revenue)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">ARR</p>
-                    <p className="text-lg font-mono font-semibold text-foreground">{formatCurrency(latestFinancial.arr)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Gross Margin</p>
-                    <p className="text-lg font-mono font-semibold text-foreground">{formatPercent(latestFinancial.gross_margin)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">EBITDA</p>
-                    <p className="text-lg font-mono font-semibold text-foreground">{formatCurrency(latestFinancial.ebitda)}</p>
-                  </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-sm font-semibold text-foreground">Financial Metrics ({latestFinancial.period})</h3>
+                  <ConfidenceBadge level={latestFinancial.confidence_score} source={latestFinancial.source} />
                 </div>
-                {latestFinancial.source && (
-                  <p className="text-[10px] text-muted-foreground mt-2">Source: {latestFinancial.source} · Confidence: {latestFinancial.confidence_score}</p>
-                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <DataProvenance label="Revenue" value={formatCurrency(latestFinancial.revenue)} confidence={latestFinancial.confidence_score} source={latestFinancial.source} />
+                  <DataProvenance label="ARR" value={formatCurrency(latestFinancial.arr)} confidence={latestFinancial.confidence_score} source={latestFinancial.source} />
+                  <DataProvenance label="Gross Margin" value={formatPercent(latestFinancial.gross_margin)} confidence={latestFinancial.confidence_score} source={latestFinancial.source} />
+                  <DataProvenance label="EBITDA" value={formatCurrency(latestFinancial.ebitda)} confidence={latestFinancial.confidence_score} source={latestFinancial.source} />
+                </div>
               </div>
             )}
           </div>
@@ -322,6 +315,10 @@ const CompanyDetail = () => {
 
       {activeTab === "memo" && (
         <InvestmentMemo companyId={id!} companyName={company.name} />
+      )}
+
+      {activeTab === "enrichment" && (
+        <EnrichmentPanel companyId={id!} companyName={company.name} />
       )}
     </div>
   );
