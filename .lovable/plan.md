@@ -1,175 +1,142 @@
 
+# Co-Founder Audit: Laurenzo's Private Intelligence
 
-# Comprehensive Moat + Quality Audit
+## Executive Summary
 
-## Grading (1-5 scale)
-
-| Category | Grade | Key Issues |
-|----------|-------|------------|
-| Performance | 2/5 | No pagination anywhere (all 50+ companies loaded at once), no skeleton loading states, no query caching config (staleTime not set), no virtualized tables |
-| Empty/Error States & Onboarding | 2/5 | No onboarding tour, no demo data guidance, sparse error boundaries, many "No data" states are bare text |
-| Permissioning (RBAC) | 2/5 | `user_roles` table exists but role is never checked in UI or RLS. Every authenticated user can do everything. RBAC labels exist on Settings page but are purely cosmetic |
-| Audit Logging | 2/5 | `team_activity` table exists but nothing writes to it automatically. No change history for pipeline stage changes, note edits, or data updates |
-| Accessibility + Keyboard UX | 3/5 | `focus-visible` rings exist, Cmd+K works, arrow nav on company table. But most buttons/inputs lack aria labels, no skip-to-content, inconsistent focus management |
-| Design Consistency | 3/5 | Good color system, mono fonts for data, consistent card patterns. But raw HTML inputs everywhere (no shared Input component used), inconsistent button styles (some use Tailwind classes directly, some use shadcn Button), no density controls |
-| Security Posture | 3/5 | RLS enabled on all tables. But enrichment edge function has no rate limiting, AI functions have basic auth but no abuse prevention, no input sanitization on search fields |
-| Design Differentiation | 3/5 | Clean dark theme, professional feel, good typography. But looks like "every dark dashboard" -- lacks signature visual identity, no unique data visualizations, no motion system |
+We've built a solid foundation. Every sidebar link works, the data model is sound, and the core workflow exists. But we're at a critical inflection point: **the product feels like a demo, not a tool someone would pay $20k/seat for.** The gaps are specific and fixable.
 
 ---
 
-## Moat Analysis: What's Missing
+## What We've Shipped (Honest Assessment)
 
-### 1. Data Credibility Moat -- Grade: 2/5
-**What exists:** Confidence badges (High/Medium/Low), source attribution on enrichments
-**What's missing:**
-- No source timeline per datapoint (history of changes)
-- No "data changed" monitoring (ARR updated, new round detected)
-- No verification workflow (confirm/dispute/request evidence)
-- Confidence scores are static strings, not computed from actual methodology
+### Strong
+- 18 database tables with RLS on every one (linter: zero issues)
+- 50 companies, 64 funding rounds, 25 financials, 20 investors, 50 investor-company links, 15 activity events
+- 4 edge functions (ai-research, generate-memo, enrich-company, check-alerts), all with auth
+- Full auth flow with email verification
+- Every page works: Dashboard, Companies, Company Detail, Deals (Kanban), Analytics, Screening, Research, People, Alerts, Settings
+- AI research chat with streaming + sector playbooks
+- Investment memo generation with copy-as-markdown
+- Hover previews, skeleton loaders, density controls, activity logging
 
-### 2. Workflow Moat -- Grade: 2/5
-**What exists:** Screen, Research, Memo, Pipeline all exist as separate pages
-**What's missing:**
-- No guided loop connecting them (Screen -> Research -> Memo -> Pipeline is manual)
-- No tasks/next-steps on pipeline cards (owner, due date, status)
-- No decision trail (who changed stage, who wrote memo, who approved)
-- Pipeline cards have no link to company detail
-
-### 3. AI Moat -- Grade: 2/5
-**What exists:** Free-form AI chat, memo generation
-**What's missing:**
-- AI outputs are unstructured prose -- no structured risk/catalyst/comp extraction
-- No playbook prompts by sector/stage
-- No citations from scraped sources or internal notes
-- No way to save/reference AI outputs later
-
-### 4. Integrations Moat -- Grade: 2/5
-**What exists:** CSV export, text memo export, print
-**What's missing:**
-- No webhook/Zapier integration for events
-- No shareable memo links
-- No "copy to clipboard as markdown" for Notion/Docs
-- No API-style export
+### Weak
+- **Zero pipeline deals** in the database -- the Kanban is empty
+- **Zero team activity** logged -- the decision trail shows nothing
+- **Zero watchlists** created -- the feature exists but is untested
+- **Zero pipeline tasks** -- the task system exists but is unused
+- **Only 25 financials for 50 companies** -- half the companies have no financial data
+- **Only 15 activity events** -- the activity feed is thin
+- **38 of 50 companies are "Late Stage"** -- stage distribution is unrealistic
 
 ---
 
-## Top 5 Moat Builders (Highest ROI for Defensibility)
+## Critical Next Steps (Ranked by Impact)
 
-1. **Pipeline Tasks + Decision Trail** -- Add tasks, due dates, and automatic activity logging on every stage change. This creates habit-forming workflow stickiness.
-2. **Guided Workflow Loop** -- Connect Screening -> Company Detail -> Research -> Memo -> Pipeline as a single flow with "next step" prompts and breadcrumbs.
-3. **Data Change Monitoring** -- Surface "what changed" on the dashboard (ARR updated, new round, employee count changed). This is the #1 reason users return daily.
-4. **Structured AI Outputs** -- Convert AI research into parseable sections (Key Risks, Catalysts, Comps, Questions for Diligence). Save these as reusable artifacts.
-5. **Shareable Exports** -- Copy memo as markdown, webhook events for pipeline changes, and "share link" for memos.
+### Priority 1: Seed Realistic Demo Data
+**Why:** Every investor demo, every screenshot, every first login falls flat with empty Kanban boards and sparse data. This is the single highest-ROI task.
 
-## Top 5 UX Improvements for $20k/Seat Feel
+What to seed:
+- 8-10 deal pipeline entries across all 6 stages (sourced through passed)
+- 3-5 pipeline tasks per deal (mix of todo/in_progress/done)
+- 25 more financial records to fill gaps (every company should have at least 1)
+- 50+ activity events (mix of funding, hiring, product launches, partnerships)
+- Rebalance company stages: ~10 Series B, ~10 Growth, ~8 Series C, ~8 Series D, ~8 Late Stage, ~3 Public, ~3 Series A
+- 3 sample team_activity entries to populate the decision trail
+- 2 sample watchlists
 
-1. **Dark mode is default but add density controls** -- Compact/comfortable/spacious toggle stored in localStorage
-2. **Inline hover previews** -- Hover on any company name anywhere to see a mini-card (valuation, ARR, stage, latest event)
-3. **Pipeline cards need richness** -- Show company sector, valuation, last activity, assigned owner, and next step directly on each card
-4. **Skeleton loading states everywhere** -- Replace Loader2 spinners with shimmer skeletons that match the layout
-5. **Motion system** -- Subtle transitions on page changes, card hover lifts, smooth list reordering
+### Priority 2: Guided Workflow Loop
+**Why:** Right now Screen, Research, Memo, and Pipeline are disconnected pages. A power user has to manually navigate between them. The #1 workflow stickiness feature is connecting them.
 
-## Missing Core VC Workflows
-- **Follow-up tracking** (tasks with due dates on pipeline items)
-- **IC meeting prep** (batch-generate memos for all items in "IC Review" stage)
-- **Watchlist management** (table exists, no UI)
-- **Company comparison** (side-by-side view of 2-3 companies)
+What to build:
+- After screening results, each row gets a "Research" quick action that navigates to `/research` pre-loaded with that company
+- After generating a memo, a "Add to Pipeline" CTA appears
+- After adding to pipeline, a "Create Follow-up Task" prompt appears
+- On the Dashboard, a "Continue where you left off" section showing the user's most recent company research + pipeline deals
 
-## 3D / Eye-Catching Assessment
-- **2D relationship graph** is the right call. A force-directed graph (companies <-> investors <-> sectors) using a library like `d3-force` rendered in SVG is performant and useful. 3D adds complexity without improving comprehension.
-- **Pipeline momentum visuals** -- A sparkline or mini-bar showing velocity (deals moved per week) per stage is more useful than animation.
-- **Inline drilldowns on hover** -- This is the single biggest "wow" that also compresses complexity. A floating card on hover is high-impact, low-risk.
+### Priority 3: Notification Badge + Onboarding
+**Why:** The alerts badge in the sidebar is hardcoded to "3". The notification dot on the bell icon is always shown. No first-run guidance exists.
 
----
+What to fix:
+- Make the sidebar badge dynamic (count from `alert_notifications` where `is_read = false`)
+- Make the bell dot dynamic (hide when 0 unread)
+- Add a first-run welcome state on the Dashboard for users with 0 pipeline deals: "Welcome to Laurenzo's -- here's how to get started" with 3 steps
 
-## Implementation Plan (Priority Order)
+### Priority 4: QueryClient Caching + Performance
+**Why:** Every page re-fetches on mount. No `staleTime` is set anywhere. With 50 companies and growing, this creates unnecessary load.
 
-### Phase 1: Pipeline Tasks + Decision Trail (Workflow Moat)
+What to fix:
+- Set `staleTime: 5 * 60 * 1000` (5 min) on the QueryClient default options
+- Add `staleTime: 30_000` on frequently-changing queries (pipeline, notifications)
+- This is a one-line change in `App.tsx` that dramatically improves perceived performance
 
-**Database changes:**
-- Create `pipeline_tasks` table: `id, pipeline_deal_id, title, assignee_id, due_date, status (todo/in_progress/done), created_at`
-- RLS: users can CRUD own tasks
+### Priority 5: Premium Motion + Card Polish
+**Why:** The app looks clean but static. Adding subtle motion makes it feel alive without harming usability.
 
-**Code changes:**
-- Add task list UI to each pipeline card (expandable section)
-- Auto-log to `team_activity` when: pipeline stage changes, note added, memo generated, enrichment run
-- Show decision trail on company detail (who did what, when)
-
-### Phase 2: Company Hover Preview (UX Differentiation)
-
-**New component: `CompanyHoverCard.tsx`**
-- Uses Radix HoverCard primitive (already installed)
-- Shows: name, sector, stage, valuation, ARR, employee count, latest event headline
-- Wraps every company name link across the app (CompanyTable, Pipeline cards, People portfolio, Search results)
-
-### Phase 3: Structured AI Outputs + Playbooks
-
-**Update `ai-research` edge function:**
-- Add sector-specific playbook prompts (e.g., "For SaaS companies, always analyze: NDR, CAC payback, Rule of 40")
-- Return structured JSON sections alongside prose: `{ risks: [], catalysts: [], comps: [], diligence_questions: [] }`
-
-**Update `AIResearchChat.tsx`:**
-- Parse structured sections and render them as collapsible cards
-- Add "Copy as Markdown" button on each AI response
-
-### Phase 4: Data Change Monitoring (Dashboard Moat)
-
-**New component: `ChangesFeed.tsx`**
-- Query `company_enrichments` for recent scrapes
-- Compare current vs previous values (simple diff)
-- Show on Dashboard: "Stripe ARR updated: $1.2B -> $1.4B (Crunchbase, 2h ago)"
-
-### Phase 5: Shareable Exports + Webhook
-
-**Memo sharing:**
-- "Copy as Markdown" button on investment memos
-- "Copy Link" that generates a shareable URL (store memo in DB with a public UUID)
-
-**Webhook events:**
-- Settings page: "Zapier Webhook URL" input field
-- Fire webhooks on: pipeline stage change, new alert notification, enrichment complete
-
-### Phase 6: Watchlist UI
-
-**New component: `WatchlistManager.tsx`**
-- Create/edit/delete watchlists
-- "Add to Watchlist" button on company detail, screening results
-- Watchlist view showing all companies in a watchlist with latest metrics
-
-### Phase 7: Polish
-
-- Skeleton loading states (replace all `Loader2` spinners)
-- Density control toggle in Settings (compact/comfortable CSS variables)
-- Activity auto-logging middleware (wrap mutations to auto-insert team_activity)
-- Pipeline cards: add company sector, valuation, clickable link to company detail
+What to build:
+- Add `transition-lift` class to all cards (MetricCard, pipeline cards, company table rows)
+- Animate page transitions with a simple fade-in (CSS `@keyframes` already exists as `animate-fade-in`)
+- Pipeline Kanban: animate card movement between columns on drop
+- Hover state improvements: scale(1.01) on cards, color shift on interactive elements
 
 ---
 
-## Files to Create/Modify
+## Technical Details
 
-**New files:**
-- `src/components/CompanyHoverCard.tsx` -- Reusable hover preview
-- `src/components/PipelineTasks.tsx` -- Task management on pipeline cards
-- `src/components/ChangesFeed.tsx` -- Data change monitoring feed
-- `src/components/WatchlistManager.tsx` -- Watchlist CRUD UI
-- `src/components/SkeletonLoaders.tsx` -- Shared skeleton components
+### Data Seeding Migration
+A single SQL migration will insert:
+- `deal_pipeline`: 8-10 rows covering all stages, linked to real company IDs
+- `pipeline_tasks`: 15-20 rows across those deals
+- `financials`: 25 rows to fill companies missing financial data
+- `activity_events`: 50 rows with realistic event types and dates
+- `team_activity`: 5 sample audit trail entries
+- `user_watchlists`: 2 sample watchlists
+- Update `companies` table to rebalance `stage` values
 
-**Modified files:**
-- `src/pages/Deals.tsx` -- Add tasks, decision trail, richer cards, company links
-- `src/pages/Index.tsx` -- Add changes feed widget
-- `src/pages/CompanyDetail.tsx` -- Add watchlist button, decision trail, hover cards
-- `src/pages/Settings.tsx` -- Add webhook URL input, density toggle
-- `src/pages/Companies.tsx` -- Wrap company names in hover cards
-- `src/pages/Screening.tsx` -- Add watchlist action, hover cards
-- `src/pages/People.tsx` -- Hover cards on portfolio companies
-- `src/components/AIResearchChat.tsx` -- Structured outputs, copy markdown, playbook prompts
-- `src/components/InvestmentMemo.tsx` -- Copy as markdown, shareable link
-- `src/components/CompanyTable.tsx` -- Hover cards
-- `src/hooks/useData.ts` -- Add change detection queries
-- `src/index.css` -- Density control CSS variables
-- `supabase/functions/ai-research/index.ts` -- Structured output format, playbook prompts
+### Sidebar Badge Fix
+- `AppSidebar.tsx`: Query `alert_notifications` count where `is_read = false`, replace hardcoded `badge: 3`
+- `AppLayout.tsx`: Conditionally render the bell dot based on the same count
 
-**Database migrations:**
-- Create `pipeline_tasks` table with RLS
-- Add auto-logging trigger or handle in application code
+### Workflow Loop
+- `Screening.tsx`: Add "Research" button per row that navigates to `/research?company={id}`
+- `Research.tsx`: Read `company` query param on mount to auto-select
+- `InvestmentMemo.tsx`: After generation, show "Add to Pipeline" CTA
+- `Index.tsx`: Add "Recent Activity" section querying user's last 3 pipeline deals
 
+### QueryClient Config
+- `App.tsx`: Change `new QueryClient()` to include `defaultOptions.queries.staleTime: 300000`
+
+### Files to Modify
+- `supabase/migrations/` -- new seed migration
+- `src/App.tsx` -- QueryClient staleTime
+- `src/components/AppSidebar.tsx` -- dynamic badge
+- `src/components/AppLayout.tsx` -- dynamic bell dot
+- `src/pages/Screening.tsx` -- "Research" quick action
+- `src/pages/Research.tsx` -- auto-select from query param
+- `src/pages/Index.tsx` -- onboarding state + recent activity
+- `src/components/InvestmentMemo.tsx` -- pipeline CTA after generation
+- `src/components/MetricCard.tsx` -- transition-lift class
+- `src/pages/Deals.tsx` -- card hover animation
+- `src/pages/Companies.tsx` -- update stage data references
+
+### Files to Create
+- None -- all changes are to existing files and a new migration
+
+---
+
+## What NOT to Build Yet
+
+- 2D/3D network graph -- looks impressive but zero users have asked for it. Build after we have 10 paying customers who need pattern-finding.
+- Webhook/Zapier integration -- premature. No external users yet.
+- RBAC enforcement in RLS -- the role table exists, but enforcing it now adds complexity without users to protect.
+- Company comparison side-by-side -- nice-to-have, not on the critical path.
+
+---
+
+## Success Criteria After This Sprint
+
+1. A new user signs up and sees a populated Dashboard with real metrics
+2. The Kanban board has deals in every stage with tasks
+3. Clicking "Research" on a screening result flows directly into AI chat
+4. Generating a memo offers a one-click path to the pipeline
+5. The sidebar badge and bell icon reflect real notification counts
+6. Page navigation feels snappy (no re-fetching on every mount)
