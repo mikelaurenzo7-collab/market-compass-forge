@@ -8,7 +8,8 @@ import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
 import ActivityFeed from "@/components/ActivityFeed";
 import { MetricsSkeleton, TableSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
-import { Search, TrendingUp, FileText, ArrowRight } from "lucide-react";
+import { Search, TrendingUp, FileText, ArrowRight, List } from "lucide-react";
+import { format } from "date-fns";
 
 const OnboardingCard = () => {
   const navigate = useNavigate();
@@ -103,6 +104,53 @@ const RecentPipelineDeals = () => {
   );
 };
 
+const WatchlistWidget = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const { data: watchlists } = useQuery({
+    queryKey: ["dashboard-watchlists"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_watchlists")
+        .select("id, name, company_ids")
+        .eq("user_id", user!.id)
+        .order("updated_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+
+  if (!watchlists?.length) return null;
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Watchlists</h3>
+        <button onClick={() => navigate("/screening")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">
+          Manage
+        </button>
+      </div>
+      <div className="divide-y divide-border/50">
+        {watchlists.map((w) => (
+          <div key={w.id} className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <List className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-sm font-medium text-foreground">{w.name}</span>
+            </div>
+            <span className="text-xs font-mono text-muted-foreground">
+              {w.company_ids?.length ?? 0} companies
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
@@ -121,14 +169,47 @@ const Index = () => {
     staleTime: 30_000,
   });
 
+  const { data: sectorCount } = useQuery({
+    queryKey: ["sector-count"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("sector")
+        .not("sector", "is", null);
+      if (error) throw error;
+      const unique = new Set(data.map((r) => r.sector));
+      return unique.size;
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: latestEventDate } = useQuery({
+    queryKey: ["latest-event-date"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("activity_events")
+        .select("published_at")
+        .order("published_at", { ascending: false })
+        .limit(1)
+        .single();
+      if (error) return null;
+      return data?.published_at;
+    },
+    staleTime: 60_000,
+  });
+
   const showOnboarding = pipelineCount === 0;
+
+  const freshnessLabel = latestEventDate
+    ? `Data as of ${format(new Date(latestEventDate), "MMM d, yyyy")}`
+    : "Private market intelligence";
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Market Overview</h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Private market intelligence · Updated <span className="font-mono text-primary">live</span>
+          {freshnessLabel}
         </p>
       </div>
 
@@ -141,7 +222,7 @@ const Index = () => {
           <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} />
           <MetricCard label="Companies Tracked" value={(metrics?.totalCompanies ?? 0).toLocaleString()} subtitle="Active" />
           <MetricCard label="Median Valuation" value={formatCurrency(metrics?.medianValuation ?? 0)} subtitle="All rounds" />
-          <MetricCard label="Sectors" value="15" subtitle="Tracked" />
+          <MetricCard label="Sectors" value={String(sectorCount ?? "—")} subtitle="Tracked" />
         </div>
       )}
 
@@ -156,6 +237,7 @@ const Index = () => {
         </div>
         <div className="space-y-4">
           <RecentPipelineDeals />
+          <WatchlistWidget />
           <ActivityFeed />
         </div>
       </div>

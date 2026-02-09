@@ -6,7 +6,7 @@ import { Bell, Plus, Trash2, Loader2, Check, X, BellRing, Eye, EyeOff } from "lu
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 
-const SECTOR_OPTIONS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3"];
+const SECTOR_OPTIONS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce"];
 const ROUND_OPTIONS = ["Seed", "Series A", "Series B", "Series C", "Series D", "Late Stage", "IPO"];
 
 const Alerts = () => {

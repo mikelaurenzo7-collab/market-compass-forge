@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
-import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText } from "lucide-react";
+import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -42,6 +42,7 @@ const Screening = () => {
   });
   const [sortKey, setSortKey] = useState<"name" | "valuation" | "arr">("valuation");
   const [sortAsc, setSortAsc] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const updateFilter = useCallback(<K extends keyof Filters>(key: K, val: Filters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: val }));
@@ -74,6 +75,24 @@ const Screening = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       toast.success("Added to pipeline");
+    },
+  });
+
+  const bulkAddToPipeline = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const inserts = ids.map((company_id) => ({
+        company_id, user_id: user!.id, stage: "sourced" as const,
+      }));
+      const { error } = await supabase.from("deal_pipeline").insert(inserts);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      toast.success(`${selectedIds.size} companies added to pipeline`);
+      setSelectedIds(new Set());
+    },
+    onError: () => {
+      toast.error("Some companies may already be in your pipeline");
     },
   });
 
@@ -131,6 +150,22 @@ const Screening = () => {
     else { setSortKey(key); setSortAsc(false); }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map((c) => c.id)));
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
   }
@@ -153,6 +188,29 @@ const Screening = () => {
           </button>
         </div>
       </div>
+
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5 animate-fade-in">
+          <span className="text-sm font-medium text-foreground">
+            <span className="font-mono text-primary">{selectedIds.size}</span> selected
+          </span>
+          <button
+            onClick={() => bulkAddToPipeline.mutate(Array.from(selectedIds))}
+            disabled={bulkAddToPipeline.isPending}
+            className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {bulkAddToPipeline.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+            Add to Pipeline
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -227,6 +285,15 @@ const Screening = () => {
           <table className="w-full text-data">
             <thead>
               <tr className="border-b border-border bg-muted/30">
+                <th className="px-3 py-2 w-10">
+                  <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
+                    {selectedIds.size === filtered.length && filtered.length > 0 ? (
+                      <CheckSquare className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Square className="h-4 w-4" />
+                    )}
+                  </button>
+                </th>
                 {[
                   { label: "Company", key: "name" as const },
                   { label: "Sector", key: null },
@@ -249,7 +316,16 @@ const Screening = () => {
             </thead>
             <tbody>
               {filtered.map((c) => (
-                <tr key={c.id} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
+                <tr key={c.id} className={`border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedIds.has(c.id) ? "bg-primary/5" : ""}`}>
+                  <td className="px-3 py-2.5">
+                    <button onClick={() => toggleSelect(c.id)} className="text-muted-foreground hover:text-foreground">
+                      {selectedIds.has(c.id) ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className="h-4 w-4" />
+                      )}
+                    </button>
+                  </td>
                   <td className="px-4 py-2.5 cursor-pointer" onClick={() => navigate(`/companies/${c.id}`)}>
                     <div className="flex items-center gap-2">
                       <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
