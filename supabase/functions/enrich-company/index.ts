@@ -12,6 +12,33 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Auth check: require valid JWT
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log("Enrichment requested by user:", userId);
+
     const { companyId } = await req.json();
     if (!companyId) {
       return new Response(JSON.stringify({ error: "companyId is required" }), {
@@ -111,7 +138,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           query: `${company.name} ${company.sector || ""} funding news 2025 2026`,
           limit: 5,
-          tbs: "qdr:m", // last month
+          tbs: "qdr:m",
         }),
       });
 

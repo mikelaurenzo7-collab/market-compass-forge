@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.enrich-company]
 verify_jwt = false
+
+[functions.api-access]
+verify_jwt = false
+
+[functions.scheduled-refresh]
+verify_jwt = false

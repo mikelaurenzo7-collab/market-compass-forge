@@ -7,6 +7,8 @@ import ReactMarkdown from "react-markdown";
 import { toast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activityLogger";
 import { useAuth } from "@/hooks/useAuth";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 type Memo = {
   company_name: string;
@@ -38,6 +40,7 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const memoRef = useRef<HTMLDivElement>(null);
+  const { checkAndTrack, showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
 
   const addToPipeline = useMutation({
     mutationFn: async () => {
@@ -64,6 +67,8 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
   });
 
   const generate = async () => {
+    const allowed = await checkAndTrack("memo_generation");
+    if (!allowed) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -329,6 +334,7 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
           )}
         </div>
       </div>
+      <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
     </div>
   );
 };

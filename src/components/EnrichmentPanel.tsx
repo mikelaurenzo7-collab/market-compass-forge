@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, RefreshCw, Globe, Newspaper, ExternalLink } from "lucide-react";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 interface EnrichmentPanelProps {
   companyId: string;
@@ -10,6 +12,7 @@ interface EnrichmentPanelProps {
 
 const EnrichmentPanel = ({ companyId, companyName }: EnrichmentPanelProps) => {
   const queryClient = useQueryClient();
+  const { checkAndTrack, showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
 
   const { data: enrichments, isLoading } = useQuery({
     queryKey: ["enrichments", companyId],
@@ -28,6 +31,8 @@ const EnrichmentPanel = ({ companyId, companyName }: EnrichmentPanelProps) => {
 
   const enrich = useMutation({
     mutationFn: async () => {
+      const allowed = await checkAndTrack("enrichment");
+      if (!allowed) throw new Error("Usage limit reached");
       const { data, error } = await supabase.functions.invoke("enrich-company", {
         body: { companyId },
       });
@@ -119,6 +124,7 @@ const EnrichmentPanel = ({ companyId, companyName }: EnrichmentPanelProps) => {
               </div>
             )}
       </div>
+      <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
     </div>
   );
 };

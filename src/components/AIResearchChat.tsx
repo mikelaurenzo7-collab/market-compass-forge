@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Bot, Send, Loader2, Sparkles, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "@/hooks/use-toast";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -56,6 +58,7 @@ const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string;
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { checkAndTrack, showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
 
   const playbook = sector ? PLAYBOOK_PROMPTS[sector] : undefined;
 
@@ -65,6 +68,8 @@ const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string;
 
   const send = async (question: string) => {
     if (!question.trim() || isLoading) return;
+    const allowed = await checkAndTrack("ai_research");
+    if (!allowed) return;
 
     const userMsg: Message = { role: "user", content: question };
     setMessages((prev) => [...prev, userMsg]);
@@ -238,6 +243,7 @@ const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string;
           <Send className="h-4 w-4" />
         </button>
       </form>
+      <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
     </div>
   );
 };
