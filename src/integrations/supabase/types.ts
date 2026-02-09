@@ -14,7 +14,457 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_events: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          detail: string | null
+          event_type: string
+          headline: string
+          id: string
+          published_at: string | null
+          source_url: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type: string
+          headline: string
+          id?: string
+          published_at?: string | null
+          source_url?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          detail?: string | null
+          event_type?: string
+          headline?: string
+          id?: string
+          published_at?: string | null
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          created_at: string
+          description: string | null
+          domain: string | null
+          employee_count: number | null
+          founded_year: number | null
+          hq_city: string | null
+          hq_country: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          sector: string | null
+          stage: string | null
+          status: string | null
+          sub_sector: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          employee_count?: number | null
+          founded_year?: number | null
+          hq_city?: string | null
+          hq_country?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          sector?: string | null
+          stage?: string | null
+          status?: string | null
+          sub_sector?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          employee_count?: number | null
+          founded_year?: number | null
+          hq_city?: string | null
+          hq_country?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          sector?: string | null
+          stage?: string | null
+          status?: string | null
+          sub_sector?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      deal_pipeline: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          priority: string | null
+          stage: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          stage?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          priority?: string | null
+          stage?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_pipeline_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financials: {
+        Row: {
+          arr: number | null
+          burn_rate: number | null
+          company_id: string
+          confidence_score: string | null
+          created_at: string
+          ebitda: number | null
+          gross_margin: number | null
+          id: string
+          mrr: number | null
+          period: string
+          period_type: string | null
+          revenue: number | null
+          runway_months: number | null
+          source: string | null
+        }
+        Insert: {
+          arr?: number | null
+          burn_rate?: number | null
+          company_id: string
+          confidence_score?: string | null
+          created_at?: string
+          ebitda?: number | null
+          gross_margin?: number | null
+          id?: string
+          mrr?: number | null
+          period: string
+          period_type?: string | null
+          revenue?: number | null
+          runway_months?: number | null
+          source?: string | null
+        }
+        Update: {
+          arr?: number | null
+          burn_rate?: number | null
+          company_id?: string
+          confidence_score?: string | null
+          created_at?: string
+          ebitda?: number | null
+          gross_margin?: number | null
+          id?: string
+          mrr?: number | null
+          period?: string
+          period_type?: string | null
+          revenue?: number | null
+          runway_months?: number | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      funding_rounds: {
+        Row: {
+          amount: number | null
+          co_investors: string[] | null
+          company_id: string
+          confidence_score: string | null
+          created_at: string
+          date: string | null
+          id: string
+          lead_investors: string[] | null
+          round_type: string
+          source_url: string | null
+          valuation_post: number | null
+          valuation_pre: number | null
+        }
+        Insert: {
+          amount?: number | null
+          co_investors?: string[] | null
+          company_id: string
+          confidence_score?: string | null
+          created_at?: string
+          date?: string | null
+          id?: string
+          lead_investors?: string[] | null
+          round_type: string
+          source_url?: string | null
+          valuation_post?: number | null
+          valuation_pre?: number | null
+        }
+        Update: {
+          amount?: number | null
+          co_investors?: string[] | null
+          company_id?: string
+          confidence_score?: string | null
+          created_at?: string
+          date?: string | null
+          id?: string
+          lead_investors?: string[] | null
+          round_type?: string
+          source_url?: string | null
+          valuation_post?: number | null
+          valuation_pre?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funding_rounds_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investor_company: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          investor_id: string
+          ownership_pct_est: number | null
+          round_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          investor_id: string
+          ownership_pct_est?: number | null
+          round_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          investor_id?: string
+          ownership_pct_est?: number | null
+          round_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_company_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investor_company_investor_id_fkey"
+            columns: ["investor_id"]
+            isOneToOne: false
+            referencedRelation: "investors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investor_company_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "funding_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      investors: {
+        Row: {
+          aum: number | null
+          created_at: string
+          hq_country: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          type: string | null
+          website: string | null
+        }
+        Insert: {
+          aum?: number | null
+          created_at?: string
+          hq_country?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          type?: string | null
+          website?: string | null
+        }
+        Update: {
+          aum?: number | null
+          created_at?: string
+          hq_country?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          type?: string | null
+          website?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sectors: {
+        Row: {
+          created_at: string
+          deal_count_trailing_12m: number | null
+          id: string
+          name: string
+          parent_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_count_trailing_12m?: number | null
+          id?: string
+          name: string
+          parent_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_count_trailing_12m?: number | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sectors_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_notes: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          content: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_watchlists: {
+        Row: {
+          company_ids: string[] | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_ids?: string[] | null
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_ids?: string[] | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
