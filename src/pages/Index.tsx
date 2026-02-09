@@ -5,10 +5,12 @@ import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
 import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
 import ActivityFeed from "@/components/ActivityFeed";
-import { Bell, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Bell, LogOut, User } from "lucide-react";
 
 const Index = () => {
   const [activeModule, setActiveModule] = useState("dashboard");
+  const { user, signOut } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -25,8 +27,16 @@ const Index = () => {
               <Bell className="h-4 w-4" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
             </button>
-            <button className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md text-sm text-muted-foreground">
               <User className="h-4 w-4" />
+              <span className="hidden lg:block text-xs truncate max-w-[120px]">{user?.email}</span>
+            </div>
+            <button
+              onClick={signOut}
+              className="p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-destructive"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </header>
