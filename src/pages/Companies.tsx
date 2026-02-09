@@ -7,8 +7,8 @@ import { useTableNavigation } from "@/hooks/useHotkeys";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { TableSkeleton } from "@/components/SkeletonLoaders";
 
-const STAGES = ["All", "Late Stage", "Growth", "Series B", "Series C", "Series D", "Public"];
-const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3"];
+const STAGES = ["All", "Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage", "Public"];
+const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce"];
 
 type SortKey = "name" | "valuation" | "arr" | "sector" | "stage";
 

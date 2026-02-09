@@ -38,7 +38,7 @@ const NetworkGraph = () => {
     queryKey: ["network-graph"],
     queryFn: async () => {
       const [companiesRes, investorsRes, linksRes] = await Promise.all([
-        supabase.from("companies").select("id, name, sector, employee_count").limit(100),
+        supabase.from("companies").select("id, name, sector, employee_count"),
         supabase.from("investors").select("id, name, aum"),
         supabase.from("investor_company").select("investor_id, company_id"),
       ]);
