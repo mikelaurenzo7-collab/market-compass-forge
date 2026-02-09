@@ -9,6 +9,8 @@ import {
   FileText,
   Settings,
   Zap,
+  Share2,
+  ArrowLeftRight,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -22,6 +24,8 @@ const modules = [
   { id: "screening", label: "Screening", icon: Search, path: "/screening" },
   { id: "research", label: "Research", icon: FileText, path: "/research" },
   { id: "people", label: "People", icon: Users, path: "/people" },
+  { id: "network", label: "Network", icon: Share2, path: "/network" },
+  { id: "compare", label: "Compare", icon: ArrowLeftRight, path: "/compare" },
 ];
 
 const AppSidebar = () => {
@@ -39,6 +43,7 @@ const AppSidebar = () => {
 
   const bottomModules = [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
+    { id: "integrations", label: "Integrations", icon: Zap, path: "/integrations" },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
   ];
 

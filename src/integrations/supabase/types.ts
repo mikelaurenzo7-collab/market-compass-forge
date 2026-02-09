@@ -720,6 +720,36 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_configs: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          events: string[] | null
+          id: string
+          name: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          events?: string[] | null
+          id?: string
+          name: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          events?: string[] | null
+          id?: string
+          name?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
