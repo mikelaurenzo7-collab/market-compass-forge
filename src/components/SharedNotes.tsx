@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Send, Users, Trash2 } from "lucide-react";
+import { Send, Users, Trash2, Wifi } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 const SharedNotes = ({ companyId }: { companyId: string }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
+  const [isLive, setIsLive] = useState(false);
 
   const { data: notes } = useQuery({
     queryKey: ["shared-notes", companyId],
@@ -24,6 +25,34 @@ const SharedNotes = ({ companyId }: { companyId: string }) => {
     enabled: !!companyId,
   });
 
+  // Real-time subscription for live updates
+  useEffect(() => {
+    if (!companyId) return;
+
+    const channel = supabase
+      .channel(`shared-notes-${companyId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "shared_notes",
+          filter: `company_id=eq.${companyId}`,
+        },
+        (payload) => {
+          console.log("Realtime shared_notes update:", payload.eventType);
+          queryClient.invalidateQueries({ queryKey: ["shared-notes", companyId] });
+        }
+      )
+      .subscribe((status) => {
+        setIsLive(status === "SUBSCRIBED");
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [companyId, queryClient]);
+
   const addNote = useMutation({
     mutationFn: async (text: string) => {
       const { error } = await supabase.from("shared_notes").insert({
@@ -32,7 +61,6 @@ const SharedNotes = ({ companyId }: { companyId: string }) => {
         content: text,
       });
       if (error) throw error;
-      // Log team activity
       await supabase.from("team_activity").insert({
         user_id: user!.id,
         action: "added a shared note on",
@@ -60,6 +88,11 @@ const SharedNotes = ({ companyId }: { companyId: string }) => {
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <Users className="h-3.5 w-3.5 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Team Notes</h3>
+        {isLive && (
+          <span className="flex items-center gap-1 ml-auto text-[10px] text-success">
+            <Wifi className="h-3 w-3" /> Live
+          </span>
+        )}
       </div>
       <div className="p-4 space-y-3">
         <form
@@ -82,7 +115,7 @@ const SharedNotes = ({ companyId }: { companyId: string }) => {
         </form>
         <div className="space-y-2 max-h-48 overflow-y-auto">
           {notes?.map((n) => (
-            <div key={n.id} className="p-2 rounded bg-secondary/50 text-sm text-foreground group">
+            <div key={n.id} className="p-2 rounded bg-secondary/50 text-sm text-foreground group animate-fade-in">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <p>{n.content}</p>
