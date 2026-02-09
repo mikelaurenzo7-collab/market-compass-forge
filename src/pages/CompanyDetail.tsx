@@ -30,6 +30,18 @@ const CompanyDetail = () => {
   const [noteContent, setNoteContent] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "research" | "memo" | "enrichment">("overview");
 
+  const latestFinancialForScore = financials?.[0];
+  const latestRoundForScore = funding?.[funding.length - 1];
+  const score = useCompanyScore(id!, company ? {
+    sector: company.sector,
+    stage: company.stage,
+    employee_count: company.employee_count,
+    arr: latestFinancialForScore?.arr,
+    revenue: latestFinancialForScore?.revenue,
+    valuation: latestRoundForScore?.valuation_post,
+    grossMargin: latestFinancialForScore?.gross_margin,
+  } : undefined);
+
   const { data: notes } = useQuery({
     queryKey: ["user-notes", id],
     queryFn: async () => {
