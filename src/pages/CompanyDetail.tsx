@@ -4,9 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Building2, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer, Download } from "lucide-react";
 import AIResearchChat from "@/components/AIResearchChat";
 import InvestmentMemo from "@/components/InvestmentMemo";
+import SharedNotes from "@/components/SharedNotes";
+import { printElement } from "@/lib/export";
 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +22,6 @@ const CompanyDetail = () => {
   const [noteContent, setNoteContent] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "research" | "memo">("overview");
 
-  // User notes
   const { data: notes } = useQuery({
     queryKey: ["user-notes", id],
     queryFn: async () => {
@@ -85,10 +86,10 @@ const CompanyDetail = () => {
   const latestRound = funding?.[funding.length - 1];
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl">
+    <div className="p-6 space-y-6 max-w-6xl print-target">
       {/* Header */}
       <div className="flex items-start gap-4">
-        <button onClick={() => navigate("/companies")} className="p-2 rounded-md hover:bg-secondary text-muted-foreground mt-0.5">
+        <button onClick={() => navigate("/companies")} className="p-2 rounded-md hover:bg-secondary text-muted-foreground mt-0.5 no-print">
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="flex-1">
@@ -108,13 +109,21 @@ const CompanyDetail = () => {
             </div>
           </div>
         </div>
-        <button
-          onClick={() => addToPipeline.mutate()}
-          disabled={addToPipeline.isPending}
-          className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" /> Add to Pipeline
-        </button>
+        <div className="flex items-center gap-2 no-print">
+          <button
+            onClick={() => printElement(company.name)}
+            className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+          >
+            <Printer className="h-4 w-4" /> Print
+          </button>
+          <button
+            onClick={() => addToPipeline.mutate()}
+            disabled={addToPipeline.isPending}
+            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" /> Add to Pipeline
+          </button>
+        </div>
       </div>
 
       {/* Overview cards */}
@@ -162,7 +171,7 @@ const CompanyDetail = () => {
       )}
 
       {/* Tab navigation */}
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex gap-1 border-b border-border no-print">
         {(["overview", "research", "memo"] as const).map((tab) => (
           <button
             key={tab}
@@ -178,10 +187,8 @@ const CompanyDetail = () => {
         ))}
       </div>
 
-      {/* Tab content */}
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Funding history */}
           <div className="lg:col-span-2 space-y-4">
             <div className="rounded-lg border border-border overflow-hidden">
               <div className="px-4 py-3 border-b border-border bg-card">
@@ -217,7 +224,6 @@ const CompanyDetail = () => {
               )}
             </div>
 
-            {/* Financials */}
             {latestFinancial && (
               <div className="rounded-lg border border-border bg-card p-4">
                 <h3 className="text-sm font-semibold text-foreground mb-3">Financial Metrics ({latestFinancial.period})</h3>
@@ -246,7 +252,6 @@ const CompanyDetail = () => {
             )}
           </div>
 
-          {/* Right column: Activity + Notes */}
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-card">
               <div className="px-4 py-3 border-b border-border">
@@ -267,6 +272,7 @@ const CompanyDetail = () => {
               </div>
             </div>
 
+            {/* Private Notes */}
             <div className="rounded-lg border border-border bg-card">
               <div className="px-4 py-3 border-b border-border">
                 <h3 className="text-sm font-semibold text-foreground">Private Notes</h3>
@@ -303,6 +309,9 @@ const CompanyDetail = () => {
                 </div>
               </div>
             </div>
+
+            {/* Shared Notes */}
+            <SharedNotes companyId={id!} />
           </div>
         </div>
       )}
