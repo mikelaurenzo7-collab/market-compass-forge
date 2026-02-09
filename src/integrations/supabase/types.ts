@@ -55,6 +55,54 @@ export type Database = {
           },
         ]
       }
+      alert_notifications: {
+        Row: {
+          alert_id: string | null
+          company_id: string | null
+          created_at: string
+          detail: string | null
+          id: string
+          is_read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          alert_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          is_read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          alert_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          detail?: string | null
+          id?: string
+          is_read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_notifications_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "user_alerts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           created_at: string
@@ -402,6 +450,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_alerts: {
+        Row: {
+          conditions: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conditions?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conditions?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_notes: {
         Row: {
