@@ -40,7 +40,7 @@ const AppSidebar = ({ activeModule, onModuleChange }: SidebarProps) => {
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
         <span className="hidden lg:block text-sm font-semibold text-foreground tracking-tight">
-          Meridian
+          Laurenzo's
         </span>
       </div>
 
