@@ -11,6 +11,9 @@ import SharedNotes from "@/components/SharedNotes";
 import EnrichmentPanel from "@/components/EnrichmentPanel";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import DataProvenance from "@/components/DataProvenance";
+import CompanyScore from "@/components/CompanyScore";
+import FinancialsChart from "@/components/FinancialsChart";
+import { useCompanyScore } from "@/hooks/useCompanyScore";
 import { AddToWatchlistButton } from "@/components/WatchlistManager";
 import { printElement } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
@@ -277,6 +280,8 @@ const CompanyDetail = () => {
               </div>
             )}
 
+            {financials && <FinancialsChart financials={financials} />}
+
             {/* Decision Trail */}
             {decisionTrail && decisionTrail.length > 0 && (
               <div className="rounded-lg border border-border bg-card">
@@ -301,6 +306,7 @@ const CompanyDetail = () => {
           </div>
 
           <div className="space-y-4">
+            <CompanyScore score={score} />
             {/* Activity */}
             <div className="rounded-lg border border-border bg-card">
               <div className="px-4 py-3 border-b border-border">
