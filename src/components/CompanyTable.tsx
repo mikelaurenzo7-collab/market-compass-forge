@@ -1,23 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
-import { ArrowUpRight, Building2, Loader2 } from "lucide-react";
+import { Building2 } from "lucide-react";
+import CompanyHoverCard from "@/components/CompanyHoverCard";
+import { TableSkeleton } from "@/components/SkeletonLoaders";
 
 const CompanyTable = () => {
   const { data: companies, isLoading } = useCompaniesWithFinancials();
   const navigate = useNavigate();
 
-  // Show top 6 by valuation
   const top = (companies ?? [])
     .sort((a, b) => (b.latestRound?.valuation_post ?? 0) - (a.latestRound?.valuation_post ?? 0))
     .slice(0, 6);
 
-  if (isLoading) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-8 flex items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (isLoading) return <TableSkeleton rows={6} cols={5} />;
 
   return (
     <div className="rounded-lg border border-border overflow-hidden animate-fade-in">
@@ -46,12 +41,25 @@ const CompanyTable = () => {
                 className="border-b border-border/50 hover:bg-secondary/50 cursor-pointer transition-colors"
               >
                 <td className="px-4 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
-                      <Building2 className="h-3 w-3 text-accent-foreground" />
+                  <CompanyHoverCard
+                    company={{
+                      id: c.id,
+                      name: c.name,
+                      sector: c.sector,
+                      stage: c.stage,
+                      hq_country: c.hq_country,
+                      employee_count: c.employee_count,
+                      valuation: c.latestRound?.valuation_post,
+                      arr: c.latestFinancials?.arr,
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
+                        <Building2 className="h-3 w-3 text-accent-foreground" />
+                      </div>
+                      <span className="text-foreground font-medium hover:text-primary transition-colors">{c.name}</span>
                     </div>
-                    <span className="text-foreground font-medium">{c.name}</span>
-                  </div>
+                  </CompanyHoverCard>
                 </td>
                 <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
                 <td className="px-4 py-2.5 text-right text-foreground font-medium font-mono">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Bot, Send, Loader2, Sparkles } from "lucide-react";
+import { Bot, Send, Loader2, Sparkles, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "@/hooks/use-toast";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -12,11 +13,51 @@ const SUGGESTED_QUESTIONS = [
   "What's the valuation justified by financials?",
 ];
 
-const AIResearchChat = ({ companyId, companyName }: { companyId: string; companyName: string }) => {
+const PLAYBOOK_PROMPTS: Record<string, string[]> = {
+  "AI/ML": [
+    "Analyze model defensibility and data moat",
+    "Evaluate compute cost structure and unit economics",
+    "Compare to AI incumbents in this vertical",
+  ],
+  Fintech: [
+    "Analyze regulatory risk and compliance posture",
+    "Evaluate take rate and payment volume economics",
+    "Compare unit economics to neobank benchmarks",
+  ],
+  "Enterprise SaaS": [
+    "Analyze NDR, CAC payback, and Rule of 40",
+    "Evaluate competitive positioning vs incumbents",
+    "Assess expansion revenue and upsell potential",
+  ],
+  Cybersecurity: [
+    "Analyze threat landscape fit and TAM",
+    "Evaluate platform vs point solution strategy",
+    "Compare to CrowdStrike/Palo Alto benchmarks",
+  ],
+};
+
+const CopyButton = ({ text }: { text: string }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast({ title: "Copied to clipboard" });
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button onClick={copy} className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Copy as Markdown">
+      {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+};
+
+const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string; companyName: string; sector?: string | null }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const playbook = sector ? PLAYBOOK_PROMPTS[sector] : undefined;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -103,20 +144,27 @@ const AIResearchChat = ({ companyId, companyName }: { companyId: string; company
     }
   };
 
+  const suggestions = messages.length === 0
+    ? [...SUGGESTED_QUESTIONS, ...(playbook ?? [])]
+    : [];
+
   return (
     <div className="rounded-lg border border-border bg-card flex flex-col h-[420px]">
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">AI Research Assistant</h3>
+        {sector && playbook && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-mono ml-1">{sector} playbook</span>
+        )}
         <span className="text-[10px] font-mono text-muted-foreground ml-auto">Gemini 3 Flash</span>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
+        {suggestions.length > 0 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">Ask anything about <span className="text-primary font-medium">{companyName}</span>:</p>
             <div className="flex flex-wrap gap-2">
-              {SUGGESTED_QUESTIONS.map((q) => (
+              {suggestions.map((q) => (
                 <button
                   key={q}
                   onClick={() => send(q)}
@@ -144,8 +192,13 @@ const AIResearchChat = ({ companyId, companyName }: { companyId: string; company
               }`}
             >
               {msg.role === "assistant" ? (
-                <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-2 [&_ul]:mb-2 [&_li]:mb-0.5">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                <div>
+                  <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-2 [&_ul]:mb-2 [&_li]:mb-0.5">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
+                  <div className="flex justify-end mt-1 border-t border-border/30 pt-1">
+                    <CopyButton text={msg.content} />
+                  </div>
                 </div>
               ) : (
                 <p>{msg.content}</p>

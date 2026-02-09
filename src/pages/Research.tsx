@@ -6,11 +6,11 @@ import InvestmentMemo from "@/components/InvestmentMemo";
 
 const Research = () => {
   const [query, setQuery] = useState("");
-  const [selectedCompany, setSelectedCompany] = useState<{ id: string; name: string } | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<{ id: string; name: string; sector?: string | null } | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "memo">("chat");
   const { data: searchResults } = useSearchCompanies(query);
 
-  const selectCompany = (company: { id: string; name: string }) => {
+  const selectCompany = (company: { id: string; name: string; sector?: string | null }) => {
     setSelectedCompany(company);
     setQuery("");
   };
@@ -75,7 +75,7 @@ const Research = () => {
           </div>
 
           {activeTab === "chat" ? (
-            <AIResearchChat companyId={selectedCompany.id} companyName={selectedCompany.name} />
+            <AIResearchChat companyId={selectedCompany.id} companyName={selectedCompany.name} sector={selectedCompany.sector} />
           ) : (
             <InvestmentMemo companyId={selectedCompany.id} companyName={selectedCompany.name} />
           )}

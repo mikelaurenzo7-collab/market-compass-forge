@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { FileText, Loader2, Download, Sparkles } from "lucide-react";
+import { FileText, Loader2, Download, Sparkles, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { toast } from "@/hooks/use-toast";
+import { logActivity } from "@/lib/activityLogger";
+import { useAuth } from "@/hooks/useAuth";
 
 type Memo = {
   company_name: string;
@@ -27,6 +30,8 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
   const [memo, setMemo] = useState<Memo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
 
   const generate = async () => {
     setIsLoading(true);
@@ -49,6 +54,16 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
 
       const { memo: memoData } = await resp.json();
       setMemo(memoData);
+
+      if (user) {
+        logActivity({
+          userId: user.id,
+          action: "generated investment memo for",
+          entityType: "company",
+          entityId: companyId,
+          entityName: companyName,
+        });
+      }
     } catch (e: any) {
       setError(e.message || "Failed to generate memo");
     } finally {
@@ -56,37 +71,27 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
     }
   };
 
-  const exportPDF = () => {
+  const toMarkdown = () => {
+    if (!memo) return "";
+    return `# Investment Memo: ${memo.company_name}\n_${memo.date}_\n\n${SECTIONS.map(
+      ({ key, label }) => `## ${label}\n\n${memo[key]}`
+    ).join("\n\n---\n\n")}`;
+  };
+
+  const copyMarkdown = () => {
+    navigator.clipboard.writeText(toMarkdown());
+    setCopied(true);
+    toast({ title: "Memo copied as Markdown" });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const exportTxt = () => {
     if (!memo) return;
-    const content = `
-INVESTMENT MEMO: ${memo.company_name}
-Date: ${memo.date}
-${"=".repeat(60)}
-
-INVESTMENT THESIS
-${memo.thesis}
-
-MARKET ANALYSIS
-${memo.market}
-
-TRACTION & METRICS
-${memo.traction}
-
-KEY RISKS
-${memo.risks}
-
-VALUATION
-${memo.valuation}
-
-RECOMMENDATION
-${memo.recommendation}
-    `.trim();
-
-    const blob = new Blob([content], { type: "text/plain" });
+    const blob = new Blob([toMarkdown()], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `memo-${memo.company_name.replace(/\s+/g, "-").toLowerCase()}.txt`;
+    a.download = `memo-${memo.company_name.replace(/\s+/g, "-").toLowerCase()}.md`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -122,7 +127,13 @@ ${memo.recommendation}
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-mono text-muted-foreground">{memo.date}</span>
           <button
-            onClick={exportPDF}
+            onClick={copyMarkdown}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />} Copy MD
+          </button>
+          <button
+            onClick={exportTxt}
             className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >
             <Download className="h-3 w-3" /> Export

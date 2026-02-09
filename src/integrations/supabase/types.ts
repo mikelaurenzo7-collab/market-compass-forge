@@ -442,6 +442,47 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_tasks: {
+        Row: {
+          assignee_id: string
+          created_at: string
+          due_date: string | null
+          id: string
+          pipeline_deal_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee_id: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          pipeline_deal_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee_id?: string
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          pipeline_deal_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_tasks_pipeline_deal_id_fkey"
+            columns: ["pipeline_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

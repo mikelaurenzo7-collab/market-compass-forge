@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Settings as SettingsIcon, User, Shield, Users, Loader2, Save } from "lucide-react";
+import { User, Shield, Users, Loader2, Save, Monitor } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
@@ -13,10 +13,22 @@ const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
 };
 
+const DENSITY_OPTIONS = [
+  { value: "compact", label: "Compact" },
+  { value: "comfortable", label: "Comfortable" },
+  { value: "spacious", label: "Spacious" },
+] as const;
+
 const Settings = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
+  const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
+
+  useEffect(() => {
+    localStorage.setItem("ui-density", density);
+    document.documentElement.setAttribute("data-density", density);
+  }, [density]);
 
   const { data: profile } = useQuery({
     queryKey: ["profile"],
@@ -134,6 +146,30 @@ const Settings = () => {
             <p><strong className="text-foreground">Partner:</strong> + Generate memos, manage team alerts</p>
             <p><strong className="text-foreground">Admin:</strong> + Manage team roles, workspace settings</p>
           </div>
+        </div>
+
+        {/* Display Density */}
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <Monitor className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Display Density</h3>
+          </div>
+          <div className="flex gap-2">
+            {DENSITY_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setDensity(opt.value)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+                  density === opt.value
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">Controls table row height and overall spacing across the app.</p>
         </div>
       </div>
 

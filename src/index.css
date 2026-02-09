@@ -133,7 +133,49 @@
   }
 }
 
+/* Density controls */
+[data-density="compact"] {
+  --density-padding: 0.375rem;
+  --density-row-height: 2rem;
+  --density-gap: 0.25rem;
+}
+
+[data-density="comfortable"] {
+  --density-padding: 0.625rem;
+  --density-row-height: 2.5rem;
+  --density-gap: 0.5rem;
+}
+
+[data-density="spacious"] {
+  --density-padding: 0.875rem;
+  --density-row-height: 3rem;
+  --density-gap: 0.75rem;
+}
+
+/* Apply density to table cells */
+[data-density="compact"] td,
+[data-density="compact"] th {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+[data-density="spacious"] td,
+[data-density="spacious"] th {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+/* Transitions for premium feel */
 @layer utilities {
+  .transition-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .transition-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.15);
+  }
+
   /* Print utilities */
   @media print {
     .no-print {
