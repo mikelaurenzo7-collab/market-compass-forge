@@ -10,7 +10,7 @@ interface MetricCardProps {
 
 const MetricCard = ({ label, value, change, trend = "flat", subtitle }: MetricCardProps) => {
   return (
-    <div className="gradient-card rounded-lg border border-border p-4 hover:border-glow transition-all duration-200 animate-fade-in">
+    <div className="gradient-card rounded-lg border border-border p-4 hover:border-glow transition-lift animate-fade-in">
       <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
       <div className="flex items-end justify-between gap-2">
         <p className="text-2xl font-semibold font-mono tracking-tight text-foreground">{value}</p>
