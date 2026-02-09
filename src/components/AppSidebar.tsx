@@ -10,28 +10,36 @@ import {
   Settings,
   Zap,
 } from "lucide-react";
-
-interface SidebarProps {
-  activeModule: string;
-  onModuleChange: (module: string) => void;
-}
+import { NavLink } from "@/components/NavLink";
+import { useLocation } from "react-router-dom";
 
 const modules = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "companies", label: "Companies", icon: Building2 },
-  { id: "deals", label: "Deal Flow", icon: TrendingUp },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "screening", label: "Screening", icon: Search },
-  { id: "research", label: "Research", icon: FileText },
-  { id: "people", label: "People", icon: Users },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { id: "companies", label: "Companies", icon: Building2, path: "/companies" },
+  { id: "deals", label: "Deal Flow", icon: TrendingUp, path: "/deals" },
+  { id: "analytics", label: "Analytics", icon: BarChart3, path: "/analytics" },
+  { id: "screening", label: "Screening", icon: Search, path: "/screening" },
+  { id: "research", label: "Research", icon: FileText, path: "/research" },
+  { id: "people", label: "People", icon: Users, path: "/people" },
 ];
 
 const bottomModules = [
-  { id: "alerts", label: "Alerts", icon: Bell, badge: 3 },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: 3 },
+  { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
 ];
 
-const AppSidebar = ({ activeModule, onModuleChange }: SidebarProps) => {
+const AppSidebar = () => {
+  const location = useLocation();
+
+  const linkClass = (path: string) => {
+    const isActive = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+    return `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+      isActive
+        ? "bg-accent text-accent-foreground font-medium"
+        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+    }`;
+  };
+
   return (
     <aside className="w-16 lg:w-56 shrink-0 border-r border-border bg-sidebar flex flex-col h-screen sticky top-0">
       {/* Logo */}
@@ -47,32 +55,25 @@ const AppSidebar = ({ activeModule, onModuleChange }: SidebarProps) => {
       {/* Main nav */}
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
         {modules.map((m) => (
-          <button
+          <NavLink
             key={m.id}
-            onClick={() => onModuleChange(m.id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
-              activeModule === m.id
-                ? "bg-accent text-accent-foreground font-medium"
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            }`}
+            to={m.path}
+            end={m.path === "/"}
+            className={linkClass(m.path)}
           >
             <m.icon className="h-4 w-4 shrink-0" />
             <span className="hidden lg:block truncate">{m.label}</span>
-          </button>
+          </NavLink>
         ))}
       </nav>
 
       {/* Bottom nav */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
         {bottomModules.map((m) => (
-          <button
+          <NavLink
             key={m.id}
-            onClick={() => onModuleChange(m.id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors relative ${
-              activeModule === m.id
-                ? "bg-accent text-accent-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            }`}
+            to={m.path}
+            className={`${linkClass(m.path)} relative`}
           >
             <m.icon className="h-4 w-4 shrink-0" />
             <span className="hidden lg:block truncate">{m.label}</span>
@@ -81,7 +82,7 @@ const AppSidebar = ({ activeModule, onModuleChange }: SidebarProps) => {
                 {m.badge}
               </span>
             )}
-          </button>
+          </NavLink>
         ))}
       </div>
     </aside>

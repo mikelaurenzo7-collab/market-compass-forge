@@ -5,7 +5,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AppLayout from "@/components/AppLayout";
 import Index from "./pages/Index";
+import Companies from "./pages/Companies";
+import Deals from "./pages/Deals";
+import Analytics from "./pages/Analytics";
+import Screening from "./pages/Screening";
+import Research from "./pages/Research";
+import People from "./pages/People";
+import Alerts from "./pages/Alerts";
+import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -21,13 +30,22 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route
-              path="/"
               element={
                 <ProtectedRoute>
-                  <Index />
+                  <AppLayout />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route path="/" element={<Index />} />
+              <Route path="/companies" element={<Companies />} />
+              <Route path="/deals" element={<Deals />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/screening" element={<Screening />} />
+              <Route path="/research" element={<Research />} />
+              <Route path="/people" element={<People />} />
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
