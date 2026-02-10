@@ -22,7 +22,7 @@ const OnboardingCard = () => {
   return (
     <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-foreground">Welcome to Laurenzo's</h2>
+        <h2 className="text-sm font-semibold text-foreground">Welcome to Laurenzo</h2>
         <p className="text-xs text-muted-foreground mt-0.5">Here's how to get started with your private market intelligence workflow</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
