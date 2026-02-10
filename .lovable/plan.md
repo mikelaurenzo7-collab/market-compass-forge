@@ -1,284 +1,112 @@
 
 
-# Laurenzo: The Bloomberg Competitor Pivot
+# Founder Mode: Next Moves to Beat Bloomberg
 
-## Vision
+## Current State (What We've Built)
 
-Transform Laurenzo from a private-market-only tool into a **unified Private + Public Market Intelligence Platform** -- a true Bloomberg alternative that gives emerging managers something Bloomberg can't: AI-native research, private market depth, and cross-market comparison at a fraction of the cost.
+You're already in a strong position. Here's the scorecard:
 
-## What Changes
+| Capability | Bloomberg | Laurenzo's Grapevine | Status |
+|---|---|---|---|
+| Public market data (1,000+ cos) | Yes | 470 public + 530 private | DONE |
+| Private market intelligence | Weak | Deep (funding, ARR, margins) | ADVANTAGE |
+| AI research chat | No | Yes (contextual, grounded) | ADVANTAGE |
+| Investment memo generation | No | Yes (one-click IC memos) | ADVANTAGE |
+| Deal pipeline / Kanban | No | Yes (full workflow) | ADVANTAGE |
+| Data provenance / confidence | No | Yes (every data point sourced) | ADVANTAGE |
+| Cross-market screening | Separate terminals | Unified with MarketToggle | ADVANTAGE |
+| Real-time price feeds | Yes (live) | Static seed data | GAP |
+| Portfolio tracking / P&L | Yes | No | GAP |
+| Multi-asset (FX, commodities, bonds) | Yes | Equities only | GAP |
+| News terminal / live wire | Yes (real-time) | Activity events only | GAP |
+| Excel/API integration | Yes | CSV export only | GAP |
+| Mobile app | Yes | Responsive web only | PARTIAL |
+| Collaborative annotations | Yes | Shared notes (basic) | PARTIAL |
 
-### 1. Database Schema: Add Public Market Data Layer
+## The 5 Highest-Leverage Moves (Ranked by Impact)
 
-**New table: `public_market_data`** -- stores real-time-style public market metrics that Bloomberg charges $24K/year for:
+### 1. Portfolio Tracker with P&L Analytics
+**Why this matters**: Bloomberg's stickiest feature isn't data -- it's that portfolio managers live inside it because their portfolio is there. Once a user tracks their positions in Grapevine, they never leave.
 
-| Column | Type | Description |
-|---|---|---|
-| id | uuid | Primary key |
-| company_id | uuid | FK to companies |
-| market_cap | numeric | Market capitalization |
-| pe_ratio | numeric | Price-to-earnings ratio |
-| eps | numeric | Earnings per share |
-| dividend_yield | numeric | Dividend yield (decimal) |
-| price | numeric | Current share price |
-| price_change_pct | numeric | Daily price change % |
-| fifty_two_week_high | numeric | 52-week high |
-| fifty_two_week_low | numeric | 52-week low |
-| volume_avg | numeric | Average daily volume |
-| beta | numeric | Beta coefficient |
-| ticker | text | Stock ticker symbol |
-| exchange | text | Exchange (NYSE, NASDAQ, etc.) |
-| updated_at | timestamptz | Last update |
+**What to build**:
+- New `portfolios` table (user_id, name, created_at)
+- New `portfolio_positions` table (portfolio_id, company_id, shares/units, entry_price, entry_date, notes)
+- Portfolio dashboard page at `/portfolio` showing:
+  - Total portfolio value, daily P&L, total return
+  - Position-level breakdown with current price vs entry price
+  - Sector allocation pie chart
+  - Cross-market view (private holdings at last valuation + public at current price)
+- Sidebar addition under "Workflow" section
 
-**Add column to `companies` table:**
-- `market_type` (text, default 'private') -- values: 'private' or 'public'
+### 2. Live News Wire + Sentiment Feed
+**Why this matters**: Bloomberg Terminal's killer feature is the news wire. Fund managers keep it open all day. An AI-powered news feed with sentiment analysis is something Bloomberg charges extra for.
 
-**Add new sectors** to the `sectors` table for broader public market coverage (Energy, Real Estate, Industrials, Telecom, Pharma, etc.).
+**What to build**:
+- New `news_articles` table (company_id, title, summary, source_url, published_at, sentiment_score, ai_summary)
+- New edge function `fetch-news` that uses Lovable AI to summarize and score sentiment on company news
+- News feed component on dashboard (replaces basic ActivityFeed)
+- Per-company news tab on CompanyDetail
+- Sentiment trend chart (bullish/bearish/neutral over time)
+- Push this into the existing Alerts system -- "Alert me when sentiment drops below X"
 
-### 2. Data Population: 100+ Public Companies
+### 3. Watchlist Alerts + Daily Briefing Email
+**Why this matters**: Bloomberg's "Morning Brief" is how portfolio managers start their day. An automated daily digest keeps users engaged even when they're not in the app.
 
-Insert **100+ major public companies** across sectors that Bloomberg covers, with full market data. Focus on companies that emerging managers actually benchmark against:
+**What to build**:
+- New edge function `daily-briefing` triggered by cron (already have `scheduled-refresh` pattern)
+- Compiles: watchlist price movements, new funding rounds, sentiment shifts, portfolio P&L
+- Sends via email (using Lovable's built-in email or a simple SMTP integration)
+- New Settings section: "Briefing Preferences" (frequency, content toggles)
+- In-app notification center (bell icon already exists, just needs richer content)
 
-**Tech**: Apple, Microsoft, Google, Amazon, Meta, NVIDIA, Tesla, Netflix, AMD, Intel, Salesforce, Adobe, Oracle, ServiceNow, Workday, Intuit, Fortinet, CrowdStrike (already exists), etc.
+### 4. API Access + Embeddable Widgets
+**Why this matters**: Bloomberg's API (B-PIPE) costs $2K+/month. Offering a REST API at a fraction of the cost is a wedge into every quant fund and fintech startup.
 
-**Finance**: JPMorgan, Goldman Sachs, Visa, Mastercard, PayPal, Block (Square), Marqeta, etc.
+**What to build**:
+- Already have `api-access` edge function and `api_keys` table -- extend it
+- Add endpoints: `/api/v1/companies`, `/api/v1/market-data`, `/api/v1/screening`
+- Rate limiting by tier (free: 100 req/day, pro: 10K, enterprise: unlimited)
+- Auto-generated API docs page at `/developers`
+- Embeddable widget: `<script src="grapevine.js">` that renders a mini company card (viral distribution)
 
-**Healthcare**: UnitedHealth, Johnson & Johnson, Pfizer, Moderna, Intuitive Surgical, etc.
+### 5. Comp Table Builder (Cross-Market)
+**Why this matters**: Every VC and analyst builds comp tables in Excel. If Grapevine auto-generates them with both private and public comps, it replaces the most tedious part of their workflow.
 
-**Energy/Industrials**: ExxonMobil, Chevron, NextEra Energy, Caterpillar, Deere, etc.
+**What to build**:
+- New page at `/comps` -- interactive comp table builder
+- User selects 3-10 companies (private + public mix)
+- Auto-populates: Revenue, ARR, Growth Rate, Margins, Valuation/Market Cap, EV/Revenue multiple
+- AI-generated "Comp Analysis" summary (using existing AI research pattern)
+- One-click export to CSV or formatted PDF
+- Save comp sets for reuse
 
-**Consumer**: Nike, Starbucks, McDonald's, Costco, Walmart, etc.
+---
 
-Each gets: market cap, P/E, EPS, dividend yield, price, 52-week range, beta, ticker, exchange.
+## Recommended Execution Order
 
-Set existing 32 "Public" stage companies to `market_type = 'public'` and populate their `public_market_data`.
+Build these in sequence, shipping each as a complete feature:
 
-### 3. Sidebar Navigation: Market Context
+1. **Portfolio Tracker** (highest retention impact -- makes users "live" in the app)
+2. **Comp Table Builder** (fastest to build, uses existing data, massive analyst time-saver)
+3. **Live News Wire + Sentiment** (differentiator, feeds into alerts)
+4. **Daily Briefing** (retention loop, builds on news + portfolio)
+5. **API Access** (monetization unlock, developer distribution)
 
-Update the sidebar to show clear market context with section headers:
+## Technical Approach
 
-```
--- MARKETS --
-  Dashboard
-  Private Markets  (new)
-  Public Markets   (new)
+- All new tables get RLS policies scoped to `auth.uid() = user_id`
+- Portfolio values computed client-side by joining positions with `public_market_data.price` (no need for a separate materialized view yet)
+- News sentiment uses existing Lovable AI gateway (same pattern as `ai-research` function)
+- Comp table reuses existing `useCompaniesWithFinancialsFiltered` hook with a multi-select UI
+- Daily briefing edge function follows the `scheduled-refresh` cron pattern
 
--- INTELLIGENCE --
-  Companies
-  Screening
-  Analytics
-  Research
+---
 
--- WORKFLOW --
-  Deal Flow
-  Compare
-  Network
-  People
+## The Bloomberg-Killer Pitch
 
--- SYSTEM --
-  Alerts
-  Integrations
-  Settings
-```
+After these 5 features, here's what you can say:
 
-New routes:
-- `/markets/private` -- private market dashboard (filtered view of current dashboard)
-- `/markets/public` -- public market dashboard with indices, movers, sector performance
+> **Bloomberg charges $24,000/year for a single terminal. Laurenzo's Grapevine gives you AI-native research, cross-market intelligence, portfolio tracking, automated comp tables, and daily briefings -- for $99/month.**
 
-### 4. Dashboard: Dual-Market Intelligence Hub
-
-Replace the single dashboard with a **tabbed dashboard**: "All Markets" | "Private" | "Public"
-
-**All Markets tab**: Combined metrics showing total coverage
-**Private tab**: Current dashboard experience (deal flow, pipeline, private company table)
-**Public tab**: New public markets dashboard with:
-- Market summary cards (S&P 500 level, NASDAQ level, market sentiment)
-- Top gainers / losers table
-- Sector performance heatmap (public)
-- Market cap leaders table
-
-### 5. Companies Page: Market Type Filter
-
-Add a **market type toggle** at the top of the Companies page:
-- "All" | "Private" | "Public" pill buttons
-- When "Public" is selected, show additional columns: Ticker, Market Cap, P/E, Price Change %
-- When "Private" is selected, show current columns (Valuation, ARR, Stage)
-
-### 6. Company Detail: Public Market Enhancements
-
-For public companies, the detail page adds:
-- **Market Data Card**: Ticker, Exchange, Market Cap, P/E, EPS, Beta, 52-week range, dividend yield
-- **Price indicator**: Current price with daily change %
-- Replace "Add to Pipeline" with "Add to Watchlist" for public companies (they're not deal targets)
-- Keep AI Research, Memo Generator, and Enrichment tabs for both private and public
-
-### 7. Screening: Cross-Market Power
-
-Add market type filter chips ("Private" | "Public") alongside existing sector/stage chips. When public is selected, add:
-- Market Cap range filter (replaces Valuation for public)
-- P/E ratio range filter
-- Dividend yield filter
-
-### 8. Analytics: Dual-Market Analytics
-
-Add a market toggle to the Analytics page. Public market analytics include:
-- Sector performance comparison (public vs private multiples)
-- Market cap distribution
-- P/E ratio by sector
-
-### 9. Landing Page: Repositioned
-
-Update hero and positioning:
-- Badge: "Market Intelligence Platform" (already done)
-- Headline: "AI-Powered Intelligence for **Private & Public Markets**"
-- Subheadline: "The only platform that combines private deal intelligence with public market data -- built for emerging managers who need Bloomberg-level insight without the Bloomberg price tag."
-- Stats bar: Update to show "300+ Companies" (after adding public companies), add "Private & Public Markets" stat
-- Add a new feature card: "Cross-Market Intelligence" -- Compare private companies against public benchmarks
-
-### 10. What Bloomberg Doesn't Offer (Differentiators)
-
-These already exist but need to be highlighted more prominently on the landing page:
-- **AI Research Chat** -- Ask questions, get sourced answers (Bloomberg has no equivalent)
-- **Investment Memo Generator** -- One-click IC-ready memos (Bloomberg doesn't do this)
-- **Deal Pipeline** -- Integrated Kanban workflow (Bloomberg is view-only, no workflow)
-- **Data Provenance** -- Confidence scoring on every data point (Bloomberg doesn't show this)
-- **Cross-Market Benchmarking** -- Compare private company ARR multiples against public comps (Bloomberg has separate terminals for each)
-
-## File Changes Summary
-
-| File | Change |
-|---|---|
-| `src/pages/Landing.tsx` | Update hero copy, add "Cross-Market Intelligence" feature card, update stats |
-| `src/pages/Index.tsx` | Add Private/Public/All tabs, add public market summary section |
-| `src/pages/Companies.tsx` | Add market type toggle, show public-specific columns conditionally |
-| `src/pages/CompanyDetail.tsx` | Add public market data card for public companies, conditional UI |
-| `src/pages/Screening.tsx` | Add market type filter, public-specific filters (market cap, P/E) |
-| `src/pages/Analytics.tsx` | Add market toggle, public market analytics charts |
-| `src/components/AppSidebar.tsx` | Restructure nav with section headers, add Private/Public Markets links |
-| `src/components/CompanyTable.tsx` | Add market type awareness, show ticker for public companies |
-| `src/hooks/useData.ts` | Add `usePublicMarketData` hook, update company type |
-| `src/hooks/useAnalyticsData.ts` | Add public market analytics hooks |
-| `src/App.tsx` | Add new routes for `/markets/private` and `/markets/public` |
-| New: `src/pages/PublicMarkets.tsx` | Public markets dashboard with indices, movers, sector performance |
-| New: `src/pages/PrivateMarkets.tsx` | Filtered private-only dashboard |
-| New: `src/components/PublicMarketCard.tsx` | Reusable public market data display component |
-| New: `src/components/MarketToggle.tsx` | Reusable Private/Public/All toggle component |
-
-## Technical Details
-
-### Migration: New table + column
-
-```sql
--- Add market_type to companies
-ALTER TABLE companies ADD COLUMN market_type text NOT NULL DEFAULT 'private';
-
--- Set existing public companies
-UPDATE companies SET market_type = 'public' WHERE stage = 'Public';
-
--- Create public market data table
-CREATE TABLE public_market_data (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
-  ticker text NOT NULL,
-  exchange text,
-  market_cap numeric,
-  pe_ratio numeric,
-  eps numeric,
-  dividend_yield numeric,
-  price numeric,
-  price_change_pct numeric,
-  fifty_two_week_high numeric,
-  fifty_two_week_low numeric,
-  volume_avg numeric,
-  beta numeric,
-  updated_at timestamptz DEFAULT now(),
-  created_at timestamptz DEFAULT now(),
-  UNIQUE(company_id)
-);
-
--- RLS: publicly readable
-ALTER TABLE public_market_data ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public market data is publicly readable"
-  ON public_market_data FOR SELECT USING (true);
-```
-
-### Database inserts (via insert tool)
-
-1. Insert 100+ new public companies into `companies` with `market_type = 'public'`
-2. Insert corresponding `public_market_data` records with ticker, market cap, P/E, etc.
-3. Insert financials for new public companies (revenue, EPS -- publicly available data)
-4. Insert funding rounds where applicable (IPO records)
-5. Add new sectors to `sectors` table
-6. Add new activity events for public companies
-
-### Reusable MarketToggle component
-
-A simple pill toggle used across Dashboard, Companies, Screening, and Analytics:
-
-```tsx
-type MarketFilter = 'all' | 'private' | 'public';
-
-const MarketToggle = ({ value, onChange }) => (
-  <div className="flex gap-1 bg-muted rounded-lg p-1">
-    {['all', 'private', 'public'].map(m => (
-      <button key={m} onClick={() => onChange(m)}
-        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-          value === m ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-        }`}>
-        {m === 'all' ? 'All Markets' : m === 'private' ? 'Private' : 'Public'}
-      </button>
-    ))}
-  </div>
-);
-```
-
-### Data hooks
-
-```typescript
-// New hook for public market data
-export const usePublicMarketData = (companyId: string) =>
-  useQuery({
-    queryKey: ["public-market-data", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("public_market_data")
-        .select("*")
-        .eq("company_id", companyId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!companyId,
-  });
-
-// Updated companies query with market_type filter
-export const useCompaniesFiltered = (marketType: 'all' | 'private' | 'public') =>
-  useQuery({
-    queryKey: ["companies", marketType],
-    queryFn: async () => {
-      let query = supabase.from("companies").select("*").order("name");
-      if (marketType !== 'all') query = query.eq("market_type", marketType);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-    },
-  });
-```
-
-## Execution Order
-
-1. Database migration (add `market_type` column + `public_market_data` table)
-2. Database inserts (100+ public companies + market data)
-3. Create reusable `MarketToggle` component
-4. Update `useData.ts` hooks
-5. Update sidebar navigation
-6. Update routes in `App.tsx`
-7. Create `PublicMarkets.tsx` and `PrivateMarkets.tsx` pages
-8. Update `Index.tsx` dashboard with tabs
-9. Update `Companies.tsx` with market filter
-10. Update `CompanyDetail.tsx` with public data card
-11. Update `Screening.tsx` with market filters
-12. Update `Analytics.tsx` with market toggle
-13. Update `Landing.tsx` positioning and copy
-14. Update `CompanyTable.tsx` for market awareness
+Which of these 5 should we build first?
 
