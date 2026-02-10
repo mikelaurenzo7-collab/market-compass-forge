@@ -22,11 +22,13 @@ import NotFound from "./pages/NotFound";
 import NetworkGraph from "./pages/NetworkGraph";
 import CompanyComparison from "./pages/CompanyComparison";
 import Integrations from "./pages/Integrations";
+import PublicMarkets from "./pages/PublicMarkets";
+import PrivateMarkets from "./pages/PrivateMarkets";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 min default
+      staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
     },
   },
@@ -50,6 +52,8 @@ const App = () => (
               }
             >
               <Route path="/dashboard" element={<Index />} />
+              <Route path="/markets/private" element={<PrivateMarkets />} />
+              <Route path="/markets/public" element={<PublicMarkets />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/companies/:id" element={<CompanyDetail />} />
               <Route path="/deals" element={<Deals />} />
