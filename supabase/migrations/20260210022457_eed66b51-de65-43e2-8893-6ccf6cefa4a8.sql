@@ -1,0 +1,1 @@
+ALTER TABLE public.deal_pipeline ADD CONSTRAINT deal_pipeline_user_company_unique UNIQUE (user_id, company_id);
