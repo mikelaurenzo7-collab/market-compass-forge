@@ -236,10 +236,12 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
       </html>
     `;
 
-    printWindow.document.write(html);
-    printWindow.document.close();
+    const blob = new Blob([html], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    printWindow.location.href = blobUrl;
     printWindow.onload = () => {
       printWindow.print();
+      printWindow.onafterprint = () => URL.revokeObjectURL(blobUrl);
     };
   };
 

@@ -85,7 +85,22 @@ Deno.serve(async (req) => {
     }> = [];
 
     // 1. Scrape company website if domain exists
-    if (company.domain) {
+    const isValidPublicDomain = (domain: string): boolean => {
+      const full = domain.startsWith('http') ? domain : `https://${domain}`;
+      try {
+        const parsed = new URL(full);
+        const h = parsed.hostname;
+        if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1') return false;
+        if (h.startsWith('10.') || h.startsWith('192.168.') || h.startsWith('169.254.')) return false;
+        if (h.startsWith('172.')) {
+          const second = parseInt(h.split('.')[1]);
+          if (second >= 16 && second <= 31) return false;
+        }
+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      } catch { return false; }
+    };
+
+    if (company.domain && isValidPublicDomain(company.domain)) {
       const url = company.domain.startsWith("http")
         ? company.domain
         : `https://${company.domain}`;
