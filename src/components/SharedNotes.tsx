@@ -16,7 +16,7 @@ const SharedNotes = ({ companyId }: { companyId: string }) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("shared_notes")
-        .select("*, profiles:user_id(display_name)")
+        .select("*")
         .eq("company_id", companyId)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -120,7 +120,7 @@ const SharedNotes = ({ companyId }: { companyId: string }) => {
                 <div>
                   <p>{n.content}</p>
                   <p className="text-[10px] text-muted-foreground mt-1">
-                    {(n as any).profiles?.display_name ?? "User"} · {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                    User · {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                   </p>
                 </div>
                 {n.user_id === user?.id && (
