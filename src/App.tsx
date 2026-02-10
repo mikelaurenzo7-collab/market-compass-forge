@@ -21,12 +21,10 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import NetworkGraph from "./pages/NetworkGraph";
 import CompanyComparison from "./pages/CompanyComparison";
-import Integrations from "./pages/Integrations";
 import PublicMarkets from "./pages/PublicMarkets";
 import PrivateMarkets from "./pages/PrivateMarkets";
 import Portfolio from "./pages/Portfolio";
 import CompTableBuilder from "./pages/CompTableBuilder";
-import Developers from "./pages/Developers";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,10 +66,8 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/network" element={<NetworkGraph />} />
               <Route path="/compare" element={<CompanyComparison />} />
-              <Route path="/integrations" element={<Integrations />} />
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/comps" element={<CompTableBuilder />} />
-              <Route path="/developers" element={<Developers />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
