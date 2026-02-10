@@ -76,7 +76,7 @@ const UpgradePrompt = ({ open, onClose, blockedAction }: UpgradePromptProps) => 
                 <div className="text-xs text-muted-foreground text-center py-2">Current plan</div>
               ) : (
                 <a
-                  href="mailto:sales@laurenzo.io?subject=Upgrade%20Inquiry"
+                  href="mailto:sales@grapevine.io?subject=Upgrade%20Inquiry"
                   className="flex items-center justify-center gap-2 w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
                 >
                   <Mail className="h-3.5 w-3.5" />

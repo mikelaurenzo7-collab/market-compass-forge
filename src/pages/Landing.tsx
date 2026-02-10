@@ -178,7 +178,7 @@ const Landing = () => {
               <Zap className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="text-sm font-semibold tracking-tight">
-              Laurenzo
+              Grapevine
             </span>
           </Link>
           <div className="flex items-center gap-3">
@@ -216,7 +216,7 @@ const Landing = () => {
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-base px-8" asChild>
-              <a href="mailto:sales@laurenzo.io">Request Demo</a>
+              <a href="mailto:sales@grapevine.io">Request Demo</a>
             </Button>
           </div>
         </div>
@@ -286,7 +286,7 @@ const Landing = () => {
           Everything you need to source smarter
         </h2>
         <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
-          From initial screening to IC memo, Laurenzo covers your entire deal
+          From initial screening to IC memo, Grapevine covers your entire deal
           workflow.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -357,7 +357,7 @@ const Landing = () => {
                 asChild
               >
                 {t.name === "Enterprise" ? (
-                  <a href="mailto:sales@laurenzo.io">{t.cta}</a>
+                  <a href="mailto:sales@grapevine.io">{t.cta}</a>
                 ) : (
                   <Link to="/auth">{t.cta}</Link>
                 )}
@@ -371,7 +371,7 @@ const Landing = () => {
       <footer className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground text-center sm:text-left">
-            © {new Date().getFullYear()} Laurenzo Market Intelligence. For
+            © {new Date().getFullYear()} Grapevine Market Intelligence. For
             informational purposes only — not investment advice.
           </p>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
