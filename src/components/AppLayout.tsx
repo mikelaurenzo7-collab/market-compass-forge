@@ -5,6 +5,7 @@ import SearchBar from "@/components/SearchBar";
 import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import DisclaimerFooter from "@/components/DisclaimerFooter";
 import { useAuth } from "@/hooks/useAuth";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
@@ -89,6 +90,7 @@ const AppLayout = () => {
             <Outlet />
           </div>
         </ErrorBoundary>
+        <DisclaimerFooter />
       </main>
     </div>
   );

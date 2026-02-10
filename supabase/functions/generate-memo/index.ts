@@ -35,6 +35,33 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Server-side usage limit enforcement
+    const FREE_LIMIT = 3;
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const { data: tier } = await supabase
+      .from("subscription_tiers")
+      .select("tier")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!tier || (tier.tier !== "pro" && tier.tier !== "enterprise")) {
+      const { count } = await supabase
+        .from("usage_tracking")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("action", "memo_generation")
+        .gte("created_at", startOfDay.toISOString());
+
+      if ((count ?? 0) >= FREE_LIMIT) {
+        return new Response(JSON.stringify({ error: "Daily memo generation limit reached. Upgrade to Pro for more." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // Track usage server-side
+    await supabase.from("usage_tracking").insert({ user_id: user.id, action: "memo_generation" });
+
     const [companyRes, fundingRes, financialsRes, eventsRes, investorsRes] = await Promise.all([
       supabase.from("companies").select("*").eq("id", company_id).maybeSingle(),
       supabase.from("funding_rounds").select("*").eq("company_id", company_id).order("date", { ascending: false }),
@@ -95,6 +122,8 @@ ${(comps ?? []).map(c => `${c.name} (${c.stage}, ${c.employee_count} emp, founde
           {
             role: "system",
             content: `You are a senior investment analyst at a top-tier VC firm. Generate a comprehensive investment memo based on the company data provided. Be data-driven and specific with numbers. Use the tool to return structured output.
+
+IMPORTANT DISCLAIMER: This memo is generated for informational purposes only and does not constitute investment advice. Include a brief disclaimer at the end of the recommendation section noting that independent due diligence should be conducted.
 
 ${contextBlock}`,
           },

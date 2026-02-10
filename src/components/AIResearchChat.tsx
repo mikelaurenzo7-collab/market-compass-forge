@@ -224,6 +224,10 @@ const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string;
         )}
       </div>
 
+      <div className="px-3 py-1.5 border-t border-border/50 bg-muted/20 text-center">
+        <p className="text-[9px] text-muted-foreground/60">For informational purposes only — not investment advice.</p>
+      </div>
+
       <form
         onSubmit={(e) => { e.preventDefault(); send(input); }}
         className="px-4 py-3 border-t border-border flex gap-2"

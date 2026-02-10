@@ -18,7 +18,7 @@ const TIERS = [
     name: "Pro",
     price: "$99/mo",
     current: false,
-    features: ["Unlimited AI queries", "Unlimited memos", "50 enrichments/day", "Priority support", "Team collaboration"],
+    features: ["100 AI queries/day", "25 memos/day", "50 enrichments/day", "Priority support", "Team collaboration"],
   },
   {
     name: "Enterprise",
