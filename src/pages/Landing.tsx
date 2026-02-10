@@ -199,7 +199,7 @@ const Landing = () => {
         <div className="relative max-w-4xl mx-auto px-6 pt-24 pb-16 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-medium text-primary mb-6">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Private Market Intelligence Platform
+            Market Intelligence Platform
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
             AI-Powered Deal Intelligence
@@ -268,7 +268,7 @@ const Landing = () => {
       {/* Social Proof */}
       <section className="max-w-4xl mx-auto px-6 py-10 text-center">
         <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">
-          Trusted by analysts at leading firms
+          Tracking companies backed by
         </p>
         <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-muted-foreground/40">
           {["Sequoia", "Andreessen Horowitz", "Lightspeed", "General Catalyst", "Benchmark"].map(
@@ -372,7 +372,7 @@ const Landing = () => {
       <footer className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground text-center sm:text-left">
-            © {new Date().getFullYear()} Laurenzo Private Intelligence. For
+            © {new Date().getFullYear()} Laurenzo Market Intelligence. For
             informational purposes only — not investment advice.
           </p>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
