@@ -1,112 +1,100 @@
 
 
-# Founder Mode: Next Moves to Beat Bloomberg
+# Strategic Assessment and Next Steps
 
-## Current State (What We've Built)
+## Where We Stand
 
-You're already in a strong position. Here's the scorecard:
+### Data Foundation
+- **1,000 companies** tracked (530 private, 470 public)
+- **608 funding rounds**, **1,062 financial records**, **58 investors**
+- **0 news articles** -- the news table exists but has no data, which means the News & Sentiment features across the app are rendering empty
 
-| Capability | Bloomberg | Laurenzo's Grapevine | Status |
-|---|---|---|---|
-| Public market data (1,000+ cos) | Yes | 470 public + 530 private | DONE |
-| Private market intelligence | Weak | Deep (funding, ARR, margins) | ADVANTAGE |
-| AI research chat | No | Yes (contextual, grounded) | ADVANTAGE |
-| Investment memo generation | No | Yes (one-click IC memos) | ADVANTAGE |
-| Deal pipeline / Kanban | No | Yes (full workflow) | ADVANTAGE |
-| Data provenance / confidence | No | Yes (every data point sourced) | ADVANTAGE |
-| Cross-market screening | Separate terminals | Unified with MarketToggle | ADVANTAGE |
-| Real-time price feeds | Yes (live) | Static seed data | GAP |
-| Portfolio tracking / P&L | Yes | No | GAP |
-| Multi-asset (FX, commodities, bonds) | Yes | Equities only | GAP |
-| News terminal / live wire | Yes (real-time) | Activity events only | GAP |
-| Excel/API integration | Yes | CSV export only | GAP |
-| Mobile app | Yes | Responsive web only | PARTIAL |
-| Collaborative annotations | Yes | Shared notes (basic) | PARTIAL |
+### Feature Completeness Scorecard
 
-## The 5 Highest-Leverage Moves (Ranked by Impact)
+| Feature | Status | Revenue Impact |
+|---|---|---|
+| Dashboard with cross-market metrics | Done | Retention |
+| Company intelligence (detail, scoring, provenance) | Done | Core value |
+| Screening with filters + market toggle | Done | Core value |
+| Deal pipeline (Kanban + tasks) | Done | Workflow lock-in |
+| Portfolio tracker with P&L | Done | High retention |
+| Comp table builder | Done | Analyst time-saver |
+| AI research chat | Done | Differentiator |
+| Investment memo generator | Done | Differentiator |
+| Daily briefing email (Resend) | Done (needs domain config) | Retention loop |
+| Alerts system | Done | Engagement |
+| Watchlist manager | Done | Engagement |
+| Usage-based soft paywall | Done (email-based upsell only) | Conversion blocker |
+| News & sentiment feed | Built but **empty** | Dead feature |
+| Stripe payments | **Not built** | No revenue |
+| Onboarding / activation flow | Basic (3-step card on dashboard) | Low conversion |
+| PDF/rich export | **Not built** (CSV + print only) | Missing table stakes |
 
-### 1. Portfolio Tracker with P&L Analytics
-**Why this matters**: Bloomberg's stickiest feature isn't data -- it's that portfolio managers live inside it because their portfolio is there. Once a user tracks their positions in Grapevine, they never leave.
+### Critical Gaps (Ranked by Revenue Impact)
 
-**What to build**:
-- New `portfolios` table (user_id, name, created_at)
-- New `portfolio_positions` table (portfolio_id, company_id, shares/units, entry_price, entry_date, notes)
-- Portfolio dashboard page at `/portfolio` showing:
-  - Total portfolio value, daily P&L, total return
-  - Position-level breakdown with current price vs entry price
-  - Sector allocation pie chart
-  - Cross-market view (private holdings at last valuation + public at current price)
-- Sidebar addition under "Workflow" section
-
-### 2. Live News Wire + Sentiment Feed
-**Why this matters**: Bloomberg Terminal's killer feature is the news wire. Fund managers keep it open all day. An AI-powered news feed with sentiment analysis is something Bloomberg charges extra for.
-
-**What to build**:
-- New `news_articles` table (company_id, title, summary, source_url, published_at, sentiment_score, ai_summary)
-- New edge function `fetch-news` that uses Lovable AI to summarize and score sentiment on company news
-- News feed component on dashboard (replaces basic ActivityFeed)
-- Per-company news tab on CompanyDetail
-- Sentiment trend chart (bullish/bearish/neutral over time)
-- Push this into the existing Alerts system -- "Alert me when sentiment drops below X"
-
-### 3. Watchlist Alerts + Daily Briefing Email
-**Why this matters**: Bloomberg's "Morning Brief" is how portfolio managers start their day. An automated daily digest keeps users engaged even when they're not in the app.
-
-**What to build**:
-- New edge function `daily-briefing` triggered by cron (already have `scheduled-refresh` pattern)
-- Compiles: watchlist price movements, new funding rounds, sentiment shifts, portfolio P&L
-- Sends via email (using Lovable's built-in email or a simple SMTP integration)
-- New Settings section: "Briefing Preferences" (frequency, content toggles)
-- In-app notification center (bell icon already exists, just needs richer content)
-
-### 4. API Access + Embeddable Widgets
-**Why this matters**: Bloomberg's API (B-PIPE) costs $2K+/month. Offering a REST API at a fraction of the cost is a wedge into every quant fund and fintech startup.
-
-**What to build**:
-- Already have `api-access` edge function and `api_keys` table -- extend it
-- Add endpoints: `/api/v1/companies`, `/api/v1/market-data`, `/api/v1/screening`
-- Rate limiting by tier (free: 100 req/day, pro: 10K, enterprise: unlimited)
-- Auto-generated API docs page at `/developers`
-- Embeddable widget: `<script src="grapevine.js">` that renders a mini company card (viral distribution)
-
-### 5. Comp Table Builder (Cross-Market)
-**Why this matters**: Every VC and analyst builds comp tables in Excel. If Grapevine auto-generates them with both private and public comps, it replaces the most tedious part of their workflow.
-
-**What to build**:
-- New page at `/comps` -- interactive comp table builder
-- User selects 3-10 companies (private + public mix)
-- Auto-populates: Revenue, ARR, Growth Rate, Margins, Valuation/Market Cap, EV/Revenue multiple
-- AI-generated "Comp Analysis" summary (using existing AI research pattern)
-- One-click export to CSV or formatted PDF
-- Save comp sets for reuse
+1. **No payment system** -- Users hit the upgrade prompt and see "Contact Us" via email. No self-serve checkout means zero conversion.
+2. **Empty news feed** -- The most visible feature (on dashboard, company detail) shows nothing. This undermines trust.
+3. **No first-run activation** -- New signups land on a dashboard with zero personal data. No guided setup to create a watchlist, add a pipeline deal, or explore AI research.
+4. **Briefing email uses placeholder domain** -- `briefing@updates.lovable.app` will likely bounce or land in spam.
+5. **No PDF export for memos** -- Analysts need to hand memos to partners. Text-file export looks amateur.
 
 ---
 
-## Recommended Execution Order
+## The Plan: 4 High-Leverage Moves
 
-Build these in sequence, shipping each as a complete feature:
+### Phase 1: Stripe Integration (Revenue Unlock)
 
-1. **Portfolio Tracker** (highest retention impact -- makes users "live" in the app)
-2. **Comp Table Builder** (fastest to build, uses existing data, massive analyst time-saver)
-3. **Live News Wire + Sentiment** (differentiator, feeds into alerts)
-4. **Daily Briefing** (retention loop, builds on news + portfolio)
-5. **API Access** (monetization unlock, developer distribution)
+Enable Stripe and wire up self-serve checkout so the upgrade prompt actually converts.
 
-## Technical Approach
+- Enable Stripe connector
+- Create three products/prices: Free ($0), Pro ($99/mo), Enterprise (custom/contact)
+- Add a checkout flow triggered from the existing `UpgradePrompt` component
+- On successful payment, update the `subscription_tiers` table to `pro`
+- Gate AI research, memo generation, and enrichment behind the real tier check (already wired in `useUsageTracking`)
+- Add a "Manage Subscription" section to Settings with billing portal link
 
-- All new tables get RLS policies scoped to `auth.uid() = user_id`
-- Portfolio values computed client-side by joining positions with `public_market_data.price` (no need for a separate materialized view yet)
-- News sentiment uses existing Lovable AI gateway (same pattern as `ai-research` function)
-- Comp table reuses existing `useCompaniesWithFinancialsFiltered` hook with a multi-select UI
-- Daily briefing edge function follows the `scheduled-refresh` cron pattern
+### Phase 2: Seed News Data (Trust Builder)
+
+Populate the `news_articles` table so the news features actually work across the platform.
+
+- Update the `fetch-news` edge function to pull and summarize recent news for tracked companies using AI
+- Run an initial batch to seed 50-100 articles with sentiment scores
+- This immediately activates: Dashboard news widget, Company Detail "News & Sentiment" tab, Daily Briefing "Market Sentiment" section
+
+### Phase 3: First-Run Onboarding Flow (Activation)
+
+Guide new users through 3 steps so they see value immediately.
+
+- Show a welcome modal on first login (check if user has zero pipeline deals + zero watchlists)
+- Step 1: Pick 3 sectors of interest, auto-create a watchlist from top companies
+- Step 2: Quick tour highlighting AI Research (type a question), Screening (apply a filter), and Deal Flow (add a company)
+- Step 3: Prompt to enable Daily Briefing
+- Store onboarding completion in the `profiles` table (add `onboarding_completed` column)
+
+### Phase 4: PDF Memo Export (Polish)
+
+Replace the plain-text memo export with a formatted PDF that looks institutional-grade.
+
+- Use browser-based PDF generation (html2canvas + jsPDF or a simple print-to-PDF approach)
+- Style the memo with the Grapevine brand header, formatted sections, and data tables
+- Add a "Download PDF" button alongside the existing export on the Investment Memo tab
 
 ---
 
-## The Bloomberg-Killer Pitch
+## Execution Order
 
-After these 5 features, here's what you can say:
+```text
+Phase 1: Stripe --> immediate revenue potential
+Phase 2: News seed --> fixes biggest trust gap
+Phase 3: Onboarding --> converts signups into active users
+Phase 4: PDF export --> polishes the professional feel
+```
 
-> **Bloomberg charges $24,000/year for a single terminal. Laurenzo's Grapevine gives you AI-native research, cross-market intelligence, portfolio tracking, automated comp tables, and daily briefings -- for $99/month.**
+## Technical Notes
 
-Which of these 5 should we build first?
+- **Stripe**: Requires enabling the Stripe connector, which will prompt for a secret key. The existing `subscription_tiers` table already tracks user tiers -- Stripe webhooks will update it on payment events.
+- **News seeding**: The `fetch-news` edge function exists but needs to be invoked with real company IDs. Will use Lovable AI (Gemini) to generate summaries and sentiment scores from company context.
+- **Onboarding**: New `onboarding_completed` boolean column on `profiles` table. No new tables needed.
+- **PDF export**: Client-side only, no backend changes. Will add `jspdf` and `html2canvas` as dependencies.
+- **Briefing domain**: Still pending your verified Resend domain to replace `briefing@updates.lovable.app`.
 
