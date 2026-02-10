@@ -168,6 +168,48 @@ export type Database = {
         }
         Relationships: []
       }
+      briefing_preferences: {
+        Row: {
+          created_at: string
+          email_override: string | null
+          enabled: boolean
+          frequency: string
+          id: string
+          include_funding: boolean
+          include_news_sentiment: boolean
+          include_portfolio: boolean
+          include_watchlists: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_override?: string | null
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          include_funding?: boolean
+          include_news_sentiment?: boolean
+          include_portfolio?: boolean
+          include_watchlists?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_override?: string | null
+          enabled?: boolean
+          frequency?: string
+          id?: string
+          include_funding?: boolean
+          include_news_sentiment?: boolean
+          include_portfolio?: boolean
+          include_watchlists?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           created_at: string
