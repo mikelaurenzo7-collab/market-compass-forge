@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.scheduled-refresh]
 verify_jwt = false
+
+[functions.comp-analysis]
+verify_jwt = false
