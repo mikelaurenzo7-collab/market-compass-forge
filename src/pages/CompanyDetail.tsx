@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { ArrowLeft, Building2, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer } from "lucide-react";
 import AIResearchChat from "@/components/AIResearchChat";
+import NewsFeed from "@/components/NewsFeed";
 import InvestmentMemo from "@/components/InvestmentMemo";
 import SharedNotes from "@/components/SharedNotes";
 import EnrichmentPanel from "@/components/EnrichmentPanel";
@@ -31,7 +32,7 @@ const CompanyDetail = () => {
   const { data: events } = useActivityEvents(id);
   const { data: publicMarketData } = usePublicMarketData(id!);
   const [noteContent, setNoteContent] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "research" | "memo" | "enrichment">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "news" | "research" | "memo" | "enrichment">("overview");
 
   const latestFinancialForScore = financials?.[0];
   const latestRoundForScore = funding?.[funding.length - 1];
@@ -244,7 +245,7 @@ const CompanyDetail = () => {
 
       {/* Tab navigation */}
       <div className="flex gap-1 border-b border-border no-print">
-        {(["overview", "research", "memo", "enrichment"] as const).map((tab) => (
+        {(["overview", "news", "research", "memo", "enrichment"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -254,7 +255,7 @@ const CompanyDetail = () => {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "overview" ? "Overview" : tab === "research" ? "AI Research" : tab === "memo" ? "Investment Memo" : "Enrichment"}
+            {tab === "overview" ? "Overview" : tab === "news" ? "News & Sentiment" : tab === "research" ? "AI Research" : tab === "memo" ? "Investment Memo" : "Enrichment"}
           </button>
         ))}
       </div>
@@ -402,6 +403,10 @@ const CompanyDetail = () => {
             <SharedNotes companyId={id!} />
           </div>
         </div>
+      )}
+
+      {activeTab === "news" && (
+        <NewsFeed companyId={id!} />
       )}
 
       {activeTab === "research" && (
