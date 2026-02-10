@@ -95,8 +95,8 @@ const Integrations = () => {
         body: JSON.stringify({
           event: "test",
           timestamp: new Date().toISOString(),
-          source: "grapevine-intelligence",
-          data: { message: "Test webhook from Grapevine Market Intelligence" },
+          source: "laurenzos-grapevine",
+          data: { message: "Test webhook from Laurenzo's Grapevine" },
         }),
       });
       toast({ title: "Test sent", description: "Check your webhook destination for the payload." });
