@@ -68,6 +68,7 @@ const CompanyTable = () => {
                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                     {c.stage ?? "—"}
                   </span>
+                  {c.stage === 'Public' && <span className="inline-block ml-1 px-1.5 py-0.5 rounded text-[9px] font-medium border border-border text-muted-foreground">Benchmark</span>}
                 </td>
               </tr>
             ))}
