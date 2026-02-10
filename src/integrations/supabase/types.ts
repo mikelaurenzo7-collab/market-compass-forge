@@ -510,6 +510,59 @@ export type Database = {
         }
         Relationships: []
       }
+      news_articles: {
+        Row: {
+          ai_summary: string | null
+          company_id: string | null
+          created_at: string
+          id: string
+          published_at: string | null
+          sentiment_label: string | null
+          sentiment_score: number | null
+          source_name: string | null
+          source_url: string | null
+          summary: string | null
+          tags: string[] | null
+          title: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          sentiment_label?: string | null
+          sentiment_score?: number | null
+          source_name?: string | null
+          source_url?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title: string
+        }
+        Update: {
+          ai_summary?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          published_at?: string | null
+          sentiment_label?: string | null
+          sentiment_score?: number | null
+          source_name?: string | null
+          source_url?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_articles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_tasks: {
         Row: {
           assignee_id: string

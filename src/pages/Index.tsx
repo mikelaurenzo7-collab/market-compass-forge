@@ -6,7 +6,7 @@ import { useDashboardMetrics, formatCurrency, usePublicMarketMovers } from "@/ho
 import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
 import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
-import ActivityFeed from "@/components/ActivityFeed";
+import NewsFeed from "@/components/NewsFeed";
 import { MetricsSkeleton, TableSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
 import MarketToggle, { type MarketFilter } from "@/components/MarketToggle";
@@ -237,7 +237,7 @@ const Index = () => {
           <PublicMarketSnapshot />
           <RecentPipelineDeals />
           <WatchlistWidget />
-          <ActivityFeed />
+          <NewsFeed compact />
         </div>
       </div>
     </div>
