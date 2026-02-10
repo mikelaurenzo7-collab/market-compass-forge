@@ -36,6 +36,33 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "company_id and question are required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Server-side usage limit enforcement
+    const FREE_LIMIT = 10;
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+
+    const { data: tier } = await supabase
+      .from("subscription_tiers")
+      .select("tier")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!tier || (tier.tier !== "pro" && tier.tier !== "enterprise")) {
+      const { count } = await supabase
+        .from("usage_tracking")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("action", "ai_research")
+        .gte("created_at", startOfDay.toISOString());
+
+      if ((count ?? 0) >= FREE_LIMIT) {
+        return new Response(JSON.stringify({ error: "Daily AI research limit reached. Upgrade to Pro for more." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // Track usage server-side
+    await supabase.from("usage_tracking").insert({ user_id: user.id, action: "ai_research" });
+
     // Pull company context
     const [companyRes, fundingRes, financialsRes, eventsRes] = await Promise.all([
       supabase.from("companies").select("*").eq("id", company_id).maybeSingle(),
@@ -81,6 +108,8 @@ ${(comps ?? []).map(c => `- ${c.name} (${c.stage}, ${c.employee_count} employees
 `.trim();
 
     const systemPrompt = `You are a senior VC research analyst. You provide grounded, data-driven analysis based ONLY on the company data provided below. Be specific with numbers. Use markdown formatting. Keep responses concise but insightful (300-500 words).
+
+IMPORTANT: You are providing informational analysis only, NOT investment advice. Always remind the user that this analysis is for informational purposes and they should conduct their own independent due diligence before making any investment decisions.
 
 ${contextBlock}`;
 
