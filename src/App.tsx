@@ -26,6 +26,7 @@ import PublicMarkets from "./pages/PublicMarkets";
 import PrivateMarkets from "./pages/PrivateMarkets";
 import Portfolio from "./pages/Portfolio";
 import CompTableBuilder from "./pages/CompTableBuilder";
+import Developers from "./pages/Developers";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/integrations" element={<Integrations />} />
               <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/comps" element={<CompTableBuilder />} />
+              <Route path="/developers" element={<Developers />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
