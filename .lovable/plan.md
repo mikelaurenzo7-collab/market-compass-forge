@@ -1,143 +1,284 @@
 
 
-# Ship-Ready Data Credibility Overhaul
+# Laurenzo: The Bloomberg Competitor Pivot
 
-## Problems Found
+## Vision
 
-### Data Integrity Issues (Would Embarrass You in Front of Dad)
+Transform Laurenzo from a private-market-only tool into a **unified Private + Public Market Intelligence Platform** -- a true Bloomberg alternative that gives emerging managers something Bloomberg can't: AI-native research, private market depth, and cross-market comparison at a fraction of the cost.
 
-1. **5 duplicate companies** -- Mistral AI, Glean, Vanta, Fly.io, Render each appear twice. This means your "210 companies" count is inflated and users will see duplicates in search/screening.
+## What Changes
 
-2. **Conflicting financial records** -- Figma has TWO 2024 entries: one says $60M revenue (wrong), another says $700M. Anthropic has TWO 2024 entries: $600M vs $900M. A paying client comparing these numbers loses trust instantly.
+### 1. Database Schema: Add Public Market Data Layer
 
-3. **23 financial records have gross_margin stored as whole numbers (e.g., 70 instead of 0.70)** while the rest use decimals. The `formatPercent` function multiplies by 100, so these show as "7000%" in the UI. Companies affected include project44, Railway, Replit, Render, Writer, and others.
+**New table: `public_market_data`** -- stores real-time-style public market metrics that Bloomberg charges $24K/year for:
 
-4. **3 country codes still not normalized**: "India", "Brazil", "Finland" instead of "IN", "BR", "FI". Screening filters show these as separate entries.
+| Column | Type | Description |
+|---|---|---|
+| id | uuid | Primary key |
+| company_id | uuid | FK to companies |
+| market_cap | numeric | Market capitalization |
+| pe_ratio | numeric | Price-to-earnings ratio |
+| eps | numeric | Earnings per share |
+| dividend_yield | numeric | Dividend yield (decimal) |
+| price | numeric | Current share price |
+| price_change_pct | numeric | Daily price change % |
+| fifty_two_week_high | numeric | 52-week high |
+| fifty_two_week_low | numeric | 52-week low |
+| volume_avg | numeric | Average daily volume |
+| beta | numeric | Beta coefficient |
+| ticker | text | Stock ticker symbol |
+| exchange | text | Exchange (NYSE, NASDAQ, etc.) |
+| updated_at | timestamptz | Last update |
 
-5. **32 public companies** (Airbnb, Coinbase, CrowdStrike, etc.) in a "Private Market Intelligence" platform. Your landing page says "private market intelligence" but a third of the dataset is publicly traded companies with estimated financials. A fund manager will notice immediately.
+**Add column to `companies` table:**
+- `market_type` (text, default 'private') -- values: 'private' or 'public'
 
-6. **4 companies have zero funding rounds AND zero financials**: Fly.io, Glean, Render, Vanta (the duplicate entries). Empty detail pages destroy credibility.
+**Add new sectors** to the `sectors` table for broader public market coverage (Energy, Real Estate, Industrials, Telecom, Pharma, etc.).
 
-7. **61% of all financial records are "Low confidence - Estimates"**. 124 records say source "Estimates" with low confidence. A paying client sees "Low" badges everywhere and questions the platform's value.
+### 2. Data Population: 100+ Public Companies
 
-### What This Means
+Insert **100+ major public companies** across sectors that Bloomberg covers, with full market data. Focus on companies that emerging managers actually benchmark against:
 
-If your dad clicks on Figma and sees "$60M revenue" alongside "$700M revenue" for the same year, or sees "7000% gross margin" on project44, or sees 32 public companies in a private market tool -- the "wow" turns into "what?"
+**Tech**: Apple, Microsoft, Google, Amazon, Meta, NVIDIA, Tesla, Netflix, AMD, Intel, Salesforce, Adobe, Oracle, ServiceNow, Workday, Intuit, Fortinet, CrowdStrike (already exists), etc.
 
-## Changes
+**Finance**: JPMorgan, Goldman Sachs, Visa, Mastercard, PayPal, Block (Square), Marqeta, etc.
 
-### 1. Fix Data Integrity (Database Operations)
+**Healthcare**: UnitedHealth, Johnson & Johnson, Pfizer, Moderna, Intuitive Surgical, etc.
 
-**Remove duplicate companies** (keep the one with data, delete the empty duplicate):
-- Delete duplicate Fly.io, Glean, Render, Vanta, Mistral AI entries (the ones without funding/financials)
-- This brings the real count to 205 unique companies
+**Energy/Industrials**: ExxonMobil, Chevron, NextEra Energy, Caterpillar, Deere, etc.
 
-**Delete conflicting/wrong financial records:**
-- Delete Figma's $60M/2024 record (keep the $700M one)
-- Delete Anthropic's $600M/2024 record (keep the $900M one from Press reports)
+**Consumer**: Nike, Starbucks, McDonald's, Costco, Walmart, etc.
 
-**Fix gross_margin values stored as whole numbers** -- divide by 100 for all 23 records where gross_margin > 1:
-```sql
-UPDATE financials SET gross_margin = gross_margin / 100 WHERE gross_margin > 1;
+Each gets: market cap, P/E, EPS, dividend yield, price, 52-week range, beta, ticker, exchange.
+
+Set existing 32 "Public" stage companies to `market_type = 'public'` and populate their `public_market_data`.
+
+### 3. Sidebar Navigation: Market Context
+
+Update the sidebar to show clear market context with section headers:
+
+```
+-- MARKETS --
+  Dashboard
+  Private Markets  (new)
+  Public Markets   (new)
+
+-- INTELLIGENCE --
+  Companies
+  Screening
+  Analytics
+  Research
+
+-- WORKFLOW --
+  Deal Flow
+  Compare
+  Network
+  People
+
+-- SYSTEM --
+  Alerts
+  Integrations
+  Settings
 ```
 
-**Normalize remaining country codes:**
-- "India" -> "IN", "Brazil" -> "BR", "Finland" -> "FI"
+New routes:
+- `/markets/private` -- private market dashboard (filtered view of current dashboard)
+- `/markets/public` -- public market dashboard with indices, movers, sector performance
 
-**Upgrade financial confidence scores** -- The blanket "low / Estimates" labeling is too harsh. For well-known companies where estimates are publicly discussed (Anthropic, Stripe, SpaceX, Canva, etc.), upgrade to "medium / Industry estimates" which is honest but not alarming:
-```sql
-UPDATE financials SET confidence_score = 'medium', source = 'Industry estimates' 
-WHERE confidence_score = 'low' AND source = 'Estimates' 
-AND company_id IN (select id from companies where name IN ('Stripe','SpaceX','Anthropic','Canva',...));
-```
-This targets ~40 records for the most prominent companies, keeping "low" for genuinely uncertain entries.
+### 4. Dashboard: Dual-Market Intelligence Hub
 
-**Add funding rounds and financials for the 4 companies currently missing them** (Fly.io, Glean, Render, Vanta -- the surviving entries after dedup).
+Replace the single dashboard with a **tabbed dashboard**: "All Markets" | "Private" | "Public"
 
-**Add 10+ fresh activity events** dated Feb 2026 (last event is Feb 8, need coverage through today Feb 10).
+**All Markets tab**: Combined metrics showing total coverage
+**Private tab**: Current dashboard experience (deal flow, pipeline, private company table)
+**Public tab**: New public markets dashboard with:
+- Market summary cards (S&P 500 level, NASDAQ level, market sentiment)
+- Top gainers / losers table
+- Sector performance heatmap (public)
+- Market cap leaders table
 
-### 2. Handle Public Companies Gracefully
+### 5. Companies Page: Market Type Filter
 
-Rather than deleting 32 public companies (which would drop the count to 173), add a "Public" badge treatment and position them as "benchmarks." The platform tracks private companies AND relevant public comps for comparison.
+Add a **market type toggle** at the top of the Companies page:
+- "All" | "Private" | "Public" pill buttons
+- When "Public" is selected, show additional columns: Ticker, Market Cap, P/E, Price Change %
+- When "Private" is selected, show current columns (Valuation, ARR, Stage)
 
-Update the landing page copy from "Private Market Intelligence Platform" to "**Market Intelligence Platform**" -- still premium, but accurate.
+### 6. Company Detail: Public Market Enhancements
 
-Add a note in the screening page: show a subtle "(Public)" tag next to public companies so users understand the data context.
+For public companies, the detail page adds:
+- **Market Data Card**: Ticker, Exchange, Market Cap, P/E, EPS, Beta, 52-week range, dividend yield
+- **Price indicator**: Current price with daily change %
+- Replace "Add to Pipeline" with "Add to Watchlist" for public companies (they're not deal targets)
+- Keep AI Research, Memo Generator, and Enrichment tabs for both private and public
 
-### 3. Polish Landing Page Social Proof
+### 7. Screening: Cross-Market Power
 
-The current social proof section lists VC firm names ("Sequoia", "Andreessen Horowitz") as if they're customers -- this is misleading and could cause legal issues. Replace with a more honest framing:
-- Change to "Tracking companies backed by" instead of "Trusted by analysts at" -- this is factually true (you DO track portfolio companies of these firms) and won't get you a cease-and-desist letter.
+Add market type filter chips ("Private" | "Public") alongside existing sector/stage chips. When public is selected, add:
+- Market Cap range filter (replaces Valuation for public)
+- P/E ratio range filter
+- Dividend yield filter
 
-### 4. Improve Landing Page Credibility
+### 8. Analytics: Dual-Market Analytics
 
-- Update stat counter to show accurate numbers post-dedup (~205 companies)
-- Add "15 Sectors" and "35+ Investors" stats
-- The deal value number should be formatted more conservatively
+Add a market toggle to the Analytics page. Public market analytics include:
+- Sector performance comparison (public vs private multiples)
+- Market cap distribution
+- P/E ratio by sector
 
-### 5. Branding Micro-Fixes
+### 9. Landing Page: Repositioned
 
-- Landing page hero badge: "Private Market Intelligence Platform" -> "Market Intelligence Platform"
-- Ensure the "Data as of" timestamp on the dashboard reflects recent activity (Feb 10, 2026)
+Update hero and positioning:
+- Badge: "Market Intelligence Platform" (already done)
+- Headline: "AI-Powered Intelligence for **Private & Public Markets**"
+- Subheadline: "The only platform that combines private deal intelligence with public market data -- built for emerging managers who need Bloomberg-level insight without the Bloomberg price tag."
+- Stats bar: Update to show "300+ Companies" (after adding public companies), add "Private & Public Markets" stat
+- Add a new feature card: "Cross-Market Intelligence" -- Compare private companies against public benchmarks
 
-## Technical Details
+### 10. What Bloomberg Doesn't Offer (Differentiators)
 
-### Database Operations (via insert/update tool)
+These already exist but need to be highlighted more prominently on the landing page:
+- **AI Research Chat** -- Ask questions, get sourced answers (Bloomberg has no equivalent)
+- **Investment Memo Generator** -- One-click IC-ready memos (Bloomberg doesn't do this)
+- **Deal Pipeline** -- Integrated Kanban workflow (Bloomberg is view-only, no workflow)
+- **Data Provenance** -- Confidence scoring on every data point (Bloomberg doesn't show this)
+- **Cross-Market Benchmarking** -- Compare private company ARR multiples against public comps (Bloomberg has separate terminals for each)
 
-**Step 1 -- Delete duplicates:**
-```sql
--- Delete the duplicate entries that have no funding/financial data
-DELETE FROM companies WHERE id IN (
-  '<fly.io-duplicate-id>',
-  '<glean-duplicate-id>', 
-  '<render-duplicate-id>',
-  '<vanta-duplicate-id>',
-  '<mistral-duplicate-id>'
-);
-```
-
-**Step 2 -- Delete conflicting financials:**
-```sql
-DELETE FROM financials WHERE id = '9f960a60-3681-483d-aad2-d953909b2f3a'; -- Figma $60M (wrong)
-DELETE FROM financials WHERE id = 'c597f440-eaa8-4be1-8c68-6567af71c769'; -- Anthropic $600M (superseded)
-```
-
-**Step 3 -- Fix gross_margin:**
-```sql
-UPDATE financials SET gross_margin = gross_margin / 100 WHERE gross_margin > 1;
-```
-
-**Step 4 -- Normalize countries:**
-```sql
-UPDATE companies SET hq_country = 'IN' WHERE hq_country = 'India';
-UPDATE companies SET hq_country = 'BR' WHERE hq_country = 'Brazil';
-UPDATE companies SET hq_country = 'FI' WHERE hq_country = 'Finland';
-```
-
-**Step 5 -- Upgrade confidence for major companies:**
-Upgrade ~40 financials from "low/Estimates" to "medium/Industry estimates" for well-known companies where revenue figures are widely reported.
-
-**Step 6 -- Add missing data for deduped companies:**
-Insert funding rounds and financials for Fly.io, Glean, Render, Vanta (the surviving records).
-
-**Step 7 -- Add recent activity events:**
-Insert 5+ events dated Feb 8-10, 2026 so dashboard shows "Data as of Feb 10, 2026."
-
-### File Changes
+## File Changes Summary
 
 | File | Change |
 |---|---|
-| `src/pages/Landing.tsx` | Change "Private Market Intelligence Platform" to "Market Intelligence Platform". Change social proof from "Trusted by analysts at leading firms" to "Tracking companies backed by". |
-| `src/pages/Screening.tsx` | Add "(Public)" indicator next to public company stage badges in the results table |
-| `src/components/CompanyTable.tsx` | Minor: ensure public companies show a subtle visual distinction |
+| `src/pages/Landing.tsx` | Update hero copy, add "Cross-Market Intelligence" feature card, update stats |
+| `src/pages/Index.tsx` | Add Private/Public/All tabs, add public market summary section |
+| `src/pages/Companies.tsx` | Add market type toggle, show public-specific columns conditionally |
+| `src/pages/CompanyDetail.tsx` | Add public market data card for public companies, conditional UI |
+| `src/pages/Screening.tsx` | Add market type filter, public-specific filters (market cap, P/E) |
+| `src/pages/Analytics.tsx` | Add market toggle, public market analytics charts |
+| `src/components/AppSidebar.tsx` | Restructure nav with section headers, add Private/Public Markets links |
+| `src/components/CompanyTable.tsx` | Add market type awareness, show ticker for public companies |
+| `src/hooks/useData.ts` | Add `usePublicMarketData` hook, update company type |
+| `src/hooks/useAnalyticsData.ts` | Add public market analytics hooks |
+| `src/App.tsx` | Add new routes for `/markets/private` and `/markets/public` |
+| New: `src/pages/PublicMarkets.tsx` | Public markets dashboard with indices, movers, sector performance |
+| New: `src/pages/PrivateMarkets.tsx` | Filtered private-only dashboard |
+| New: `src/components/PublicMarketCard.tsx` | Reusable public market data display component |
+| New: `src/components/MarketToggle.tsx` | Reusable Private/Public/All toggle component |
 
-### What This Achieves
+## Technical Details
 
-- 205 unique, deduplicated companies with no data conflicts
-- Zero "7000% gross margin" embarrassments
-- Consistent country codes across all records
-- Credible confidence scoring (medium for well-known estimates, low only for truly uncertain data)
-- Honest social proof that won't get you sued
-- Accurate positioning that matches the actual dataset
-- Fresh activity data through today's date
+### Migration: New table + column
+
+```sql
+-- Add market_type to companies
+ALTER TABLE companies ADD COLUMN market_type text NOT NULL DEFAULT 'private';
+
+-- Set existing public companies
+UPDATE companies SET market_type = 'public' WHERE stage = 'Public';
+
+-- Create public market data table
+CREATE TABLE public_market_data (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  ticker text NOT NULL,
+  exchange text,
+  market_cap numeric,
+  pe_ratio numeric,
+  eps numeric,
+  dividend_yield numeric,
+  price numeric,
+  price_change_pct numeric,
+  fifty_two_week_high numeric,
+  fifty_two_week_low numeric,
+  volume_avg numeric,
+  beta numeric,
+  updated_at timestamptz DEFAULT now(),
+  created_at timestamptz DEFAULT now(),
+  UNIQUE(company_id)
+);
+
+-- RLS: publicly readable
+ALTER TABLE public_market_data ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public market data is publicly readable"
+  ON public_market_data FOR SELECT USING (true);
+```
+
+### Database inserts (via insert tool)
+
+1. Insert 100+ new public companies into `companies` with `market_type = 'public'`
+2. Insert corresponding `public_market_data` records with ticker, market cap, P/E, etc.
+3. Insert financials for new public companies (revenue, EPS -- publicly available data)
+4. Insert funding rounds where applicable (IPO records)
+5. Add new sectors to `sectors` table
+6. Add new activity events for public companies
+
+### Reusable MarketToggle component
+
+A simple pill toggle used across Dashboard, Companies, Screening, and Analytics:
+
+```tsx
+type MarketFilter = 'all' | 'private' | 'public';
+
+const MarketToggle = ({ value, onChange }) => (
+  <div className="flex gap-1 bg-muted rounded-lg p-1">
+    {['all', 'private', 'public'].map(m => (
+      <button key={m} onClick={() => onChange(m)}
+        className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+          value === m ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+        }`}>
+        {m === 'all' ? 'All Markets' : m === 'private' ? 'Private' : 'Public'}
+      </button>
+    ))}
+  </div>
+);
+```
+
+### Data hooks
+
+```typescript
+// New hook for public market data
+export const usePublicMarketData = (companyId: string) =>
+  useQuery({
+    queryKey: ["public-market-data", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_market_data")
+        .select("*")
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+// Updated companies query with market_type filter
+export const useCompaniesFiltered = (marketType: 'all' | 'private' | 'public') =>
+  useQuery({
+    queryKey: ["companies", marketType],
+    queryFn: async () => {
+      let query = supabase.from("companies").select("*").order("name");
+      if (marketType !== 'all') query = query.eq("market_type", marketType);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+  });
+```
+
+## Execution Order
+
+1. Database migration (add `market_type` column + `public_market_data` table)
+2. Database inserts (100+ public companies + market data)
+3. Create reusable `MarketToggle` component
+4. Update `useData.ts` hooks
+5. Update sidebar navigation
+6. Update routes in `App.tsx`
+7. Create `PublicMarkets.tsx` and `PrivateMarkets.tsx` pages
+8. Update `Index.tsx` dashboard with tabs
+9. Update `Companies.tsx` with market filter
+10. Update `CompanyDetail.tsx` with public data card
+11. Update `Screening.tsx` with market filters
+12. Update `Analytics.tsx` with market toggle
+13. Update `Landing.tsx` positioning and copy
+14. Update `CompanyTable.tsx` for market awareness
 
