@@ -551,6 +551,81 @@ export type Database = {
           },
         ]
       }
+      portfolio_positions: {
+        Row: {
+          company_id: string
+          created_at: string
+          entry_date: string
+          entry_price: number
+          id: string
+          notes: string | null
+          portfolio_id: string
+          shares: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          entry_date?: string
+          entry_price?: number
+          id?: string
+          notes?: string | null
+          portfolio_id: string
+          shares?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          entry_date?: string
+          entry_price?: number
+          id?: string
+          notes?: string | null
+          portfolio_id?: string
+          shares?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_positions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_positions_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      portfolios: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

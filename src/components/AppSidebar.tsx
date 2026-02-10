@@ -13,6 +13,7 @@ import {
   ArrowLeftRight,
   Lock,
   Globe,
+  Briefcase,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -33,6 +34,7 @@ const intelligenceModules = [
 
 const workflowModules = [
   { id: "deals", label: "Deal Flow", icon: TrendingUp, path: "/deals" },
+  { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
   { id: "compare", label: "Compare", icon: ArrowLeftRight, path: "/compare" },
   { id: "network", label: "Network", icon: Share2, path: "/network" },
   { id: "people", label: "People", icon: Users, path: "/people" },
