@@ -17,7 +17,7 @@ import { useLocation } from "react-router-dom";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 
 const modules = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/" },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { id: "companies", label: "Companies", icon: Building2, path: "/companies" },
   { id: "deals", label: "Deal Flow", icon: TrendingUp, path: "/deals" },
   { id: "analytics", label: "Analytics", icon: BarChart3, path: "/analytics" },
@@ -33,7 +33,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { data: unreadCount } = useUnreadCount();
 
   const linkClass = (path: string) => {
-    const isActive = path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+    const isActive = path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
     return `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
       isActive
         ? "bg-accent text-accent-foreground font-medium"
@@ -65,7 +65,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
           <NavLink
             key={m.id}
             to={m.path}
-            end={m.path === "/"}
+            end={m.path === "/dashboard"}
             className={linkClass(m.path)}
             onClick={onNavigate}
           >
