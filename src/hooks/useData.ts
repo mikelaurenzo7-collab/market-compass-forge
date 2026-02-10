@@ -2,6 +2,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import type { MarketFilter } from "@/components/MarketToggle";
 
+const BATCH_SIZE = 200;
+const chunk = <T>(arr: T[], size: number): T[][] => {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+};
+
 export type Company = {
   id: string;
   name: string;
@@ -194,18 +201,21 @@ export const useCompaniesWithFinancials = () =>
       // Get latest funding round and financials for each
       const companyIds = data.map((c) => c.id);
 
-      const [fundingRes, financialsRes] = await Promise.all([
-        supabase.from("funding_rounds").select("company_id, round_type, valuation_post, amount, date").in("company_id", companyIds).order("date", { ascending: false }),
-        supabase.from("financials").select("company_id, arr, revenue").in("company_id", companyIds).order("period", { ascending: false }),
+      const batches = chunk(companyIds, BATCH_SIZE);
+      const [fundingBatches, financialsBatches] = await Promise.all([
+        Promise.all(batches.map(b => supabase.from("funding_rounds").select("company_id, round_type, valuation_post, amount, date").in("company_id", b).order("date", { ascending: false }))),
+        Promise.all(batches.map(b => supabase.from("financials").select("company_id, arr, revenue").in("company_id", b).order("period", { ascending: false }))),
       ]);
+      const fundingData = fundingBatches.flatMap(r => r.data ?? []);
+      const financialsData = financialsBatches.flatMap(r => r.data ?? []);
 
-      const latestFunding: Record<string, (typeof fundingRes.data)[0]> = {};
-      (fundingRes.data ?? []).forEach((r) => {
+      const latestFunding: Record<string, (typeof fundingData)[0]> = {};
+      fundingData.forEach((r) => {
         if (!latestFunding[r.company_id]) latestFunding[r.company_id] = r;
       });
 
-      const latestFinancials: Record<string, (typeof financialsRes.data)[0]> = {};
-      (financialsRes.data ?? []).forEach((f) => {
+      const latestFinancials: Record<string, (typeof financialsData)[0]> = {};
+      financialsData.forEach((f) => {
         if (!latestFinancials[f.company_id]) latestFinancials[f.company_id] = f;
       });
 
@@ -318,24 +328,28 @@ export const useCompaniesWithFinancialsFiltered = (marketType: MarketFilter = "a
 
       const companyIds = data.map((c) => c.id);
 
-      const [fundingRes, financialsRes, marketDataRes] = await Promise.all([
-        supabase.from("funding_rounds").select("company_id, round_type, valuation_post, amount, date").in("company_id", companyIds).order("date", { ascending: false }),
-        supabase.from("financials").select("company_id, arr, revenue").in("company_id", companyIds).order("period", { ascending: false }),
-        supabase.from("public_market_data").select("company_id, ticker, market_cap, pe_ratio, price_change_pct, price").in("company_id", companyIds),
+      const batches = chunk(companyIds, BATCH_SIZE);
+      const [fundingBatches, financialsBatches, marketDataBatches] = await Promise.all([
+        Promise.all(batches.map(b => supabase.from("funding_rounds").select("company_id, round_type, valuation_post, amount, date").in("company_id", b).order("date", { ascending: false }))),
+        Promise.all(batches.map(b => supabase.from("financials").select("company_id, arr, revenue").in("company_id", b).order("period", { ascending: false }))),
+        Promise.all(batches.map(b => supabase.from("public_market_data").select("company_id, ticker, market_cap, pe_ratio, price_change_pct, price").in("company_id", b))),
       ]);
+      const fundingData = fundingBatches.flatMap(r => r.data ?? []);
+      const financialsData = financialsBatches.flatMap(r => r.data ?? []);
+      const marketDataArr = marketDataBatches.flatMap(r => r.data ?? []);
 
-      const latestFunding: Record<string, (typeof fundingRes.data)[0]> = {};
-      (fundingRes.data ?? []).forEach((r) => {
+      const latestFunding: Record<string, (typeof fundingData)[0]> = {};
+      fundingData.forEach((r) => {
         if (!latestFunding[r.company_id]) latestFunding[r.company_id] = r;
       });
 
-      const latestFinancials: Record<string, (typeof financialsRes.data)[0]> = {};
-      (financialsRes.data ?? []).forEach((f) => {
+      const latestFinancials: Record<string, (typeof financialsData)[0]> = {};
+      financialsData.forEach((f) => {
         if (!latestFinancials[f.company_id]) latestFinancials[f.company_id] = f;
       });
 
-      const marketData: Record<string, (typeof marketDataRes.data)[0]> = {};
-      (marketDataRes.data ?? []).forEach((m) => {
+      const marketData: Record<string, (typeof marketDataArr)[0]> = {};
+      marketDataArr.forEach((m) => {
         marketData[m.company_id] = m;
       });
 
