@@ -5,7 +5,7 @@ interface MetricCardProps {
   value: string;
   change?: string;
   trend?: "up" | "down" | "flat";
-  subtitle?: string;
+  subtitle?: React.ReactNode;
 }
 
 const MetricCard = ({ label, value, change, trend = "flat", subtitle }: MetricCardProps) => {

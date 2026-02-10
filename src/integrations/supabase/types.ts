@@ -153,6 +153,7 @@ export type Database = {
           hq_country: string | null
           id: string
           logo_url: string | null
+          market_type: string
           name: string
           sector: string | null
           stage: string | null
@@ -170,6 +171,7 @@ export type Database = {
           hq_country?: string | null
           id?: string
           logo_url?: string | null
+          market_type?: string
           name: string
           sector?: string | null
           stage?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           hq_country?: string | null
           id?: string
           logo_url?: string | null
+          market_type?: string
           name?: string
           sector?: string | null
           stage?: string | null
@@ -548,6 +551,71 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      public_market_data: {
+        Row: {
+          beta: number | null
+          company_id: string
+          created_at: string | null
+          dividend_yield: number | null
+          eps: number | null
+          exchange: string | null
+          fifty_two_week_high: number | null
+          fifty_two_week_low: number | null
+          id: string
+          market_cap: number | null
+          pe_ratio: number | null
+          price: number | null
+          price_change_pct: number | null
+          ticker: string
+          updated_at: string | null
+          volume_avg: number | null
+        }
+        Insert: {
+          beta?: number | null
+          company_id: string
+          created_at?: string | null
+          dividend_yield?: number | null
+          eps?: number | null
+          exchange?: string | null
+          fifty_two_week_high?: number | null
+          fifty_two_week_low?: number | null
+          id?: string
+          market_cap?: number | null
+          pe_ratio?: number | null
+          price?: number | null
+          price_change_pct?: number | null
+          ticker: string
+          updated_at?: string | null
+          volume_avg?: number | null
+        }
+        Update: {
+          beta?: number | null
+          company_id?: string
+          created_at?: string | null
+          dividend_yield?: number | null
+          eps?: number | null
+          exchange?: string | null
+          fifty_two_week_high?: number | null
+          fifty_two_week_low?: number | null
+          id?: string
+          market_cap?: number | null
+          pe_ratio?: number | null
+          price?: number | null
+          price_change_pct?: number | null
+          ticker?: string
+          updated_at?: string | null
+          volume_avg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_market_data_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sectors: {
         Row: {

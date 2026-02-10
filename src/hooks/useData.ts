@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import type { MarketFilter } from "@/components/MarketToggle";
 
 export type Company = {
   id: string;
@@ -14,6 +15,7 @@ export type Company = {
   employee_count: number | null;
   stage: string | null;
   status: string | null;
+  market_type?: string | null;
 };
 
 export type FundingRound = {
@@ -243,6 +245,107 @@ export const useSearchInvestors = (query: string) =>
       return data;
     },
     enabled: query.length >= 2,
+  });
+
+export const usePublicMarketData = (companyId: string) =>
+  useQuery({
+    queryKey: ["public-market-data", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_market_data")
+        .select("*")
+        .eq("company_id", companyId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+export const usePublicMarketLeaders = () =>
+  useQuery({
+    queryKey: ["public-market-leaders"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_market_data")
+        .select("*, companies(id, name, sector, stage)")
+        .order("market_cap", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+export const usePublicMarketMovers = () =>
+  useQuery({
+    queryKey: ["public-market-movers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_market_data")
+        .select("*, companies(id, name, sector)")
+        .order("price_change_pct", { ascending: false })
+        .limit(40);
+      if (error) throw error;
+      const gainers = (data ?? []).slice(0, 5);
+      const losers = (data ?? []).reverse().slice(0, 5).reverse();
+      return { gainers, losers };
+    },
+  });
+
+export const useCompaniesFiltered = (marketType: MarketFilter = "all") =>
+  useQuery({
+    queryKey: ["companies-filtered", marketType],
+    queryFn: async () => {
+      let query = supabase.from("companies").select("*").order("name");
+      if (marketType !== "all") query = query.eq("market_type", marketType);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data as Company[];
+    },
+  });
+
+export const useCompaniesWithFinancialsFiltered = (marketType: MarketFilter = "all") =>
+  useQuery({
+    queryKey: ["companies-with-financials", marketType],
+    queryFn: async () => {
+      let query = supabase
+        .from("companies")
+        .select("id, name, sector, stage, hq_country, employee_count, founded_year, domain, market_type")
+        .order("name");
+      if (marketType !== "all") query = query.eq("market_type", marketType);
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const companyIds = data.map((c) => c.id);
+
+      const [fundingRes, financialsRes, marketDataRes] = await Promise.all([
+        supabase.from("funding_rounds").select("company_id, round_type, valuation_post, amount, date").in("company_id", companyIds).order("date", { ascending: false }),
+        supabase.from("financials").select("company_id, arr, revenue").in("company_id", companyIds).order("period", { ascending: false }),
+        supabase.from("public_market_data").select("company_id, ticker, market_cap, pe_ratio, price_change_pct, price").in("company_id", companyIds),
+      ]);
+
+      const latestFunding: Record<string, (typeof fundingRes.data)[0]> = {};
+      (fundingRes.data ?? []).forEach((r) => {
+        if (!latestFunding[r.company_id]) latestFunding[r.company_id] = r;
+      });
+
+      const latestFinancials: Record<string, (typeof financialsRes.data)[0]> = {};
+      (financialsRes.data ?? []).forEach((f) => {
+        if (!latestFinancials[f.company_id]) latestFinancials[f.company_id] = f;
+      });
+
+      const marketData: Record<string, (typeof marketDataRes.data)[0]> = {};
+      (marketDataRes.data ?? []).forEach((m) => {
+        marketData[m.company_id] = m;
+      });
+
+      return data.map((c) => ({
+        ...c,
+        latestRound: latestFunding[c.id] ?? null,
+        latestFinancials: latestFinancials[c.id] ?? null,
+        publicMarketData: marketData[c.id] ?? null,
+      }));
+    },
   });
 
 export const formatCurrency = (value: number | null, compact = true): string => {

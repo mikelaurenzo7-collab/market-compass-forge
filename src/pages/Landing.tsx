@@ -202,13 +202,12 @@ const Landing = () => {
             Market Intelligence Platform
           </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
-            AI-Powered Deal Intelligence
+            AI-Powered Intelligence for
             <br />
-            <span className="text-primary">for Emerging Managers</span>
+            <span className="text-primary">Private & Public Markets</span>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Screen companies, generate investment memos, and manage your deal
-            pipeline — all in one platform built for sub-$500M AUM funds.
+            The only platform that combines private deal intelligence with public market data — built for emerging managers who need Bloomberg-level insight without the Bloomberg price tag.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="text-base px-8 glow-primary" asChild>
