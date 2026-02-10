@@ -50,17 +50,23 @@ const ApiKeyManager = () => {
       const hash = await hashKey(rawKey);
       const prefix = rawKey.substring(0, 8);
 
-      const { error } = await supabase.from("api_keys" as any).insert({
+      // Insert the key metadata (no sensitive fields)
+      const { data: keyData, error } = await supabase.from("api_keys" as any).insert({
         user_id: user!.id,
         name,
-        key_hash: hash,
-        key_prefix: prefix,
         scopes: ["read"],
-      } as any);
+      } as any).select("id").single();
       if (error) throw error;
-      return rawKey;
+
+      // Store hash/prefix in secure table via edge function
+      const { error: secretError } = await supabase.functions.invoke("store-api-secret", {
+        body: { api_key_id: (keyData as any).id, key_hash: hash, key_prefix: prefix },
+      });
+      if (secretError) throw secretError;
+
+      return { rawKey, prefix };
     },
-    onSuccess: (rawKey) => {
+    onSuccess: ({ rawKey }) => {
       queryClient.invalidateQueries({ queryKey: ["api-keys"] });
       setNewKey(rawKey);
       setKeyName("");
@@ -151,7 +157,7 @@ const ApiKeyManager = () => {
               <div>
                 <p className="text-sm font-medium text-foreground">{k.name}</p>
                 <p className="text-[10px] text-muted-foreground font-mono">
-                  {k.key_prefix}...  · Created {formatDistanceToNow(new Date(k.created_at), { addSuffix: true })}
+                  Created {formatDistanceToNow(new Date(k.created_at), { addSuffix: true })}
                   {k.last_used_at && ` · Last used ${formatDistanceToNow(new Date(k.last_used_at), { addSuffix: true })}`}
                 </p>
               </div>
