@@ -15,6 +15,7 @@ import {
   Globe,
   Briefcase,
   Table,
+  Code,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -95,6 +96,10 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
       {/* Bottom nav */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
+        <NavLink to="/developers" className={`${linkClass("/developers")}`} onClick={onNavigate}>
+          <Code className="h-4 w-4 shrink-0" />
+          <span className="truncate">Developers</span>
+        </NavLink>
         {bottomModules.map((m) => (
           <NavLink key={m.id} to={m.path} className={`${linkClass(m.path)} relative`} onClick={onNavigate}>
             <m.icon className="h-4 w-4 shrink-0" />
