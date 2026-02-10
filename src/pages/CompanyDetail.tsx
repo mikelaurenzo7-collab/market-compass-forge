@@ -17,6 +17,7 @@ import { useCompanyScore } from "@/hooks/useCompanyScore";
 import { AddToWatchlistButton } from "@/components/WatchlistManager";
 import { printElement } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
+import { toast } from "sonner";
 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -100,7 +101,13 @@ const CompanyDetail = () => {
         user_id: user!.id,
         stage: "sourced",
       });
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23505") {
+          toast.info("Already in your pipeline");
+          return;
+        }
+        throw error;
+      }
       logActivity({
         userId: user!.id,
         action: "added to pipeline",

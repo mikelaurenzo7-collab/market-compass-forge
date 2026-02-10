@@ -4,6 +4,7 @@ import AppSidebar from "@/components/AppSidebar";
 import SearchBar from "@/components/SearchBar";
 import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
@@ -83,9 +84,11 @@ const AppLayout = () => {
           </div>
         </header>
 
-        <div className="animate-fade-in">
-          <Outlet />
-        </div>
+        <ErrorBoundary>
+          <div className="animate-fade-in">
+            <Outlet />
+          </div>
+        </ErrorBoundary>
       </main>
     </div>
   );

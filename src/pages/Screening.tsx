@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
-import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -43,6 +44,8 @@ const Screening = () => {
   const [sortKey, setSortKey] = useState<"name" | "valuation" | "arr">("valuation");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isMobile = useIsMobile();
+  const [filtersOpen, setFiltersOpen] = useState(!isMobile);
 
   const updateFilter = useCallback(<K extends keyof Filters>(key: K, val: Filters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: val }));
@@ -70,7 +73,10 @@ const Screening = () => {
       const { error } = await supabase.from("deal_pipeline").insert({
         company_id: companyId, user_id: user!.id, stage: "sourced",
       });
-      if (error) throw error;
+      if (error) {
+        if (error.code === "23505") return; // duplicate, ignore
+        throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
@@ -80,19 +86,24 @@ const Screening = () => {
 
   const bulkAddToPipeline = useMutation({
     mutationFn: async (ids: string[]) => {
-      const inserts = ids.map((company_id) => ({
-        company_id, user_id: user!.id, stage: "sourced" as const,
-      }));
-      const { error } = await supabase.from("deal_pipeline").insert(inserts);
-      if (error) throw error;
+      // Insert one-by-one to skip duplicates gracefully
+      let added = 0;
+      for (const company_id of ids) {
+        const { error } = await supabase.from("deal_pipeline").insert({
+          company_id, user_id: user!.id, stage: "sourced",
+        });
+        if (!error) added++;
+        else if (error.code !== "23505") throw error; // only ignore duplicate constraint
+      }
+      return added;
     },
-    onSuccess: () => {
+    onSuccess: (added) => {
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-      toast.success(`${selectedIds.size} companies added to pipeline`);
+      toast.success(`${added} companies added to pipeline`);
       setSelectedIds(new Set());
     },
     onError: () => {
-      toast.error("Some companies may already be in your pipeline");
+      toast.error("Failed to add some companies to pipeline");
     },
   });
 
@@ -214,11 +225,17 @@ const Screening = () => {
 
       {/* Filters */}
       <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <button
+          onClick={() => setFiltersOpen(!filtersOpen)}
+          className="flex items-center gap-2 text-sm font-medium text-foreground w-full md:cursor-default"
+        >
           <Filter className="h-4 w-4 text-primary" /> Filters
-        </div>
+          <span className="md:hidden ml-auto">
+            {filtersOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </span>
+        </button>
 
-        <div className="flex flex-wrap gap-3">
+        <div className={`flex flex-wrap gap-3 ${!filtersOpen && isMobile ? "hidden" : ""}`}>
           <input
             type="text" placeholder="Search..." value={filters.search}
             onChange={(e) => updateFilter("search", e.target.value)}
@@ -251,7 +268,7 @@ const Screening = () => {
         </div>
 
         {/* Chip filters */}
-        <div className="space-y-2">
+        <div className={`space-y-2 ${!filtersOpen && isMobile ? "hidden" : ""}`}>
           <div className="flex flex-wrap gap-1.5">
             {SECTORS.map((s) => (
               <button key={s} onClick={() => toggleArrayFilter("sectors", s)}
