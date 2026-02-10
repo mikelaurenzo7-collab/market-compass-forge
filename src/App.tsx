@@ -24,6 +24,7 @@ import CompanyComparison from "./pages/CompanyComparison";
 import Integrations from "./pages/Integrations";
 import PublicMarkets from "./pages/PublicMarkets";
 import PrivateMarkets from "./pages/PrivateMarkets";
+import Portfolio from "./pages/Portfolio";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/network" element={<NetworkGraph />} />
               <Route path="/compare" element={<CompanyComparison />} />
               <Route path="/integrations" element={<Integrations />} />
+              <Route path="/portfolio" element={<Portfolio />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
