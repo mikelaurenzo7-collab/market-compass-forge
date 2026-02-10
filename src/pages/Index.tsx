@@ -24,7 +24,7 @@ const OnboardingCard = () => {
   return (
     <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-4">
       <div>
-        <h2 className="text-sm font-semibold text-foreground">Welcome to Grapevine</h2>
+        <h2 className="text-sm font-semibold text-foreground">Welcome to Laurenzo's Grapevine</h2>
         <p className="text-xs text-muted-foreground mt-0.5">Your AI-powered intelligence platform for private & public markets</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
