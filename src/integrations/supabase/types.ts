@@ -103,14 +103,44 @@ export type Database = {
           },
         ]
       }
+      api_key_secrets: {
+        Row: {
+          api_key_id: string
+          created_at: string
+          id: string
+          key_hash: string
+          key_prefix: string
+        }
+        Insert: {
+          api_key_id: string
+          created_at?: string
+          id?: string
+          key_hash: string
+          key_prefix: string
+        }
+        Update: {
+          api_key_id?: string
+          created_at?: string
+          id?: string
+          key_hash?: string
+          key_prefix?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_key_secrets_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_keys: {
         Row: {
           created_at: string
           expires_at: string | null
           id: string
           is_active: boolean | null
-          key_hash: string
-          key_prefix: string
           last_used_at: string | null
           name: string
           scopes: string[] | null
@@ -121,8 +151,6 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
-          key_hash: string
-          key_prefix: string
           last_used_at?: string | null
           name: string
           scopes?: string[] | null
@@ -133,8 +161,6 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
-          key_hash?: string
-          key_prefix?: string
           last_used_at?: string | null
           name?: string
           scopes?: string[] | null

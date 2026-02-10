@@ -35,11 +35,24 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify API key
+    // Verify API key via secure secrets table
+    const { data: secretRecord, error: secretError } = await supabase
+      .from("api_key_secrets")
+      .select("api_key_id")
+      .eq("key_hash", keyHash)
+      .single();
+
+    if (secretError || !secretRecord) {
+      return new Response(JSON.stringify({ error: "Invalid or inactive API key" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: keyRecord, error: keyError } = await supabase
       .from("api_keys")
       .select("id, user_id, scopes, is_active, expires_at")
-      .eq("key_hash", keyHash)
+      .eq("id", secretRecord.api_key_id)
       .eq("is_active", true)
       .single();
 
