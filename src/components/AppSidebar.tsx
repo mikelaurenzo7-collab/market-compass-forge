@@ -14,6 +14,7 @@ import {
   Lock,
   Globe,
   Briefcase,
+  Table,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -28,6 +29,7 @@ const marketModules = [
 const intelligenceModules = [
   { id: "companies", label: "Companies", icon: Building2, path: "/companies" },
   { id: "screening", label: "Screening", icon: Search, path: "/screening" },
+  { id: "comps", label: "Comp Tables", icon: Table, path: "/comps" },
   { id: "analytics", label: "Analytics", icon: BarChart3, path: "/analytics" },
   { id: "research", label: "Research", icon: FileText, path: "/research" },
 ];
