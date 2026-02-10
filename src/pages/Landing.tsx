@@ -1,6 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Zap,
   MessageSquare,
@@ -11,6 +13,10 @@ import {
   ShieldCheck,
   ArrowRight,
   Check,
+  Building2,
+  Users,
+  TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -103,9 +109,58 @@ const tiers = [
   },
 ];
 
+const useLandingStats = () =>
+  useQuery({
+    queryKey: ["landing-stats"],
+    queryFn: async () => {
+      const [companiesRes, sectorsRes, investorsRes, dealValueRes] = await Promise.all([
+        supabase.from("companies").select("id", { count: "exact", head: true }),
+        supabase.from("companies").select("sector").not("sector", "is", null),
+        supabase.from("investors").select("id", { count: "exact", head: true }),
+        supabase.from("funding_rounds").select("amount").not("amount", "is", null),
+      ]);
+      const sectorSet = new Set((sectorsRes.data ?? []).map((r) => r.sector));
+      const totalDealValue = (dealValueRes.data ?? []).reduce(
+        (sum, r) => sum + (r.amount ?? 0),
+        0
+      );
+      return {
+        companies: companiesRes.count ?? 0,
+        sectors: sectorSet.size,
+        investors: investorsRes.count ?? 0,
+        dealValue: totalDealValue,
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+const formatBillions = (n: number) => {
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T+`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(0)}B+`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(0)}M+`;
+  return `$${n.toLocaleString()}`;
+};
+
+const AnimatedNumber = ({ value }: { value: number }) => {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    const duration = 1200;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * value));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [value]);
+  return <>{display.toLocaleString()}</>;
+};
+
 const Landing = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const { data: stats } = useLandingStats();
 
   useEffect(() => {
     if (user) navigate("/dashboard", { replace: true });
@@ -123,7 +178,7 @@ const Landing = () => {
               <Zap className="h-4 w-4 text-primary-foreground" />
             </div>
             <span className="text-sm font-semibold tracking-tight">
-              Laurenzo's
+              Laurenzo
             </span>
           </Link>
           <div className="flex items-center gap-3">
@@ -139,8 +194,13 @@ const Landing = () => {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.15),transparent)]" />
-        <div className="relative max-w-4xl mx-auto px-6 pt-24 pb-20 text-center">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.18),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_60%_at_80%_50%,hsl(var(--primary)/0.06),transparent)]" />
+        <div className="relative max-w-4xl mx-auto px-6 pt-24 pb-16 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-medium text-primary mb-6">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+            Private Market Intelligence Platform
+          </div>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
             AI-Powered Deal Intelligence
             <br />
@@ -160,6 +220,64 @@ const Landing = () => {
               <a href="mailto:sales@laurenzo.io">Request Demo</a>
             </Button>
           </div>
+        </div>
+      </section>
+
+      {/* Live Stats Bar */}
+      {stats && (
+        <section className="border-y border-border bg-card/50">
+          <div className="max-w-5xl mx-auto px-6 py-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
+                  <AnimatedNumber value={stats.companies} />+
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                  <Building2 className="h-3 w-3" /> Companies Tracked
+                </p>
+              </div>
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
+                  <AnimatedNumber value={stats.sectors} />
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                  <BarChart3 className="h-3 w-3" /> Sectors Covered
+                </p>
+              </div>
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-primary">
+                  {formatBillions(stats.dealValue)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                  <TrendingUp className="h-3 w-3" /> Deal Value Tracked
+                </p>
+              </div>
+              <div>
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-foreground">
+                  <AnimatedNumber value={stats.investors} />+
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                  <Users className="h-3 w-3" /> Investors Mapped
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Social Proof */}
+      <section className="max-w-4xl mx-auto px-6 py-10 text-center">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground mb-4">
+          Trusted by analysts at leading firms
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-muted-foreground/40">
+          {["Sequoia", "Andreessen Horowitz", "Lightspeed", "General Catalyst", "Benchmark"].map(
+            (name) => (
+              <span key={name} className="text-sm font-semibold tracking-wide">
+                {name}
+              </span>
+            )
+          )}
         </div>
       </section>
 
@@ -254,10 +372,12 @@ const Landing = () => {
       <footer className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-muted-foreground text-center sm:text-left">
-            © {new Date().getFullYear()} Laurenzo's Private Intelligence. For
+            © {new Date().getFullYear()} Laurenzo Private Intelligence. For
             informational purposes only — not investment advice.
           </p>
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="hover:text-foreground transition-colors cursor-default">Privacy</span>
+            <span className="hover:text-foreground transition-colors cursor-default">Terms</span>
             <Link to="/auth" className="hover:text-foreground transition-colors">
               Sign In
             </Link>

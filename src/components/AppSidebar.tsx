@@ -55,7 +55,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
           <Zap className="h-4 w-4 text-primary-foreground" />
         </div>
         <span className="text-sm font-semibold text-foreground tracking-tight">
-          Laurenzo's
+          Laurenzo
         </span>
       </div>
 

@@ -165,7 +165,7 @@ const Auth = () => {
           <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto glow-primary">
             <Zap className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h1 className="text-xl font-semibold text-foreground">Laurenzo's Private Intelligence</h1>
+          <h1 className="text-xl font-semibold text-foreground">Laurenzo Private Intelligence</h1>
           <p className="text-sm text-muted-foreground">
             {isLogin ? "Sign in to your account" : "Create your account"}
           </p>
