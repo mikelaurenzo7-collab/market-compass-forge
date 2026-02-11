@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useCompany, useCompanyFunding, useCompanyFinancials, useActivityEvents, formatCurrency, formatPercent, usePublicMarketData } from "@/hooks/useData";
+import { useCompany, useCompanyFunding, useCompanyFinancials, useActivityEvents, formatCurrency, formatPercent } from "@/hooks/useData";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,6 @@ import { AddToWatchlistButton } from "@/components/WatchlistManager";
 import { printElement } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
 import { toast } from "sonner";
-import PublicMarketCard from "@/components/PublicMarketCard";
 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +29,7 @@ const CompanyDetail = () => {
   const { data: funding } = useCompanyFunding(id!);
   const { data: financials } = useCompanyFinancials(id!);
   const { data: events } = useActivityEvents(id);
-  const { data: publicMarketData } = usePublicMarketData(id!);
+  
   const [noteContent, setNoteContent] = useState("");
   const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "analysis" | "news" | "research" | "memo">("overview");
 
@@ -156,10 +155,8 @@ const CompanyDetail = () => {
 
   const latestFinancial = financials?.[0];
   const latestRound = funding?.[funding.length - 1];
-  const isPublic = company.market_type === "public";
-
   return (
-    <div className="p-6 space-y-6 max-w-6xl print-target">
+    <div className="p-4 sm:p-6 space-y-6 max-w-6xl print-target">
       {/* Header */}
       <div className="flex items-start gap-4">
         <button onClick={() => navigate("/companies")} className="p-2 rounded-md hover:bg-secondary text-muted-foreground mt-0.5 no-print">
@@ -176,13 +173,8 @@ const CompanyDetail = () => {
                 {company.sector && <span>{company.sector}</span>}
                 {company.sub_sector && <span>· {company.sub_sector}</span>}
                 {company.stage && (
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${isPublic ? "bg-primary/10 text-primary border border-primary/20" : "bg-accent text-accent-foreground"}`}>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                     {company.stage}
-                  </span>
-                )}
-                {isPublic && publicMarketData && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-medium bg-muted text-muted-foreground">
-                    {publicMarketData.ticker} · {publicMarketData.exchange}
                   </span>
                 )}
               </div>
@@ -249,11 +241,6 @@ const CompanyDetail = () => {
 
       {company.description && (
         <p className="text-sm text-muted-foreground leading-relaxed">{company.description}</p>
-      )}
-
-      {/* Public Market Data Card */}
-      {isPublic && publicMarketData && (
-        <PublicMarketCard data={publicMarketData as any} />
       )}
 
       {/* Tab navigation */}
