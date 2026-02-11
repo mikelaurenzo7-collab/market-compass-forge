@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import Index from "./pages/Index";
@@ -13,16 +13,12 @@ import Deals from "./pages/Deals";
 import Analytics from "./pages/Analytics";
 import Screening from "./pages/Screening";
 import Research from "./pages/Research";
-import People from "./pages/People";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import NetworkGraph from "./pages/NetworkGraph";
-import CompanyComparison from "./pages/CompanyComparison";
-import PublicMarkets from "./pages/PublicMarkets";
-import PrivateMarkets from "./pages/PrivateMarkets";
 import Portfolio from "./pages/Portfolio";
 import CompTableBuilder from "./pages/CompTableBuilder";
+import PublicMarkets from "./pages/PublicMarkets";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,21 +40,27 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Index />} />
-              <Route path="/markets/private" element={<PrivateMarkets />} />
-              <Route path="/markets/public" element={<PublicMarkets />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/companies/:id" element={<CompanyDetail />} />
+              <Route path="/valuations" element={<CompTableBuilder />} />
               <Route path="/deals" element={<Deals />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/screening" element={<Screening />} />
+              <Route path="/fund-intelligence" element={<Analytics />} />
+              <Route path="/real-estate" element={<Portfolio />} />
               <Route path="/research" element={<Research />} />
-              <Route path="/people" element={<People />} />
+              <Route path="/intelligence" element={<PublicMarkets />} />
+              <Route path="/watchlists" element={<Screening />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/network" element={<NetworkGraph />} />
-              <Route path="/compare" element={<CompanyComparison />} />
-              <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/comps" element={<CompTableBuilder />} />
+              {/* Legacy redirects */}
+              <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
+              <Route path="/markets/public" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/screening" element={<Navigate to="/watchlists" replace />} />
+              <Route path="/comps" element={<Navigate to="/valuations" replace />} />
+              <Route path="/analytics" element={<Navigate to="/fund-intelligence" replace />} />
+              <Route path="/people" element={<Navigate to="/fund-intelligence" replace />} />
+              <Route path="/portfolio" element={<Navigate to="/real-estate" replace />} />
+              <Route path="/compare" element={<Navigate to="/valuations" replace />} />
+              <Route path="/network" element={<Navigate to="/dashboard" replace />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
