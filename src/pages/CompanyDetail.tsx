@@ -49,6 +49,14 @@ const CompanyDetail = () => {
     runwayMonths: latestFinancialForScore?.runway_months ? Number(latestFinancialForScore.runway_months) : undefined,
     previousArr: previousFinancial?.arr,
     previousRevenue: previousFinancial?.revenue,
+    historicalFinancials: financials?.map(f => ({
+      period: f.period,
+      revenue: f.revenue,
+      arr: f.arr,
+      gross_margin: f.gross_margin,
+      burn_rate: f.burn_rate,
+      runway_months: f.runway_months ? Number(f.runway_months) : null,
+    })),
   } : undefined);
 
   const { data: notes } = useQuery({
