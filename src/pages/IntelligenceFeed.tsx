@@ -120,8 +120,18 @@ const IntelligenceFeed = () => {
       </div>
 
       {isLoading && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border bg-card p-4 animate-pulse">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-5 w-16 bg-muted rounded" />
+                <div className="h-3 w-20 bg-muted rounded" />
+              </div>
+              <div className="h-4 w-3/4 bg-muted rounded mb-2" />
+              <div className="h-3 w-full bg-muted/60 rounded" />
+              <div className="h-3 w-2/3 bg-muted/60 rounded mt-1" />
+            </div>
+          ))}
         </div>
       )}
 

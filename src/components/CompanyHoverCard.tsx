@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card";
-import { Building2, TrendingUp, Users, MapPin, Zap } from "lucide-react";
+import { TrendingUp, Users, MapPin, Zap } from "lucide-react";
 import { formatCurrency } from "@/hooks/useData";
+import CompanyAvatar from "@/components/CompanyAvatar";
 
 type CompanyPreview = {
   id: string;
@@ -41,9 +42,7 @@ const CompanyHoverCard = ({
           }}
         >
           <div className="flex items-center gap-2 mb-2">
-            <div className="h-7 w-7 rounded-md bg-accent flex items-center justify-center shrink-0">
-              <Building2 className="h-3.5 w-3.5 text-accent-foreground" />
-            </div>
+            <CompanyAvatar name={company.name} sector={company.sector} size="md" />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground truncate">{company.name}</p>
               <div className="flex items-center gap-1.5">

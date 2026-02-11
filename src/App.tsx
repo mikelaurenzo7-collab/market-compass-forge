@@ -23,12 +23,21 @@ import NotFound from "./pages/NotFound";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import IntelligenceFeed from "./pages/IntelligenceFeed";
 import DistressedAssets from "./pages/DistressedAssets";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
+import { toast } from "sonner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
+      retry: 1,
+    },
+    mutations: {
+      onError: (error: any) => {
+        toast.error(error?.message || "Something went wrong");
+      },
     },
   },
 });
@@ -43,6 +52,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Index />} />
               <Route path="/companies" element={<Companies />} />
