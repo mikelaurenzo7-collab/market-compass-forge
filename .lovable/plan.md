@@ -1,85 +1,127 @@
 
 
-# Ship-Ready Checklist: Founder Mode
+# Next Steps: Ship-Ready Enhancement Plan
 
-This plan covers everything needed to get from current state to a polished, demo-ready product. Items are grouped by priority.
-
----
-
-## Priority 1: Fix What's Broken (Blocking)
-
-### 1A. Add `/distressed` route and sidebar nav
-- **App.tsx**: Import `DistressedAssets` page and add `<Route path="/distressed" element={<DistressedAssets />} />`
-- **AppSidebar.tsx**: Add "Distressed Assets" with `AlertTriangle` icon to `mainModules` array (after Real Estate). Rename "Real Estate Intel" to "Real Estate"
-
-### 1B. Clean up dead public market code in Screening page
-- Remove `showPublicCols` variable and all conditional blocks that reference it (Ticker column, Market Cap column, Market Cap/P/E filters)
-- Remove `marketCapMin`, `marketCapMax`, `peMin`, `peMax` from the `Filters` type and `EMPTY_FILTERS`
-- Remove `"Public"` from `STAGES` array
-- Change `Globe` icon fallback in company rows to always show `Building2`
-- Rename "ARR ($M)" filter label to "Revenue ($M)"
-
-### 1C. Clean up Companies page
-- Verify no remaining public market toggle or columns (already done in prior batch -- just confirm no dead imports)
+This plan addresses the highest-impact gaps to make the platform feel complete, data-rich, and worth paying for.
 
 ---
 
-## Priority 2: Complete Plan Features (High Value)
+## Phase 1: Make Fake Things Real (Critical Credibility)
 
-### 2A. Off-Market Listings tab on Real Estate page
-- Add a 4th tab "Off-Market Listings" to the existing `Tabs` component
-- Query `private_listings` table (25 entries already seeded)
-- Filterable table with: listing type, property type, city/state, price, cap rate, NOI, status
-- Summary cards: Total listings, Avg cap rate, Total value
+### 1A. Intelligence Feed -- Database-Backed
+The Intelligence Feed is currently 22 hardcoded JavaScript objects. This is the most visible credibility gap.
 
-### 2B. Update Landing page copy
-- Update hero subtitle: remove PE-specific language, emphasize distressed opportunities and off-market access for wealthy individuals and family offices
-- Add 2 new feature cards: "Distressed & Special Situations" and "Off-Market Real Estate"
-- Update features description copy to mention private deal access broadly (not just PE analysts)
+- Create a `intelligence_signals` table (headline, source, timestamp, ai_summary, tags, sentiment, category, url)
+- Migrate the 22 existing items into the database as seed data
+- Update `IntelligenceFeed.tsx` to query the database instead of using the hardcoded array
+- Add a "Last updated" timestamp in the header
 
-### 2C. Valuation Football Field -- make interactive
-- Convert `defaultRanges` to state so users can edit low/mid/high values per methodology
-- Add inline inputs that update the chart in real-time
+### 1B. Document Analyzer -- Wire Up Real AI
+The Document Analyzer currently shows a static demo. Make the upload and analysis functional.
 
-### 2D. DCF Calculator -- add LBO tab
-- Add a `Tabs` wrapper with "DCF" and "LBO Model" tabs
-- LBO tab with inputs: Purchase price, equity %, debt interest rate, hold period, exit multiple
-- Calculate IRR and equity return
+- Create a `document_analyses` table to store results
+- Create a backend function that accepts uploaded documents and uses AI to extract metrics, risks, terms, and generate summaries
+- Wire the upload area to actually accept files, store them, and trigger analysis
+- Keep the demo as a fallback but show real results when available
+
+### 1C. Research AI -- Remove "Coming Soon" Gate
+The AI Research Assistant shows a teaser with "Coming Soon" badge and disabled inputs. The `AIResearchChat` component already exists.
+
+- Remove the "Coming Soon" teaser block
+- Show the actual AI chat interface directly (the component already exists and is used when a company is selected)
+- Enable the general-purpose chat input at the top level (not just per-company)
 
 ---
 
-## Priority 3: Polish & Mobile (Ship Quality)
+## Phase 2: Data Depth (Perceived Value)
 
-### 3A. Mobile responsive fixes
-- Screening page: wrap filters in a responsive grid instead of horizontal flex
-- All data tables: ensure `overflow-x-auto` and sticky first column
-- Dashboard metric cards: use `text-xs` for labels on mobile to prevent overflow
-- Sidebar on mobile: already works via hamburger menu
+### 2A. Expand Fund Intelligence
+Currently only 25 funds and 18 LPs. This is too thin for a module that competes with PitchBook.
 
-### 3B. Remove remaining dead references
-- Remove `"Public"` from `STAGES` array in Screening
-- Remove `public_market_data` references in icon logic (Screening row shows Globe icon for public type -- switch to always Building2)
-- Remove `market_type` checks in stage badge styling
+- Seed 40+ additional funds across PE, VC, Real Estate, Credit, and Infrastructure strategies
+- Seed 30+ additional LP entities (pensions, endowments, sovereign wealth, family offices)
+- Add vintage years spanning 2015-2025 for better trend analysis
 
-### 3C. Screening page improvements
-- Add EBITDA range filter alongside ARR/Revenue filter
+### 2B. Expand Real Estate Beyond Chicago
+CRE data is currently Chicago-only. Wealthy individuals invest nationally.
+
+- Seed CRE transactions for 4-5 additional metros (NYC, Dallas, Miami, LA, Denver)
+- Seed market data for these metros
+- Add 15-20 more off-market listings across diverse geographies
+- Add a city/metro filter to the Market Overview tab
+
+### 2C. Expand Precedent Transactions by Sector
+36 entries is decent but could be richer. Add sector diversity.
+
+- Seed 20+ more transactions covering healthcare, industrials, consumer, and real estate sectors
+- Ensure date range spans 2020-2026
+
+---
+
+## Phase 3: Usability & Polish
+
+### 3A. Export Everywhere
+Users pay for data they can take with them.
+
+- Add CSV export button to Distressed Assets page
+- Add CSV export button to Off-Market Listings tab
+- Add CSV export to Fund Intelligence tables
+- Add PDF export to Document Analyzer results
+
+### 3B. Detail Views for New Asset Classes
+Distressed assets and off-market listings currently have no click-through detail view.
+
+- Add a slide-out panel or modal for distressed asset details showing full description, key metrics JSON, contact info
+- Add similar detail panel for off-market listings showing full property description, address, year built, units
+
+### 3C. Saved Searches and Alert Creation from Screening
+Users should be able to save their screening filter state and get alerts when new matches appear.
+
+- Add "Save Search" button to Screening page that persists the current filter configuration
+- Show saved searches in a dropdown at the top
+- Option to "Create Alert" from a saved search
+
+### 3D. Mobile Polish Pass
+- Distressed Assets filters: wrap in collapsible panel on mobile
+- Real Estate tabs: ensure horizontal scroll on tab triggers
+- Fund Intelligence table: add sticky first column
+- Landing page pricing cards: stack cleanly on mobile
 
 ---
 
 ## Technical Summary
 
+### Database migrations needed:
+1. Create `intelligence_signals` table + seed 22 items + 10 new items
+2. Create `document_analyses` table for storing analysis results
+3. Seed ~40 additional funds into `funds` table
+4. Seed ~30 additional LPs into `lp_entities` table  
+5. Seed CRE transactions and market data for 4 additional metros
+6. Seed 15-20 more off-market listings
+7. Seed 20+ more precedent transactions
+
+### Backend functions needed:
+1. `analyze-document` edge function -- accepts file, calls AI model for extraction
+
 ### Files to modify:
-1. `src/App.tsx` -- add distressed route
-2. `src/components/AppSidebar.tsx` -- add nav item, rename Real Estate
-3. `src/pages/Screening.tsx` -- remove public cols/filters, add EBITDA filter, rename ARR to Revenue, fix icons
-4. `src/pages/RealEstateIntel.tsx` -- add Off-Market Listings tab
-5. `src/pages/Landing.tsx` -- update copy, add feature cards
-6. `src/components/ValuationFootballField.tsx` -- make editable
-7. `src/components/DCFCalculator.tsx` -- add LBO tab
+1. `src/pages/IntelligenceFeed.tsx` -- Replace hardcoded array with database query
+2. `src/pages/DocumentAnalyzer.tsx` -- Wire real upload and AI analysis
+3. `src/pages/Research.tsx` -- Remove "Coming Soon" gate, enable top-level AI chat
+4. `src/pages/RealEstateIntel.tsx` -- Add metro/city filter
+5. `src/pages/DistressedAssets.tsx` -- Add detail panel and CSV export
+6. `src/pages/Screening.tsx` -- Add "Save Search" functionality
+7. `src/pages/FundIntelligence.tsx` -- Add sticky columns for mobile
+8. `src/hooks/useData.ts` -- Add `useIntelligenceSignals` hook
+9. `src/lib/export.ts` -- Add export functions for new tables
 
-### No new database migrations needed
-All tables and seed data are already in place (35 distressed assets, 25 private listings confirmed).
+### New files:
+1. `src/components/DistressedDetailPanel.tsx` -- Slide-out detail view
+2. `src/components/ListingDetailPanel.tsx` -- Slide-out detail view
 
-### Estimated scope
-7 files modified, 0 new files, 0 database changes. Focused on wiring up what's already built and polishing for demo.
+### Estimated scope:
+- 7 database migrations (mostly seed data)
+- 1 new backend function
+- 10 files modified
+- 2 new component files
+- Priority order: Phase 1 first (credibility), then Phase 2 (depth), then Phase 3 (polish)
 
