@@ -43,12 +43,12 @@ const CompanyScore = ({ score }: { score: CompanyScoreResult | null }) => {
           <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.impliedMultiple)}</p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground">Fwd Multiple (2Y)</p>
-          <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.forwardMultiple)}</p>
+          <p className="text-[10px] text-muted-foreground">EV/EBITDA</p>
+          <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.evEbitda)}</p>
         </div>
         <div>
-          <p className="text-[10px] text-muted-foreground">Revenue CAGR</p>
-          <p className="text-xs font-mono font-medium text-foreground">{formatPct(score.revenueCAGR)}</p>
+          <p className="text-[10px] text-muted-foreground">Fwd Multiple (2Y)</p>
+          <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.forwardMultiple)}</p>
         </div>
         <div>
           <p className="text-[10px] text-muted-foreground">Rule of 40</p>
@@ -58,9 +58,35 @@ const CompanyScore = ({ score }: { score: CompanyScoreResult | null }) => {
         </div>
       </div>
 
+      {/* Sector benchmarks */}
+      {(score.sectorMedianEvRevenue || score.sectorMedianEvEbitda) && (
+        <div className="grid grid-cols-2 gap-2 mb-3 p-2 rounded-md border border-border/50 bg-secondary/20">
+          <div>
+            <p className="text-[10px] text-muted-foreground">Sector Med EV/Rev</p>
+            <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.sectorMedianEvRevenue)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Sector Med EV/EBITDA</p>
+            <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.sectorMedianEvEbitda)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">Revenue CAGR</p>
+            <p className="text-xs font-mono font-medium text-foreground">{formatPct(score.revenueCAGR)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground">vs Sector</p>
+            <p className={`text-xs font-mono font-medium ${score.impliedMultiple && score.sectorMedianEvRevenue && score.impliedMultiple < score.sectorMedianEvRevenue ? 'text-success' : 'text-foreground'}`}>
+              {score.impliedMultiple && score.sectorMedianEvRevenue
+                ? `${((score.impliedMultiple / score.sectorMedianEvRevenue) * 100).toFixed(0)}% of median`
+                : "—"}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-2.5">
         <ScoreBar label="ARR / Revenue Scale" value={score.arrScore} />
-        <ScoreBar label="Valuation (Growth-Adj)" value={score.valuationScore} />
+        <ScoreBar label="Valuation (Sector-Adj)" value={score.valuationScore} />
         <ScoreBar label="Growth Trajectory" value={score.growthScore} />
         <ScoreBar label="Sector Momentum" value={score.sectorMomentum} />
         <ScoreBar label="Operational Efficiency" value={score.efficiencyScore} />
