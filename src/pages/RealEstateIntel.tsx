@@ -18,8 +18,10 @@ const formatCurrency = (v: number | null) => {
 
 const RealEstateIntel = () => {
   const [propTypeFilter, setPropTypeFilter] = useState("all");
+  const [cityFilter, setCityFilter] = useState("all");
   const [listingTypeFilter, setListingTypeFilter] = useState("all");
   const [listingPropFilter, setListingPropFilter] = useState("all");
+  const [listingCityFilter, setListingCityFilter] = useState("all");
 
   const { data: transactions, isLoading: txnLoading } = useQuery({
     queryKey: ["cre-transactions"],
@@ -49,7 +51,10 @@ const RealEstateIntel = () => {
   });
 
   const propertyTypes = [...new Set((transactions ?? []).map((t) => t.property_type))];
-  const filteredTxns = (transactions ?? []).filter((t) => propTypeFilter === "all" || t.property_type === propTypeFilter);
+  const cities = [...new Set((transactions ?? []).map((t) => t.city).filter(Boolean))].sort();
+  const filteredTxns = (transactions ?? [])
+    .filter((t) => propTypeFilter === "all" || t.property_type === propTypeFilter)
+    .filter((t) => cityFilter === "all" || t.city === cityFilter);
 
   const totalVolume = filteredTxns.reduce((s, t) => s + (t.sale_price ?? 0), 0);
   const avgCapRate = filteredTxns.filter((t) => t.cap_rate).reduce((s, t) => s + (t.cap_rate ?? 0), 0) / (filteredTxns.filter((t) => t.cap_rate).length || 1);
@@ -70,9 +75,11 @@ const RealEstateIntel = () => {
   const allListings = listings ?? [];
   const listingTypes = [...new Set(allListings.map((l) => l.listing_type))];
   const listingPropTypes = [...new Set(allListings.map((l) => l.property_type))];
+  const listingCities = [...new Set(allListings.map((l) => l.city).filter(Boolean))].sort();
   const filteredListings = allListings
     .filter((l) => listingTypeFilter === "all" || l.listing_type === listingTypeFilter)
-    .filter((l) => listingPropFilter === "all" || l.property_type === listingPropFilter);
+    .filter((l) => listingPropFilter === "all" || l.property_type === listingPropFilter)
+    .filter((l) => listingCityFilter === "all" || l.city === listingCityFilter);
 
   const totalListings = filteredListings.length;
   const totalListingValue = filteredListings.reduce((s, l) => s + (l.asking_price ?? 0), 0);
@@ -155,16 +162,23 @@ const RealEstateIntel = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="transactions">
-          <div className="mb-4">
-            <Select value={propTypeFilter} onValueChange={setPropTypeFilter}>
-              <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Types" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Property Types</SelectItem>
-                {propertyTypes.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+         <TabsContent value="transactions">
+           <div className="mb-4 flex gap-3">
+             <Select value={propTypeFilter} onValueChange={setPropTypeFilter}>
+               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Types" /></SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Property Types</SelectItem>
+                 {propertyTypes.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+               </SelectContent>
+             </Select>
+             <Select value={cityFilter} onValueChange={setCityFilter}>
+               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Cities" /></SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Cities</SelectItem>
+                 {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+               </SelectContent>
+             </Select>
+           </div>
 
           {txnLoading ? (
             <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
@@ -268,23 +282,30 @@ const RealEstateIntel = () => {
             </Card>
           </div>
 
-          {/* Filters */}
-          <div className="flex gap-3">
-            <Select value={listingTypeFilter} onValueChange={setListingTypeFilter}>
-              <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Listing Types" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Listing Types</SelectItem>
-                {listingTypes.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Select value={listingPropFilter} onValueChange={setListingPropFilter}>
-              <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Property Types" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Property Types</SelectItem>
-                {listingPropTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+           {/* Filters */}
+           <div className="flex gap-3 flex-wrap">
+             <Select value={listingTypeFilter} onValueChange={setListingTypeFilter}>
+               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Listing Types" /></SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Listing Types</SelectItem>
+                 {listingTypes.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</SelectItem>)}
+               </SelectContent>
+             </Select>
+             <Select value={listingPropFilter} onValueChange={setListingPropFilter}>
+               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Property Types" /></SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Property Types</SelectItem>
+                 {listingPropTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+               </SelectContent>
+             </Select>
+             <Select value={listingCityFilter} onValueChange={setListingCityFilter}>
+               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Cities" /></SelectTrigger>
+               <SelectContent>
+                 <SelectItem value="all">All Cities</SelectItem>
+                 {listingCities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+               </SelectContent>
+             </Select>
+           </div>
 
           {listingsLoading ? (
             <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
