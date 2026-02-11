@@ -6,7 +6,7 @@ import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
-import { useHotkeys } from "@/hooks/useHotkeys";
+import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Bell, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -24,6 +24,11 @@ const AppLayout = () => {
   useHotkeys([
     { key: "/", meta: true, handler: () => setShowShortcuts((v) => !v) },
     { key: "Escape", handler: () => { setShowShortcuts(false); setMobileMenuOpen(false); } },
+    ...SIDEBAR_ROUTES.map((route, i) => ({
+      key: String(i + 1),
+      meta: true,
+      handler: () => navigate(route),
+    })),
   ]);
 
   return (

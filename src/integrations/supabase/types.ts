@@ -317,6 +317,96 @@ export type Database = {
           },
         ]
       }
+      cre_market_data: {
+        Row: {
+          asking_rent: number | null
+          cap_rate: number | null
+          city: string
+          created_at: string
+          id: string
+          period: string
+          property_type: string
+          state: string
+          submarket: string
+          vacancy_rate: number | null
+        }
+        Insert: {
+          asking_rent?: number | null
+          cap_rate?: number | null
+          city?: string
+          created_at?: string
+          id?: string
+          period: string
+          property_type: string
+          state?: string
+          submarket: string
+          vacancy_rate?: number | null
+        }
+        Update: {
+          asking_rent?: number | null
+          cap_rate?: number | null
+          city?: string
+          created_at?: string
+          id?: string
+          period?: string
+          property_type?: string
+          state?: string
+          submarket?: string
+          vacancy_rate?: number | null
+        }
+        Relationships: []
+      }
+      cre_transactions: {
+        Row: {
+          buyer: string | null
+          cap_rate: number | null
+          city: string
+          created_at: string
+          id: string
+          price_per_sf: number | null
+          property_name: string
+          property_type: string
+          sale_price: number | null
+          seller: string | null
+          size_sf: number | null
+          state: string
+          submarket: string | null
+          transaction_date: string | null
+        }
+        Insert: {
+          buyer?: string | null
+          cap_rate?: number | null
+          city?: string
+          created_at?: string
+          id?: string
+          price_per_sf?: number | null
+          property_name: string
+          property_type: string
+          sale_price?: number | null
+          seller?: string | null
+          size_sf?: number | null
+          state?: string
+          submarket?: string | null
+          transaction_date?: string | null
+        }
+        Update: {
+          buyer?: string | null
+          cap_rate?: number | null
+          city?: string
+          created_at?: string
+          id?: string
+          price_per_sf?: number | null
+          property_name?: string
+          property_type?: string
+          sale_price?: number | null
+          seller?: string | null
+          size_sf?: number | null
+          state?: string
+          submarket?: string | null
+          transaction_date?: string | null
+        }
+        Relationships: []
+      }
       deal_pipeline: {
         Row: {
           company_id: string
@@ -357,6 +447,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      deal_transactions: {
+        Row: {
+          acquirer_investor: string | null
+          announced_date: string | null
+          closed_date: string | null
+          created_at: string
+          deal_type: string
+          deal_value: number | null
+          ev_ebitda: number | null
+          ev_revenue: number | null
+          id: string
+          status: string
+          target_company: string
+          target_industry: string | null
+        }
+        Insert: {
+          acquirer_investor?: string | null
+          announced_date?: string | null
+          closed_date?: string | null
+          created_at?: string
+          deal_type: string
+          deal_value?: number | null
+          ev_ebitda?: number | null
+          ev_revenue?: number | null
+          id?: string
+          status?: string
+          target_company: string
+          target_industry?: string | null
+        }
+        Update: {
+          acquirer_investor?: string | null
+          announced_date?: string | null
+          closed_date?: string | null
+          created_at?: string
+          deal_type?: string
+          deal_value?: number | null
+          ev_ebitda?: number | null
+          ev_revenue?: number | null
+          id?: string
+          status?: string
+          target_company?: string
+          target_industry?: string | null
+        }
+        Relationships: []
       }
       financials: {
         Row: {
@@ -417,6 +552,48 @@ export type Database = {
           },
         ]
       }
+      fund_commitments: {
+        Row: {
+          amount: number | null
+          commitment_date: string | null
+          created_at: string
+          fund_id: string
+          id: string
+          lp_id: string
+        }
+        Insert: {
+          amount?: number | null
+          commitment_date?: string | null
+          created_at?: string
+          fund_id: string
+          id?: string
+          lp_id: string
+        }
+        Update: {
+          amount?: number | null
+          commitment_date?: string | null
+          created_at?: string
+          fund_id?: string
+          id?: string
+          lp_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fund_commitments_fund_id_fkey"
+            columns: ["fund_id"]
+            isOneToOne: false
+            referencedRelation: "funds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fund_commitments_lp_id_fkey"
+            columns: ["lp_id"]
+            isOneToOne: false
+            referencedRelation: "lp_entities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funding_rounds: {
         Row: {
           amount: number | null
@@ -469,6 +646,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      funds: {
+        Row: {
+          created_at: string
+          dpi: number | null
+          fund_size: number | null
+          gp_name: string
+          id: string
+          name: string
+          net_irr: number | null
+          quartile: number | null
+          strategy: string
+          tvpi: number | null
+          vintage_year: number
+        }
+        Insert: {
+          created_at?: string
+          dpi?: number | null
+          fund_size?: number | null
+          gp_name: string
+          id?: string
+          name: string
+          net_irr?: number | null
+          quartile?: number | null
+          strategy: string
+          tvpi?: number | null
+          vintage_year: number
+        }
+        Update: {
+          created_at?: string
+          dpi?: number | null
+          fund_size?: number | null
+          gp_name?: string
+          id?: string
+          name?: string
+          net_irr?: number | null
+          quartile?: number | null
+          strategy?: string
+          tvpi?: number | null
+          vintage_year?: number
+        }
+        Relationships: []
       }
       investor_company: {
         Row: {
@@ -586,6 +805,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lp_entities: {
+        Row: {
+          aum: number | null
+          created_at: string
+          hq_city: string | null
+          hq_country: string | null
+          id: string
+          name: string
+          strategies: string[] | null
+          type: string
+        }
+        Insert: {
+          aum?: number | null
+          created_at?: string
+          hq_city?: string | null
+          hq_country?: string | null
+          id?: string
+          name: string
+          strategies?: string[] | null
+          type: string
+        }
+        Update: {
+          aum?: number | null
+          created_at?: string
+          hq_city?: string | null
+          hq_country?: string | null
+          id?: string
+          name?: string
+          strategies?: string[] | null
+          type?: string
+        }
+        Relationships: []
       }
       news_articles: {
         Row: {

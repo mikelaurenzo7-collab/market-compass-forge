@@ -89,10 +89,23 @@ export const useTableNavigation = (
   }, [handleKeyDown]);
 };
 
+export const SIDEBAR_ROUTES = [
+  "/dashboard",
+  "/companies",
+  "/valuations",
+  "/deals",
+  "/fund-intelligence",
+  "/real-estate",
+  "/research",
+  "/intelligence",
+  "/watchlists",
+];
+
 export const GLOBAL_HOTKEYS_HELP = [
   { keys: "⌘K", description: "Search / Command palette" },
   { keys: "⌘/", description: "Show keyboard shortcuts" },
   { keys: "⌘⇧D", description: "Toggle dashboard customization" },
+  { keys: "⌘1-9", description: "Navigate sidebar sections" },
   { keys: "↑↓", description: "Navigate table rows" },
   { keys: "Enter", description: "Open selected item" },
   { keys: "Esc", description: "Close modal / deselect" },

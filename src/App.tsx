@@ -10,15 +10,14 @@ import Landing from "./pages/Landing";
 import Companies from "./pages/Companies";
 import CompanyDetail from "./pages/CompanyDetail";
 import Deals from "./pages/Deals";
-import Analytics from "./pages/Analytics";
-import Screening from "./pages/Screening";
+import Valuations from "./pages/Valuations";
+import FundIntelligence from "./pages/FundIntelligence";
+import RealEstateIntel from "./pages/RealEstateIntel";
 import Research from "./pages/Research";
+import Screening from "./pages/Screening";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import Portfolio from "./pages/Portfolio";
-import CompTableBuilder from "./pages/CompTableBuilder";
-import PublicMarkets from "./pages/PublicMarkets";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import IntelligenceFeed from "./pages/IntelligenceFeed";
 
@@ -44,10 +43,10 @@ const App = () => (
               <Route path="/dashboard" element={<Index />} />
               <Route path="/companies" element={<Companies />} />
               <Route path="/companies/:id" element={<CompanyDetail />} />
-              <Route path="/valuations" element={<CompTableBuilder />} />
+              <Route path="/valuations" element={<Valuations />} />
               <Route path="/deals" element={<Deals />} />
-              <Route path="/fund-intelligence" element={<Analytics />} />
-              <Route path="/real-estate" element={<Portfolio />} />
+              <Route path="/fund-intelligence" element={<FundIntelligence />} />
+              <Route path="/real-estate" element={<RealEstateIntel />} />
               <Route path="/research" element={<Research />} />
               <Route path="/documents" element={<DocumentAnalyzer />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
