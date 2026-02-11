@@ -18,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileSearch,
+  AlertTriangle,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -29,7 +30,8 @@ const mainModules = [
   { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
   { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
   { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
-  { id: "real-estate", label: "Real Estate Intel", icon: Building, path: "/real-estate" },
+  { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
+  { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
 ];
 
 const insightModules = [
