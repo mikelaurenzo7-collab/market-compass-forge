@@ -1,13 +1,13 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCompaniesWithFinancialsFiltered, formatCurrency } from "@/hooks/useData";
+import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Search, Filter, Building2, Globe, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import MarketToggle, { type MarketFilter } from "@/components/MarketToggle";
+
 
 type Filters = {
   search: string;
@@ -58,8 +58,7 @@ const getGrade = (score: number) => {
 type SortKey = "name" | "valuation" | "arr" | "marketCap" | "score";
 
 const Screening = () => {
-  const [marketFilter, setMarketFilter] = useState<MarketFilter>("all");
-  const { data: companies, isLoading } = useCompaniesWithFinancialsFiltered(marketFilter);
+  const { data: companies, isLoading } = useCompaniesWithFinancials();
   const navigate = useNavigate();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -273,7 +272,7 @@ const Screening = () => {
     }
   };
 
-  const showPublicCols = marketFilter === "public" || marketFilter === "all";
+  const showPublicCols = false;
 
   const SortHeader = ({ label, sortId, align }: { label: string; sortId: SortKey; align?: string }) => (
     <th
@@ -301,7 +300,6 @@ const Screening = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <MarketToggle value={marketFilter} onChange={setMarketFilter} />
           <button onClick={savePreset} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
             <Save className="h-4 w-4" /> Save
           </button>
@@ -443,8 +441,8 @@ const Screening = () => {
                 </th>
                 <SortHeader label="Company" sortId="name" />
                 <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">Sector</th>
-                {marketFilter !== "public" && <SortHeader label="Valuation" sortId="valuation" align="right" />}
-                {marketFilter !== "public" && <SortHeader label="ARR" sortId="arr" align="right" />}
+                <SortHeader label="Valuation" sortId="valuation" align="right" />
+                <SortHeader label="ARR" sortId="arr" align="right" />
                 {showPublicCols && <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">Ticker</th>}
                 {showPublicCols && <SortHeader label="Market Cap" sortId="marketCap" align="right" />}
                 <SortHeader label="Score" sortId="score" align="right" />
@@ -474,12 +472,8 @@ const Screening = () => {
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
-                  {marketFilter !== "public" && (
-                    <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>
-                  )}
-                  {marketFilter !== "public" && (
-                    <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(c.latestFinancials?.arr ?? null)}</td>
-                  )}
+                  <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(c.latestFinancials?.arr ?? null)}</td>
                   {showPublicCols && (
                     <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{c.publicMarketData?.ticker ?? "—"}</td>
                   )}
