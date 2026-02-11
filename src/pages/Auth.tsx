@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Zap, Mail, Lock, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
@@ -161,6 +161,9 @@ const Auth = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-8">
+        <Link to="/" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mx-auto w-fit">
+          <ArrowLeft className="h-3 w-3" /> Back to home
+        </Link>
         <div className="text-center space-y-2">
           <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto glow-primary">
             <Zap className="h-6 w-6 text-primary-foreground" />

@@ -11,6 +11,7 @@ import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
 import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useHotkeys } from "@/hooks/useHotkeys";
 
@@ -235,6 +236,7 @@ const Index = () => {
   const updateWidgets = (widgets: string[]) => {
     setVisibleWidgets(widgets);
     localStorage.setItem("dashboard-widgets", JSON.stringify(widgets));
+    toast.success("Dashboard updated");
   };
 
   const toggleWidget = (id: string) => {

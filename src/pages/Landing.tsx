@@ -404,11 +404,9 @@ const Landing = () => {
               <span className="text-xs font-semibold">Laurenzo's Grapevine</span>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="hover:text-foreground transition-colors cursor-default">About</span>
-              <span className="hover:text-foreground transition-colors cursor-default">Careers</span>
-              <span className="hover:text-foreground transition-colors cursor-default">API Docs</span>
-              <span className="hover:text-foreground transition-colors cursor-default">Privacy</span>
-              <span className="hover:text-foreground transition-colors cursor-default">Terms</span>
+              <a href="mailto:careers@laurenzosgrapevine.io" className="hover:text-foreground transition-colors">Careers</a>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
               <a href="mailto:contact@laurenzosgrapevine.io" className="hover:text-foreground transition-colors">Contact</a>
             </div>
           </div>

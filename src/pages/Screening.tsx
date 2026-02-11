@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Filter, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import CompanyAvatar from "@/components/CompanyAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -66,6 +67,8 @@ const Screening = () => {
   const [sortKey, setSortKey] = useState<SortKey>("valuation");
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
   const isMobile = useIsMobile();
   const [filtersOpen, setFiltersOpen] = useState(!isMobile);
 
@@ -231,6 +234,9 @@ const Screening = () => {
         return sortAsc ? av - bv : bv - av;
       });
   }, [scoredCompanies, filters, sortKey, sortAsc]);
+
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
 
   const countries = useMemo(() => {
     if (!companies) return [];
@@ -425,7 +431,7 @@ const Screening = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c: any) => (
+              {paginated.map((c: any) => (
                 <tr key={c.id} className={`border-b border-border/50 hover:bg-secondary/50 transition-colors ${selectedIds.has(c.id) ? "bg-primary/5" : ""}`}>
                   <td className="px-3 py-2.5">
                     <button onClick={() => toggleSelect(c.id)} className="text-muted-foreground hover:text-foreground">
@@ -438,9 +444,7 @@ const Screening = () => {
                   </td>
                   <td className="px-4 py-2.5 cursor-pointer" onClick={() => navigate(`/companies/${c.id}`)}>
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
-                        <Building2 className="h-3 w-3 text-accent-foreground" />
-                      </div>
+                      <CompanyAvatar name={c.name} sector={c.sector} />
                       <span className="text-foreground font-medium hover:text-primary transition-colors">{c.name}</span>
                     </div>
                   </td>
@@ -482,6 +486,29 @@ const Screening = () => {
           <div className="p-8 text-center text-muted-foreground text-sm">No companies match your criteria</div>
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Rows per page:</span>
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }} className="h-7 px-1.5 rounded bg-secondary border border-border text-sm text-foreground">
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="ml-2">{page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 transition-colors">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-xs text-muted-foreground px-2">{page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1} className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 transition-colors">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

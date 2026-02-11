@@ -5,7 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/hooks/useData";
-import { GripVertical, Building2, Trash2, Download, BarChart3, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { GripVertical, Trash2, Download, BarChart3, LayoutGrid, Table as TableIcon } from "lucide-react";
+import CompanyAvatar from "@/components/CompanyAvatar";
 import { exportPipelineCSV } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
 import { useNavigate } from "react-router-dom";
@@ -132,7 +133,7 @@ const Deals = () => {
                           <GripVertical className="h-4 w-4 text-muted-foreground/30 mt-0.5 shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <Building2 className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
                               <CompanyHoverCard company={{ id: deal.company_id, name: deal.companies?.name ?? "Unknown", sector: deal.companies?.sector, stage: deal.companies?.stage }}>
                                 <button onClick={(e) => { e.stopPropagation(); navigate(`/companies/${deal.company_id}`); }} className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left">
                                   {deal.companies?.name ?? "Unknown"}

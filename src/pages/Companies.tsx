@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancialsAll, formatCurrency } from "@/hooks/useData";
-import { ArrowUpDown, Building2, Download } from "lucide-react";
+import { ArrowUpDown, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import CompanyAvatar from "@/components/CompanyAvatar";
 import { exportCompaniesCSV } from "@/lib/export";
 import { useTableNavigation } from "@/hooks/useHotkeys";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
@@ -35,6 +36,8 @@ const Companies = () => {
   const [stageFilter, setStageFilter] = useState("All");
   const [sortKey, setSortKey] = useState<SortKey>("valuation");
   const [sortAsc, setSortAsc] = useState(false);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
 
   const scoredCompanies = useMemo(() => {
     if (!companies) return [];
@@ -110,6 +113,15 @@ const Companies = () => {
       });
   }, [scoredCompanies, search, sectorFilter, stageFilter, sortKey, sortAsc]);
 
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
+
+  // Reset page when filters change
+  const handleFilterChange = (setter: (v: any) => void, value: any) => {
+    setter(value);
+    setPage(0);
+  };
+
   useTableNavigation(filtered.length, (index) => {
     if (filtered[index]) navigate(`/companies/${filtered[index].id}`);
   });
@@ -161,11 +173,11 @@ const Companies = () => {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <input type="text" placeholder="Search companies..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-64" />
-        <select value={sectorFilter} onChange={(e) => setSectorFilter(e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+        <input type="text" placeholder="Search companies..." value={search} onChange={(e) => handleFilterChange(setSearch, e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-64" />
+        <select value={sectorFilter} onChange={(e) => handleFilterChange(setSectorFilter, e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           {SECTORS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
+        <select value={stageFilter} onChange={(e) => handleFilterChange(setStageFilter, e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
           {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
@@ -185,7 +197,7 @@ const Companies = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c: any, i) => (
+              {paginated.map((c: any, i) => (
                 <tr
                   key={c.id}
                   data-index={i}
@@ -197,9 +209,7 @@ const Companies = () => {
                   <td className="px-4 py-2.5">
                     <CompanyHoverCard company={{ id: c.id, name: c.name, sector: c.sector, stage: c.stage, hq_country: c.hq_country, employee_count: c.employee_count, valuation: c.latestRound?.valuation_post, arr: c.latestFinancials?.arr }}>
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
-                          <Building2 className="h-3 w-3 text-accent-foreground" />
-                        </div>
+                        <CompanyAvatar name={c.name} sector={c.sector} />
                         <span className="text-foreground font-medium">{c.name}</span>
                       </div>
                     </CompanyHoverCard>
@@ -230,6 +240,30 @@ const Companies = () => {
           <div className="p-8 text-center text-muted-foreground text-sm">No companies match your filters</div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Rows per page:</span>
+            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }} className="h-7 px-1.5 rounded bg-secondary border border-border text-sm text-foreground">
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span className="ml-2">{page * pageSize + 1}–{Math.min((page + 1) * pageSize, filtered.length)} of {filtered.length}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 transition-colors">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-xs text-muted-foreground px-2">{page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(Math.min(totalPages - 1, page + 1))} disabled={page >= totalPages - 1} className="h-8 w-8 rounded-md border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary disabled:opacity-30 transition-colors">
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

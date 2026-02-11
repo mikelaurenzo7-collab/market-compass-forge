@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, Building2, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer } from "lucide-react";
+import { ArrowLeft, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer, AlertCircle } from "lucide-react";
+import CompanyAvatar from "@/components/CompanyAvatar";
 import AIResearchChat from "@/components/AIResearchChat";
 import NewsFeed from "@/components/NewsFeed";
 import InvestmentMemo from "@/components/InvestmentMemo";
@@ -34,7 +35,16 @@ const CompanyDetail = () => {
   const { data: events } = useActivityEvents(id);
   
   const [noteContent, setNoteContent] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "analysis" | "news" | "research" | "memo">("overview");
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialTab = (searchParams.get("tab") as any) || "overview";
+  const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "analysis" | "news" | "research" | "memo">(initialTab);
+
+  const handleTabChange = (tab: typeof activeTab) => {
+    setActiveTab(tab);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", tab);
+    window.history.replaceState({}, "", url.toString());
+  };
 
   const latestFinancialForScore = financials?.[0];
   const previousFinancial = financials?.[1];
@@ -277,9 +287,7 @@ const CompanyDetail = () => {
         </button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-accent flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-accent-foreground" />
-            </div>
+            <CompanyAvatar name={company.name} sector={company.sector} size="lg" />
             <div>
               <h1 className="text-xl font-semibold text-foreground">{company.name}</h1>
               <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
@@ -361,7 +369,7 @@ const CompanyDetail = () => {
         {(["overview", "financials", "valuation", "deals", "analysis", "news", "research", "memo"] as const).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => handleTabChange(tab)}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab
                 ? "border-primary text-primary"
@@ -553,6 +561,16 @@ const CompanyDetail = () => {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === "valuation" && (!latestFinancial || !latestRound) && (
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <AlertCircle className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm font-medium text-foreground mb-1">Insufficient data for valuation analysis</p>
+          <p className="text-xs text-muted-foreground">
+            Missing: {!latestFinancial ? "financial data" : ""}{!latestFinancial && !latestRound ? " and " : ""}{!latestRound ? "funding/valuation data" : ""}
+          </p>
         </div>
       )}
 

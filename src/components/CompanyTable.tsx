@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
-import { Building2 } from "lucide-react";
+import CompanyAvatar from "@/components/CompanyAvatar";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { TableSkeleton } from "@/components/SkeletonLoaders";
 
@@ -54,9 +54,7 @@ const CompanyTable = () => {
                     }}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
-                        <Building2 className="h-3 w-3 text-accent-foreground" />
-                      </div>
+                      <CompanyAvatar name={c.name} sector={c.sector} />
                       <span className="text-foreground font-medium hover:text-primary transition-colors">{c.name}</span>
                     </div>
                   </CompanyHoverCard>
@@ -68,7 +66,7 @@ const CompanyTable = () => {
                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                     {c.stage ?? "—"}
                   </span>
-                  {c.stage === 'Public' && <span className="inline-block ml-1 px-1.5 py-0.5 rounded text-[9px] font-medium border border-border text-muted-foreground">Benchmark</span>}
+                  
                 </td>
               </tr>
             ))}
