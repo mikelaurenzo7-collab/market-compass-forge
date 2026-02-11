@@ -16,6 +16,10 @@ const ScoreBar = ({ label, value }: { label: string; value: number }) => (
   </div>
 );
 
+const formatMultiple = (v: number | null) => v !== null ? `${v.toFixed(1)}x` : "—";
+const formatPct = (v: number | null) => v !== null ? `${Math.round(v * 100)}%` : "—";
+const formatR40 = (v: number | null) => v !== null ? Math.round(v).toString() : "—";
+
 const CompanyScore = ({ score }: { score: CompanyScoreResult | null }) => {
   if (!score) return null;
 
@@ -31,9 +35,32 @@ const CompanyScore = ({ score }: { score: CompanyScoreResult | null }) => {
           <span className="text-xs text-muted-foreground font-mono">{score.overall}/100</span>
         </div>
       </div>
+
+      {/* Key valuation metrics */}
+      <div className="grid grid-cols-2 gap-2 mb-3 p-2 rounded-md bg-muted/30">
+        <div>
+          <p className="text-[10px] text-muted-foreground">EV/Revenue</p>
+          <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.impliedMultiple)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground">Fwd Multiple (2Y)</p>
+          <p className="text-xs font-mono font-medium text-foreground">{formatMultiple(score.forwardMultiple)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground">Revenue CAGR</p>
+          <p className="text-xs font-mono font-medium text-foreground">{formatPct(score.revenueCAGR)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] text-muted-foreground">Rule of 40</p>
+          <p className={`text-xs font-mono font-medium ${score.ruleOf40 !== null && score.ruleOf40 >= 40 ? 'text-success' : score.ruleOf40 !== null && score.ruleOf40 < 20 ? 'text-destructive' : 'text-foreground'}`}>
+            {formatR40(score.ruleOf40)}
+          </p>
+        </div>
+      </div>
+
       <div className="space-y-2.5">
         <ScoreBar label="ARR / Revenue Scale" value={score.arrScore} />
-        <ScoreBar label="Valuation Efficiency" value={score.valuationScore} />
+        <ScoreBar label="Valuation (Growth-Adj)" value={score.valuationScore} />
         <ScoreBar label="Growth Trajectory" value={score.growthScore} />
         <ScoreBar label="Sector Momentum" value={score.sectorMomentum} />
         <ScoreBar label="Operational Efficiency" value={score.efficiencyScore} />
@@ -49,7 +76,7 @@ const CompanyScore = ({ score }: { score: CompanyScoreResult | null }) => {
         </div>
       )}
       <p className="text-[10px] text-muted-foreground/60 mt-2 border-t border-border pt-2">
-        Weighted composite: Scale 20% · Valuation 20% · Growth 15% · Sector 15% · Efficiency 15% · Capital 15%
+        Weighted: Scale 18% · Valuation 22% · Growth 18% · Sector 12% · Efficiency 15% · Capital 15%
       </p>
     </div>
   );
