@@ -46,7 +46,7 @@ function pct(val: number | null) {
   return `${(val * 100).toFixed(0)}%`;
 }
 
-const CompTableBuilder = () => {
+const CompTableBuilder = ({ embedded }: { embedded?: boolean } = {}) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
