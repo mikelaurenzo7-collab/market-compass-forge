@@ -210,6 +210,50 @@ export type Database = {
         }
         Relationships: []
       }
+      cap_table_snapshots: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          ownership_pct: number | null
+          share_class: string
+          shareholder_name: string
+          shares: number
+          snapshot_date: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          ownership_pct?: number | null
+          share_class?: string
+          shareholder_name: string
+          shares?: number
+          snapshot_date?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          ownership_pct?: number | null
+          share_class?: string
+          shareholder_name?: string
+          shares?: number
+          snapshot_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cap_table_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           created_at: string
@@ -266,6 +310,62 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      company_documents: {
+        Row: {
+          ai_summary: string | null
+          citations: Json | null
+          company_id: string
+          created_at: string
+          document_type: string
+          extracted_metrics: Json | null
+          file_name: string
+          file_url: string
+          id: string
+          red_flags: Json | null
+          updated_at: string
+          uploaded_by: string | null
+          version: number
+        }
+        Insert: {
+          ai_summary?: string | null
+          citations?: Json | null
+          company_id: string
+          created_at?: string
+          document_type?: string
+          extracted_metrics?: Json | null
+          file_name: string
+          file_url: string
+          id?: string
+          red_flags?: Json | null
+          updated_at?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Update: {
+          ai_summary?: string | null
+          citations?: Json | null
+          company_id?: string
+          created_at?: string
+          document_type?: string
+          extracted_metrics?: Json | null
+          file_name?: string
+          file_url?: string
+          id?: string
+          red_flags?: Json | null
+          updated_at?: string
+          uploaded_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_enrichments: {
         Row: {
@@ -597,13 +697,19 @@ export type Database = {
       funding_rounds: {
         Row: {
           amount: number | null
+          anti_dilution_type: string | null
           co_investors: string[] | null
           company_id: string
           confidence_score: string | null
           created_at: string
           date: string | null
           id: string
+          instrument_type: string | null
           lead_investors: string[] | null
+          liquidation_preference: number | null
+          option_pool_pct: number | null
+          participation_cap: number | null
+          pro_rata_rights: boolean | null
           round_type: string
           source_url: string | null
           valuation_post: number | null
@@ -611,13 +717,19 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          anti_dilution_type?: string | null
           co_investors?: string[] | null
           company_id: string
           confidence_score?: string | null
           created_at?: string
           date?: string | null
           id?: string
+          instrument_type?: string | null
           lead_investors?: string[] | null
+          liquidation_preference?: number | null
+          option_pool_pct?: number | null
+          participation_cap?: number | null
+          pro_rata_rights?: boolean | null
           round_type: string
           source_url?: string | null
           valuation_post?: number | null
@@ -625,13 +737,19 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          anti_dilution_type?: string | null
           co_investors?: string[] | null
           company_id?: string
           confidence_score?: string | null
           created_at?: string
           date?: string | null
           id?: string
+          instrument_type?: string | null
           lead_investors?: string[] | null
+          liquidation_preference?: number | null
+          option_pool_pct?: number | null
+          participation_cap?: number | null
+          pro_rata_rights?: boolean | null
           round_type?: string
           source_url?: string | null
           valuation_post?: number | null
@@ -799,6 +917,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "key_personnel_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kpi_metrics: {
+        Row: {
+          company_id: string
+          confidence_score: string | null
+          created_at: string
+          definition_source: string | null
+          id: string
+          metric_name: string
+          period: string
+          period_type: string
+          value: number
+        }
+        Insert: {
+          company_id: string
+          confidence_score?: string | null
+          created_at?: string
+          definition_source?: string | null
+          id?: string
+          metric_name: string
+          period: string
+          period_type?: string
+          value: number
+        }
+        Update: {
+          company_id?: string
+          confidence_score?: string | null
+          created_at?: string
+          definition_source?: string | null
+          id?: string
+          metric_name?: string
+          period?: string
+          period_type?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kpi_metrics_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
