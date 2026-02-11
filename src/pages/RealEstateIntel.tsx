@@ -124,7 +124,7 @@ const RealEstateIntel = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-muted/30 border border-border">
+        <TabsList className="bg-muted/30 border border-border overflow-x-auto flex-wrap">
           <TabsTrigger value="overview" className="text-xs">Market Overview</TabsTrigger>
           <TabsTrigger value="transactions" className="text-xs">Transaction Log</TabsTrigger>
           <TabsTrigger value="submarkets" className="text-xs">Submarket Data</TabsTrigger>

@@ -197,7 +197,7 @@ const Landing = () => {
               Beta
             </span>
             <Button size="sm" asChild>
-              <Link to="/dashboard">Enter Platform</Link>
+              <Link to="/auth">Enter Platform</Link>
             </Button>
           </div>
         </div>
@@ -221,7 +221,7 @@ const Landing = () => {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="text-base px-8 glow-primary" asChild>
-              <Link to="/dashboard">
+              <Link to="/auth">
                 Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -384,7 +384,7 @@ const Landing = () => {
                   {t.name === "Institutional" ? (
                     <a href="mailto:sales@laurenzosgrapevine.io">{t.cta}</a>
                   ) : (
-                    <Link to="/dashboard">{t.cta}</Link>
+                    <Link to="/auth">{t.cta}</Link>
                   )}
                 </Button>
               </div>

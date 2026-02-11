@@ -1772,6 +1772,36 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_signups: {
+        Row: {
+          created_at: string
+          email: string
+          firm: string | null
+          id: string
+          interest: string | null
+          name: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          firm?: string | null
+          id?: string
+          interest?: string | null
+          name: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          firm?: string | null
+          id?: string
+          interest?: string | null
+          name?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       webhook_configs: {
         Row: {
           active: boolean | null

@@ -9,22 +9,22 @@ const ACTION_LABELS: Record<string, string> = {
 
 const TIERS = [
   {
-    name: "Free",
-    price: "$0",
+    name: "Analyst",
+    price: "$499/mo",
     current: true,
-    features: ["10 AI queries/day", "3 memos/day", "5 enrichments/day", "Basic pipeline"],
+    features: ["500 company profiles", "Basic valuation tools", "25 AI queries/day", "CSV export", "Email alerts"],
   },
   {
-    name: "Pro",
-    price: "$99/mo",
+    name: "Professional",
+    price: "$1,499/mo",
     current: false,
-    features: ["100 AI queries/day", "25 memos/day", "50 enrichments/day", "Priority support", "Team collaboration"],
+    features: ["Unlimited profiles", "Full valuation suite", "100 AI queries/day", "Fund intelligence", "CRE data", "API access"],
   },
   {
-    name: "Enterprise",
-    price: "Custom",
+    name: "Institutional",
+    price: "$3,999/mo",
     current: false,
-    features: ["Everything in Pro", "API access", "Custom integrations", "Dedicated support", "SLA guarantee"],
+    features: ["Everything in Professional", "Unlimited team seats", "Custom data feeds", "Dedicated account manager", "White-label reports", "SLA guarantee"],
   },
 ];
 

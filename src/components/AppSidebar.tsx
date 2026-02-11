@@ -23,6 +23,8 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
+import { useAuth } from "@/hooks/useAuth";
+import { LogOut } from "lucide-react";
 
 const mainModules = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -44,6 +46,7 @@ const insightModules = [
 const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const location = useLocation();
   const { data: unreadCount } = useUnreadCount();
+  const { signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   const linkClass = (path: string) => {
@@ -113,6 +116,13 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
         >
           {collapsed ? <ChevronRight className="h-4 w-4 shrink-0" /> : <ChevronLeft className="h-4 w-4 shrink-0" />}
           {!collapsed && <span className="truncate">Collapse</span>}
+        </button>
+        <button
+          onClick={() => signOut()}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          <LogOut className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="truncate">Sign Out</span>}
         </button>
       </div>
     </aside>
