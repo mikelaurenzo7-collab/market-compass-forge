@@ -1,98 +1,139 @@
 
 
-# Founder Mode: Next Moves to Make This a Real Business
+# Perfect the Valuation Engine
 
-This plan focuses on the 5 moves that separate "impressive demo" from "revenue-generating product." Ordered by business impact.
-
----
-
-## Move 1: Lock the Front Door (Auth Gate)
-
-The most critical gap. Every route is publicly accessible. The Auth page and ProtectedRoute component both exist but are completely disconnected.
-
-**What to do:**
-- Add `/auth` route to App.tsx
-- Wrap the AppLayout route with ProtectedRoute so all dashboard pages require login
-- Add a "Sign Out" button to Settings page and sidebar bottom
-- Keep Landing page (`/`) public and unauthenticated
-
-**Why it matters:** Without this, there's no user identity, no usage tracking, no conversion funnel, and no data isolation. Nothing else works without auth.
+An audit of every valuation-related component reveals six systemic accuracy problems. This plan fixes each one, moving from "looks like a terminal" to "calculates like a terminal."
 
 ---
 
-## Move 2: Onboarding Funnel (Landing to Signup to Dashboard)
+## Problem 1: Hardcoded Comparable Companies
 
-Right now "Start Free Trial" and "Enter Platform" dump users straight to the dashboard with no signup. This means zero lead capture.
+**Current state:** The CompanyDetail Valuation tab (lines 492-504) shows the same 3 companies (Salesforce, Adobe, ServiceNow) for EVERY company regardless of sector. A cannabis company and a cybersecurity company both show identical comps.
 
-**What to do:**
-- Change all Landing page CTAs ("Start Free Trial", "Enter Platform") to route to `/auth` instead of `/dashboard`
-- On the Auth page, after signup show a brief "Welcome" step before redirecting to dashboard
-- Wire the EarlyAccessModal to actually save submissions to a `waitlist_signups` table instead of faking it with setTimeout
-- Create a `waitlist_signups` table (name, email, firm, title, interest, created_at)
+**Fix:** Query real companies from the database that match the target company's sector, compute their actual EV/Revenue and EV/EBITDA from the `financials` and `funding_rounds` tables, and display dynamic comps.
 
-**Why it matters:** Every visitor who clicks a CTA should become a lead or a user. Right now they become neither.
-
----
-
-## Move 3: Consistent Pricing and Plan Enforcement
-
-The Landing page shows $499/$1,499/$3,999 tiers. The UpgradePrompt modal shows $0/$99/Custom tiers. The subscription_tiers table just stores "free" with no enforcement beyond AI query limits.
-
-**What to do:**
-- Align the UpgradePrompt tiers to match Landing page pricing ($499 Analyst / $1,499 Professional / $3,999 Institutional)
-- Update feature lists in UpgradePrompt to match Landing page features
-- Keep all CTAs as "Contact Us" / mailto for now (no Stripe needed yet -- this is a sales-led product at these price points)
-- Add a "Current Plan" display card to the Settings profile tab showing the user's tier
-
-**Why it matters:** Inconsistent pricing destroys credibility in demos. Sales-led products at $499+/mo don't need self-serve checkout -- they need consistent messaging.
+**File:** `src/pages/CompanyDetail.tsx` (valuation tab, lines 446-509)
+- Replace hardcoded array with a `useQuery` that fetches companies in the same sector
+- Join financials + funding to compute real multiples
+- Show median and mean sector multiples as summary stats
+- Add a "Sector Median" row at the bottom for quick reference
 
 ---
 
-## Move 4: Waitlist That Actually Works
+## Problem 2: Gross Margin Display Bug
 
-The EarlyAccessModal pretends to save data. For a sales-led product, every lead matters.
+**Current state:** Line 435 in CompanyDetail.tsx displays `f.gross_margin.toFixed(1)%` -- but gross margins are stored as decimals (0.72, not 72). This renders as "0.7%" instead of "72%". The `formatPercent` helper exists and handles this correctly, but it's not used consistently.
 
-**What to do:**
-- Create a `waitlist_signups` table (name, email, firm, title, interest, created_at) with RLS allowing inserts from authenticated and anonymous users
-- Update EarlyAccessModal to insert into this table
-- Add a simple admin view in Settings (for admin role users) showing waitlist signups count
+**Fix:** Audit all gross_margin display points and ensure they multiply by 100 or use the `formatPercent` helper.
 
-**Why it matters:** If someone fills out a form expressing interest, that's a warm lead. Throwing it away is unacceptable.
+**Files affected:**
+- `src/pages/CompanyDetail.tsx` line 435: change to `${(f.gross_margin * 100).toFixed(1)}%`
 
 ---
 
-## Move 5: Mobile Polish Pass
+## Problem 3: Generic AI Analysis Template
 
-The remaining Phase 3D items that were planned but not yet executed.
+**Current state:** The AI Analysis tab (lines 552-601) shows identical boilerplate text for every company: "strong recurring revenue model", "customer concentration risk in Fortune 500 segment" -- none of this is derived from actual data.
 
-**What to do:**
-- Distressed Assets page: wrap filter pills in a collapsible panel on mobile
-- Real Estate tabs: ensure horizontal scroll works on tab triggers
-- Fund Intelligence table: add overflow-x-auto and sticky first column
-- Landing page pricing cards: verify they stack properly on small screens
-- Dashboard metric card labels: use text-xs on mobile to prevent text overflow
+**Fix:** Replace the static template with data-driven analysis that references the company's actual metrics, score breakdown, and sector positioning.
 
-**Why it matters:** Wealthy individuals and family office principals often browse on iPads and phones. A broken mobile experience kills credibility.
+**File:** `src/pages/CompanyDetail.tsx` (analysis tab)
+- Use the `score` object (already computed) to generate dynamic strengths/risks
+- Reference actual ARR, growth rate, burn rate, Rule of 40, and implied multiple
+- Show sector-relative positioning ("trading at Xth percentile of sector EV/Revenue")
+- Add a call to the existing `ai-research` edge function for a real AI-generated summary
+
+---
+
+## Problem 4: DCF Calculator Disconnected from Company Data
+
+**Current state:** The DCF Calculator always starts with generic defaults ($100M revenue, 15% growth, 25% EBITDA margin). When a user is on a company's valuation tab, these defaults have no connection to that company's actual financials.
+
+**Fix:** Accept optional company financials as props and pre-populate the DCF with real data when available.
+
+**File:** `src/components/DCFCalculator.tsx`
+- Add optional props: `initialRevenue`, `initialGrowth`, `initialMargin`, `companyName`
+- When props are provided, use them as defaults instead of generic values
+- Show a label: "Pre-populated from [Company Name] financials"
+
+**File:** `src/pages/CompanyDetail.tsx`
+- In the valuation tab, render `<DCFCalculator>` with the company's actual revenue, growth rate, and EBITDA margin passed as props
+
+---
+
+## Problem 5: Investment Score Accuracy Gaps
+
+**Current state in `useCompanyScore.ts`:**
+- **Sector momentum** is based purely on how many companies exist in that sector in our database (density), not on actual deal activity, funding trends, or multiple expansion
+- **No EV/EBITDA scoring** -- the entire valuation score uses only EV/Revenue, ignoring profitability-adjusted multiples
+- **Sector multiple benchmarking is missing** -- a 10x EV/Revenue is cheap for cybersecurity but expensive for healthcare services, yet both score identically
+
+**Fixes:**
+1. Add **sector-relative valuation scoring**: query the precedent_transactions table for sector median multiples, and score the company's multiple relative to its sector median rather than using absolute thresholds
+2. Add **EV/EBITDA as a secondary valuation signal**: when EBITDA data exists, compute and factor in EV/EBITDA alongside EV/Revenue
+3. Improve **sector momentum** to incorporate actual deal volume from `deal_transactions` and funding round counts from `funding_rounds` for that sector in the last 12 months
+4. Add new output fields: `evEbitda`, `sectorMedianEvRevenue`, `sectorMedianEvEbitda` to `CompanyScoreResult`
+
+**Files:**
+- `src/hooks/useCompanyScore.ts` -- refactor valuation score section and sector momentum section
+- `src/components/CompanyScore.tsx` -- display the new EV/EBITDA and sector comparison metrics
+
+---
+
+## Problem 6: Football Field Uses Static Defaults
+
+**Current state:** The ValuationFootballField always shows the same hardcoded ranges ($280-$560M for DCF, etc.) regardless of context.
+
+**Fix:** When rendered on a company page, compute ranges from:
+- **DCF range**: Use the sensitivity matrix min/max from DCF calculator logic
+- **Comp Companies**: Use sector median EV/Revenue applied to company's revenue (25th/50th/75th percentile)
+- **Precedent Txns**: Use sector precedent transaction multiples
+- **LBO Analysis**: Derive from standard LBO return thresholds (15-25% IRR)
+
+**File:** `src/components/ValuationFootballField.tsx`
+- Accept optional `companyData` prop with revenue, ebitda, sectorMultiples
+- When provided, compute real ranges instead of showing static defaults
+- Keep the hardcoded defaults as fallback for the standalone Valuations page
+
+---
+
+## Problem 7: Precedent Transactions Missing Statistical Context
+
+**Current state:** The Precedent Transactions component shows raw averages but no distribution analysis (median, 25th/75th percentile, standard deviation).
+
+**Fix:** Add percentile statistics to give users proper benchmarking context.
+
+**File:** `src/components/PrecedentTransactions.tsx`
+- Add median EV/Revenue and median EV/EBITDA alongside the existing averages
+- Add 25th and 75th percentile stats
+- Show deal count by year as a mini bar chart or stat row
+- Highlight statistical outliers in the table
 
 ---
 
 ## Technical Summary
 
-### Database migrations:
-1. Create `waitlist_signups` table with public insert RLS policy
-
 ### Files to modify:
-1. `src/App.tsx` -- Add `/auth` route, wrap AppLayout with ProtectedRoute
-2. `src/components/AppSidebar.tsx` -- Add Sign Out button at bottom
-3. `src/pages/Landing.tsx` -- Change CTA links from `/dashboard` to `/auth`
-4. `src/components/UpgradePrompt.tsx` -- Align tiers to $499/$1,499/$3,999
-5. `src/components/EarlyAccessModal.tsx` -- Wire to database insert
-6. `src/pages/Settings.tsx` -- Add current plan card and sign-out button
-7. `src/pages/DistressedAssets.tsx` -- Mobile collapsible filters
-8. `src/pages/FundIntelligence.tsx` -- Sticky first column on mobile
-9. `src/pages/RealEstateIntel.tsx` -- Tab scroll on mobile
+1. `src/hooks/useCompanyScore.ts` -- Sector-relative scoring, EV/EBITDA, improved momentum
+2. `src/components/CompanyScore.tsx` -- Display new metrics (EV/EBITDA, sector comparisons)
+3. `src/pages/CompanyDetail.tsx` -- Dynamic comps, data-driven AI analysis, DCF integration, gross margin fix
+4. `src/components/DCFCalculator.tsx` -- Accept company data as props
+5. `src/components/ValuationFootballField.tsx` -- Accept company data, compute real ranges
+6. `src/components/PrecedentTransactions.tsx` -- Add percentile statistics
+7. `src/hooks/useData.ts` -- Add `useSectorMultiples` hook for reuse
 
-### No new components needed
-### 1 database migration (waitlist_signups)
-### Priority: Moves 1-2 first (auth + funnel), then 3-4 (pricing + waitlist), then 5 (polish)
+### New hooks:
+1. `useSectorMultiples(sector)` -- Returns median/mean/p25/p75 EV/Revenue and EV/EBITDA for a sector from precedent_transactions
+
+### No database migrations needed
+All data already exists in precedent_transactions, financials, funding_rounds, and deal_transactions tables.
+
+### Priority order:
+1. Gross margin bug fix (instant credibility fix)
+2. Dynamic comps on CompanyDetail (most visible per-company improvement)
+3. Investment score accuracy (core engine)
+4. DCF pre-population from company data
+5. Football field with real ranges
+6. Precedent transaction statistics
+7. Data-driven AI analysis
 
