@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import type { MarketFilter } from "@/components/MarketToggle";
 
 const BATCH_SIZE = 200;
 const chunk = <T>(arr: T[], size: number): T[][] => {
@@ -173,7 +172,6 @@ export const useDealFlowData = () =>
         .order("date", { ascending: true });
       if (error) throw error;
 
-      // Group by month
       const byMonth: Record<string, { deals: number; value: number }> = {};
       (data ?? []).forEach((r) => {
         const d = new Date(r.date!);
@@ -199,13 +197,11 @@ export const useCompaniesWithFinancials = () =>
         .order("name");
       if (error) throw error;
 
-      // Get latest funding round and financials for each
       const companyIds = data.map((c) => c.id);
-
       const batches = chunk(companyIds, BATCH_SIZE);
       const [fundingBatches, financialsBatches] = await Promise.all([
         Promise.all(batches.map(b => supabase.from("funding_rounds").select("company_id, round_type, valuation_post, amount, date").in("company_id", b).order("date", { ascending: false }))),
-        Promise.all(batches.map(b => supabase.from("financials").select("company_id, arr, revenue").in("company_id", b).order("period", { ascending: false }))),
+        Promise.all(batches.map(b => supabase.from("financials").select("company_id, arr, revenue, ebitda").in("company_id", b).order("period", { ascending: false }))),
       ]);
       const fundingData = fundingBatches.flatMap(r => r.data ?? []);
       const financialsData = financialsBatches.flatMap(r => r.data ?? []);
@@ -258,86 +254,24 @@ export const useSearchInvestors = (query: string) =>
     enabled: query.length >= 2,
   });
 
-export const usePublicMarketData = (companyId: string) =>
+export const useCompaniesWithFinancialsAll = () =>
   useQuery({
-    queryKey: ["public-market-data", companyId],
+    queryKey: ["companies-with-financials", "all"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("public_market_data")
-        .select("*")
-        .eq("company_id", companyId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!companyId,
-  });
-
-export const usePublicMarketLeaders = () =>
-  useQuery({
-    queryKey: ["public-market-leaders"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("public_market_data")
-        .select("*, companies(id, name, sector, stage)")
-        .order("market_cap", { ascending: false })
-        .limit(20);
-      if (error) throw error;
-      return data;
-    },
-  });
-
-export const usePublicMarketMovers = () =>
-  useQuery({
-    queryKey: ["public-market-movers"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("public_market_data")
-        .select("*, companies(id, name, sector)")
-        .order("price_change_pct", { ascending: false })
-        .limit(40);
-      if (error) throw error;
-      const gainers = (data ?? []).slice(0, 5);
-      const losers = (data ?? []).reverse().slice(0, 5).reverse();
-      return { gainers, losers };
-    },
-  });
-
-export const useCompaniesFiltered = (marketType: MarketFilter = "all") =>
-  useQuery({
-    queryKey: ["companies-filtered", marketType],
-    queryFn: async () => {
-      let query = supabase.from("companies").select("*").order("name");
-      if (marketType !== "all") query = query.eq("market_type", marketType);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as Company[];
-    },
-  });
-
-export const useCompaniesWithFinancialsFiltered = (marketType: MarketFilter = "all") =>
-  useQuery({
-    queryKey: ["companies-with-financials", marketType],
-    queryFn: async () => {
-      let query = supabase
         .from("companies")
         .select("id, name, sector, stage, hq_country, employee_count, founded_year, domain, market_type")
         .order("name");
-      if (marketType !== "all") query = query.eq("market_type", marketType);
-      const { data, error } = await query;
       if (error) throw error;
 
       const companyIds = data.map((c) => c.id);
-
       const batches = chunk(companyIds, BATCH_SIZE);
-      const [fundingBatches, financialsBatches, marketDataBatches] = await Promise.all([
+      const [fundingBatches, financialsBatches] = await Promise.all([
         Promise.all(batches.map(b => supabase.from("funding_rounds").select("company_id, round_type, valuation_post, amount, date").in("company_id", b).order("date", { ascending: false }))),
-        Promise.all(batches.map(b => supabase.from("financials").select("company_id, arr, revenue").in("company_id", b).order("period", { ascending: false }))),
-        Promise.all(batches.map(b => supabase.from("public_market_data").select("company_id, ticker, market_cap, pe_ratio, price_change_pct, price").in("company_id", b))),
+        Promise.all(batches.map(b => supabase.from("financials").select("company_id, arr, revenue, ebitda").in("company_id", b).order("period", { ascending: false }))),
       ]);
       const fundingData = fundingBatches.flatMap(r => r.data ?? []);
       const financialsData = financialsBatches.flatMap(r => r.data ?? []);
-      const marketDataArr = marketDataBatches.flatMap(r => r.data ?? []);
 
       const latestFunding: Record<string, (typeof fundingData)[0]> = {};
       fundingData.forEach((r) => {
@@ -349,17 +283,39 @@ export const useCompaniesWithFinancialsFiltered = (marketType: MarketFilter = "a
         if (!latestFinancials[f.company_id]) latestFinancials[f.company_id] = f;
       });
 
-      const marketData: Record<string, (typeof marketDataArr)[0]> = {};
-      marketDataArr.forEach((m) => {
-        marketData[m.company_id] = m;
-      });
-
       return data.map((c) => ({
         ...c,
         latestRound: latestFunding[c.id] ?? null,
         latestFinancials: latestFinancials[c.id] ?? null,
-        publicMarketData: marketData[c.id] ?? null,
       }));
+    },
+  });
+
+// Distressed assets hook
+export const useDistressedAssets = () =>
+  useQuery({
+    queryKey: ["distressed-assets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("distressed_assets")
+        .select("*")
+        .order("listed_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
+// Private listings hook
+export const usePrivateListings = () =>
+  useQuery({
+    queryKey: ["private-listings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("private_listings")
+        .select("*")
+        .order("listed_date", { ascending: false });
+      if (error) throw error;
+      return data;
     },
   });
 

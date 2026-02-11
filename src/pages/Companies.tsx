@@ -1,15 +1,14 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useCompaniesWithFinancialsFiltered, formatCurrency } from "@/hooks/useData";
-import { ArrowUpDown, Building2, Download, Globe } from "lucide-react";
+import { useCompaniesWithFinancialsAll, formatCurrency } from "@/hooks/useData";
+import { ArrowUpDown, Building2, Download } from "lucide-react";
 import { exportCompaniesCSV } from "@/lib/export";
 import { useTableNavigation } from "@/hooks/useHotkeys";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { TableSkeleton } from "@/components/SkeletonLoaders";
-import MarketToggle, { type MarketFilter } from "@/components/MarketToggle";
 
-const STAGES = ["All", "Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage", "Public"];
-const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce", "Semiconductors", "Energy", "Industrials", "Pharmaceuticals", "Retail", "Automotive", "Aerospace & Defense", "Media & Entertainment", "Consumer Staples", "Telecommunications"];
+const STAGES = ["All", "Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage"];
+const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce", "Services", "Construction", "Manufacturing", "Professional Services", "Financial Services", "Distribution", "Real Estate", "Hospitality", "Restaurant"];
 
 const GRADE_MAP: { min: number; grade: string; color: string }[] = [
   { min: 85, grade: "A+", color: "text-success" },
@@ -26,11 +25,10 @@ const getGrade = (score: number) => {
   return { grade: g.grade, color: g.color };
 };
 
-type SortKey = "name" | "valuation" | "arr" | "sector" | "stage" | "marketCap" | "score";
+type SortKey = "name" | "valuation" | "revenue" | "sector" | "stage" | "score";
 
 const Companies = () => {
-  const [marketFilter, setMarketFilter] = useState<MarketFilter>("all");
-  const { data: companies, isLoading } = useCompaniesWithFinancialsFiltered(marketFilter);
+  const { data: companies, isLoading } = useCompaniesWithFinancialsAll();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [sectorFilter, setSectorFilter] = useState("All");
@@ -38,45 +36,51 @@ const Companies = () => {
   const [sortKey, setSortKey] = useState<SortKey>("valuation");
   const [sortAsc, setSortAsc] = useState(false);
 
-  // Compute scores
   const scoredCompanies = useMemo(() => {
     if (!companies) return [];
-    const allARR = companies.map((c: any) => c.latestFinancials?.arr ?? 0).filter((a: number) => a > 0).sort((a: number, b: number) => a - b);
+    const allRevenue = companies.map((c: any) => c.latestFinancials?.revenue ?? c.latestFinancials?.arr ?? 0).filter((a: number) => a > 0).sort((a: number, b: number) => a - b);
     const sectorCounts: Record<string, number> = {};
     companies.forEach((c: any) => { if (c.sector) sectorCounts[c.sector] = (sectorCounts[c.sector] || 0) + 1; });
     const maxSectorCount = Math.max(...Object.values(sectorCounts), 1);
 
     return companies.map((c: any) => {
-      const arr = c.latestFinancials?.arr ?? 0;
+      const revenue = c.latestFinancials?.revenue ?? c.latestFinancials?.arr ?? 0;
       const valuation = c.latestRound?.valuation_post ?? 0;
       const empCount = c.employee_count ?? 0;
+      const ebitda = c.latestFinancials?.ebitda ?? 0;
 
-      let arrScore = 50;
-      if (arr > 0 && allARR.length > 0) {
-        const rank = allARR.filter((a: number) => a <= arr).length;
-        arrScore = Math.round((rank / allARR.length) * 100);
+      let revenueScore = 50;
+      if (revenue > 0 && allRevenue.length > 0) {
+        const rank = allRevenue.filter((a: number) => a <= revenue).length;
+        revenueScore = Math.round((rank / allRevenue.length) * 100);
       }
 
       let valuationScore = 50;
-      if (valuation > 0 && arr > 0) {
-        const multiple = valuation / arr;
-        if (multiple <= 10) valuationScore = 90;
-        else if (multiple <= 20) valuationScore = 75;
-        else if (multiple <= 40) valuationScore = 60;
-        else if (multiple <= 60) valuationScore = 45;
-        else if (multiple <= 80) valuationScore = 30;
-        else valuationScore = 20;
+      if (valuation > 0 && revenue > 0) {
+        const multiple = valuation / revenue;
+        if (multiple <= 5) valuationScore = 90;
+        else if (multiple <= 10) valuationScore = 80;
+        else if (multiple <= 20) valuationScore = 70;
+        else if (multiple <= 40) valuationScore = 55;
+        else if (multiple <= 60) valuationScore = 40;
+        else valuationScore = 25;
       }
 
       const sectorMomentum = c.sector ? Math.round((sectorCounts[c.sector] / maxSectorCount) * 100) : 50;
 
       let efficiencyScore = 50;
-      if (empCount > 0 && arr > 0) {
-        const revPerEmp = arr / empCount;
+      if (empCount > 0 && revenue > 0) {
+        const revPerEmp = revenue / empCount;
         efficiencyScore = Math.min(100, Math.round((revPerEmp / 300000) * 100));
       }
 
-      const overall = Math.round(arrScore * 0.30 + valuationScore * 0.25 + sectorMomentum * 0.20 + efficiencyScore * 0.25);
+      let ebitdaScore = 50;
+      if (revenue > 0 && ebitda > 0) {
+        const margin = ebitda / revenue;
+        ebitdaScore = Math.min(100, Math.round(margin * 400));
+      }
+
+      const overall = Math.round(revenueScore * 0.25 + valuationScore * 0.20 + sectorMomentum * 0.15 + efficiencyScore * 0.20 + ebitdaScore * 0.20);
       const { grade, color } = getGrade(overall);
 
       return { ...c, _score: overall, _grade: grade, _gradeColor: color };
@@ -96,10 +100,9 @@ const Companies = () => {
         switch (sortKey) {
           case "name": av = a.name; bv = b.name; break;
           case "valuation": av = a.latestRound?.valuation_post ?? 0; bv = b.latestRound?.valuation_post ?? 0; break;
-          case "arr": av = a.latestFinancials?.arr ?? 0; bv = b.latestFinancials?.arr ?? 0; break;
+          case "revenue": av = a.latestFinancials?.revenue ?? a.latestFinancials?.arr ?? 0; bv = b.latestFinancials?.revenue ?? b.latestFinancials?.arr ?? 0; break;
           case "sector": av = a.sector ?? ""; bv = b.sector ?? ""; break;
           case "stage": av = a.stage ?? ""; bv = b.stage ?? ""; break;
-          case "marketCap": av = a.publicMarketData?.market_cap ?? 0; bv = b.publicMarketData?.market_cap ?? 0; break;
           case "score": av = a._score; bv = b._score; break;
         }
         if (typeof av === "string") return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
@@ -128,11 +131,9 @@ const Companies = () => {
     </th>
   );
 
-  const showPublicCols = marketFilter === "public" || marketFilter === "all";
-
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Companies</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Loading...</p>
@@ -143,23 +144,20 @@ const Companies = () => {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Companies</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="font-mono text-primary">{filtered.length}</span> companies tracked
+            <span className="font-mono text-primary">{filtered.length}</span> private companies tracked
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <MarketToggle value={marketFilter} onChange={setMarketFilter} />
-          <button
-            onClick={() => exportCompaniesCSV(filtered)}
-            className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
-          >
-            <Download className="h-4 w-4" /> Export CSV
-          </button>
-        </div>
+        <button
+          onClick={() => exportCompaniesCSV(filtered)}
+          className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2 self-start"
+        >
+          <Download className="h-4 w-4" /> Export CSV
+        </button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -179,10 +177,8 @@ const Companies = () => {
               <tr className="border-b border-border bg-muted/30">
                 <SortHeader label="Company" sortId="name" />
                 <SortHeader label="Sector" sortId="sector" />
-                {marketFilter !== "public" && <SortHeader label="Valuation" sortId="valuation" align="right" />}
-                {marketFilter !== "public" && <SortHeader label="ARR" sortId="arr" align="right" />}
-                {showPublicCols && <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">Ticker</th>}
-                {showPublicCols && <SortHeader label="Market Cap" sortId="marketCap" align="right" />}
+                <SortHeader label="Valuation" sortId="valuation" align="right" />
+                <SortHeader label="Revenue" sortId="revenue" align="right" />
                 <SortHeader label="Score" sortId="score" align="right" />
                 <SortHeader label="Stage" sortId="stage" />
                 <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">HQ</th>
@@ -202,39 +198,25 @@ const Companies = () => {
                     <CompanyHoverCard company={{ id: c.id, name: c.name, sector: c.sector, stage: c.stage, hq_country: c.hq_country, employee_count: c.employee_count, valuation: c.latestRound?.valuation_post, arr: c.latestFinancials?.arr }}>
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
-                          {c.market_type === "public" ? <Globe className="h-3 w-3 text-accent-foreground" /> : <Building2 className="h-3 w-3 text-accent-foreground" />}
+                          <Building2 className="h-3 w-3 text-accent-foreground" />
                         </div>
                         <span className="text-foreground font-medium">{c.name}</span>
                       </div>
                     </CompanyHoverCard>
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
-                  {marketFilter !== "public" && (
-                    <td className="px-4 py-2.5 text-right text-foreground font-medium font-mono">
-                      {formatCurrency(c.latestRound?.valuation_post ?? null)}
-                    </td>
-                  )}
-                  {marketFilter !== "public" && (
-                    <td className="px-4 py-2.5 text-right text-foreground font-mono">
-                      {formatCurrency(c.latestFinancials?.arr ?? null)}
-                    </td>
-                  )}
-                  {showPublicCols && (
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                      {c.publicMarketData?.ticker ?? "—"}
-                    </td>
-                  )}
-                  {showPublicCols && (
-                    <td className="px-4 py-2.5 text-right text-foreground font-mono">
-                      {c.publicMarketData?.market_cap ? formatCurrency(c.publicMarketData.market_cap) : "—"}
-                    </td>
-                  )}
+                  <td className="px-4 py-2.5 text-right text-foreground font-medium font-mono">
+                    {formatCurrency(c.latestRound?.valuation_post ?? null)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-foreground font-mono">
+                    {formatCurrency(c.latestFinancials?.revenue ?? c.latestFinancials?.arr ?? null)}
+                  </td>
                   <td className="px-4 py-2.5 text-right">
                     <span className={`font-mono font-bold text-xs ${c._gradeColor}`}>{c._grade}</span>
                     <span className="text-[10px] text-muted-foreground ml-1 font-mono">{c._score}</span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${c.market_type === "public" ? "bg-primary/10 text-primary border border-primary/20" : "bg-accent text-accent-foreground"}`}>
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                       {c.stage ?? "—"}
                     </span>
                   </td>

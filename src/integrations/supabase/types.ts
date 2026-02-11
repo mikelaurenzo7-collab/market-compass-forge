@@ -593,6 +593,66 @@ export type Database = {
         }
         Relationships: []
       }
+      distressed_assets: {
+        Row: {
+          asking_price: number | null
+          asset_type: string
+          contact_info: string | null
+          created_at: string
+          description: string | null
+          discount_pct: number | null
+          distress_type: string
+          estimated_value: number | null
+          id: string
+          key_metrics: Json | null
+          listed_date: string | null
+          location_city: string | null
+          location_state: string | null
+          name: string
+          sector: string | null
+          source: string | null
+          status: string
+        }
+        Insert: {
+          asking_price?: number | null
+          asset_type?: string
+          contact_info?: string | null
+          created_at?: string
+          description?: string | null
+          discount_pct?: number | null
+          distress_type?: string
+          estimated_value?: number | null
+          id?: string
+          key_metrics?: Json | null
+          listed_date?: string | null
+          location_city?: string | null
+          location_state?: string | null
+          name: string
+          sector?: string | null
+          source?: string | null
+          status?: string
+        }
+        Update: {
+          asking_price?: number | null
+          asset_type?: string
+          contact_info?: string | null
+          created_at?: string
+          description?: string | null
+          discount_pct?: number | null
+          distress_type?: string
+          estimated_value?: number | null
+          id?: string
+          key_metrics?: Json | null
+          listed_date?: string | null
+          location_city?: string | null
+          location_state?: string | null
+          name?: string
+          sector?: string | null
+          source?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       financials: {
         Row: {
           arr: number | null
@@ -1212,6 +1272,66 @@ export type Database = {
           target_company_name?: string
           target_ebitda?: number | null
           target_revenue?: number | null
+        }
+        Relationships: []
+      }
+      private_listings: {
+        Row: {
+          address: string | null
+          asking_price: number | null
+          city: string
+          created_at: string
+          description: string | null
+          estimated_cap_rate: number | null
+          id: string
+          listed_date: string | null
+          listing_type: string
+          noi: number | null
+          property_type: string
+          size_sf: number | null
+          source_network: string | null
+          state: string
+          status: string
+          units: number | null
+          year_built: number | null
+        }
+        Insert: {
+          address?: string | null
+          asking_price?: number | null
+          city: string
+          created_at?: string
+          description?: string | null
+          estimated_cap_rate?: number | null
+          id?: string
+          listed_date?: string | null
+          listing_type?: string
+          noi?: number | null
+          property_type: string
+          size_sf?: number | null
+          source_network?: string | null
+          state: string
+          status?: string
+          units?: number | null
+          year_built?: number | null
+        }
+        Update: {
+          address?: string | null
+          asking_price?: number | null
+          city?: string
+          created_at?: string
+          description?: string | null
+          estimated_cap_rate?: number | null
+          id?: string
+          listed_date?: string | null
+          listing_type?: string
+          noi?: number | null
+          property_type?: string
+          size_sf?: number | null
+          source_network?: string | null
+          state?: string
+          status?: string
+          units?: number | null
+          year_built?: number | null
         }
         Relationships: []
       }
