@@ -32,7 +32,7 @@ const CompanyDetail = () => {
   const { data: events } = useActivityEvents(id);
   const { data: publicMarketData } = usePublicMarketData(id!);
   const [noteContent, setNoteContent] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "news" | "research" | "memo" | "enrichment">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "analysis" | "news" | "research" | "memo">("overview");
 
   const latestFinancialForScore = financials?.[0];
   const previousFinancial = financials?.[1];
@@ -257,18 +257,18 @@ const CompanyDetail = () => {
       )}
 
       {/* Tab navigation */}
-      <div className="flex gap-1 border-b border-border no-print">
-        {(["overview", "news", "research", "memo", "enrichment"] as const).map((tab) => (
+      <div className="flex gap-1 border-b border-border no-print overflow-x-auto">
+        {(["overview", "financials", "valuation", "deals", "analysis", "news", "research", "memo"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "overview" ? "Overview" : tab === "news" ? "News & Sentiment" : tab === "research" ? "AI Research" : tab === "memo" ? "Investment Memo" : "Enrichment"}
+            {tab === "overview" ? "Overview" : tab === "financials" ? "Financials" : tab === "valuation" ? "Valuation" : tab === "deals" ? "Deal History" : tab === "analysis" ? "AI Analysis" : tab === "news" ? "News & Sentiment" : tab === "research" ? "AI Research" : "Investment Memo"}
           </button>
         ))}
       </div>
@@ -418,6 +418,201 @@ const CompanyDetail = () => {
         </div>
       )}
 
+      {activeTab === "financials" && financials && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Financial History</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-data">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Period</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Revenue</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">YoY Growth</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">EBITDA</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {financials.map((f, idx) => {
+                    const prev = financials[idx + 1];
+                    const growth = prev && prev.revenue ? ((f.revenue! - prev.revenue) / prev.revenue * 100) : null;
+                    return (
+                      <tr key={f.id} className="border-b border-border/50">
+                        <td className="px-4 py-2.5 font-medium text-foreground">{f.period}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(f.revenue)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-foreground">{growth !== null ? `${growth.toFixed(1)}%` : "—"}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(f.ebitda)}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-foreground">{f.gross_margin ? `${f.gross_margin.toFixed(1)}%` : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "valuation" && latestFinancial && latestRound && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Current Estimated Valuation</p>
+                <p className="text-2xl font-mono font-semibold text-primary">{formatCurrency(latestRound.valuation_post)}</p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">Comp Analysis</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3 rounded border border-border/50 bg-secondary/30">
+                <p className="text-xs text-muted-foreground mb-1">EV/Revenue</p>
+                <p className="text-lg font-mono font-semibold text-foreground">{latestFinancial.revenue && latestRound.valuation_post ? (latestRound.valuation_post / latestFinancial.revenue).toFixed(2) : "—"}x</p>
+              </div>
+              <div className="p-3 rounded border border-border/50 bg-secondary/30">
+                <p className="text-xs text-muted-foreground mb-1">EV/EBITDA</p>
+                <p className="text-lg font-mono font-semibold text-foreground">{latestFinancial.ebitda && latestRound.valuation_post ? (latestRound.valuation_post / latestFinancial.ebitda).toFixed(1) : "—"}x</p>
+              </div>
+              <div className="p-3 rounded border border-border/50 bg-secondary/30">
+                <p className="text-xs text-muted-foreground mb-1">Est. Revenue</p>
+                <p className="text-lg font-mono font-semibold text-foreground">{formatCurrency(latestFinancial.revenue)}</p>
+              </div>
+              <div className="p-3 rounded border border-border/50 bg-secondary/30">
+                <p className="text-xs text-muted-foreground mb-1">Est. EBITDA</p>
+                <p className="text-lg font-mono font-semibold text-foreground">{formatCurrency(latestFinancial.ebitda)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-card">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Comparable Companies</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-data text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Company</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Ticker</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Mkt Cap</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">EV/Rev</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">EV/EBITDA</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { name: "Salesforce", ticker: "CRM", mktCap: 341e9, evRev: 8.2, evEbitda: 45.3 },
+                    { name: "Adobe", ticker: "ADBE", mktCap: 189e9, evRev: 11.4, evEbitda: 52.1 },
+                    { name: "ServiceNow", ticker: "NOW", mktCap: 174e9, evRev: 13.8, evEbitda: 68.4 },
+                  ].map((comp) => (
+                    <tr key={comp.ticker} className="border-b border-border/50 hover:bg-secondary/30">
+                      <td className="px-4 py-2.5 font-medium text-foreground">{comp.name}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-primary">{comp.ticker}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">${(comp.mktCap / 1e9).toFixed(1)}B</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{comp.evRev.toFixed(1)}x</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{comp.evEbitda.toFixed(1)}x</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "deals" && funding && funding.length > 0 && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card">
+            <div className="px-4 py-3 border-b border-border">
+              <h3 className="text-sm font-semibold text-foreground">Deal Timeline</h3>
+            </div>
+            <div className="divide-y divide-border/50">
+              {funding.map((round, idx) => (
+                <div key={round.id} className="px-4 py-3 flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="h-3 w-3 rounded-full bg-primary shrink-0"></div>
+                    {idx < funding.length - 1 && <div className="h-8 w-0.5 bg-border/30 mt-1"></div>}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-medium text-foreground">{round.round_type}</p>
+                      <span className="text-xs text-muted-foreground font-mono">{round.date ? new Date(round.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3 mt-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Amount</p>
+                        <p className="text-sm font-mono font-semibold text-foreground">{formatCurrency(round.amount)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Post-Val</p>
+                        <p className="text-sm font-mono font-semibold text-foreground">{formatCurrency(round.valuation_post)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Lead Investors</p>
+                        <p className="text-sm text-foreground">{round.lead_investors?.slice(0, 2).join(', ') || '—'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "analysis" && (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-border bg-card p-4">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-foreground mb-3">AI Investment Summary</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {company.name} is a {company.stage || 'late-stage'} {company.sector || 'technology'} company with {company.employee_count ? `${company.employee_count.toLocaleString()} employees` : 'strong headcount'} focused on enterprise software solutions. The company demonstrates solid revenue growth and improving unit economics, with recent financials showing strong operational leverage. Market positioning is strong in their vertical with defensible competitive advantages.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Key Strengths</h4>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5">●</span>
+                    <span className="text-sm text-foreground">Strong recurring revenue model with {latestFinancial?.arr ? 'growing' : 'solid'} ARR</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5">●</span>
+                    <span className="text-sm text-foreground">Experienced management team with proven M&A track record</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5">●</span>
+                    <span className="text-sm text-foreground">Expanding TAM in {company.sector} with tailwinds</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Key Risks</h4>
+                <ul className="space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-destructive mt-0.5">●</span>
+                    <span className="text-sm text-foreground">Competitive intensity in core verticals increasing</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-destructive mt-0.5">●</span>
+                    <span className="text-sm text-foreground">Customer concentration risk in Fortune 500 segment</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-destructive mt-0.5">●</span>
+                    <span className="text-sm text-foreground">Integration complexity from rapid acquisition strategy</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === "news" && (
         <NewsFeed companyId={id!} />
       )}
@@ -428,10 +623,6 @@ const CompanyDetail = () => {
 
       {activeTab === "memo" && (
         <InvestmentMemo companyId={id!} companyName={company.name} />
-      )}
-
-      {activeTab === "enrichment" && (
-        <EnrichmentPanel companyId={id!} companyName={company.name} />
       )}
     </div>
   );

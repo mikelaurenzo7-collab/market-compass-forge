@@ -552,6 +552,41 @@ export type Database = {
         }
         Relationships: []
       }
+      key_personnel: {
+        Row: {
+          background: string | null
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          title: string
+        }
+        Insert: {
+          background?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          title: string
+        }
+        Update: {
+          background?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "key_personnel_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_articles: {
         Row: {
           ai_summary: string | null
@@ -718,6 +753,51 @@ export type Database = {
           name?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      precedent_transactions: {
+        Row: {
+          acquirer_company_name: string
+          created_at: string
+          deal_date: string | null
+          deal_type: string | null
+          deal_value: number | null
+          ev_ebitda: number | null
+          ev_revenue: number | null
+          id: string
+          sector: string | null
+          target_company_name: string
+          target_ebitda: number | null
+          target_revenue: number | null
+        }
+        Insert: {
+          acquirer_company_name: string
+          created_at?: string
+          deal_date?: string | null
+          deal_type?: string | null
+          deal_value?: number | null
+          ev_ebitda?: number | null
+          ev_revenue?: number | null
+          id?: string
+          sector?: string | null
+          target_company_name: string
+          target_ebitda?: number | null
+          target_revenue?: number | null
+        }
+        Update: {
+          acquirer_company_name?: string
+          created_at?: string
+          deal_date?: string | null
+          deal_type?: string | null
+          deal_value?: number | null
+          ev_ebitda?: number | null
+          ev_revenue?: number | null
+          id?: string
+          sector?: string | null
+          target_company_name?: string
+          target_ebitda?: number | null
+          target_revenue?: number | null
         }
         Relationships: []
       }
