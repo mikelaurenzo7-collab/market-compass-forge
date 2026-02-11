@@ -1,139 +1,154 @@
 
+# Product Perfection Plan: Full Gap Analysis and Polish
 
-# Perfect the Valuation Engine
-
-An audit of every valuation-related component reveals six systemic accuracy problems. This plan fixes each one, moving from "looks like a terminal" to "calculates like a terminal."
-
----
-
-## Problem 1: Hardcoded Comparable Companies
-
-**Current state:** The CompanyDetail Valuation tab (lines 492-504) shows the same 3 companies (Salesforce, Adobe, ServiceNow) for EVERY company regardless of sector. A cannabis company and a cybersecurity company both show identical comps.
-
-**Fix:** Query real companies from the database that match the target company's sector, compute their actual EV/Revenue and EV/EBITDA from the `financials` and `funding_rounds` tables, and display dynamic comps.
-
-**File:** `src/pages/CompanyDetail.tsx` (valuation tab, lines 446-509)
-- Replace hardcoded array with a `useQuery` that fetches companies in the same sector
-- Join financials + funding to compute real multiples
-- Show median and mean sector multiples as summary stats
-- Add a "Sector Median" row at the bottom for quick reference
+A systematic audit of the entire platform reveals gaps across data coverage, UX completeness, feature depth, and production readiness. This plan addresses every identified issue, organized by impact.
 
 ---
 
-## Problem 2: Gross Margin Display Bug
+## Category 1: Data Gaps That Undermine Credibility
 
-**Current state:** Line 435 in CompanyDetail.tsx displays `f.gross_margin.toFixed(1)%` -- but gross margins are stored as decimals (0.72, not 72). This renders as "0.7%" instead of "72%". The `formatPercent` helper exists and handles this correctly, but it's not used consistently.
+### 1A. Zero Company Logos (0/628 companies have logo_url)
+Every company row shows a generic Building2 icon. For an institutional-grade platform, this is a credibility killer.
 
-**Fix:** Audit all gross_margin display points and ensure they multiply by 100 or use the `formatPercent` helper.
+**Fix:** Generate deterministic avatar initials (first 2 letters of company name) with sector-based color coding in CompanyTable, CompanyDetail, CompanyHoverCard, and the Deals kanban cards. Replace the Building2 placeholder with a styled initial circle.
 
-**Files affected:**
-- `src/pages/CompanyDetail.tsx` line 435: change to `${(f.gross_margin * 100).toFixed(1)}%`
+**Files:** `CompanyTable.tsx`, `CompanyDetail.tsx`, `CompanyHoverCard.tsx`, `Deals.tsx`, `Companies.tsx`
 
----
+### 1B. Key Personnel Coverage (26/628 companies = 4%)
+Only 4% of companies have key personnel data. The remaining 96% show empty states on CompanyDetail.
 
-## Problem 3: Generic AI Analysis Template
+**Fix:** Add 80+ key personnel records for the top-valued companies via database insert.
 
-**Current state:** The AI Analysis tab (lines 552-601) shows identical boilerplate text for every company: "strong recurring revenue model", "customer concentration risk in Fortune 500 segment" -- none of this is derived from actual data.
+### 1C. Company Enrichments Table is Empty (0 rows)
+The EnrichmentPanel on CompanyDetail queries this table but always returns nothing.
 
-**Fix:** Replace the static template with data-driven analysis that references the company's actual metrics, score breakdown, and sector positioning.
+**Fix:** Seed 30+ enrichment records for high-profile companies with scraped summaries, source URLs, and confidence scores.
 
-**File:** `src/pages/CompanyDetail.tsx` (analysis tab)
-- Use the `score` object (already computed) to generate dynamic strengths/risks
-- Reference actual ARR, growth rate, burn rate, Rule of 40, and implied multiple
-- Show sector-relative positioning ("trading at Xth percentile of sector EV/Revenue")
-- Add a call to the existing `ai-research` edge function for a real AI-generated summary
+### 1D. Intelligence Feed is Shallow (50 signals)
+For a "live" feed claiming AI curation, 50 items feels thin. No date variation or recency.
 
----
-
-## Problem 4: DCF Calculator Disconnected from Company Data
-
-**Current state:** The DCF Calculator always starts with generic defaults ($100M revenue, 15% growth, 25% EBITDA margin). When a user is on a company's valuation tab, these defaults have no connection to that company's actual financials.
-
-**Fix:** Accept optional company financials as props and pre-populate the DCF with real data when available.
-
-**File:** `src/components/DCFCalculator.tsx`
-- Add optional props: `initialRevenue`, `initialGrowth`, `initialMargin`, `companyName`
-- When props are provided, use them as defaults instead of generic values
-- Show a label: "Pre-populated from [Company Name] financials"
-
-**File:** `src/pages/CompanyDetail.tsx`
-- In the valuation tab, render `<DCFCalculator>` with the company's actual revenue, growth rate, and EBITDA margin passed as props
+**Fix:** Add 30+ recent intelligence signals with varied dates across the last 30 days.
 
 ---
 
-## Problem 5: Investment Score Accuracy Gaps
+## Category 2: Broken or Incomplete Features
 
-**Current state in `useCompanyScore.ts`:**
-- **Sector momentum** is based purely on how many companies exist in that sector in our database (density), not on actual deal activity, funding trends, or multiple expansion
-- **No EV/EBITDA scoring** -- the entire valuation score uses only EV/Revenue, ignoring profitability-adjusted multiples
-- **Sector multiple benchmarking is missing** -- a 10x EV/Revenue is cheap for cybersecurity but expensive for healthcare services, yet both score identically
+### 2A. user_notes Table Missing
+CompanyDetail queries a `user_notes` table (line 132-140) but this table doesn't exist in the schema. The private notes feature silently fails.
 
-**Fixes:**
-1. Add **sector-relative valuation scoring**: query the precedent_transactions table for sector median multiples, and score the company's multiple relative to its sector median rather than using absolute thresholds
-2. Add **EV/EBITDA as a secondary valuation signal**: when EBITDA data exists, compute and factor in EV/EBITDA alongside EV/Revenue
-3. Improve **sector momentum** to incorporate actual deal volume from `deal_transactions` and funding round counts from `funding_rounds` for that sector in the last 12 months
-4. Add new output fields: `evEbitda`, `sectorMedianEvRevenue`, `sectorMedianEvEbitda` to `CompanyScoreResult`
+**Fix:** Create `user_notes` table (id, company_id, user_id, content, created_at) with RLS policies for user-scoped CRUD.
 
-**Files:**
-- `src/hooks/useCompanyScore.ts` -- refactor valuation score section and sector momentum section
-- `src/components/CompanyScore.tsx` -- display the new EV/EBITDA and sector comparison metrics
+### 2B. user_watchlists Missing is_active / updated_at for Alerts
+The `user_alerts` table references `is_active` column (line 81 of Alerts.tsx: `toggleAlert` mutation). Need to verify this column exists.
 
----
+### 2C. Landing Page Footer Links Are Dead
+Footer has "About", "Careers", "API Docs", "Privacy", "Terms" -- all are `<span>` tags with `cursor-default`, not actual links. They do nothing.
 
-## Problem 6: Football Field Uses Static Defaults
+**Fix:** Convert footer links to either real pages or mailto/external links. Add a minimal `/terms` and `/privacy` static page, or link to a hosted document.
 
-**Current state:** The ValuationFootballField always shows the same hardcoded ranges ($280-$560M for DCF, etc.) regardless of context.
+### 2D. "Benchmark" Tag on Public Companies
+CompanyTable line 71 shows a "Benchmark" badge for `stage === 'Public'`, but the memory says all public companies have been removed. Dead code that may confuse.
 
-**Fix:** When rendered on a company page, compute ranges from:
-- **DCF range**: Use the sensitivity matrix min/max from DCF calculator logic
-- **Comp Companies**: Use sector median EV/Revenue applied to company's revenue (25th/50th/75th percentile)
-- **Precedent Txns**: Use sector precedent transaction multiples
-- **LBO Analysis**: Derive from standard LBO return thresholds (15-25% IRR)
+**Fix:** Remove the Public/Benchmark badge logic from CompanyTable.
 
-**File:** `src/components/ValuationFootballField.tsx`
-- Accept optional `companyData` prop with revenue, ebitda, sectorMultiples
-- When provided, compute real ranges instead of showing static defaults
-- Keep the hardcoded defaults as fallback for the standalone Valuations page
+### 2E. Screening Score Logic Differs from CompanyDetail Score
+The `Screening.tsx` page has its own inline scoring algorithm (lines 133-174) that uses different weights and logic than `useCompanyScore.ts`. A company can show different grades on different pages.
+
+**Fix:** Refactor `Screening.tsx` to use the centralized `useCompanyScore` hook (or a lightweight version of it) so scores are consistent platform-wide. Same for `Companies.tsx` (lines 39-87).
 
 ---
 
-## Problem 7: Precedent Transactions Missing Statistical Context
+## Category 3: UX Gaps and Polish
 
-**Current state:** The Precedent Transactions component shows raw averages but no distribution analysis (median, 25th/75th percentile, standard deviation).
+### 3A. No Pagination on Large Tables
+Companies page loads all 628 companies at once. No pagination or virtualization. Same for Screening (loads all via `useCompaniesWithFinancials`).
 
-**Fix:** Add percentile statistics to give users proper benchmarking context.
+**Fix:** Add client-side pagination (25/50/100 per page) to Companies and Screening pages with page controls at the bottom.
 
-**File:** `src/components/PrecedentTransactions.tsx`
-- Add median EV/Revenue and median EV/EBITDA alongside the existing averages
-- Add 25th and 75th percentile stats
-- Show deal count by year as a mini bar chart or stat row
-- Highlight statistical outliers in the table
+### 3B. Empty State for Valuation Tab Without Data
+CompanyDetail's valuation tab (line 559) only renders when `latestFinancial && latestRound` both exist. If either is missing, the tab appears clickable but shows nothing.
+
+**Fix:** Add a meaningful empty state: "Insufficient financial data to compute valuation. Missing: [revenue/valuation]."
+
+### 3C. Dashboard "Customize" Mode Lacks Persistence Feedback
+The widget customizer saves to localStorage silently. No toast confirmation.
+
+**Fix:** Add a toast when widgets are toggled.
+
+### 3D. No Loading State on Intelligence Feed Page
+IntelligenceFeed shows a centered spinner but no skeleton cards, making the page feel empty.
+
+**Fix:** Add 3-4 skeleton card placeholders during loading.
+
+### 3E. Search Bar in Header Opens Command Palette Only
+The SearchBar in the AppLayout header triggers the CommandPalette via keyboard event dispatch, which is fragile. It should work as a direct click handler.
+
+**Fix:** Use a shared state or context for the command palette open state instead of dispatching synthetic keyboard events.
+
+### 3F. Auth Page Has No "Back to Landing" Link
+Once on /auth, there's no way to go back to the Landing page without using the browser back button.
+
+**Fix:** Add a "Back to home" link with ArrowLeft icon above the login form.
+
+### 3G. CompanyDetail Tabs Are Not URL-Aware
+Navigating directly to a company with a specific tab (e.g., from Research linking to the valuation tab) is impossible. Tab state is local-only.
+
+**Fix:** Sync `activeTab` to a URL search parameter (`?tab=valuation`) so tabs are deep-linkable and shareable.
+
+---
+
+## Category 4: Production-Readiness
+
+### 4A. No Global Error Toasts for Query Failures
+All `useQuery` calls throw errors but the QueryClient has no `onError` handler. Failed API calls silently fail with no user feedback.
+
+**Fix:** Add a global `onError` handler to the QueryClient that shows a toast for failed queries.
+
+### 4B. Missing Meta Tags and OG Data
+`index.html` likely has default Vite meta tags. For a product at this level, proper title, description, and OG tags are essential for sharing.
+
+**Fix:** Update `index.html` with proper meta tags, OG image, and description.
+
+### 4C. No Favicon Branding
+The favicon is the default Lovable/Vite icon.
+
+**Fix:** Update `public/favicon.svg` to match the "LG" branding used in the sidebar and landing page.
 
 ---
 
 ## Technical Summary
 
-### Files to modify:
-1. `src/hooks/useCompanyScore.ts` -- Sector-relative scoring, EV/EBITDA, improved momentum
-2. `src/components/CompanyScore.tsx` -- Display new metrics (EV/EBITDA, sector comparisons)
-3. `src/pages/CompanyDetail.tsx` -- Dynamic comps, data-driven AI analysis, DCF integration, gross margin fix
-4. `src/components/DCFCalculator.tsx` -- Accept company data as props
-5. `src/components/ValuationFootballField.tsx` -- Accept company data, compute real ranges
-6. `src/components/PrecedentTransactions.tsx` -- Add percentile statistics
-7. `src/hooks/useData.ts` -- Add `useSectorMultiples` hook for reuse
+### Database Migrations:
+1. Create `user_notes` table (id uuid PK, company_id uuid, user_id uuid, content text, created_at timestamptz) with RLS
 
-### New hooks:
-1. `useSectorMultiples(sector)` -- Returns median/mean/p25/p75 EV/Revenue and EV/EBITDA for a sector from precedent_transactions
+### Database Inserts:
+1. ~80 key_personnel records for top companies
+2. ~30 company_enrichments records  
+3. ~30 intelligence_signals with recent dates
 
-### No database migrations needed
-All data already exists in precedent_transactions, financials, funding_rounds, and deal_transactions tables.
+### Files to Modify:
+1. `src/App.tsx` -- Add global QueryClient error handler
+2. `src/pages/Companies.tsx` -- Replace inline scoring with shared hook, add pagination, fix company avatar
+3. `src/pages/Screening.tsx` -- Replace inline scoring with shared hook, add pagination
+4. `src/pages/CompanyDetail.tsx` -- URL-synced tabs, valuation empty state, company avatar
+5. `src/pages/IntelligenceFeed.tsx` -- Skeleton loading cards
+6. `src/pages/Landing.tsx` -- Fix footer links, add Terms/Privacy routes
+7. `src/pages/Auth.tsx` -- Add "Back to home" link
+8. `src/components/CompanyTable.tsx` -- Remove "Public/Benchmark" badge, company avatar
+9. `src/components/CompanyHoverCard.tsx` -- Company avatar initials
+10. `src/components/NewsFeed.tsx` -- No changes needed (already solid)
+11. `index.html` -- Meta tags, OG data, favicon reference
 
-### Priority order:
-1. Gross margin bug fix (instant credibility fix)
-2. Dynamic comps on CompanyDetail (most visible per-company improvement)
-3. Investment score accuracy (core engine)
-4. DCF pre-population from company data
-5. Football field with real ranges
-6. Precedent transaction statistics
-7. Data-driven AI analysis
+### New Files:
+1. `src/components/CompanyAvatar.tsx` -- Reusable avatar component with sector-based colors
+2. `src/pages/Terms.tsx` -- Static terms page
+3. `src/pages/Privacy.tsx` -- Static privacy page
 
+### Priority Order:
+1. user_notes table (fixes broken feature)
+2. Consistent scoring across pages (fixes data integrity)  
+3. Company avatars (biggest visual improvement)
+4. Pagination (performance)
+5. Data seeding (depth)
+6. UX polish (empty states, auth back link, URL tabs)
+7. Production meta (favicon, OG tags, error handling)
