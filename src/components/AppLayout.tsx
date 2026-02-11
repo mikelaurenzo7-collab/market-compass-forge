@@ -59,7 +59,11 @@ const AppLayout = () => {
           <div className="flex-1 max-w-2xl">
             <SearchBar onOpen={openPalette} />
           </div>
-          <div className="flex items-center gap-1 md:gap-2">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* BETA badge */}
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-primary/30 text-primary bg-primary/5">
+              Beta
+            </span>
             <button
               onClick={() => navigate("/alerts")}
               className="relative p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
