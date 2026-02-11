@@ -6,14 +6,12 @@ import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
-import { useAuth } from "@/hooks/useAuth";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
-import { Bell, LogOut, User, Menu, X } from "lucide-react";
+import { Bell, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const AppLayout = () => {
-  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -70,17 +68,6 @@ const AppLayout = () => {
               {(unreadCount ?? 0) > 0 && (
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
               )}
-            </button>
-            <div className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded-md text-sm text-muted-foreground">
-              <User className="h-4 w-4" />
-              <span className="text-xs truncate max-w-[120px]">{user?.email}</span>
-            </div>
-            <button
-              onClick={signOut}
-              className="p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-destructive"
-              title="Sign out"
-            >
-              <LogOut className="h-4 w-4" />
             </button>
           </div>
         </header>

@@ -35,6 +35,7 @@ const CompanyDetail = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "news" | "research" | "memo" | "enrichment">("overview");
 
   const latestFinancialForScore = financials?.[0];
+  const previousFinancial = financials?.[1];
   const latestRoundForScore = funding?.[funding.length - 1];
   const score = useCompanyScore(id!, company ? {
     sector: company.sector,
@@ -44,6 +45,10 @@ const CompanyDetail = () => {
     revenue: latestFinancialForScore?.revenue,
     valuation: latestRoundForScore?.valuation_post,
     grossMargin: latestFinancialForScore?.gross_margin,
+    burnRate: latestFinancialForScore?.burn_rate,
+    runwayMonths: latestFinancialForScore?.runway_months ? Number(latestFinancialForScore.runway_months) : undefined,
+    previousArr: previousFinancial?.arr,
+    previousRevenue: previousFinancial?.revenue,
   } : undefined);
 
   const { data: notes } = useQuery({
