@@ -14,6 +14,7 @@ type Filters = {
   sectors: string[];
   stages: string[];
   countries: string[];
+  ownershipTypes: string[];
   foundedMin: string;
   foundedMax: string;
   arrMin: string;
@@ -29,7 +30,7 @@ type Filters = {
 };
 
 const EMPTY_FILTERS: Filters = {
-  search: "", sectors: [], stages: [], countries: [],
+  search: "", sectors: [], stages: [], countries: [], ownershipTypes: [],
   foundedMin: "", foundedMax: "", arrMin: "", arrMax: "",
   valuationMin: "", valuationMax: "", employeeMin: "", employeeMax: "",
   marketCapMin: "", marketCapMax: "", peMin: "", peMax: "",
@@ -37,6 +38,7 @@ const EMPTY_FILTERS: Filters = {
 
 const SECTORS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce", "Semiconductors", "Energy", "Industrials", "Pharmaceuticals", "Retail", "Automotive", "Aerospace & Defense", "Media & Entertainment", "Telecommunications"];
 const STAGES = ["Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage", "Public"];
+const OWNERSHIP_TYPES = ["PE-Backed", "VC-Backed", "Family-Owned", "Public Subsidiary", "Independent"];
 
 const GRADE_MAP: { min: number; grade: string; color: string }[] = [
   { min: 85, grade: "A+", color: "text-success" },
@@ -75,7 +77,7 @@ const Screening = () => {
     setFilters((prev) => ({ ...prev, [key]: val }));
   }, []);
 
-  const toggleArrayFilter = useCallback((key: "sectors" | "stages" | "countries", val: string) => {
+  const toggleArrayFilter = useCallback((key: "sectors" | "stages" | "countries" | "ownershipTypes", val: string) => {
     setFilters((prev) => {
       const arr = prev[key];
       return { ...prev, [key]: arr.includes(val) ? arr.filter((v) => v !== val) : [...arr, val] };
@@ -197,6 +199,20 @@ const Screening = () => {
         if (filters.sectors.length && (!c.sector || !filters.sectors.includes(c.sector))) return false;
         if (filters.stages.length && (!c.stage || !filters.stages.includes(c.stage))) return false;
         if (filters.countries.length && (!c.hq_country || !filters.countries.includes(c.hq_country))) return false;
+        
+        // Ownership type filter: infer from stage and market_type
+        if (filters.ownershipTypes.length) {
+          const matches = filters.ownershipTypes.some((type: string) => {
+            if (type === "PE-Backed") return c.stage && ["Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage"].includes(c.stage);
+            if (type === "VC-Backed") return c.stage && ["Series A", "Series B", "Series C", "Series D"].includes(c.stage);
+            if (type === "Family-Owned") return !c.stage || c.stage === "Independent";
+            if (type === "Public Subsidiary") return c.market_type === "public";
+            if (type === "Independent") return !c.stage;
+            return false;
+          });
+          if (!matches) return false;
+        }
+
         const arr = c.latestFinancials?.arr ?? 0;
         if (arrMin !== null && arr < arrMin * 1e6) return false;
         if (arrMax !== null && arr > arrMax * 1e6) return false;
@@ -396,6 +412,14 @@ const Screening = () => {
               <button key={c} onClick={() => toggleArrayFilter("countries", c)}
                 className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${filters.countries.includes(c) ? "bg-primary/20 text-primary border-primary/30" : "bg-secondary border-border text-muted-foreground hover:text-foreground"}`}>
                 {c}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {OWNERSHIP_TYPES.map((type) => (
+              <button key={type} onClick={() => toggleArrayFilter("ownershipTypes", type)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${filters.ownershipTypes.includes(type) ? "bg-primary/20 text-primary border-primary/30" : "bg-secondary border-border text-muted-foreground hover:text-foreground"}`}>
+                {type}
               </button>
             ))}
           </div>
