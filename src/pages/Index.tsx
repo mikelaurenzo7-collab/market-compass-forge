@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,16 +7,17 @@ import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
 import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
 import NewsFeed from "@/components/NewsFeed";
-import { MetricsSkeleton, TableSkeleton } from "@/components/SkeletonLoaders";
+import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
-import MarketToggle, { type MarketFilter } from "@/components/MarketToggle";
-import { Search, TrendingUp, TrendingDown, FileText, ArrowRight, List, Building2, Globe, Lock } from "lucide-react";
+import { Search, TrendingUp, FileText, ArrowRight, List, Globe, Lock, Settings2 } from "lucide-react";
 import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { useHotkeys } from "@/hooks/useHotkeys";
 
 const OnboardingCard = () => {
   const navigate = useNavigate();
   const steps = [
-    { icon: Search, label: "Screen companies", desc: "Filter by sector, stage, ARR, and valuation", action: () => navigate("/screening") },
+    { icon: Search, label: "Screen companies", desc: "Filter by sector, stage, ARR, and valuation", action: () => navigate("/watchlists") },
     { icon: FileText, label: "Research with AI", desc: "Chat with AI about any company or generate memos", action: () => navigate("/research") },
     { icon: TrendingUp, label: "Build your pipeline", desc: "Track deals through sourcing to commitment", action: () => navigate("/deals") },
   ];
@@ -25,7 +26,7 @@ const OnboardingCard = () => {
     <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-4">
       <div>
         <h2 className="text-sm font-semibold text-foreground">Welcome to Laurenzo's Grapevine</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">Your AI-powered intelligence platform for private & public markets</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Your institutional intelligence platform for private & public markets</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {steps.map((step, i) => (
@@ -47,7 +48,7 @@ const OnboardingCard = () => {
 const RecentPipelineDeals = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: recentDeals } = useQuery({
+  const { data: recentDeals, isLoading } = useQuery({
     queryKey: ["recent-pipeline"],
     queryFn: async () => {
       const { data, error } = await supabase.from("deal_pipeline").select("id, stage, updated_at, companies(name, sector)").eq("user_id", user!.id).order("updated_at", { ascending: false }).limit(4);
@@ -68,17 +69,25 @@ const RecentPipelineDeals = () => {
         <h3 className="text-sm font-semibold text-foreground">Your Pipeline</h3>
         <button onClick={() => navigate("/deals")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">View All</button>
       </div>
-      <div className="divide-y divide-border/50">
-        {recentDeals.map((d: any) => (
-          <div key={d.id} onClick={() => navigate("/deals")} className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors">
-            <div>
-              <p className="text-sm font-medium text-foreground">{d.companies?.name ?? "Unknown"}</p>
-              <p className="text-[11px] text-muted-foreground">{d.companies?.sector ?? ""}</p>
+      {isLoading ? (
+        <div className="divide-y divide-border/50">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="px-4 py-3 h-12 bg-muted/30 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-border/50">
+          {recentDeals.map((d: any) => (
+            <div key={d.id} onClick={() => navigate("/deals")} className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors">
+              <div>
+                <p className="text-sm font-medium text-foreground">{d.companies?.name ?? "Unknown"}</p>
+                <p className="text-[11px] text-muted-foreground">{d.companies?.sector ?? ""}</p>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">{STAGE_LABELS[d.stage] ?? d.stage}</span>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">{STAGE_LABELS[d.stage] ?? d.stage}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -86,7 +95,7 @@ const RecentPipelineDeals = () => {
 const WatchlistWidget = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: watchlists } = useQuery({
+  const { data: watchlists, isLoading } = useQuery({
     queryKey: ["dashboard-watchlists"],
     queryFn: async () => {
       const { data, error } = await supabase.from("user_watchlists").select("id, name, company_ids").eq("user_id", user!.id).order("updated_at", { ascending: false }).limit(5);
@@ -103,56 +112,74 @@ const WatchlistWidget = () => {
     <div className="rounded-lg border border-border bg-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Watchlists</h3>
-        <button onClick={() => navigate("/screening")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">Manage</button>
+        <button onClick={() => navigate("/watchlists")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">Manage</button>
       </div>
-      <div className="divide-y divide-border/50">
-        {watchlists.map((w) => (
-          <div key={w.id} className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <List className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">{w.name}</span>
+      {isLoading ? (
+        <div className="divide-y divide-border/50">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="px-4 py-3 h-10 bg-muted/30 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-border/50">
+          {watchlists.map((w) => (
+            <div key={w.id} className="px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <List className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">{w.name}</span>
+              </div>
+              <span className="text-xs font-mono text-muted-foreground">{w.company_ids?.length ?? 0}</span>
             </div>
-            <span className="text-xs font-mono text-muted-foreground">{w.company_ids?.length ?? 0} companies</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
 const PublicMarketSnapshot = () => {
   const navigate = useNavigate();
-  const { data: movers } = usePublicMarketMovers();
+  const { data: movers, isLoading } = usePublicMarketMovers();
+
+  if (!movers) return null;
 
   return (
     <div className="rounded-lg border border-border bg-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Public Market Movers</h3>
+          <h3 className="text-sm font-semibold text-foreground">Public Movers</h3>
         </div>
-        <button onClick={() => navigate("/markets/public")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">View All</button>
+        <button onClick={() => navigate("/intelligence")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">View All</button>
       </div>
-      <div className="divide-y divide-border/50">
-        {movers?.gainers.slice(0, 3).map((g: any) => (
-          <div key={g.id} onClick={() => navigate(`/companies/${g.company_id}`)} className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-muted-foreground w-10">{g.ticker}</span>
-              <span className="text-sm font-medium text-foreground">{g.companies?.name}</span>
+      {isLoading ? (
+        <div className="divide-y divide-border/50">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="px-4 py-2.5 h-10 bg-muted/30 animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-border/50">
+          {movers?.gainers.slice(0, 3).map((g: any) => (
+            <div key={g.id} onClick={() => navigate(`/companies/${g.company_id}`)} className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-muted-foreground w-10">{g.ticker}</span>
+                <span className="text-sm font-medium text-foreground truncate">{g.companies?.name}</span>
+              </div>
+              <span className="text-xs font-mono font-medium text-green-500 shrink-0">+{g.price_change_pct?.toFixed(2)}%</span>
             </div>
-            <span className="text-xs font-mono font-medium text-green-500">+{g.price_change_pct?.toFixed(2)}%</span>
-          </div>
-        ))}
-        {movers?.losers.slice(0, 2).map((g: any) => (
-          <div key={g.id} onClick={() => navigate(`/companies/${g.company_id}`)} className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-muted-foreground w-10">{g.ticker}</span>
-              <span className="text-sm font-medium text-foreground">{g.companies?.name}</span>
+          ))}
+          {movers?.losers.slice(0, 2).map((g: any) => (
+            <div key={g.id} onClick={() => navigate(`/companies/${g.company_id}`)} className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono text-muted-foreground w-10">{g.ticker}</span>
+                <span className="text-sm font-medium text-foreground truncate">{g.companies?.name}</span>
+              </div>
+              <span className="text-xs font-mono font-medium text-red-500 shrink-0">{g.price_change_pct?.toFixed(2)}%</span>
             </div>
-            <span className="text-xs font-mono font-medium text-red-500">{g.price_change_pct?.toFixed(2)}%</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -160,6 +187,44 @@ const PublicMarketSnapshot = () => {
 const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Widget customization state
+  const [customizingDashboard, setCustomizingDashboard] = useState(false);
+  const [visibleWidgets, setVisibleWidgets] = useState<string[]>([
+    "watchlist",
+    "deal-flow",
+    "sector-heatmap",
+    "pipeline",
+    "public-markets",
+    "intelligence-feed"
+  ]);
+
+  // Load saved widget preferences
+  useEffect(() => {
+    const saved = localStorage.getItem("dashboard-widgets");
+    if (saved) {
+      try {
+        setVisibleWidgets(JSON.parse(saved));
+      } catch (e) {
+        // Fallback to defaults
+      }
+    }
+  }, []);
+
+  // Save widget preferences
+  const updateWidgets = (widgets: string[]) => {
+    setVisibleWidgets(widgets);
+    localStorage.setItem("dashboard-widgets", JSON.stringify(widgets));
+  };
+
+  const toggleWidget = (id: string) => {
+    if (visibleWidgets.includes(id)) {
+      updateWidgets(visibleWidgets.filter(w => w !== id));
+    } else {
+      updateWidgets([...visibleWidgets, id]);
+    }
+  };
 
   const { data: pipelineCount } = useQuery({
     queryKey: ["pipeline-count"],
@@ -197,24 +262,80 @@ const Index = () => {
   });
 
   const showOnboarding = pipelineCount === 0;
-
   const freshnessLabel = latestEventDate
     ? `Data as of ${format(new Date(latestEventDate), "MMM d, yyyy")}`
     : "Private & Public Market Intelligence";
 
+  // Keyboard shortcut for customization toggle
+  useHotkeys([
+    {
+      meta: true,
+      shift: true,
+      key: "d",
+      handler: () => setCustomizingDashboard(prev => !prev),
+      description: "Toggle dashboard customization"
+    }
+  ]);
+
+  const allWidgets = [
+    { id: "watchlist", label: "Watchlists", required: false },
+    { id: "deal-flow", label: "Deal Flow Chart", required: false },
+    { id: "sector-heatmap", label: "Sector Heatmap", required: false },
+    { id: "pipeline", label: "Your Pipeline", required: false },
+    { id: "public-markets", label: "Public Market Movers", required: false },
+    { id: "intelligence-feed", label: "Intelligence Feed", required: false }
+  ];
+
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Market Overview</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{freshnessLabel}</p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCustomizingDashboard(!customizingDashboard)}
+          className="gap-1"
+        >
+          <Settings2 className="h-4 w-4" />
+          {customizingDashboard ? "Done" : "Customize"}
+        </Button>
       </div>
+
+      {/* Customization Panel */}
+      {customizingDashboard && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3 animate-fadeIn">
+          <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Dashboard Widgets</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {allWidgets.map(widget => (
+              <button
+                key={widget.id}
+                onClick={() => toggleWidget(widget.id)}
+                className={`text-left px-3 py-2 rounded-md border transition-colors ${
+                  visibleWidgets.includes(widget.id)
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-muted/30 text-muted-foreground"
+                }`}
+              >
+                <span className="text-sm font-medium">{widget.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showOnboarding && <OnboardingCard />}
 
+      {/* Metrics Row */}
       {isLoading ? (
-        <MetricsSkeleton count={4} />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} />
@@ -224,20 +345,38 @@ const Index = () => {
         </div>
       )}
 
+      {/* Customizable Widget Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DealFlowChart />
-        <SectorHeatmap />
+        {visibleWidgets.includes("deal-flow") && (
+          <div className="min-h-[300px]">
+            <DealFlowChart />
+          </div>
+        )}
+        {visibleWidgets.includes("sector-heatmap") && (
+          <div className="min-h-[300px]">
+            <SectorHeatmap />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {/* Main: Company Table */}
         <div className="xl:col-span-2">
-          <CompanyTable />
+          <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Companies</h3>
+              <button onClick={() => navigate("/companies")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">View All</button>
+            </div>
+            <CompanyTable />
+          </div>
         </div>
+
+        {/* Sidebar Widgets */}
         <div className="space-y-4">
-          <PublicMarketSnapshot />
-          <RecentPipelineDeals />
-          <WatchlistWidget />
-          <NewsFeed compact />
+          {visibleWidgets.includes("watchlist") && <WatchlistWidget />}
+          {visibleWidgets.includes("pipeline") && <RecentPipelineDeals />}
+          {visibleWidgets.includes("public-markets") && <PublicMarketSnapshot />}
+          {visibleWidgets.includes("intelligence-feed") && <NewsFeed compact />}
         </div>
       </div>
     </div>

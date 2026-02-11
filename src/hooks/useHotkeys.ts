@@ -92,6 +92,7 @@ export const useTableNavigation = (
 export const GLOBAL_HOTKEYS_HELP = [
   { keys: "⌘K", description: "Search / Command palette" },
   { keys: "⌘/", description: "Show keyboard shortcuts" },
+  { keys: "⌘⇧D", description: "Toggle dashboard customization" },
   { keys: "↑↓", description: "Navigate table rows" },
   { keys: "Enter", description: "Open selected item" },
   { keys: "Esc", description: "Close modal / deselect" },
