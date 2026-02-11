@@ -1,10 +1,13 @@
 import { useState, useMemo } from "react";
 import { useDistressedAssets, formatCurrency } from "@/hooks/useData";
-import { AlertTriangle, Building2, DollarSign, TrendingDown, Filter } from "lucide-react";
+import { AlertTriangle, Building2, DollarSign, TrendingDown, Filter, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { DistressedDetailPanel } from "@/components/DistressedDetailPanel";
+import { exportDistressedAssetsCSV } from "@/lib/export";
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-green-500/10 text-green-500 border-green-500/20",
@@ -13,11 +16,13 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const DistressedAssets = () => {
-  const { data: assets, isLoading } = useDistressedAssets();
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [distressFilter, setDistressFilter] = useState("all");
-  const [stateFilter, setStateFilter] = useState("all");
-  const [search, setSearch] = useState("");
+   const { data: assets, isLoading } = useDistressedAssets();
+   const [typeFilter, setTypeFilter] = useState("all");
+   const [distressFilter, setDistressFilter] = useState("all");
+   const [stateFilter, setStateFilter] = useState("all");
+   const [search, setSearch] = useState("");
+   const [selectedAsset, setSelectedAsset] = useState<any>(null);
+   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
 
   const filtered = useMemo(() => {
     return (assets ?? []).filter((a) => {
@@ -99,39 +104,50 @@ const DistressedAssets = () => {
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <input
-          type="text" placeholder="Search listings..."
-          value={search} onChange={(e) => setSearch(e.target.value)}
-          className="h-8 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-56"
-        />
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="Asset Type" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="business">Business</SelectItem>
-            <SelectItem value="real_estate">Real Estate</SelectItem>
-            <SelectItem value="loan">Loan/Note</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={distressFilter} onValueChange={setDistressFilter}>
-          <SelectTrigger className="w-44 h-8 text-sm"><SelectValue placeholder="Distress Type" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Distress Types</SelectItem>
-            {distressTypes.map((d) => (
-              <SelectItem key={d} value={d!}>{d!.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={stateFilter} onValueChange={setStateFilter}>
-          <SelectTrigger className="w-32 h-8 text-sm"><SelectValue placeholder="State" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All States</SelectItem>
-            {states.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
+       {/* Filters & Actions */}
+       <div className="flex flex-wrap gap-3 items-center justify-between">
+         <div className="flex flex-wrap gap-3 items-center">
+           <input
+             type="text" placeholder="Search listings..."
+             value={search} onChange={(e) => setSearch(e.target.value)}
+             className="h-8 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-56"
+           />
+           <Select value={typeFilter} onValueChange={setTypeFilter}>
+             <SelectTrigger className="w-40 h-8 text-sm"><SelectValue placeholder="Asset Type" /></SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Types</SelectItem>
+               <SelectItem value="business">Business</SelectItem>
+               <SelectItem value="real_estate">Real Estate</SelectItem>
+               <SelectItem value="loan">Loan/Note</SelectItem>
+             </SelectContent>
+           </Select>
+           <Select value={distressFilter} onValueChange={setDistressFilter}>
+             <SelectTrigger className="w-44 h-8 text-sm"><SelectValue placeholder="Distress Type" /></SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Distress Types</SelectItem>
+               {distressTypes.map((d) => (
+                 <SelectItem key={d} value={d!}>{d!.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+           <Select value={stateFilter} onValueChange={setStateFilter}>
+             <SelectTrigger className="w-32 h-8 text-sm"><SelectValue placeholder="State" /></SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All States</SelectItem>
+               {states.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}
+             </SelectContent>
+           </Select>
+         </div>
+         <Button
+           size="sm"
+           variant="outline"
+           onClick={() => exportDistressedAssetsCSV(filtered)}
+           className="gap-2"
+         >
+           <Download className="h-4 w-4" />
+           Export CSV
+         </Button>
+       </div>
 
       {/* Table */}
       <div className="rounded-lg border border-border overflow-hidden">
@@ -151,14 +167,21 @@ const DistressedAssets = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((a) => (
-                <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                  <td className="py-2.5 px-3 font-medium text-foreground sticky left-0 bg-card z-10 min-w-[200px]">
-                    <div>
-                      <p className="text-sm">{a.name}</p>
-                      {a.sector && <p className="text-[10px] text-muted-foreground">{a.sector}</p>}
-                    </div>
-                  </td>
+               {filtered.map((a) => (
+                 <tr
+                   key={a.id}
+                   className="border-b border-border/50 hover:bg-secondary/30 transition-colors cursor-pointer"
+                   onClick={() => {
+                     setSelectedAsset(a);
+                     setDetailPanelOpen(true);
+                   }}
+                 >
+                   <td className="py-2.5 px-3 font-medium text-foreground sticky left-0 bg-card z-10 min-w-[200px]">
+                     <div>
+                       <p className="text-sm">{a.name}</p>
+                       {a.sector && <p className="text-[10px] text-muted-foreground">{a.sector}</p>}
+                     </div>
+                   </td>
                   <td className="py-2.5 px-3">
                     <Badge variant="outline" className="text-[10px] capitalize">{a.asset_type?.replace('_', ' ')}</Badge>
                   </td>
@@ -182,12 +205,18 @@ const DistressedAssets = () => {
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
-          <div className="p-8 text-center text-muted-foreground text-sm">No distressed assets match your filters</div>
-        )}
-      </div>
-    </div>
-  );
-};
+         {filtered.length === 0 && (
+           <div className="p-8 text-center text-muted-foreground text-sm">No distressed assets match your filters</div>
+         )}
+       </div>
 
-export default DistressedAssets;
+       <DistressedDetailPanel
+         asset={selectedAsset}
+         open={detailPanelOpen}
+         onOpenChange={setDetailPanelOpen}
+       />
+     </div>
+   );
+ };
+ 
+ export default DistressedAssets;

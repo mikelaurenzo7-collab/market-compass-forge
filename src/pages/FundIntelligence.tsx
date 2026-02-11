@@ -4,10 +4,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, Users, Building2 } from "lucide-react";
+import { Landmark, Users, Building2, Download } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { exportFundsCSV } from "@/lib/export";
 
 const formatCurrency = (v: number | null) => {
   if (!v) return "—";
@@ -107,16 +109,27 @@ const FundIntelligence = () => {
         </TabsList>
 
         <TabsContent value="funds">
-          <div className="flex gap-3 mb-4 flex-wrap">
-            <Input placeholder="Search funds or GPs..." value={fundSearch} onChange={(e) => setFundSearch(e.target.value)} className="w-64 h-8 text-sm bg-background" />
-            <Select value={strategyFilter} onValueChange={setStrategyFilter}>
-              <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Strategies" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Strategies</SelectItem>
-                {strategies.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
+           <div className="flex gap-3 mb-4 flex-wrap justify-between">
+             <div className="flex gap-3 flex-wrap">
+               <Input placeholder="Search funds or GPs..." value={fundSearch} onChange={(e) => setFundSearch(e.target.value)} className="w-64 h-8 text-sm bg-background" />
+               <Select value={strategyFilter} onValueChange={setStrategyFilter}>
+                 <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Strategies" /></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="all">All Strategies</SelectItem>
+                   {strategies.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                 </SelectContent>
+               </Select>
+             </div>
+             <Button
+               size="sm"
+               variant="outline"
+               onClick={() => exportFundsCSV(filteredFunds)}
+               className="gap-2"
+             >
+               <Download className="h-4 w-4" />
+               Export CSV
+             </Button>
+           </div>
 
           {fundsLoading ? (
             <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>

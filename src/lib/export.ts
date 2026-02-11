@@ -75,7 +75,7 @@ export const printElement = (title: string) => {
 };
 
 export const exportMemoText = (memo: { company_name: string; date: string; thesis: string; market: string; traction: string; risks: string; valuation: string; recommendation: string }) => {
-  const content = `INVESTMENT MEMO: ${memo.company_name}
+   const content = `INVESTMENT MEMO: ${memo.company_name}
 Date: ${memo.date}
 ${"=".repeat(60)}
 
@@ -97,11 +97,60 @@ ${memo.valuation}
 RECOMMENDATION
 ${memo.recommendation}`;
 
-  const blob = new Blob([content], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `memo-${memo.company_name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().split("T")[0]}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
+   const blob = new Blob([content], { type: "text/plain" });
+   const url = URL.createObjectURL(blob);
+   const a = document.createElement("a");
+   a.href = url;
+   a.download = `memo-${memo.company_name.replace(/\s+/g, "-").toLowerCase()}-${new Date().toISOString().split("T")[0]}.txt`;
+   a.click();
+   URL.revokeObjectURL(url);
+};
+
+export const exportDistressedAssetsCSV = (assets: { name: string; asset_type?: string | null; distress_type?: string | null; location_city?: string | null; location_state?: string | null; asking_price?: number | null; estimated_value?: number | null; discount_pct?: number | null; status: string; sector?: string | null }[]) => {
+   exportToCSV(
+     assets.map((a) => ({
+       name: a.name,
+       asset_type: a.asset_type ?? "",
+       distress_type: a.distress_type ?? "",
+       location: `${a.location_city || ""}, ${a.location_state || ""}`.trim(),
+       asking_price: a.asking_price ?? "",
+       estimated_value: a.estimated_value ?? "",
+       discount_pct: a.discount_pct ?? "",
+       status: a.status,
+       sector: a.sector ?? "",
+     })),
+     "distressed-assets"
+   );
+};
+
+export const exportOffMarketListingsCSV = (listings: { property_type: string; city: string; state: string; asking_price?: number | null; estimated_cap_rate?: number | null; size_sf?: number | null; units?: number | null; status: string; address?: string | null }[]) => {
+   exportToCSV(
+     listings.map((l) => ({
+       address: l.address ?? "",
+       type: l.property_type ?? "",
+       location: `${l.city}, ${l.state}`,
+       asking_price: l.asking_price ?? "",
+       estimated_cap_rate: l.estimated_cap_rate ?? "",
+       size_sf: l.size_sf ?? "",
+       units: l.units ?? "",
+       status: l.status,
+     })),
+     "off-market-listings"
+   );
+};
+
+export const exportFundsCSV = (funds: { name: string; gp_name: string; strategy: string; fund_size?: number | null; vintage_year: number; net_irr?: number | null; dpi?: number | null; tvpi?: number | null }[]) => {
+   exportToCSV(
+     funds.map((f) => ({
+       fund_name: f.name,
+       gp_name: f.gp_name,
+       strategy: f.strategy,
+       fund_size: f.fund_size ?? "",
+       vintage_year: f.vintage_year,
+       net_irr: f.net_irr ?? "",
+       dpi: f.dpi ?? "",
+       tvpi: f.tvpi ?? "",
+     })),
+     "funds"
+   );
 };

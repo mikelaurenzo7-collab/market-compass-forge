@@ -5,9 +5,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
-import { Building, TrendingUp, MapPin, BarChart3, Home, DollarSign } from "lucide-react";
+import { Building, TrendingUp, MapPin, BarChart3, Home, DollarSign, Download } from "lucide-react";
+import { ListingDetailPanel } from "@/components/ListingDetailPanel";
+import { exportOffMarketListingsCSV } from "@/lib/export";
 
 const formatCurrency = (v: number | null) => {
   if (!v) return "—";
@@ -17,11 +20,13 @@ const formatCurrency = (v: number | null) => {
 };
 
 const RealEstateIntel = () => {
-  const [propTypeFilter, setPropTypeFilter] = useState("all");
-  const [cityFilter, setCityFilter] = useState("all");
-  const [listingTypeFilter, setListingTypeFilter] = useState("all");
-  const [listingPropFilter, setListingPropFilter] = useState("all");
-  const [listingCityFilter, setListingCityFilter] = useState("all");
+   const [propTypeFilter, setPropTypeFilter] = useState("all");
+   const [cityFilter, setCityFilter] = useState("all");
+   const [listingTypeFilter, setListingTypeFilter] = useState("all");
+   const [listingPropFilter, setListingPropFilter] = useState("all");
+   const [listingCityFilter, setListingCityFilter] = useState("all");
+   const [selectedListing, setSelectedListing] = useState<any>(null);
+   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
 
   const { data: transactions, isLoading: txnLoading } = useQuery({
     queryKey: ["cre-transactions"],
@@ -282,29 +287,40 @@ const RealEstateIntel = () => {
             </Card>
           </div>
 
-           {/* Filters */}
-           <div className="flex gap-3 flex-wrap">
-             <Select value={listingTypeFilter} onValueChange={setListingTypeFilter}>
-               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Listing Types" /></SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="all">All Listing Types</SelectItem>
-                 {listingTypes.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</SelectItem>)}
-               </SelectContent>
-             </Select>
-             <Select value={listingPropFilter} onValueChange={setListingPropFilter}>
-               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Property Types" /></SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="all">All Property Types</SelectItem>
-                 {listingPropTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-               </SelectContent>
-             </Select>
-             <Select value={listingCityFilter} onValueChange={setListingCityFilter}>
-               <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Cities" /></SelectTrigger>
-               <SelectContent>
-                 <SelectItem value="all">All Cities</SelectItem>
-                 {listingCities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-               </SelectContent>
-             </Select>
+           {/* Filters & Actions */}
+           <div className="flex gap-3 flex-wrap justify-between items-center">
+             <div className="flex gap-3 flex-wrap">
+               <Select value={listingTypeFilter} onValueChange={setListingTypeFilter}>
+                 <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Listing Types" /></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="all">All Listing Types</SelectItem>
+                   {listingTypes.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</SelectItem>)}
+                 </SelectContent>
+               </Select>
+               <Select value={listingPropFilter} onValueChange={setListingPropFilter}>
+                 <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Property Types" /></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="all">All Property Types</SelectItem>
+                   {listingPropTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                 </SelectContent>
+               </Select>
+               <Select value={listingCityFilter} onValueChange={setListingCityFilter}>
+                 <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Cities" /></SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="all">All Cities</SelectItem>
+                   {listingCities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                 </SelectContent>
+               </Select>
+             </div>
+             <Button
+               size="sm"
+               variant="outline"
+               onClick={() => exportOffMarketListingsCSV(filteredListings)}
+               className="gap-2"
+             >
+               <Download className="h-4 w-4" />
+               Export CSV
+             </Button>
            </div>
 
           {listingsLoading ? (
@@ -322,26 +338,33 @@ const RealEstateIntel = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredListings.map((l) => (
-                        <tr key={l.id} className="border-b border-border/50 hover:bg-muted/20">
-                          <td className="py-2 px-3 font-mono text-xs">{l.listed_date ?? "—"}</td>
-                          <td className="py-2 px-3">
-                            <Badge variant="outline" className="text-[10px]">
-                              {l.listing_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                            </Badge>
-                          </td>
-                          <td className="py-2 px-3 text-xs font-medium">{l.property_type}</td>
-                          <td className="py-2 px-3 text-xs text-muted-foreground">{l.city}, {l.state}</td>
-                          <td className="py-2 px-3 font-mono text-xs">{formatCurrency(l.asking_price)}</td>
-                          <td className="py-2 px-3 font-mono text-xs text-primary">{l.estimated_cap_rate ? `${l.estimated_cap_rate}%` : "—"}</td>
-                          <td className="py-2 px-3 font-mono text-xs">{formatCurrency(l.noi)}</td>
-                          <td className="py-2 px-3 font-mono text-xs">{l.size_sf ? `${l.size_sf.toLocaleString()} SF` : l.units ? `${l.units} units` : "—"}</td>
-                          <td className="py-2 px-3">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium border ${statusColor(l.status)}`}>
-                              {l.status.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
-                            </span>
-                          </td>
-                        </tr>
+                       {filteredListings.map((l) => (
+                         <tr
+                           key={l.id}
+                           className="border-b border-border/50 hover:bg-muted/20 cursor-pointer"
+                           onClick={() => {
+                             setSelectedListing(l);
+                             setDetailPanelOpen(true);
+                           }}
+                         >
+                           <td className="py-2 px-3 font-mono text-xs">{l.listed_date ?? "—"}</td>
+                           <td className="py-2 px-3">
+                             <Badge variant="outline" className="text-[10px]">
+                               {l.listing_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                             </Badge>
+                           </td>
+                           <td className="py-2 px-3 text-xs font-medium">{l.property_type}</td>
+                           <td className="py-2 px-3 text-xs text-muted-foreground">{l.city}, {l.state}</td>
+                           <td className="py-2 px-3 font-mono text-xs">{formatCurrency(l.asking_price)}</td>
+                           <td className="py-2 px-3 font-mono text-xs text-primary">{l.estimated_cap_rate ? `${l.estimated_cap_rate}%` : "—"}</td>
+                           <td className="py-2 px-3 font-mono text-xs">{formatCurrency(l.noi)}</td>
+                           <td className="py-2 px-3 font-mono text-xs">{l.size_sf ? `${l.size_sf.toLocaleString()} SF` : l.units ? `${l.units} units` : "—"}</td>
+                           <td className="py-2 px-3">
+                             <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium border ${statusColor(l.status)}`}>
+                               {l.status.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                             </span>
+                           </td>
+                         </tr>
                       ))}
                     </tbody>
                   </table>
@@ -353,9 +376,15 @@ const RealEstateIntel = () => {
             </Card>
           )}
         </TabsContent>
-      </Tabs>
-    </div>
-  );
-};
+       </Tabs>
 
-export default RealEstateIntel;
+       <ListingDetailPanel
+         listing={selectedListing}
+         open={detailPanelOpen}
+         onOpenChange={setDetailPanelOpen}
+       />
+     </div>
+   );
+ };
+ 
+ export default RealEstateIntel;
