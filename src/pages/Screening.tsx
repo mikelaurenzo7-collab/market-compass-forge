@@ -2,12 +2,11 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, Filter, Building2, Globe, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Filter, Building2, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-
 
 type Filters = {
   search: string;
@@ -19,26 +18,24 @@ type Filters = {
   foundedMax: string;
   arrMin: string;
   arrMax: string;
+  ebitdaMin: string;
+  ebitdaMax: string;
   valuationMin: string;
   valuationMax: string;
   employeeMin: string;
   employeeMax: string;
-  marketCapMin: string;
-  marketCapMax: string;
-  peMin: string;
-  peMax: string;
 };
 
 const EMPTY_FILTERS: Filters = {
   search: "", sectors: [], stages: [], countries: [], ownershipTypes: [],
   foundedMin: "", foundedMax: "", arrMin: "", arrMax: "",
+  ebitdaMin: "", ebitdaMax: "",
   valuationMin: "", valuationMax: "", employeeMin: "", employeeMax: "",
-  marketCapMin: "", marketCapMax: "", peMin: "", peMax: "",
 };
 
 const SECTORS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce", "Semiconductors", "Energy", "Industrials", "Pharmaceuticals", "Retail", "Automotive", "Aerospace & Defense", "Media & Entertainment", "Telecommunications"];
-const STAGES = ["Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage", "Public"];
-const OWNERSHIP_TYPES = ["PE-Backed", "VC-Backed", "Family-Owned", "Public Subsidiary", "Independent"];
+const STAGES = ["Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage"];
+const OWNERSHIP_TYPES = ["PE-Backed", "VC-Backed", "Family-Owned", "Independent"];
 
 const GRADE_MAP: { min: number; grade: string; color: string }[] = [
   { min: 85, grade: "A+", color: "text-success" },
@@ -55,7 +52,7 @@ const getGrade = (score: number) => {
   return { grade: g.grade, color: g.color };
 };
 
-type SortKey = "name" | "valuation" | "arr" | "marketCap" | "score";
+type SortKey = "name" | "valuation" | "arr" | "score";
 
 const Screening = () => {
   const { data: companies, isLoading } = useCompaniesWithFinancials();
@@ -133,7 +130,6 @@ const Screening = () => {
 
   const parseNum = (s: string) => s ? parseFloat(s) : null;
 
-  // Compute scores for all companies
   const scoredCompanies = useMemo(() => {
     if (!companies) return [];
     const allARR = companies.map((c: any) => c.latestFinancials?.arr ?? 0).filter((a: number) => a > 0).sort((a: number, b: number) => a - b);
@@ -181,16 +177,14 @@ const Screening = () => {
   const filtered = useMemo(() => {
     const arrMin = parseNum(filters.arrMin);
     const arrMax = parseNum(filters.arrMax);
+    const ebitdaMin = parseNum(filters.ebitdaMin);
+    const ebitdaMax = parseNum(filters.ebitdaMax);
     const valMin = parseNum(filters.valuationMin);
     const valMax = parseNum(filters.valuationMax);
     const empMin = parseNum(filters.employeeMin);
     const empMax = parseNum(filters.employeeMax);
     const fMin = parseNum(filters.foundedMin);
     const fMax = parseNum(filters.foundedMax);
-    const mcMin = parseNum(filters.marketCapMin);
-    const mcMax = parseNum(filters.marketCapMax);
-    const peMin = parseNum(filters.peMin);
-    const peMax = parseNum(filters.peMax);
 
     return scoredCompanies
       .filter((c: any) => {
@@ -199,13 +193,11 @@ const Screening = () => {
         if (filters.stages.length && (!c.stage || !filters.stages.includes(c.stage))) return false;
         if (filters.countries.length && (!c.hq_country || !filters.countries.includes(c.hq_country))) return false;
         
-        // Ownership type filter: infer from stage and market_type
         if (filters.ownershipTypes.length) {
           const matches = filters.ownershipTypes.some((type: string) => {
             if (type === "PE-Backed") return c.stage && ["Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage"].includes(c.stage);
             if (type === "VC-Backed") return c.stage && ["Series A", "Series B", "Series C", "Series D"].includes(c.stage);
             if (type === "Family-Owned") return !c.stage || c.stage === "Independent";
-            if (type === "Public Subsidiary") return c.market_type === "public";
             if (type === "Independent") return !c.stage;
             return false;
           });
@@ -215,6 +207,9 @@ const Screening = () => {
         const arr = c.latestFinancials?.arr ?? 0;
         if (arrMin !== null && arr < arrMin * 1e6) return false;
         if (arrMax !== null && arr > arrMax * 1e6) return false;
+        const ebitda = c.latestFinancials?.ebitda ?? 0;
+        if (ebitdaMin !== null && ebitda < ebitdaMin * 1e6) return false;
+        if (ebitdaMax !== null && ebitda > ebitdaMax * 1e6) return false;
         const val = c.latestRound?.valuation_post ?? 0;
         if (valMin !== null && val < valMin * 1e9) return false;
         if (valMax !== null && val > valMax * 1e9) return false;
@@ -222,13 +217,6 @@ const Screening = () => {
         if (empMax !== null && (c.employee_count ?? 0) > empMax) return false;
         if (fMin !== null && (c.founded_year ?? 0) < fMin) return false;
         if (fMax !== null && (c.founded_year ?? 0) > fMax) return false;
-        // Public market filters
-        const mc = c.publicMarketData?.market_cap ?? 0;
-        if (mcMin !== null && mc < mcMin * 1e9) return false;
-        if (mcMax !== null && mc > mcMax * 1e9) return false;
-        const pe = c.publicMarketData?.pe_ratio ?? null;
-        if (peMin !== null && (pe === null || pe < peMin)) return false;
-        if (peMax !== null && (pe === null || pe > peMax)) return false;
         return true;
       })
       .sort((a: any, b: any) => {
@@ -237,7 +225,6 @@ const Screening = () => {
           case "name": av = a.name; bv = b.name; break;
           case "valuation": av = a.latestRound?.valuation_post ?? 0; bv = b.latestRound?.valuation_post ?? 0; break;
           case "arr": av = a.latestFinancials?.arr ?? 0; bv = b.latestFinancials?.arr ?? 0; break;
-          case "marketCap": av = a.publicMarketData?.market_cap ?? 0; bv = b.publicMarketData?.market_cap ?? 0; break;
           case "score": av = a._score; bv = b._score; break;
         }
         if (typeof av === "string") return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
@@ -271,8 +258,6 @@ const Screening = () => {
       setSelectedIds(new Set(filtered.map((c: any) => c.id)));
     }
   };
-
-  const showPublicCols = false;
 
   const SortHeader = ({ label, sortId, align }: { label: string; sortId: SortKey; align?: string }) => (
     <th
@@ -339,17 +324,23 @@ const Screening = () => {
           </span>
         </button>
 
-        <div className={`flex flex-wrap gap-3 ${!filtersOpen && isMobile ? "hidden" : ""}`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 ${!filtersOpen && isMobile ? "hidden" : ""}`}>
           <input
             type="text" placeholder="Search..." value={filters.search}
             onChange={(e) => updateFilter("search", e.target.value)}
-            className="h-8 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-48"
+            className="h-8 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring col-span-1 sm:col-span-2 lg:col-span-1"
           />
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            ARR ($M):
+            Revenue ($M):
             <input type="number" placeholder="Min" value={filters.arrMin} onChange={(e) => updateFilter("arrMin", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
             <span>–</span>
             <input type="number" placeholder="Max" value={filters.arrMax} onChange={(e) => updateFilter("arrMax", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            EBITDA ($M):
+            <input type="number" placeholder="Min" value={filters.ebitdaMin} onChange={(e) => updateFilter("ebitdaMin", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
+            <span>–</span>
+            <input type="number" placeholder="Max" value={filters.ebitdaMax} onChange={(e) => updateFilter("ebitdaMax", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             Val ($B):
@@ -369,22 +360,6 @@ const Screening = () => {
             <span>–</span>
             <input type="number" placeholder="To" value={filters.foundedMax} onChange={(e) => updateFilter("foundedMax", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
           </div>
-          {showPublicCols && (
-            <>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                Mkt Cap ($B):
-                <input type="number" placeholder="Min" value={filters.marketCapMin} onChange={(e) => updateFilter("marketCapMin", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
-                <span>–</span>
-                <input type="number" placeholder="Max" value={filters.marketCapMax} onChange={(e) => updateFilter("marketCapMax", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                P/E:
-                <input type="number" placeholder="Min" value={filters.peMin} onChange={(e) => updateFilter("peMin", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
-                <span>–</span>
-                <input type="number" placeholder="Max" value={filters.peMax} onChange={(e) => updateFilter("peMax", e.target.value)} className="h-8 w-20 px-2 rounded-md bg-secondary border border-border text-sm text-foreground" />
-              </div>
-            </>
-          )}
         </div>
 
         {/* Chip filters */}
@@ -442,9 +417,7 @@ const Screening = () => {
                 <SortHeader label="Company" sortId="name" />
                 <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">Sector</th>
                 <SortHeader label="Valuation" sortId="valuation" align="right" />
-                <SortHeader label="ARR" sortId="arr" align="right" />
-                {showPublicCols && <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">Ticker</th>}
-                {showPublicCols && <SortHeader label="Market Cap" sortId="marketCap" align="right" />}
+                <SortHeader label="Revenue" sortId="arr" align="right" />
                 <SortHeader label="Score" sortId="score" align="right" />
                 <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">Stage</th>
                 <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">HQ</th>
@@ -466,7 +439,7 @@ const Screening = () => {
                   <td className="px-4 py-2.5 cursor-pointer" onClick={() => navigate(`/companies/${c.id}`)}>
                     <div className="flex items-center gap-2">
                       <div className="h-6 w-6 rounded bg-accent flex items-center justify-center shrink-0">
-                        {c.market_type === "public" ? <Globe className="h-3 w-3 text-accent-foreground" /> : <Building2 className="h-3 w-3 text-accent-foreground" />}
+                        <Building2 className="h-3 w-3 text-accent-foreground" />
                       </div>
                       <span className="text-foreground font-medium hover:text-primary transition-colors">{c.name}</span>
                     </div>
@@ -474,20 +447,12 @@ const Screening = () => {
                   <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(c.latestFinancials?.arr ?? null)}</td>
-                  {showPublicCols && (
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{c.publicMarketData?.ticker ?? "—"}</td>
-                  )}
-                  {showPublicCols && (
-                    <td className="px-4 py-2.5 text-right text-foreground font-mono">
-                      {c.publicMarketData?.market_cap ? formatCurrency(c.publicMarketData.market_cap) : "—"}
-                    </td>
-                  )}
                   <td className="px-4 py-2.5 text-right">
                     <span className={`font-mono font-bold text-xs ${c._gradeColor}`}>{c._grade}</span>
                     <span className="text-[10px] text-muted-foreground ml-1 font-mono">{c._score}</span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium ${c.market_type === "public" ? "bg-primary/10 text-primary border border-primary/20" : "bg-accent text-accent-foreground"}`}>
+                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                       {c.stage ?? "—"}
                     </span>
                   </td>

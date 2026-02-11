@@ -17,6 +17,8 @@ import {
   Building,
   Rss,
   Shield,
+  AlertTriangle,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -25,19 +27,31 @@ const features = [
     icon: Building2,
     title: "Private Company Profiles",
     description:
-      "Deep profiles on 50,000+ private companies with estimated financials, ownership structures, key personnel, and funding history.",
+      "Deep profiles on private companies with estimated financials, ownership structures, key personnel, and funding history — from Main Street to mid-market.",
+  },
+  {
+    icon: AlertTriangle,
+    title: "Distressed & Special Situations",
+    description:
+      "Track bankruptcies, receiverships, foreclosures, and turnaround opportunities. Discover undervalued businesses and assets before they hit the open market.",
+  },
+  {
+    icon: Home,
+    title: "Off-Market Real Estate",
+    description:
+      "Access pocket listings, pre-foreclosures, 1031 exchanges, and private network deals across multifamily, industrial, retail, and office properties.",
   },
   {
     icon: DollarSign,
     title: "Valuation Engine",
     description:
-      "Comparable analysis, DCF models, and precedent transactions. Interactive tools that update in real-time as you adjust assumptions.",
+      "DCF, LBO, comparable analysis, and precedent transactions. Interactive tools that update in real-time as you adjust assumptions.",
   },
   {
     icon: Handshake,
     title: "Deal Flow Tracking",
     description:
-      "Track M&A, LBO, growth equity, and venture deals across sectors. Filter by deal type, size, geography, and multiples.",
+      "Track M&A, LBO, growth equity, and acquisition targets across sectors. Filter by deal type, size, geography, and multiples.",
   },
   {
     icon: Landmark,
@@ -55,7 +69,7 @@ const features = [
     icon: FileText,
     title: "AI Document Analysis",
     description:
-      "Upload PPMs, CIMs, and 10-Ks for instant extraction of key terms, risk factors, valuation indicators, and executive summaries.",
+      "Upload PPMs, CIMs, and financials for instant extraction of key terms, risk factors, valuation indicators, and executive summaries.",
   },
 ];
 
@@ -203,7 +217,7 @@ const Landing = () => {
             <span className="text-primary">About Private Markets</span>
           </h1>
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            AI-powered private company data, valuations, deal flow, and fund intelligence — built for PE firms, family offices, and institutional allocators at 1/10th the cost of legacy terminals.
+            Private company data, distressed opportunities, off-market deals, and fund intelligence — built for wealthy individuals, family offices, and institutional investors at 1/10th the cost of legacy terminals.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="text-base px-8 glow-primary" asChild>
@@ -285,7 +299,7 @@ const Landing = () => {
           Institutional-grade intelligence, AI-native platform
         </h2>
         <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">
-          Everything a PE analyst needs — from initial screening to IC memo — in one terminal.
+          From deal sourcing to IC memo — distressed assets, off-market listings, and private company intelligence in one platform.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f) => (

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const formatVal = (v: number) => {
   if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
@@ -9,17 +10,12 @@ const formatVal = (v: number) => {
   return `$${v.toLocaleString()}`;
 };
 
-const DCFCalculator = () => {
+// ─── DCF TAB ────────────────────────────────────────────────────────────────
+
+const DCFTab = () => {
   const [inputs, setInputs] = useState({
-    revenue: 100,
-    revenueGrowth: 15,
-    ebitdaMargin: 25,
-    taxRate: 25,
-    capexPct: 5,
-    nwcPct: 2,
-    wacc: 10,
-    terminalGrowth: 3,
-    projectionYears: 5,
+    revenue: 100, revenueGrowth: 15, ebitdaMargin: 25, taxRate: 25,
+    capexPct: 5, nwcPct: 2, wacc: 10, terminalGrowth: 3, projectionYears: 5,
   });
 
   const update = (key: string, val: string) => {
@@ -51,7 +47,6 @@ const DCFCalculator = () => {
     return { years, terminalValue, pvTerminal, totalPV, enterpriseValue };
   }, [inputs]);
 
-  // Sensitivity matrix: WACC vs Terminal Growth
   const waccRange = [8, 9, 10, 11, 12];
   const tgrRange = [1.5, 2.0, 2.5, 3.0, 3.5];
 
@@ -89,30 +84,20 @@ const DCFCalculator = () => {
 
   return (
     <div className="space-y-6">
-      {/* Inputs */}
       <Card className="border-border bg-card">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold">DCF Assumptions</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">DCF Assumptions</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {fields.map((f) => (
               <div key={f.key} className="space-y-1">
                 <Label className="text-xs text-muted-foreground">{f.label}</Label>
-                <Input
-                  type="number"
-                  step={f.step}
-                  value={inputs[f.key as keyof typeof inputs]}
-                  onChange={(e) => update(f.key, e.target.value)}
-                  className="h-8 font-mono text-sm bg-background"
-                />
+                <Input type="number" step={f.step} value={inputs[f.key as keyof typeof inputs]} onChange={(e) => update(f.key, e.target.value)} className="h-8 font-mono text-sm bg-background" />
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Results */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="pt-4 text-center">
@@ -130,28 +115,21 @@ const DCFCalculator = () => {
           <CardContent className="pt-4 text-center">
             <p className="text-xs text-muted-foreground">PV of Terminal Value</p>
             <p className="text-lg font-semibold font-mono">{formatVal(dcf.pvTerminal * 1e6)}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {((dcf.pvTerminal / dcf.enterpriseValue) * 100).toFixed(0)}% of EV
-            </p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">{((dcf.pvTerminal / dcf.enterpriseValue) * 100).toFixed(0)}% of EV</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Projections Table */}
       <Card className="border-border bg-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Projected Cash Flows</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Projected Cash Flows</CardTitle></CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 px-2 text-xs text-muted-foreground font-medium">Year</th>
-                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">Revenue</th>
-                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">EBITDA</th>
-                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">FCF</th>
-                  <th className="text-right py-2 px-2 text-xs text-muted-foreground font-medium">PV of FCF</th>
+                  {["Year", "Revenue", "EBITDA", "FCF", "PV of FCF"].map((h) => (
+                    <th key={h} className={`py-2 px-2 text-xs text-muted-foreground font-medium ${h === "Year" ? "text-left" : "text-right"}`}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -170,11 +148,8 @@ const DCFCalculator = () => {
         </CardContent>
       </Card>
 
-      {/* Sensitivity Table */}
       <Card className="border-border bg-card">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Sensitivity Analysis — WACC vs Terminal Growth</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Sensitivity Analysis — WACC vs Terminal Growth</CardTitle></CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -182,9 +157,7 @@ const DCFCalculator = () => {
                 <tr className="border-b border-border">
                   <th className="py-2 px-2 text-xs text-muted-foreground font-medium text-left">WACC \ TGR</th>
                   {tgrRange.map((tg) => (
-                    <th key={tg} className="py-2 px-2 text-xs text-muted-foreground font-medium text-right">
-                      {tg.toFixed(1)}%
-                    </th>
+                    <th key={tg} className="py-2 px-2 text-xs text-muted-foreground font-medium text-right">{tg.toFixed(1)}%</th>
                   ))}
                 </tr>
               </thead>
@@ -195,12 +168,7 @@ const DCFCalculator = () => {
                     {sensitivityMatrix[wi].map((ev, gi) => {
                       const isBase = w === inputs.wacc && tgrRange[gi] === inputs.terminalGrowth;
                       return (
-                        <td
-                          key={gi}
-                          className={`py-1.5 px-2 text-right font-mono text-xs ${
-                            isBase ? "bg-primary/10 text-primary font-bold" : ""
-                          }`}
-                        >
+                        <td key={gi} className={`py-1.5 px-2 text-right font-mono text-xs ${isBase ? "bg-primary/10 text-primary font-bold" : ""}`}>
                           {formatVal(ev * 1e6)}
                         </td>
                       );
@@ -214,6 +182,186 @@ const DCFCalculator = () => {
         </CardContent>
       </Card>
     </div>
+  );
+};
+
+// ─── LBO TAB ────────────────────────────────────────────────────────────────
+
+const LBOTab = () => {
+  const [inputs, setInputs] = useState({
+    purchasePrice: 500, equityPct: 40, debtRate: 6, holdPeriod: 5,
+    exitMultiple: 8, entryEbitda: 50, ebitdaGrowth: 5, debtPaydownPct: 15,
+  });
+
+  const update = (key: string, val: string) => {
+    const num = parseFloat(val);
+    if (!isNaN(num)) setInputs((p) => ({ ...p, [key]: num }));
+  };
+
+  const lbo = useMemo(() => {
+    const { purchasePrice, equityPct, debtRate, holdPeriod, exitMultiple, entryEbitda, ebitdaGrowth, debtPaydownPct } = inputs;
+    const equityInvested = purchasePrice * (equityPct / 100);
+    const initialDebt = purchasePrice - equityInvested;
+
+    const years: { year: number; ebitda: number; debtBalance: number; interestExpense: number }[] = [];
+    let debtBalance = initialDebt;
+
+    for (let i = 1; i <= holdPeriod; i++) {
+      const ebitda = entryEbitda * Math.pow(1 + ebitdaGrowth / 100, i);
+      const interest = debtBalance * (debtRate / 100);
+      const paydown = ebitda * (debtPaydownPct / 100);
+      debtBalance = Math.max(0, debtBalance - paydown);
+      years.push({ year: i, ebitda, debtBalance, interestExpense: interest });
+    }
+
+    const exitEbitda = entryEbitda * Math.pow(1 + ebitdaGrowth / 100, holdPeriod);
+    const exitEV = exitEbitda * exitMultiple;
+    const exitEquity = exitEV - debtBalance;
+    const moic = exitEquity / equityInvested;
+
+    // IRR calculation using Newton's method
+    let irr = 0.15;
+    for (let iter = 0; iter < 100; iter++) {
+      const npv = -equityInvested + exitEquity / Math.pow(1 + irr, holdPeriod);
+      const dnpv = -holdPeriod * exitEquity / Math.pow(1 + irr, holdPeriod + 1);
+      const newIrr = irr - npv / dnpv;
+      if (Math.abs(newIrr - irr) < 0.0001) break;
+      irr = newIrr;
+    }
+
+    return { equityInvested, initialDebt, exitEbitda, exitEV, exitEquity, moic, irr, years, debtBalance };
+  }, [inputs]);
+
+  const fields = [
+    { key: "purchasePrice", label: "Purchase Price ($M)", step: 10 },
+    { key: "equityPct", label: "Equity %", step: 5 },
+    { key: "entryEbitda", label: "Entry EBITDA ($M)", step: 5 },
+    { key: "ebitdaGrowth", label: "EBITDA Growth (%)", step: 1 },
+    { key: "debtRate", label: "Debt Interest Rate (%)", step: 0.5 },
+    { key: "debtPaydownPct", label: "Debt Paydown (% EBITDA)", step: 5 },
+    { key: "holdPeriod", label: "Hold Period (Yrs)", step: 1 },
+    { key: "exitMultiple", label: "Exit EV/EBITDA", step: 0.5 },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-border bg-card">
+        <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">LBO Assumptions</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {fields.map((f) => (
+              <div key={f.key} className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{f.label}</Label>
+                <Input type="number" step={f.step} value={inputs[f.key as keyof typeof inputs]} onChange={(e) => update(f.key, e.target.value)} className="h-8 font-mono text-sm bg-background" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-4 text-center">
+            <p className="text-xs text-muted-foreground">IRR</p>
+            <p className="text-2xl font-bold font-mono text-primary">{(lbo.irr * 100).toFixed(1)}%</p>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-4 text-center">
+            <p className="text-xs text-muted-foreground">MOIC</p>
+            <p className="text-2xl font-bold font-mono text-primary">{lbo.moic.toFixed(2)}x</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border bg-card">
+          <CardContent className="pt-4 text-center">
+            <p className="text-xs text-muted-foreground">Exit Equity</p>
+            <p className="text-lg font-semibold font-mono">{formatVal(lbo.exitEquity * 1e6)}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border bg-card">
+          <CardContent className="pt-4 text-center">
+            <p className="text-xs text-muted-foreground">Exit EV</p>
+            <p className="text-lg font-semibold font-mono">{formatVal(lbo.exitEV * 1e6)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Sources & Uses</CardTitle></CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 px-2 text-xs text-muted-foreground font-medium text-left">Item</th>
+                  <th className="py-2 px-2 text-xs text-muted-foreground font-medium text-right">Amount</th>
+                  <th className="py-2 px-2 text-xs text-muted-foreground font-medium text-right">% of Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50">
+                  <td className="py-1.5 px-2 text-xs font-medium">Equity</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-xs">{formatVal(lbo.equityInvested * 1e6)}</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-xs">{inputs.equityPct}%</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="py-1.5 px-2 text-xs font-medium">Debt</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-xs">{formatVal(lbo.initialDebt * 1e6)}</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-xs">{(100 - inputs.equityPct)}%</td>
+                </tr>
+                <tr className="font-medium">
+                  <td className="py-1.5 px-2 text-xs">Total</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-xs">{formatVal(inputs.purchasePrice * 1e6)}</td>
+                  <td className="py-1.5 px-2 text-right font-mono text-xs">100%</td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-semibold">Debt Schedule</CardTitle></CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    {["Year", "EBITDA", "Interest", "Debt Balance"].map((h) => (
+                      <th key={h} className={`py-2 px-2 text-xs text-muted-foreground font-medium ${h === "Year" ? "text-left" : "text-right"}`}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {lbo.years.map((y) => (
+                    <tr key={y.year} className="border-b border-border/50">
+                      <td className="py-1.5 px-2 font-mono text-xs">Year {y.year}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-xs">{formatVal(y.ebitda * 1e6)}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-xs">{formatVal(y.interestExpense * 1e6)}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-xs">{formatVal(y.debtBalance * 1e6)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
+
+const DCFCalculator = () => {
+  return (
+    <Tabs defaultValue="dcf" className="space-y-4">
+      <TabsList className="bg-muted/30 border border-border">
+        <TabsTrigger value="dcf" className="text-xs">DCF Model</TabsTrigger>
+        <TabsTrigger value="lbo" className="text-xs">LBO Model</TabsTrigger>
+      </TabsList>
+      <TabsContent value="dcf"><DCFTab /></TabsContent>
+      <TabsContent value="lbo"><LBOTab /></TabsContent>
+    </Tabs>
   );
 };
 

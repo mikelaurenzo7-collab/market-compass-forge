@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from "recharts";
-import { Building, TrendingUp, MapPin, BarChart3 } from "lucide-react";
+import { Building, TrendingUp, MapPin, BarChart3, Home, DollarSign } from "lucide-react";
 
 const formatCurrency = (v: number | null) => {
   if (!v) return "—";
@@ -18,6 +18,8 @@ const formatCurrency = (v: number | null) => {
 
 const RealEstateIntel = () => {
   const [propTypeFilter, setPropTypeFilter] = useState("all");
+  const [listingTypeFilter, setListingTypeFilter] = useState("all");
+  const [listingPropFilter, setListingPropFilter] = useState("all");
 
   const { data: transactions, isLoading: txnLoading } = useQuery({
     queryKey: ["cre-transactions"],
@@ -37,6 +39,15 @@ const RealEstateIntel = () => {
     },
   });
 
+  const { data: listings, isLoading: listingsLoading } = useQuery({
+    queryKey: ["private-listings"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("private_listings").select("*").order("listed_date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const propertyTypes = [...new Set((transactions ?? []).map((t) => t.property_type))];
   const filteredTxns = (transactions ?? []).filter((t) => propTypeFilter === "all" || t.property_type === propTypeFilter);
 
@@ -44,7 +55,6 @@ const RealEstateIntel = () => {
   const avgCapRate = filteredTxns.filter((t) => t.cap_rate).reduce((s, t) => s + (t.cap_rate ?? 0), 0) / (filteredTxns.filter((t) => t.cap_rate).length || 1);
   const avgPsf = filteredTxns.filter((t) => t.price_per_sf && t.price_per_sf < 10000).reduce((s, t) => s + (t.price_per_sf ?? 0), 0) / (filteredTxns.filter((t) => t.price_per_sf && t.price_per_sf < 10000).length || 1);
 
-  // Cap rate by property type for Q4 2024
   const latestMarket = (marketData ?? []).filter((m) => m.period === "Q4 2024");
   const capRateByType = propertyTypes.map((pt) => {
     const items = latestMarket.filter((m) => m.property_type === pt);
@@ -52,16 +62,33 @@ const RealEstateIntel = () => {
     return { type: pt, capRate: avg };
   });
 
-  // Vacancy trend for office (West Loop)
   const officeTrend = (marketData ?? [])
     .filter((m) => m.property_type === "Office" && m.submarket === "West Loop")
     .map((m) => ({ period: m.period, vacancy: m.vacancy_rate, rent: m.asking_rent }));
+
+  // Off-market listings
+  const allListings = listings ?? [];
+  const listingTypes = [...new Set(allListings.map((l) => l.listing_type))];
+  const listingPropTypes = [...new Set(allListings.map((l) => l.property_type))];
+  const filteredListings = allListings
+    .filter((l) => listingTypeFilter === "all" || l.listing_type === listingTypeFilter)
+    .filter((l) => listingPropFilter === "all" || l.property_type === listingPropFilter);
+
+  const totalListings = filteredListings.length;
+  const totalListingValue = filteredListings.reduce((s, l) => s + (l.asking_price ?? 0), 0);
+  const avgListingCapRate = filteredListings.filter((l) => l.estimated_cap_rate).reduce((s, l) => s + (l.estimated_cap_rate ?? 0), 0) / (filteredListings.filter((l) => l.estimated_cap_rate).length || 1);
+
+  const statusColor = (s: string) => {
+    if (s === "available") return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+    if (s === "under_contract") return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    return "bg-muted text-muted-foreground border-border";
+  };
 
   return (
     <div className="p-6 space-y-4">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Real Estate Intelligence</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Chicago metro CRE market data & transaction log</p>
+        <p className="text-sm text-muted-foreground mt-0.5">CRE market data, transactions & off-market listings</p>
       </div>
 
       {/* Summary */}
@@ -70,7 +97,7 @@ const RealEstateIntel = () => {
           { label: "Transaction Volume", value: formatCurrency(totalVolume), icon: Building },
           { label: "Avg Cap Rate", value: `${avgCapRate.toFixed(1)}%`, icon: TrendingUp },
           { label: "Avg Price/SF", value: `$${avgPsf.toFixed(0)}`, icon: BarChart3 },
-          { label: "Transactions", value: filteredTxns.length, icon: MapPin },
+          { label: "Off-Market Listings", value: allListings.length, icon: Home },
         ].map((s) => (
           <Card key={s.label} className="border-border bg-card">
             <CardContent className="pt-3 flex items-center gap-3">
@@ -89,11 +116,11 @@ const RealEstateIntel = () => {
           <TabsTrigger value="overview" className="text-xs">Market Overview</TabsTrigger>
           <TabsTrigger value="transactions" className="text-xs">Transaction Log</TabsTrigger>
           <TabsTrigger value="submarkets" className="text-xs">Submarket Data</TabsTrigger>
+          <TabsTrigger value="off-market" className="text-xs">Off-Market Listings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Cap Rate by Property Type */}
             <Card className="border-border bg-card">
               <CardHeader className="pb-2"><CardTitle className="text-sm">Cap Rate by Property Type</CardTitle></CardHeader>
               <CardContent>
@@ -108,7 +135,6 @@ const RealEstateIntel = () => {
               </CardContent>
             </Card>
 
-            {/* Office Trend */}
             <Card className="border-border bg-card">
               <CardHeader className="pb-2"><CardTitle className="text-sm">West Loop Office Trend</CardTitle></CardHeader>
               <CardContent>
@@ -205,6 +231,103 @@ const RealEstateIntel = () => {
                     </tbody>
                   </table>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="off-market" className="space-y-4">
+          {/* Off-market summary */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <Card className="border-border bg-card">
+              <CardContent className="pt-3 flex items-center gap-3">
+                <Home className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground">Active Listings</p>
+                  <p className="text-lg font-bold font-mono">{totalListings}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-border bg-card">
+              <CardContent className="pt-3 flex items-center gap-3">
+                <DollarSign className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground">Total Value</p>
+                  <p className="text-lg font-bold font-mono">{formatCurrency(totalListingValue)}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-border bg-card">
+              <CardContent className="pt-3 flex items-center gap-3">
+                <TrendingUp className="h-5 w-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-[10px] text-muted-foreground">Avg Cap Rate</p>
+                  <p className="text-lg font-bold font-mono">{avgListingCapRate ? `${avgListingCapRate.toFixed(1)}%` : "—"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters */}
+          <div className="flex gap-3">
+            <Select value={listingTypeFilter} onValueChange={setListingTypeFilter}>
+              <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Listing Types" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Listing Types</SelectItem>
+                {listingTypes.map((t) => <SelectItem key={t} value={t}>{t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={listingPropFilter} onValueChange={setListingPropFilter}>
+              <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Property Types" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Property Types</SelectItem>
+                {listingPropTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {listingsLoading ? (
+            <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+          ) : (
+            <Card className="border-border bg-card">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        {["Listed", "Type", "Property", "Location", "Asking Price", "Cap Rate", "NOI", "Size", "Status"].map((h) => (
+                          <th key={h} className="text-left py-2 px-3 text-xs text-muted-foreground font-medium">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredListings.map((l) => (
+                        <tr key={l.id} className="border-b border-border/50 hover:bg-muted/20">
+                          <td className="py-2 px-3 font-mono text-xs">{l.listed_date ?? "—"}</td>
+                          <td className="py-2 px-3">
+                            <Badge variant="outline" className="text-[10px]">
+                              {l.listing_type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                            </Badge>
+                          </td>
+                          <td className="py-2 px-3 text-xs font-medium">{l.property_type}</td>
+                          <td className="py-2 px-3 text-xs text-muted-foreground">{l.city}, {l.state}</td>
+                          <td className="py-2 px-3 font-mono text-xs">{formatCurrency(l.asking_price)}</td>
+                          <td className="py-2 px-3 font-mono text-xs text-primary">{l.estimated_cap_rate ? `${l.estimated_cap_rate}%` : "—"}</td>
+                          <td className="py-2 px-3 font-mono text-xs">{formatCurrency(l.noi)}</td>
+                          <td className="py-2 px-3 font-mono text-xs">{l.size_sf ? `${l.size_sf.toLocaleString()} SF` : l.units ? `${l.units} units` : "—"}</td>
+                          <td className="py-2 px-3">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium border ${statusColor(l.status)}`}>
+                              {l.status.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {filteredListings.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground text-sm">No listings match your criteria</div>
+                )}
               </CardContent>
             </Card>
           )}

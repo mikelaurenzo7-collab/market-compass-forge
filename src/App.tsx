@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import IntelligenceFeed from "./pages/IntelligenceFeed";
+import DistressedAssets from "./pages/DistressedAssets";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +48,7 @@ const App = () => (
               <Route path="/deals" element={<Deals />} />
               <Route path="/fund-intelligence" element={<FundIntelligence />} />
               <Route path="/real-estate" element={<RealEstateIntel />} />
+              <Route path="/distressed" element={<DistressedAssets />} />
               <Route path="/research" element={<Research />} />
               <Route path="/documents" element={<DocumentAnalyzer />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />

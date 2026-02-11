@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 interface ValuationRange {
   method: string;
@@ -17,7 +19,10 @@ const defaultRanges: ValuationRange[] = [
 
 const formatVal = (v: number) => `$${v}M`;
 
-const ValuationFootballField = ({ ranges = defaultRanges }: { ranges?: ValuationRange[] }) => {
+const ValuationFootballField = ({ ranges: propRanges }: { ranges?: ValuationRange[] }) => {
+  const [ranges, setRanges] = useState<ValuationRange[]>(propRanges ?? defaultRanges);
+  const [editing, setEditing] = useState(false);
+
   const allVals = ranges.flatMap((r) => [r.low, r.high]);
   const globalMin = Math.min(...allVals) * 0.85;
   const globalMax = Math.max(...allVals) * 1.1;
@@ -25,50 +30,80 @@ const ValuationFootballField = ({ ranges = defaultRanges }: { ranges?: Valuation
 
   const toPercent = (v: number) => ((v - globalMin) / span) * 100;
 
+  const updateRange = (idx: number, field: "low" | "mid" | "high", value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return;
+    setRanges((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: num } : r));
+  };
+
   return (
     <Card className="border-border bg-card">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-semibold">Valuation Football Field</CardTitle>
+        <button
+          onClick={() => setEditing(!editing)}
+          className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+        >
+          {editing ? "Done" : "Edit"}
+        </button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {ranges.map((r) => (
-          <div key={r.method} className="flex items-center gap-3">
-            <div className="w-32 shrink-0 text-xs text-muted-foreground font-medium text-right">{r.method}</div>
-            <div className="flex-1 relative h-7 rounded bg-muted/30">
-              {/* Bar */}
-              <div
-                className="absolute top-1 bottom-1 rounded-sm opacity-80"
-                style={{
-                  left: `${toPercent(r.low)}%`,
-                  width: `${toPercent(r.high) - toPercent(r.low)}%`,
-                  backgroundColor: r.color,
-                }}
-              />
-              {/* Mid marker */}
-              <div
-                className="absolute top-0 bottom-0 w-0.5"
-                style={{ left: `${toPercent(r.mid)}%`, backgroundColor: r.color }}
-              />
-              {/* Labels */}
-              <span
-                className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
-                style={{ left: `${toPercent(r.low)}%`, transform: "translateX(-50%)" }}
-              >
-                {formatVal(r.low)}
-              </span>
-              <span
-                className="absolute -top-4 text-[9px] font-mono font-bold"
-                style={{ left: `${toPercent(r.mid)}%`, transform: "translateX(-50%)", color: r.color }}
-              >
-                {formatVal(r.mid)}
-              </span>
-              <span
-                className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
-                style={{ left: `${toPercent(r.high)}%`, transform: "translateX(-50%)" }}
-              >
-                {formatVal(r.high)}
-              </span>
+        {ranges.map((r, idx) => (
+          <div key={r.method} className="space-y-1">
+            <div className="flex items-center gap-3">
+              <div className="w-32 shrink-0 text-xs text-muted-foreground font-medium text-right">{r.method}</div>
+              <div className="flex-1 relative h-7 rounded bg-muted/30">
+                {/* Bar */}
+                <div
+                  className="absolute top-1 bottom-1 rounded-sm opacity-80"
+                  style={{
+                    left: `${toPercent(r.low)}%`,
+                    width: `${toPercent(r.high) - toPercent(r.low)}%`,
+                    backgroundColor: r.color,
+                  }}
+                />
+                {/* Mid marker */}
+                <div
+                  className="absolute top-0 bottom-0 w-0.5"
+                  style={{ left: `${toPercent(r.mid)}%`, backgroundColor: r.color }}
+                />
+                {/* Labels */}
+                <span
+                  className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
+                  style={{ left: `${toPercent(r.low)}%`, transform: "translateX(-50%)" }}
+                >
+                  {formatVal(r.low)}
+                </span>
+                <span
+                  className="absolute -top-4 text-[9px] font-mono font-bold"
+                  style={{ left: `${toPercent(r.mid)}%`, transform: "translateX(-50%)", color: r.color }}
+                >
+                  {formatVal(r.mid)}
+                </span>
+                <span
+                  className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
+                  style={{ left: `${toPercent(r.high)}%`, transform: "translateX(-50%)" }}
+                >
+                  {formatVal(r.high)}
+                </span>
+              </div>
             </div>
+            {editing && (
+              <div className="flex items-center gap-2 ml-[calc(8rem+0.75rem)]">
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  Low:
+                  <Input type="number" value={r.low} onChange={(e) => updateRange(idx, "low", e.target.value)} className="h-6 w-16 text-xs font-mono px-1.5 bg-background" />
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  Mid:
+                  <Input type="number" value={r.mid} onChange={(e) => updateRange(idx, "mid", e.target.value)} className="h-6 w-16 text-xs font-mono px-1.5 bg-background" />
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  High:
+                  <Input type="number" value={r.high} onChange={(e) => updateRange(idx, "high", e.target.value)} className="h-6 w-16 text-xs font-mono px-1.5 bg-background" />
+                </div>
+              </div>
+            )}
           </div>
         ))}
         <div className="flex items-center gap-3 mt-4">
