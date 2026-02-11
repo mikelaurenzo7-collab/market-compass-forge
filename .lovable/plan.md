@@ -1,127 +1,98 @@
 
 
-# Next Steps: Ship-Ready Enhancement Plan
+# Founder Mode: Next Moves to Make This a Real Business
 
-This plan addresses the highest-impact gaps to make the platform feel complete, data-rich, and worth paying for.
-
----
-
-## Phase 1: Make Fake Things Real (Critical Credibility)
-
-### 1A. Intelligence Feed -- Database-Backed
-The Intelligence Feed is currently 22 hardcoded JavaScript objects. This is the most visible credibility gap.
-
-- Create a `intelligence_signals` table (headline, source, timestamp, ai_summary, tags, sentiment, category, url)
-- Migrate the 22 existing items into the database as seed data
-- Update `IntelligenceFeed.tsx` to query the database instead of using the hardcoded array
-- Add a "Last updated" timestamp in the header
-
-### 1B. Document Analyzer -- Wire Up Real AI
-The Document Analyzer currently shows a static demo. Make the upload and analysis functional.
-
-- Create a `document_analyses` table to store results
-- Create a backend function that accepts uploaded documents and uses AI to extract metrics, risks, terms, and generate summaries
-- Wire the upload area to actually accept files, store them, and trigger analysis
-- Keep the demo as a fallback but show real results when available
-
-### 1C. Research AI -- Remove "Coming Soon" Gate
-The AI Research Assistant shows a teaser with "Coming Soon" badge and disabled inputs. The `AIResearchChat` component already exists.
-
-- Remove the "Coming Soon" teaser block
-- Show the actual AI chat interface directly (the component already exists and is used when a company is selected)
-- Enable the general-purpose chat input at the top level (not just per-company)
+This plan focuses on the 5 moves that separate "impressive demo" from "revenue-generating product." Ordered by business impact.
 
 ---
 
-## Phase 2: Data Depth (Perceived Value)
+## Move 1: Lock the Front Door (Auth Gate)
 
-### 2A. Expand Fund Intelligence
-Currently only 25 funds and 18 LPs. This is too thin for a module that competes with PitchBook.
+The most critical gap. Every route is publicly accessible. The Auth page and ProtectedRoute component both exist but are completely disconnected.
 
-- Seed 40+ additional funds across PE, VC, Real Estate, Credit, and Infrastructure strategies
-- Seed 30+ additional LP entities (pensions, endowments, sovereign wealth, family offices)
-- Add vintage years spanning 2015-2025 for better trend analysis
+**What to do:**
+- Add `/auth` route to App.tsx
+- Wrap the AppLayout route with ProtectedRoute so all dashboard pages require login
+- Add a "Sign Out" button to Settings page and sidebar bottom
+- Keep Landing page (`/`) public and unauthenticated
 
-### 2B. Expand Real Estate Beyond Chicago
-CRE data is currently Chicago-only. Wealthy individuals invest nationally.
-
-- Seed CRE transactions for 4-5 additional metros (NYC, Dallas, Miami, LA, Denver)
-- Seed market data for these metros
-- Add 15-20 more off-market listings across diverse geographies
-- Add a city/metro filter to the Market Overview tab
-
-### 2C. Expand Precedent Transactions by Sector
-36 entries is decent but could be richer. Add sector diversity.
-
-- Seed 20+ more transactions covering healthcare, industrials, consumer, and real estate sectors
-- Ensure date range spans 2020-2026
+**Why it matters:** Without this, there's no user identity, no usage tracking, no conversion funnel, and no data isolation. Nothing else works without auth.
 
 ---
 
-## Phase 3: Usability & Polish
+## Move 2: Onboarding Funnel (Landing to Signup to Dashboard)
 
-### 3A. Export Everywhere
-Users pay for data they can take with them.
+Right now "Start Free Trial" and "Enter Platform" dump users straight to the dashboard with no signup. This means zero lead capture.
 
-- Add CSV export button to Distressed Assets page
-- Add CSV export button to Off-Market Listings tab
-- Add CSV export to Fund Intelligence tables
-- Add PDF export to Document Analyzer results
+**What to do:**
+- Change all Landing page CTAs ("Start Free Trial", "Enter Platform") to route to `/auth` instead of `/dashboard`
+- On the Auth page, after signup show a brief "Welcome" step before redirecting to dashboard
+- Wire the EarlyAccessModal to actually save submissions to a `waitlist_signups` table instead of faking it with setTimeout
+- Create a `waitlist_signups` table (name, email, firm, title, interest, created_at)
 
-### 3B. Detail Views for New Asset Classes
-Distressed assets and off-market listings currently have no click-through detail view.
+**Why it matters:** Every visitor who clicks a CTA should become a lead or a user. Right now they become neither.
 
-- Add a slide-out panel or modal for distressed asset details showing full description, key metrics JSON, contact info
-- Add similar detail panel for off-market listings showing full property description, address, year built, units
+---
 
-### 3C. Saved Searches and Alert Creation from Screening
-Users should be able to save their screening filter state and get alerts when new matches appear.
+## Move 3: Consistent Pricing and Plan Enforcement
 
-- Add "Save Search" button to Screening page that persists the current filter configuration
-- Show saved searches in a dropdown at the top
-- Option to "Create Alert" from a saved search
+The Landing page shows $499/$1,499/$3,999 tiers. The UpgradePrompt modal shows $0/$99/Custom tiers. The subscription_tiers table just stores "free" with no enforcement beyond AI query limits.
 
-### 3D. Mobile Polish Pass
-- Distressed Assets filters: wrap in collapsible panel on mobile
-- Real Estate tabs: ensure horizontal scroll on tab triggers
-- Fund Intelligence table: add sticky first column
-- Landing page pricing cards: stack cleanly on mobile
+**What to do:**
+- Align the UpgradePrompt tiers to match Landing page pricing ($499 Analyst / $1,499 Professional / $3,999 Institutional)
+- Update feature lists in UpgradePrompt to match Landing page features
+- Keep all CTAs as "Contact Us" / mailto for now (no Stripe needed yet -- this is a sales-led product at these price points)
+- Add a "Current Plan" display card to the Settings profile tab showing the user's tier
+
+**Why it matters:** Inconsistent pricing destroys credibility in demos. Sales-led products at $499+/mo don't need self-serve checkout -- they need consistent messaging.
+
+---
+
+## Move 4: Waitlist That Actually Works
+
+The EarlyAccessModal pretends to save data. For a sales-led product, every lead matters.
+
+**What to do:**
+- Create a `waitlist_signups` table (name, email, firm, title, interest, created_at) with RLS allowing inserts from authenticated and anonymous users
+- Update EarlyAccessModal to insert into this table
+- Add a simple admin view in Settings (for admin role users) showing waitlist signups count
+
+**Why it matters:** If someone fills out a form expressing interest, that's a warm lead. Throwing it away is unacceptable.
+
+---
+
+## Move 5: Mobile Polish Pass
+
+The remaining Phase 3D items that were planned but not yet executed.
+
+**What to do:**
+- Distressed Assets page: wrap filter pills in a collapsible panel on mobile
+- Real Estate tabs: ensure horizontal scroll works on tab triggers
+- Fund Intelligence table: add overflow-x-auto and sticky first column
+- Landing page pricing cards: verify they stack properly on small screens
+- Dashboard metric card labels: use text-xs on mobile to prevent text overflow
+
+**Why it matters:** Wealthy individuals and family office principals often browse on iPads and phones. A broken mobile experience kills credibility.
 
 ---
 
 ## Technical Summary
 
-### Database migrations needed:
-1. Create `intelligence_signals` table + seed 22 items + 10 new items
-2. Create `document_analyses` table for storing analysis results
-3. Seed ~40 additional funds into `funds` table
-4. Seed ~30 additional LPs into `lp_entities` table  
-5. Seed CRE transactions and market data for 4 additional metros
-6. Seed 15-20 more off-market listings
-7. Seed 20+ more precedent transactions
-
-### Backend functions needed:
-1. `analyze-document` edge function -- accepts file, calls AI model for extraction
+### Database migrations:
+1. Create `waitlist_signups` table with public insert RLS policy
 
 ### Files to modify:
-1. `src/pages/IntelligenceFeed.tsx` -- Replace hardcoded array with database query
-2. `src/pages/DocumentAnalyzer.tsx` -- Wire real upload and AI analysis
-3. `src/pages/Research.tsx` -- Remove "Coming Soon" gate, enable top-level AI chat
-4. `src/pages/RealEstateIntel.tsx` -- Add metro/city filter
-5. `src/pages/DistressedAssets.tsx` -- Add detail panel and CSV export
-6. `src/pages/Screening.tsx` -- Add "Save Search" functionality
-7. `src/pages/FundIntelligence.tsx` -- Add sticky columns for mobile
-8. `src/hooks/useData.ts` -- Add `useIntelligenceSignals` hook
-9. `src/lib/export.ts` -- Add export functions for new tables
+1. `src/App.tsx` -- Add `/auth` route, wrap AppLayout with ProtectedRoute
+2. `src/components/AppSidebar.tsx` -- Add Sign Out button at bottom
+3. `src/pages/Landing.tsx` -- Change CTA links from `/dashboard` to `/auth`
+4. `src/components/UpgradePrompt.tsx` -- Align tiers to $499/$1,499/$3,999
+5. `src/components/EarlyAccessModal.tsx` -- Wire to database insert
+6. `src/pages/Settings.tsx` -- Add current plan card and sign-out button
+7. `src/pages/DistressedAssets.tsx` -- Mobile collapsible filters
+8. `src/pages/FundIntelligence.tsx` -- Sticky first column on mobile
+9. `src/pages/RealEstateIntel.tsx` -- Tab scroll on mobile
 
-### New files:
-1. `src/components/DistressedDetailPanel.tsx` -- Slide-out detail view
-2. `src/components/ListingDetailPanel.tsx` -- Slide-out detail view
-
-### Estimated scope:
-- 7 database migrations (mostly seed data)
-- 1 new backend function
-- 10 files modified
-- 2 new component files
-- Priority order: Phase 1 first (credibility), then Phase 2 (depth), then Phase 3 (polish)
+### No new components needed
+### 1 database migration (waitlist_signups)
+### Priority: Moves 1-2 first (auth + funnel), then 3-4 (pricing + waitlist), then 5 (polish)
 
