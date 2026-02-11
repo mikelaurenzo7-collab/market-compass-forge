@@ -19,6 +19,8 @@ import NotFound from "./pages/NotFound";
 import Portfolio from "./pages/Portfolio";
 import CompTableBuilder from "./pages/CompTableBuilder";
 import PublicMarkets from "./pages/PublicMarkets";
+import DocumentAnalyzer from "./pages/DocumentAnalyzer";
+import IntelligenceFeed from "./pages/IntelligenceFeed";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,7 +49,8 @@ const App = () => (
               <Route path="/fund-intelligence" element={<Analytics />} />
               <Route path="/real-estate" element={<Portfolio />} />
               <Route path="/research" element={<Research />} />
-              <Route path="/intelligence" element={<PublicMarkets />} />
+              <Route path="/documents" element={<DocumentAnalyzer />} />
+              <Route path="/intelligence" element={<IntelligenceFeed />} />
               <Route path="/watchlists" element={<Screening />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />

@@ -17,6 +17,7 @@ import {
   Star,
   ChevronLeft,
   ChevronRight,
+  FileSearch,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -33,6 +34,7 @@ const mainModules = [
 
 const insightModules = [
   { id: "research", label: "Research & AI", icon: Search, path: "/research" },
+  { id: "documents", label: "Document Analyzer", icon: FileSearch, path: "/documents" },
   { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
   { id: "watchlists", label: "Watchlists", icon: Star, path: "/watchlists" },
 ];
