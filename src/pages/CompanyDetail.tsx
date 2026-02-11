@@ -14,7 +14,10 @@ import ConfidenceBadge from "@/components/ConfidenceBadge";
 import DataProvenance from "@/components/DataProvenance";
 import CompanyScore from "@/components/CompanyScore";
 import FinancialsChart from "@/components/FinancialsChart";
+import DCFCalculator from "@/components/DCFCalculator";
+import ValuationFootballField from "@/components/ValuationFootballField";
 import { useCompanyScore } from "@/hooks/useCompanyScore";
+import { useSectorMultiples } from "@/hooks/useSectorMultiples";
 import { AddToWatchlistButton } from "@/components/WatchlistManager";
 import { printElement } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
@@ -42,6 +45,7 @@ const CompanyDetail = () => {
     employee_count: company.employee_count,
     arr: latestFinancialForScore?.arr,
     revenue: latestFinancialForScore?.revenue,
+    ebitda: latestFinancialForScore?.ebitda,
     valuation: latestRoundForScore?.valuation_post,
     grossMargin: latestFinancialForScore?.gross_margin,
     burnRate: latestFinancialForScore?.burn_rate,
@@ -57,6 +61,70 @@ const CompanyDetail = () => {
       runway_months: f.runway_months ? Number(f.runway_months) : null,
     })),
   } : undefined);
+
+  // Sector multiples for football field
+  const { data: sectorMultiples } = useSectorMultiples(company?.sector);
+
+  // Dynamic comparable companies from same sector
+  const { data: sectorComps } = useQuery({
+    queryKey: ["sector-comps", company?.sector, id],
+    queryFn: async () => {
+      if (!company?.sector) return [];
+      // Get companies in same sector (excluding current)
+      const { data: sectorCompanies, error } = await supabase
+        .from("companies")
+        .select("id, name, sector")
+        .eq("sector", company.sector)
+        .neq("id", id!)
+        .limit(20);
+      if (error) throw error;
+      if (!sectorCompanies?.length) return [];
+
+      const compIds = sectorCompanies.map(c => c.id);
+      
+      // Get financials and funding for these companies
+      const [finRes, fundRes] = await Promise.all([
+        supabase.from("financials").select("company_id, revenue, ebitda, arr").in("company_id", compIds).order("period", { ascending: false }),
+        supabase.from("funding_rounds").select("company_id, valuation_post").in("company_id", compIds).order("date", { ascending: false }),
+      ]);
+
+      const latestFin: Record<string, { revenue: number | null; ebitda: number | null; arr: number | null }> = {};
+      (finRes.data ?? []).forEach(f => { if (!latestFin[f.company_id]) latestFin[f.company_id] = f; });
+      
+      const latestVal: Record<string, number> = {};
+      (fundRes.data ?? []).forEach(f => { if (!latestVal[f.company_id] && f.valuation_post) latestVal[f.company_id] = f.valuation_post; });
+
+      return sectorCompanies
+        .map(c => {
+          const fin = latestFin[c.id];
+          const val = latestVal[c.id];
+          const rev = fin?.arr ?? fin?.revenue ?? 0;
+          const ebitda = fin?.ebitda ?? 0;
+          return {
+            name: c.name,
+            revenue: rev,
+            ebitda,
+            valuation: val ?? 0,
+            evRevenue: val && rev ? val / rev : null,
+            evEbitda: val && ebitda > 0 ? val / ebitda : null,
+          };
+        })
+        .filter(c => c.evRevenue !== null)
+        .sort((a, b) => (b.evRevenue ?? 0) - (a.evRevenue ?? 0))
+        .slice(0, 8);
+    },
+    enabled: !!company?.sector && !!id,
+  });
+
+  const sectorCompMedians = (() => {
+    if (!sectorComps?.length) return null;
+    const evRevs = sectorComps.map(c => c.evRevenue).filter((v): v is number => v !== null).sort((a, b) => a - b);
+    const evEbitdas = sectorComps.map(c => c.evEbitda).filter((v): v is number => v !== null).sort((a, b) => a - b);
+    return {
+      medianEvRev: evRevs.length ? evRevs[Math.floor(evRevs.length / 2)] : null,
+      medianEvEbitda: evEbitdas.length ? evEbitdas[Math.floor(evEbitdas.length / 2)] : null,
+    };
+  })();
 
   const { data: notes } = useQuery({
     queryKey: ["user-notes", id],
@@ -155,6 +223,51 @@ const CompanyDetail = () => {
 
   const latestFinancial = financials?.[0];
   const latestRound = funding?.[funding.length - 1];
+
+  // DCF pre-population values
+  const dcfRevenue = latestFinancial?.revenue ? latestFinancial.revenue / 1e6 : undefined;
+  const dcfGrowth = score?.revenueCAGR ? Math.round(score.revenueCAGR * 100) : undefined;
+  const dcfMargin = latestFinancial?.ebitda && latestFinancial?.revenue
+    ? Math.round((latestFinancial.ebitda / latestFinancial.revenue) * 100)
+    : undefined;
+
+  // Build data-driven analysis
+  const buildAnalysis = () => {
+    if (!score || !latestFinancial) return null;
+    const strengths: string[] = [];
+    const risks: string[] = [];
+
+    // Data-driven strengths
+    if (latestFinancial.arr && latestFinancial.arr >= 100e6) strengths.push(`${formatCurrency(latestFinancial.arr)} ARR demonstrates significant market traction and product-market fit`);
+    else if (latestFinancial.arr) strengths.push(`${formatCurrency(latestFinancial.arr)} ARR with ${score.revenueCAGR ? `${Math.round(score.revenueCAGR * 100)}% CAGR` : 'growing trajectory'}`);
+
+    if (score.ruleOf40 !== null && score.ruleOf40 >= 40) strengths.push(`Rule of 40 at ${Math.round(score.ruleOf40)} indicates best-in-class growth/profitability balance`);
+    if (latestFinancial.gross_margin && latestFinancial.gross_margin >= 0.7) strengths.push(`${Math.round(latestFinancial.gross_margin * 100)}% gross margin supports scalable unit economics`);
+    if (score.forwardMultiple && score.forwardMultiple < 15) strengths.push(`${score.forwardMultiple.toFixed(1)}x forward EV/Revenue suggests attractive entry point at current growth`);
+    if (score.impliedMultiple && score.sectorMedianEvRevenue && score.impliedMultiple < score.sectorMedianEvRevenue) {
+      strengths.push(`Trading at ${((score.impliedMultiple / score.sectorMedianEvRevenue) * 100).toFixed(0)}% of sector median EV/Revenue — potential value opportunity`);
+    }
+    if (score.capitalEfficiency >= 80) strengths.push("Capital efficient operations with strong cash conversion");
+
+    // Data-driven risks
+    if (score.ruleOf40 !== null && score.ruleOf40 < 20) risks.push(`Rule of 40 at ${Math.round(score.ruleOf40)} — growth not offsetting margin compression`);
+    if (latestFinancial.burn_rate && latestFinancial.burn_rate < 0 && latestFinancial.runway_months && Number(latestFinancial.runway_months) < 18) {
+      risks.push(`${Number(latestFinancial.runway_months).toFixed(0)} months runway at current burn rate of ${formatCurrency(Math.abs(latestFinancial.burn_rate))}/mo`);
+    }
+    if (score.impliedMultiple && score.impliedMultiple > 30) risks.push(`${score.impliedMultiple.toFixed(1)}x EV/Revenue — premium valuation requires sustained execution`);
+    if (score.sectorMomentum < 35) risks.push(`${company.sector} sector showing limited deal activity — potential headwind for exit timing`);
+    if (score.growthScore < 40) risks.push("Decelerating growth trajectory may pressure valuation multiples");
+    if (score.efficiencyScore < 40) risks.push("Operational efficiency below benchmarks — margins need improvement");
+
+    // Pad with contextual defaults if needed
+    if (strengths.length < 2) strengths.push(`Positioned in ${company.sector || 'growing'} market with expanding TAM`);
+    if (risks.length < 2) risks.push("Competitive dynamics in core market require monitoring");
+
+    return { strengths: strengths.slice(0, 4), risks: risks.slice(0, 4) };
+  };
+
+  const analysis = buildAnalysis();
+
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-6xl print-target">
       {/* Header */}
@@ -432,7 +545,7 @@ const CompanyDetail = () => {
                         <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(f.revenue)}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-foreground">{growth !== null ? `${growth.toFixed(1)}%` : "—"}</td>
                         <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(f.ebitda)}</td>
-                        <td className="px-4 py-2.5 text-right font-mono text-foreground">{f.gross_margin ? `${f.gross_margin.toFixed(1)}%` : "—"}</td>
+                        <td className="px-4 py-2.5 text-right font-mono text-foreground">{f.gross_margin ? `${(f.gross_margin * 100).toFixed(1)}%` : "—"}</td>
                       </tr>
                     );
                   })}
@@ -473,39 +586,73 @@ const CompanyDetail = () => {
             </div>
           </div>
 
+          {/* Dynamic Comparable Companies */}
           <div className="rounded-lg border border-border bg-card">
-            <div className="px-4 py-3 border-b border-border">
-              <h3 className="text-sm font-semibold text-foreground">Comparable Companies</h3>
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Comparable Companies — {company.sector}</h3>
+              {sectorCompMedians && (
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  Sector Median: {sectorCompMedians.medianEvRev ? `${sectorCompMedians.medianEvRev.toFixed(1)}x EV/Rev` : "—"}
+                  {sectorCompMedians.medianEvEbitda ? ` · ${sectorCompMedians.medianEvEbitda.toFixed(1)}x EV/EBITDA` : ""}
+                </span>
+              )}
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-data text-xs">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
                     <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Company</th>
-                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Ticker</th>
-                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Mkt Cap</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valuation</th>
+                    <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Revenue</th>
                     <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">EV/Rev</th>
                     <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">EV/EBITDA</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { name: "Salesforce", ticker: "CRM", mktCap: 341e9, evRev: 8.2, evEbitda: 45.3 },
-                    { name: "Adobe", ticker: "ADBE", mktCap: 189e9, evRev: 11.4, evEbitda: 52.1 },
-                    { name: "ServiceNow", ticker: "NOW", mktCap: 174e9, evRev: 13.8, evEbitda: 68.4 },
-                  ].map((comp) => (
-                    <tr key={comp.ticker} className="border-b border-border/50 hover:bg-secondary/30">
+                  {sectorComps && sectorComps.length > 0 ? sectorComps.map((comp) => (
+                    <tr key={comp.name} className="border-b border-border/50 hover:bg-secondary/30">
                       <td className="px-4 py-2.5 font-medium text-foreground">{comp.name}</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-primary">{comp.ticker}</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-foreground">${(comp.mktCap / 1e9).toFixed(1)}B</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{comp.evRev.toFixed(1)}x</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{comp.evEbitda.toFixed(1)}x</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(comp.valuation)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{formatCurrency(comp.revenue)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{comp.evRevenue ? `${comp.evRevenue.toFixed(1)}x` : "—"}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-foreground">{comp.evEbitda ? `${comp.evEbitda.toFixed(1)}x` : "—"}</td>
                     </tr>
-                  ))}
+                  )) : (
+                    <tr><td colSpan={5} className="px-4 py-4 text-center text-muted-foreground">No comparable companies found in {company.sector}</td></tr>
+                  )}
+                  {sectorCompMedians && (
+                    <tr className="border-t-2 border-border bg-muted/20 font-semibold">
+                      <td className="px-4 py-2.5 text-foreground">Sector Median</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">—</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-muted-foreground">—</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-primary">{sectorCompMedians.medianEvRev ? `${sectorCompMedians.medianEvRev.toFixed(1)}x` : "—"}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-primary">{sectorCompMedians.medianEvEbitda ? `${sectorCompMedians.medianEvEbitda.toFixed(1)}x` : "—"}</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
+
+          {/* Football Field — computed from company data */}
+          <ValuationFootballField
+            companyData={{
+              revenue: latestFinancial.revenue,
+              ebitda: latestFinancial.ebitda,
+              sectorMultiples: sectorMultiples ? {
+                evRevenue: { p25: sectorMultiples.evRevenue.p25, median: sectorMultiples.evRevenue.median, p75: sectorMultiples.evRevenue.p75 },
+                evEbitda: { p25: sectorMultiples.evEbitda.p25, median: sectorMultiples.evEbitda.median, p75: sectorMultiples.evEbitda.p75 },
+              } : undefined,
+            }}
+          />
+
+          {/* DCF Calculator — pre-populated from company data */}
+          <DCFCalculator
+            initialRevenue={dcfRevenue}
+            initialGrowth={dcfGrowth}
+            initialMargin={dcfMargin}
+            companyName={company.name}
+          />
         </div>
       )}
 
@@ -555,47 +702,44 @@ const CompanyDetail = () => {
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-foreground mb-3">AI Investment Summary</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {company.name} is a {company.stage || 'late-stage'} {company.sector || 'technology'} company with {company.employee_count ? `${company.employee_count.toLocaleString()} employees` : 'strong headcount'} focused on enterprise software solutions. The company demonstrates solid revenue growth and improving unit economics, with recent financials showing strong operational leverage. Market positioning is strong in their vertical with defensible competitive advantages.
+                {company.name} is a {company.stage || 'late-stage'} {company.sector || 'technology'} company
+                {company.employee_count ? ` with ${company.employee_count.toLocaleString()} employees` : ''}.
+                {latestFinancial?.arr ? ` Current ARR is ${formatCurrency(latestFinancial.arr)}` : ''}
+                {score?.revenueCAGR ? ` growing at ${Math.round(score.revenueCAGR * 100)}% CAGR` : ''}.
+                {score?.impliedMultiple ? ` Trading at ${score.impliedMultiple.toFixed(1)}x EV/Revenue` : ''}
+                {score?.sectorMedianEvRevenue ? ` vs sector median of ${score.sectorMedianEvRevenue.toFixed(1)}x` : ''}.
+                {score?.ruleOf40 !== null && score?.ruleOf40 !== undefined ? ` Rule of 40 is ${Math.round(score.ruleOf40)}.` : ''}
+                {' '}Overall investment grade: {score?.grade ?? 'N/A'} ({score?.overall ?? 0}/100).
               </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Key Strengths</h4>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-success mt-0.5">●</span>
-                    <span className="text-sm text-foreground">Strong recurring revenue model with {latestFinancial?.arr ? 'growing' : 'solid'} ARR</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-success mt-0.5">●</span>
-                    <span className="text-sm text-foreground">Experienced management team with proven M&A track record</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-success mt-0.5">●</span>
-                    <span className="text-sm text-foreground">Expanding TAM in {company.sector} with tailwinds</span>
-                  </li>
-                </ul>
-              </div>
+            {analysis && (
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Key Strengths</h4>
+                  <ul className="space-y-2">
+                    {analysis.strengths.map((s, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-success mt-0.5">●</span>
+                        <span className="text-sm text-foreground">{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
 
-              <div>
-                <h4 className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Key Risks</h4>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">●</span>
-                    <span className="text-sm text-foreground">Competitive intensity in core verticals increasing</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">●</span>
-                    <span className="text-sm text-foreground">Customer concentration risk in Fortune 500 segment</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">●</span>
-                    <span className="text-sm text-foreground">Integration complexity from rapid acquisition strategy</span>
-                  </li>
-                </ul>
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground mb-2 uppercase tracking-wider">Key Risks</h4>
+                  <ul className="space-y-2">
+                    {analysis.risks.map((r, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-destructive mt-0.5">●</span>
+                        <span className="text-sm text-foreground">{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}

@@ -1,8 +1,15 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+export interface DCFCompanyProps {
+  initialRevenue?: number; // in $M
+  initialGrowth?: number; // as percentage e.g. 25
+  initialMargin?: number; // as percentage e.g. 30
+  companyName?: string;
+}
 
 const formatVal = (v: number) => {
   if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
@@ -12,11 +19,30 @@ const formatVal = (v: number) => {
 
 // ─── DCF TAB ────────────────────────────────────────────────────────────────
 
-const DCFTab = () => {
+const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName }: DCFCompanyProps) => {
   const [inputs, setInputs] = useState({
-    revenue: 100, revenueGrowth: 15, ebitdaMargin: 25, taxRate: 25,
-    capexPct: 5, nwcPct: 2, wacc: 10, terminalGrowth: 3, projectionYears: 5,
+    revenue: initialRevenue ?? 100,
+    revenueGrowth: initialGrowth ?? 15,
+    ebitdaMargin: initialMargin ?? 25,
+    taxRate: 25,
+    capexPct: 5,
+    nwcPct: 2,
+    wacc: 10,
+    terminalGrowth: 3,
+    projectionYears: 5,
   });
+
+  // Update when props change (e.g. navigating between companies)
+  useEffect(() => {
+    if (initialRevenue !== undefined || initialGrowth !== undefined || initialMargin !== undefined) {
+      setInputs(prev => ({
+        ...prev,
+        ...(initialRevenue !== undefined && { revenue: initialRevenue }),
+        ...(initialGrowth !== undefined && { revenueGrowth: initialGrowth }),
+        ...(initialMargin !== undefined && { ebitdaMargin: initialMargin }),
+      }));
+    }
+  }, [initialRevenue, initialGrowth, initialMargin]);
 
   const update = (key: string, val: string) => {
     const num = parseFloat(val);
@@ -85,7 +111,16 @@ const DCFTab = () => {
   return (
     <div className="space-y-6">
       <Card className="border-border bg-card">
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">DCF Assumptions</CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">
+            DCF Assumptions
+            {companyName && (
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                Pre-populated from {companyName} financials
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {fields.map((f) => (
@@ -187,11 +222,24 @@ const DCFTab = () => {
 
 // ─── LBO TAB ────────────────────────────────────────────────────────────────
 
-const LBOTab = () => {
+const LBOTab = ({ initialRevenue, initialMargin, companyName }: DCFCompanyProps) => {
+  const entryEbitdaDefault = initialRevenue && initialMargin ? Math.round(initialRevenue * (initialMargin / 100)) : 50;
+  const purchasePriceDefault = initialRevenue ? Math.round(initialRevenue * 5) : 500;
+
   const [inputs, setInputs] = useState({
-    purchasePrice: 500, equityPct: 40, debtRate: 6, holdPeriod: 5,
-    exitMultiple: 8, entryEbitda: 50, ebitdaGrowth: 5, debtPaydownPct: 15,
+    purchasePrice: purchasePriceDefault, equityPct: 40, debtRate: 6, holdPeriod: 5,
+    exitMultiple: 8, entryEbitda: entryEbitdaDefault, ebitdaGrowth: 5, debtPaydownPct: 15,
   });
+
+  useEffect(() => {
+    if (initialRevenue !== undefined || initialMargin !== undefined) {
+      setInputs(prev => ({
+        ...prev,
+        ...(initialRevenue !== undefined && { purchasePrice: Math.round(initialRevenue * 5) }),
+        ...(initialRevenue !== undefined && initialMargin !== undefined && { entryEbitda: Math.round(initialRevenue * (initialMargin / 100)) }),
+      }));
+    }
+  }, [initialRevenue, initialMargin]);
 
   const update = (key: string, val: string) => {
     const num = parseFloat(val);
@@ -219,7 +267,6 @@ const LBOTab = () => {
     const exitEquity = exitEV - debtBalance;
     const moic = exitEquity / equityInvested;
 
-    // IRR calculation using Newton's method
     let irr = 0.15;
     for (let iter = 0; iter < 100; iter++) {
       const npv = -equityInvested + exitEquity / Math.pow(1 + irr, holdPeriod);
@@ -246,7 +293,12 @@ const LBOTab = () => {
   return (
     <div className="space-y-6">
       <Card className="border-border bg-card">
-        <CardHeader className="pb-3"><CardTitle className="text-sm font-semibold">LBO Assumptions</CardTitle></CardHeader>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">
+            LBO Assumptions
+            {companyName && <span className="ml-2 text-xs font-normal text-muted-foreground">Pre-populated from {companyName} financials</span>}
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {fields.map((f) => (
@@ -352,15 +404,15 @@ const LBOTab = () => {
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
-const DCFCalculator = () => {
+const DCFCalculator = (props: DCFCompanyProps) => {
   return (
     <Tabs defaultValue="dcf" className="space-y-4">
       <TabsList className="bg-muted/30 border border-border">
         <TabsTrigger value="dcf" className="text-xs">DCF Model</TabsTrigger>
         <TabsTrigger value="lbo" className="text-xs">LBO Model</TabsTrigger>
       </TabsList>
-      <TabsContent value="dcf"><DCFTab /></TabsContent>
-      <TabsContent value="lbo"><LBOTab /></TabsContent>
+      <TabsContent value="dcf"><DCFTab {...props} /></TabsContent>
+      <TabsContent value="lbo"><LBOTab {...props} /></TabsContent>
     </Tabs>
   );
 };
