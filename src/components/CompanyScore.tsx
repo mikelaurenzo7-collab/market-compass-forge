@@ -32,13 +32,24 @@ const CompanyScore = ({ score }: { score: CompanyScoreResult | null }) => {
         </div>
       </div>
       <div className="space-y-2.5">
-        <ScoreBar label="ARR Scale" value={score.arrScore} />
+        <ScoreBar label="ARR / Revenue Scale" value={score.arrScore} />
         <ScoreBar label="Valuation Efficiency" value={score.valuationScore} />
+        <ScoreBar label="Growth Trajectory" value={score.growthScore} />
         <ScoreBar label="Sector Momentum" value={score.sectorMomentum} />
         <ScoreBar label="Operational Efficiency" value={score.efficiencyScore} />
+        <ScoreBar label="Capital Efficiency" value={score.capitalEfficiency} />
       </div>
-      <p className="text-[10px] text-muted-foreground mt-3">
-        Algorithmic score based on ARR scale, valuation multiples, sector momentum, and operational efficiency.
+      {score.insights.length > 0 && (
+        <div className="mt-3 space-y-1">
+          {score.insights.map((insight, i) => (
+            <p key={i} className="text-[10px] text-muted-foreground leading-relaxed">
+              • {insight}
+            </p>
+          ))}
+        </div>
+      )}
+      <p className="text-[10px] text-muted-foreground/60 mt-2 border-t border-border pt-2">
+        Weighted composite: Scale 20% · Valuation 20% · Growth 15% · Sector 15% · Efficiency 15% · Capital 15%
       </p>
     </div>
   );

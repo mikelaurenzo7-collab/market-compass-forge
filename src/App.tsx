@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Landing from "./pages/Landing";
@@ -17,7 +16,6 @@ import Research from "./pages/Research";
 import People from "./pages/People";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import NetworkGraph from "./pages/NetworkGraph";
 import CompanyComparison from "./pages/CompanyComparison";
@@ -44,14 +42,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <AppLayout />
-                </ProtectedRoute>
-              }
-            >
+            <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<Index />} />
               <Route path="/markets/private" element={<PrivateMarkets />} />
               <Route path="/markets/public" element={<PublicMarkets />} />

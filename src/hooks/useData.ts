@@ -47,6 +47,7 @@ export type Financial = {
   gross_margin: number | null;
   burn_rate: number | null;
   ebitda: number | null;
+  runway_months: number | null;
   source: string | null;
   confidence_score: string | null;
 };

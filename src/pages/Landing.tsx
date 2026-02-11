@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -158,15 +157,8 @@ const AnimatedNumber = ({ value }: { value: number }) => {
 };
 
 const Landing = () => {
-  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { data: stats } = useLandingStats();
-
-  useEffect(() => {
-    if (user) navigate("/dashboard", { replace: true });
-  }, [user, navigate]);
-
-  if (loading || user) return null;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -182,11 +174,8 @@ const Landing = () => {
             </span>
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/auth">Sign In</Link>
-            </Button>
             <Button size="sm" asChild>
-              <Link to="/auth">Get Started</Link>
+              <Link to="/dashboard">Enter Platform</Link>
             </Button>
           </div>
         </div>
@@ -211,8 +200,8 @@ const Landing = () => {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="text-base px-8 glow-primary" asChild>
-              <Link to="/auth">
-                Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
+              <Link to="/dashboard">
+                Explore Platform <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-base px-8" asChild>
@@ -359,7 +348,7 @@ const Landing = () => {
                 {t.name === "Enterprise" ? (
                   <a href="mailto:sales@laurenzosgrapevine.io">{t.cta}</a>
                 ) : (
-                  <Link to="/auth">{t.cta}</Link>
+                  <Link to="/dashboard">{t.cta}</Link>
                 )}
               </Button>
             </div>
@@ -377,8 +366,8 @@ const Landing = () => {
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="hover:text-foreground transition-colors cursor-default">Privacy</span>
             <span className="hover:text-foreground transition-colors cursor-default">Terms</span>
-            <Link to="/auth" className="hover:text-foreground transition-colors">
-              Sign In
+            <Link to="/dashboard" className="hover:text-foreground transition-colors">
+              Enter Platform
             </Link>
           </div>
         </div>
