@@ -1,18 +1,26 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { FileText, Sparkles, Search } from "lucide-react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { FileText, Sparkles, Search, MessageSquare, Brain, FileSearch, ArrowRight } from "lucide-react";
 import { useSearchCompanies } from "@/hooks/useData";
 import AIResearchChat from "@/components/AIResearchChat";
 import InvestmentMemo from "@/components/InvestmentMemo";
 
+const EXAMPLE_QUERIES = [
+  "Which PE firms have been most active in healthcare services M&A this quarter?",
+  "What's the median EV/EBITDA for B2B SaaS companies with $50-100M revenue?",
+  "Show me all CRE transactions over $25M in Chicago's West Loop in 2025",
+  "Compare the fund performance of Thoma Bravo vs Vista Equity Partners",
+  "What are the key risks for investing in industrial distribution right now?",
+];
+
 const Research = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [selectedCompany, setSelectedCompany] = useState<{ id: string; name: string; sector?: string | null } | null>(null);
   const [activeTab, setActiveTab] = useState<"chat" | "memo">("chat");
   const { data: searchResults } = useSearchCompanies(query);
 
-  // Auto-select company from query params (from Screening page)
   useEffect(() => {
     const companyId = searchParams.get("company");
     const companyName = searchParams.get("name");
@@ -32,9 +40,51 @@ const Research = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Research Hub</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">AI-powered research and investment memos</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Research & AI</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">AI-powered research, investment memos, and document analysis</p>
+        </div>
+        <button
+          onClick={() => navigate("/documents")}
+          className="h-9 px-4 rounded-md border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors inline-flex items-center gap-2"
+        >
+          <FileSearch className="h-4 w-4" />
+          Document Analyzer
+        </button>
+      </div>
+
+      {/* AI Research Assistant Teaser */}
+      <div className="rounded-lg border border-primary/20 bg-gradient-to-br from-card to-accent p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Brain className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              Grapevine AI Research Assistant
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-warning/10 text-warning uppercase">Coming Soon</span>
+            </h3>
+            <p className="text-xs text-muted-foreground">Ask anything about private markets, deals, funds, and valuations</p>
+          </div>
+        </div>
+        <div className="space-y-1.5 mb-4">
+          {EXAMPLE_QUERIES.map((q, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs text-secondary-foreground">
+              <MessageSquare className="h-3 w-3 text-primary shrink-0" />
+              <span className="italic">"{q}"</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-9 px-3 rounded-md bg-secondary/50 border border-border flex items-center text-sm text-muted-foreground cursor-not-allowed">
+            Ask Grapevine AI anything about private markets...
+          </div>
+          <button className="h-9 px-4 rounded-md bg-primary/20 text-primary text-sm font-medium cursor-not-allowed flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            Ask AI
+          </button>
+        </div>
       </div>
 
       {/* Company Selector */}
@@ -65,15 +115,12 @@ const Research = () => {
 
       {selectedCompany && (
         <>
-          {/* Selected company badge */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               <span className="text-sm font-medium text-primary">{selectedCompany.name}</span>
               <button onClick={() => setSelectedCompany(null)} className="text-primary/60 hover:text-primary ml-1 text-xs">✕</button>
             </div>
-
-            {/* Tab Toggle */}
             <div className="flex gap-1">
               {(["chat", "memo"] as const).map((tab) => (
                 <button
@@ -88,7 +135,6 @@ const Research = () => {
               ))}
             </div>
           </div>
-
           {activeTab === "chat" ? (
             <AIResearchChat companyId={selectedCompany.id} companyName={selectedCompany.name} sector={selectedCompany.sector} />
           ) : (
@@ -98,7 +144,7 @@ const Research = () => {
       )}
 
       {!selectedCompany && (
-        <div className="flex items-center justify-center h-64 rounded-lg border border-border bg-card">
+        <div className="flex items-center justify-center h-48 rounded-lg border border-border bg-card">
           <div className="text-center text-muted-foreground">
             <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm font-medium">Select a company to begin research</p>
