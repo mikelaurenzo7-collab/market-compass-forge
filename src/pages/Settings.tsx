@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail } from "lucide-react";
+import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import ApiKeyManager from "@/components/ApiKeyManager";
@@ -23,7 +23,7 @@ const DENSITY_OPTIONS = [
 ] as const;
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
@@ -179,6 +179,29 @@ const Settings = () => {
             </div>
           </div>
 
+          {/* Current Plan */}
+          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Current Plan</h3>
+            </div>
+            <div>
+              <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                Free Trial
+              </span>
+              <p className="text-xs text-muted-foreground mt-2">
+                Upgrade to Analyst ($499/mo), Professional ($1,499/mo), or Institutional ($3,999/mo).
+              </p>
+              <a
+                href="mailto:sales@laurenzosgrapevine.io?subject=Upgrade%20Inquiry"
+                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Mail className="h-3 w-3" />
+                Contact Sales
+              </a>
+            </div>
+          </div>
+
           {/* Display Density */}
           <div className="rounded-lg border border-border bg-card p-4 space-y-4">
             <div className="flex items-center gap-2">
@@ -200,6 +223,20 @@ const Settings = () => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Sign Out */}
+          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <LogOut className="h-4 w-4 text-destructive" />
+              <h3 className="text-sm font-semibold text-foreground">Session</h3>
+            </div>
+            <button
+              onClick={() => signOut()}
+              className="px-4 py-2 rounded-md bg-destructive/10 text-destructive text-sm font-medium hover:bg-destructive/20 transition-colors"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       )}

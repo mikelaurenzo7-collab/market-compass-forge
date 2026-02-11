@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail, CheckCircle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface EarlyAccessModalProps {
   isOpen: boolean;
@@ -30,8 +31,18 @@ const EarlyAccessModal = ({ isOpen, onClose, featureName = "this feature" }: Ear
     e.preventDefault();
     setLoading(true);
     
-    // Simulate waitlist submission (in production, this would hit an API)
-    await new Promise(r => setTimeout(r, 800));
+    try {
+      const { error } = await supabase.from("waitlist_signups").insert({
+        name: formData.name,
+        email: formData.email,
+        firm: formData.firm || null,
+        title: formData.title || null,
+        interest: formData.interest || null,
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.error("Waitlist signup error:", err);
+    }
     
     setSubmitted(true);
     setLoading(false);

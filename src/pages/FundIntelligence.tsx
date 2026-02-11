@@ -102,7 +102,7 @@ const FundIntelligence = () => {
       </div>
 
       <Tabs defaultValue="funds" className="space-y-4">
-        <TabsList className="bg-muted/30 border border-border">
+        <TabsList className="bg-muted/30 border border-border overflow-x-auto">
           <TabsTrigger value="funds" className="gap-1.5 text-xs"><Landmark className="h-3.5 w-3.5" /> Fund Performance</TabsTrigger>
           <TabsTrigger value="lps" className="gap-1.5 text-xs"><Users className="h-3.5 w-3.5" /> LP Directory</TabsTrigger>
           <TabsTrigger value="gps" className="gap-1.5 text-xs"><Building2 className="h-3.5 w-3.5" /> GP Profiles</TabsTrigger>

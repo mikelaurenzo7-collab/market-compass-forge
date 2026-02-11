@@ -104,8 +104,51 @@ const DistressedAssets = () => {
         </Card>
       </div>
 
-       {/* Filters & Actions */}
-       <div className="flex flex-wrap gap-3 items-center justify-between">
+       {/* Mobile collapsible filters */}
+       <details className="md:hidden" open>
+         <summary className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer mb-2">
+           <Filter className="h-4 w-4" />
+           <span>Filters</span>
+         </summary>
+         <div className="flex flex-col gap-3 mb-3">
+           <input
+             type="text" placeholder="Search listings..."
+             value={search} onChange={(e) => setSearch(e.target.value)}
+             className="h-8 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+           />
+           <Select value={typeFilter} onValueChange={setTypeFilter}>
+             <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Asset Type" /></SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Types</SelectItem>
+               <SelectItem value="business">Business</SelectItem>
+               <SelectItem value="real_estate">Real Estate</SelectItem>
+               <SelectItem value="loan">Loan/Note</SelectItem>
+             </SelectContent>
+           </Select>
+           <Select value={distressFilter} onValueChange={setDistressFilter}>
+             <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Distress Type" /></SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All Distress Types</SelectItem>
+               {distressTypes.map((d) => (
+                 <SelectItem key={d} value={d!}>{d!.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
+               ))}
+             </SelectContent>
+           </Select>
+           <Select value={stateFilter} onValueChange={setStateFilter}>
+             <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="State" /></SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">All States</SelectItem>
+               {states.map((s) => <SelectItem key={s} value={s!}>{s}</SelectItem>)}
+             </SelectContent>
+           </Select>
+           <Button size="sm" variant="outline" onClick={() => exportDistressedAssetsCSV(filtered)} className="gap-2">
+             <Download className="h-4 w-4" /> Export CSV
+           </Button>
+         </div>
+       </details>
+
+       {/* Desktop filters */}
+       <div className="hidden md:flex flex-wrap gap-3 items-center justify-between">
          <div className="flex flex-wrap gap-3 items-center">
            <input
              type="text" placeholder="Search listings..."
@@ -138,14 +181,8 @@ const DistressedAssets = () => {
              </SelectContent>
            </Select>
          </div>
-         <Button
-           size="sm"
-           variant="outline"
-           onClick={() => exportDistressedAssetsCSV(filtered)}
-           className="gap-2"
-         >
-           <Download className="h-4 w-4" />
-           Export CSV
+         <Button size="sm" variant="outline" onClick={() => exportDistressedAssetsCSV(filtered)} className="gap-2">
+           <Download className="h-4 w-4" /> Export CSV
          </Button>
        </div>
 
