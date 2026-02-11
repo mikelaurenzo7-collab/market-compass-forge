@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.daily-briefing]
 verify_jwt = false
+
+[functions.analyze-document]
+verify_jwt = false

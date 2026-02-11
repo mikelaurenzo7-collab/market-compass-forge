@@ -653,6 +653,60 @@ export type Database = {
         }
         Relationships: []
       }
+      document_analyses: {
+        Row: {
+          ai_summary: string | null
+          company_name: string | null
+          created_at: string
+          document_type: string | null
+          extracted_metrics: Json | null
+          file_name: string
+          file_url: string | null
+          id: string
+          key_terms: Json | null
+          page_count: number | null
+          risk_factors: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+          valuation_indicators: Json | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          company_name?: string | null
+          created_at?: string
+          document_type?: string | null
+          extracted_metrics?: Json | null
+          file_name: string
+          file_url?: string | null
+          id?: string
+          key_terms?: Json | null
+          page_count?: number | null
+          risk_factors?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          valuation_indicators?: Json | null
+        }
+        Update: {
+          ai_summary?: string | null
+          company_name?: string | null
+          created_at?: string
+          document_type?: string | null
+          extracted_metrics?: Json | null
+          file_name?: string
+          file_url?: string | null
+          id?: string
+          key_terms?: Json | null
+          page_count?: number | null
+          risk_factors?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          valuation_indicators?: Json | null
+        }
+        Relationships: []
+      }
       financials: {
         Row: {
           arr: number | null
@@ -864,6 +918,42 @@ export type Database = {
           strategy?: string
           tvpi?: number | null
           vintage_year?: number
+        }
+        Relationships: []
+      }
+      intelligence_signals: {
+        Row: {
+          ai_summary: string | null
+          category: string
+          created_at: string
+          headline: string
+          id: string
+          sentiment: string
+          source: string
+          tags: string[] | null
+          url: string | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          category?: string
+          created_at?: string
+          headline: string
+          id?: string
+          sentiment?: string
+          source?: string
+          tags?: string[] | null
+          url?: string | null
+        }
+        Update: {
+          ai_summary?: string | null
+          category?: string
+          created_at?: string
+          headline?: string
+          id?: string
+          sentiment?: string
+          source?: string
+          tags?: string[] | null
+          url?: string | null
         }
         Relationships: []
       }
