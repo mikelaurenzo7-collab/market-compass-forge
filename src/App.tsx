@@ -26,6 +26,7 @@ import DistressedAssets from "./pages/DistressedAssets";
 import AdminDashboard from "./pages/AdminDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Discover from "./pages/Discover";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -64,6 +65,7 @@ const App = () => (
               <Route path="/fund-intelligence" element={<FundIntelligence />} />
               <Route path="/real-estate" element={<RealEstateIntel />} />
               <Route path="/distressed" element={<DistressedAssets />} />
+              <Route path="/discover" element={<Discover />} />
               <Route path="/research" element={<Research />} />
               <Route path="/documents" element={<DocumentAnalyzer />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />

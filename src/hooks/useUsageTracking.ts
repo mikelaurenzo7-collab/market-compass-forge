@@ -31,7 +31,7 @@ export function useUsageTracking() {
         .eq("user_id", user.id)
         .maybeSingle();
 
-      if (tier?.tier === "pro" || tier?.tier === "enterprise") {
+      if (tier?.tier === "professional" || tier?.tier === "pro" || tier?.tier === "enterprise") {
         await supabase.from("usage_tracking").insert({ user_id: user.id, action });
         return true;
       }
