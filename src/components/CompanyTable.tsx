@@ -66,7 +66,6 @@ const CompanyTable = () => {
                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                     {c.stage ?? "—"}
                   </span>
-                  
                 </td>
               </tr>
             ))}
