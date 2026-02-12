@@ -1,38 +1,37 @@
+## Real Data Integration
 
+### Completed
 
-## Fixes and Improvements Based on Documentation Findings
+**1. News feed now uses real data (Perplexity + Gemini fallback)**
+- `fetch-news` edge function rewired to Perplexity Sonar for grounded real-time news search
+- Falls back to Gemini with explicit "real news only" instructions if Perplexity unavailable
+- Citations from Perplexity attached as `source_url` on articles
 
-### Issues Found
+**2. Intelligence signals now use real data**
+- New `fetch-intelligence` edge function fetches real market signals across 6 categories (PE/M&A, Real Estate, Venture, Credit, Macro, Personnel)
+- Uses Perplexity with `search_recency_filter: "month"` for fresh data
+- Falls back to Gemini with structured function calling
 
-**1. CRITICAL: Pricing inconsistency ($299 vs $399)**
-The pricing card on the Landing page (line 268) shows `$299` and Settings page (line 191) shows `$299/mo`, while the hero text and UpgradePrompt correctly show `$399/mo`. These must all be `$399`.
+**3. Auto-enrich companies on view**
+- New `useAutoEnrich` hook triggers Firecrawl scraping when a company is viewed
+- Only triggers if no enrichment data exists or data is >7 days old
+- Prevents duplicate triggers with ref guard
 
-**2. CRITICAL: Usage tracking tier bypass is broken**
-In `useUsageTracking.ts` (line 34), the code checks for `tier === "pro" || tier === "enterprise"` to skip usage limits. But new users are seeded with `tier: "professional"` (in `useAuth.tsx` line 80). This means **no paying user ever bypasses the limit check** — every Professional subscriber hits the daily counter unnecessarily. Fix: add `"professional"` to the bypass check.
+**4. UI updated to reflect real data**
+- NewsFeed "Generate" button renamed to "Fetch Latest News"
+- IntelligenceFeed has new "Refresh" and "Fetch Real-Time Signals" buttons
+- All language updated from "AI-generated" to "real-time" framing
 
-**3. Missing route for /discover**
-The sidebar links to `/discover` but `App.tsx` has no route for the `Discover` page component. Users clicking "Discover" in the sidebar get a 404. Fix: add the route.
+### Data sources
+- **Company enrichment**: Firecrawl (website scraping + web search)
+- **News**: Perplexity Sonar (real-time search) → Gemini fallback
+- **Intelligence signals**: Perplexity Sonar → Gemini fallback
+- **Financials/funding**: Existing database (synthetic — needs real API integration)
+- **Distressed assets/CRE**: Existing database (synthetic — needs real API integration)
 
-**4. Sidebar has unused Discover import path**
-The `Discover.tsx` page exists but is never imported in `App.tsx`.
-
----
-
-### Changes
-
-#### File 1: `src/pages/Landing.tsx`
-- Line 268: Change `$299` to `$399` in the pricing card
-
-#### File 2: `src/pages/Settings.tsx`
-- Line 191: Change `Professional — $299/mo` to `Professional — $399/mo`
-
-#### File 3: `src/hooks/useUsageTracking.ts`
-- Line 34: Change the tier check from `"pro" || "enterprise"` to include `"professional"`:
-```typescript
-if (tier?.tier === "professional" || tier?.tier === "pro" || tier?.tier === "enterprise") {
-```
-
-#### File 4: `src/App.tsx`
-- Add import for `Discover` page
-- Add route `<Route path="/discover" element={<Discover />} />` inside the protected layout
-
+### Still synthetic (requires premium data APIs)
+- Company financials (revenue, ARR, burn rate)
+- Funding rounds and valuations
+- Distressed asset listings
+- CRE market data and transactions
+- Precedent transaction multiples

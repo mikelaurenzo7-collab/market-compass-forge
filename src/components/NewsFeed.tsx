@@ -206,8 +206,8 @@ const NewsFeed = ({ companyId, compact = false }: NewsFeedProps) => {
               disabled={fetchMutation.isPending}
               className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
             >
-              {fetchMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-              Generate News Feed
+              {fetchMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Fetch Latest News
             </button>
           </div>
         )}
