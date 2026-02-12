@@ -87,7 +87,7 @@ const tiers = [
       "CSV export",
       "Email alerts",
     ],
-    cta: "Start Trial",
+    cta: "Get Started",
     highlight: false,
   },
   {
@@ -104,7 +104,7 @@ const tiers = [
       "API access",
       "Priority support",
     ],
-    cta: "Start Trial",
+    cta: "Get Started",
     highlight: true,
   },
   {
@@ -222,7 +222,7 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="text-base px-8 glow-primary" asChild>
               <Link to="/auth">
-                Start Trial <ArrowRight className="ml-2 h-4 w-4" />
+                Get Started <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-base px-8" asChild>
