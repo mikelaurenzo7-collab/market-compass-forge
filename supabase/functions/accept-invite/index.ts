@@ -52,8 +52,8 @@ Deno.serve(async (req) => {
 
     if (inviteError || !invite) {
       return new Response(
-        JSON.stringify({ error: "No pending invite found for your email" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, message: "No pending invite" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
