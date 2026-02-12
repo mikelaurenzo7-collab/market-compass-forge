@@ -13,6 +13,8 @@ import { useNavigate } from "react-router-dom";
 import PipelineTasks from "@/components/PipelineTasks";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { KanbanSkeleton } from "@/components/SkeletonLoaders";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileDealCard from "@/components/MobileCompanyCard";
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -34,6 +36,7 @@ const Deals = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [view, setView] = useState<"kanban" | "table">("kanban");
@@ -119,41 +122,67 @@ const Deals = () => {
         <>
           {showAnalytics && <PipelineAnalytics />}
           {isLoading ? <KanbanSkeleton /> : (
-            <div className="flex gap-4 overflow-x-auto pb-4">
-              {STAGES.map((stage) => (
-                <div key={stage} className={`min-w-[280px] w-[280px] shrink-0 rounded-lg border border-border bg-card border-t-2 ${STAGE_COLORS[stage]}`} onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(stage)}>
-                  <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
-                    <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{STAGE_LABELS[stage]}</h3>
-                    <span className="text-[10px] font-mono text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{dealsByStage[stage]?.length ?? 0}</span>
-                  </div>
-                  <div className="p-2 space-y-2 min-h-[200px]">
-                    {dealsByStage[stage]?.map((deal) => (
-                      <div key={deal.id} draggable onDragStart={() => setDragItem(deal.id)} className="rounded-md border border-border bg-background p-3 cursor-grab active:cursor-grabbing hover:border-primary/30 transition-all group hover:shadow-md">
-                        <div className="flex items-start gap-2">
-                          <GripVertical className="h-4 w-4 text-muted-foreground/30 mt-0.5 shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
-                              <CompanyHoverCard company={{ id: deal.company_id, name: deal.companies?.name ?? "Unknown", sector: deal.companies?.sector, stage: deal.companies?.stage }}>
-                                <button onClick={(e) => { e.stopPropagation(); navigate(`/companies/${deal.company_id}`); }} className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left">
-                                  {deal.companies?.name ?? "Unknown"}
-                                </button>
-                              </CompanyHoverCard>
-                            </div>
-                            {deal.companies?.sector && <p className="text-[11px] text-muted-foreground mt-0.5 ml-5">{deal.companies.sector}</p>}
-                            {deal.notes && <p className="text-[11px] text-muted-foreground mt-1 ml-5 line-clamp-2">{deal.notes}</p>}
-                            <PipelineTasks dealId={deal.id} />
-                          </div>
-                          <button onClick={() => removeDeal.mutate(deal.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
+            isMobile ? (
+              <div className="space-y-2 pb-4">
+                {Object.entries(dealsByStage).map(([stage, stageDealsList]) =>
+                  stageDealsList && stageDealsList.length > 0 ? (
+                    <div key={stage} className="space-y-2">
+                      <div className="px-4 py-2 bg-secondary rounded-lg">
+                        <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                          {STAGE_LABELS[stage]} ({stageDealsList.length})
+                        </h3>
                       </div>
-                    ))}
+                      <div className="space-y-2 px-4">
+                        {stageDealsList.map((deal) => (
+                          <MobileDealCard
+                            key={deal.id}
+                            deal={deal}
+                            onStageChange={(id, newStage) => updateStage.mutate({ id, stage: newStage })}
+                            onDelete={(id) => removeDeal.mutate(id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {STAGES.map((stage) => (
+                  <div key={stage} className={`min-w-[280px] w-[280px] shrink-0 rounded-lg border border-border bg-card border-t-2 ${STAGE_COLORS[stage]}`} onDragOver={(e) => e.preventDefault()} onDrop={() => handleDrop(stage)}>
+                    <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
+                      <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">{STAGE_LABELS[stage]}</h3>
+                      <span className="text-[10px] font-mono text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{dealsByStage[stage]?.length ?? 0}</span>
+                    </div>
+                    <div className="p-2 space-y-2 min-h-[200px]">
+                      {dealsByStage[stage]?.map((deal) => (
+                        <div key={deal.id} draggable onDragStart={() => setDragItem(deal.id)} className="rounded-md border border-border bg-background p-3 cursor-grab active:cursor-grabbing hover:border-primary/30 transition-all group hover:shadow-md">
+                          <div className="flex items-start gap-2">
+                            <GripVertical className="h-4 w-4 text-muted-foreground/30 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
+                                <CompanyHoverCard company={{ id: deal.company_id, name: deal.companies?.name ?? "Unknown", sector: deal.companies?.sector, stage: deal.companies?.stage }}>
+                                  <button onClick={(e) => { e.stopPropagation(); navigate(`/companies/${deal.company_id}`); }} className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left">
+                                    {deal.companies?.name ?? "Unknown"}
+                                  </button>
+                                </CompanyHoverCard>
+                              </div>
+                              {deal.companies?.sector && <p className="text-[11px] text-muted-foreground mt-0.5 ml-5">{deal.companies.sector}</p>}
+                              {deal.notes && <p className="text-[11px] text-muted-foreground mt-1 ml-5 line-clamp-2">{deal.notes}</p>}
+                              <PipelineTasks dealId={deal.id} />
+                            </div>
+                            <button onClick={() => removeDeal.mutate(deal.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )
           )}
         </>
       )}
