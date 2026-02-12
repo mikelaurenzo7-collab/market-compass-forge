@@ -50,10 +50,18 @@ const features = [
   { icon: FileText, title: "AI Document Analysis", description: "Upload PPMs, CIMs, and financials for instant extraction of key terms, risk factors, valuation indicators, and executive summaries." },
 ];
 
-const tiers = [
-  { name: "Analyst", price: "$499", period: "/mo", description: "For individual deal sourcing", features: ["500 company profiles", "Basic valuation tools", "Deal flow tracker", "25 AI queries / day", "CSV export", "Email alerts"], cta: "Get Started", highlight: false },
-  { name: "Professional", price: "$1,499", period: "/mo", description: "For active deal teams", features: ["Unlimited company profiles", "Full valuation suite", "Fund intelligence access", "100 AI queries / day", "CRE market data", "API access", "Priority support"], cta: "Get Started", highlight: true },
-  { name: "Institutional", price: "$3,999", period: "/mo", description: "For firms & institutions", features: ["Everything in Professional", "Unlimited team seats", "Custom data feeds", "Dedicated account manager", "Deal room collaboration", "White-label reports", "SLA guarantee"], cta: "Request Demo", highlight: false },
+const singleTierFeatures = [
+  "Unlimited company profiles",
+  "Full valuation suite (DCF, LBO, Comps)",
+  "100 AI queries / day",
+  "50 memo generations / day",
+  "Fund intelligence & LP/GP data",
+  "Distressed asset alerts",
+  "Off-market real estate listings",
+  "CRE market analytics",
+  "API access",
+  "CSV & report export",
+  "Priority support",
 ];
 
 /* ─── hooks ─── */
@@ -100,7 +108,7 @@ const AnimatedNumber = ({ value }: { value: number }) => {
 /* ─── component ─── */
 const Landing = () => {
   const { data: stats } = useLandingStats();
-  const [annual, setAnnual] = useState(false);
+  const [annual] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -159,7 +167,7 @@ const Landing = () => {
             </Button>
           </motion.div>
           <motion.p variants={fadeUp} custom={4} className="text-xs text-muted-foreground mt-4">
-            Bloomberg: $2,665/mo · PitchBook: $2,083/mo · <span className="text-primary font-medium">Grapevine: from $499/mo</span>
+            Bloomberg: $2,665/mo · PitchBook: $2,083/mo · <span className="text-primary font-medium">Grapevine: $299/mo</span>
           </motion.p>
         </motion.div>
       </section>
@@ -243,57 +251,41 @@ const Landing = () => {
       </section>
 
       {/* Pricing */}
-      <section className="max-w-5xl mx-auto px-6 py-20">
+      <section className="max-w-3xl mx-auto px-6 py-20">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-4">Transparent pricing for every team size</h2>
-          <p className="text-muted-foreground text-center mb-4">Bloomberg Terminal: $2,665/mo — and they don't even cover private markets.</p>
-          <div className="flex items-center justify-center gap-3 mb-12">
-            <span className={`text-sm ${!annual ? "text-foreground" : "text-muted-foreground"}`}>Monthly</span>
-            <button onClick={() => setAnnual(!annual)} className={`relative w-11 h-6 rounded-full transition-colors ${annual ? "bg-primary" : "bg-secondary"}`}>
-              <motion.span layout className={`absolute top-1 h-4 w-4 rounded-full bg-foreground ${annual ? "left-6" : "left-1"}`} />
-            </button>
-            <span className={`text-sm ${annual ? "text-foreground" : "text-muted-foreground"}`}>Annual <span className="text-primary text-xs font-medium">Save 20%</span></span>
-          </div>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-4">One plan. Full access. No surprises.</h2>
+          <p className="text-muted-foreground text-center mb-12">Bloomberg Terminal: $2,665/mo · PitchBook: $2,083/mo — and they don't even cover private markets properly.</p>
         </motion.div>
         <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-60px" }}
-          variants={staggerContainer}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="rounded-lg border border-primary bg-card glow-primary p-8 max-w-lg mx-auto"
         >
-          {tiers.map((t, i) => {
-            const monthlyNum = parseInt(t.price.replace(/[^0-9]/g, ""));
-            const displayPrice = annual && monthlyNum ? `$${Math.round(monthlyNum * 0.8).toLocaleString()}` : t.price;
-            return (
-              <motion.div
-                key={t.name}
-                variants={fadeUp}
-                custom={i}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className={`rounded-md border p-6 flex flex-col transition-shadow ${t.highlight ? "border-primary bg-card glow-primary hover:shadow-xl hover:shadow-primary/10" : "border-border bg-card hover:shadow-lg hover:shadow-primary/5"}`}
-              >
-                {t.highlight && <span className="text-xs font-medium text-primary mb-3 uppercase tracking-wider">Most Popular</span>}
-                <h3 className="text-lg font-semibold">{t.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{t.description}</p>
-                <div className="mb-6">
-                  <span className="text-3xl font-bold font-mono">{displayPrice}</span>
-                  <span className="text-muted-foreground text-sm">{t.period}</span>
-                </div>
-                <ul className="space-y-2.5 mb-8 flex-1">
-                  {t.features.map((feat) => (
-                    <li key={feat} className="flex items-start gap-2 text-sm text-muted-foreground">
-                      <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                      {feat}
-                    </li>
-                  ))}
-                </ul>
-                <Button variant={t.highlight ? "default" : "outline"} className="w-full" asChild>
-                  {t.name === "Institutional" ? <a href="mailto:sales@grapevine.io">{t.cta}</a> : <Link to="/auth">{t.cta}</Link>}
-                </Button>
-              </motion.div>
-            );
-          })}
+          <span className="text-xs font-medium text-primary uppercase tracking-wider">Professional</span>
+          <div className="mt-3 mb-1">
+            <span className="text-4xl font-bold font-mono">$299</span>
+            <span className="text-muted-foreground text-sm">/mo</span>
+          </div>
+          <p className="text-sm text-muted-foreground mb-6">Everything you need for private market intelligence. Per seat.</p>
+          <ul className="space-y-2.5 mb-8">
+            {singleTierFeatures.map((feat) => (
+              <li key={feat} className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                {feat}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button className="flex-1" asChild>
+              <Link to="/auth">Get Started</Link>
+            </Button>
+            <Button variant="outline" className="flex-1" asChild>
+              <a href="mailto:sales@grapevine.io">Request Demo</a>
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground text-center mt-4">Need enterprise features? <a href="mailto:sales@grapevine.io" className="text-primary hover:underline">Contact us</a> for custom pricing.</p>
         </motion.div>
       </section>
 

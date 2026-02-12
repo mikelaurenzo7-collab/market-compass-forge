@@ -7,27 +7,6 @@ const ACTION_LABELS: Record<string, string> = {
   enrichment: "Company enrichments",
 };
 
-const TIERS = [
-  {
-    name: "Analyst",
-    price: "$499/mo",
-    current: true,
-    features: ["500 company profiles", "Basic valuation tools", "25 AI queries/day", "CSV export", "Email alerts"],
-  },
-  {
-    name: "Professional",
-    price: "$1,499/mo",
-    current: false,
-    features: ["Unlimited profiles", "Full valuation suite", "100 AI queries/day", "Fund intelligence", "CRE data", "API access"],
-  },
-  {
-    name: "Institutional",
-    price: "$3,999/mo",
-    current: false,
-    features: ["Everything in Professional", "Unlimited team seats", "Custom data feeds", "Dedicated account manager", "White-label reports", "SLA guarantee"],
-  },
-];
-
 interface UpgradePromptProps {
   open: boolean;
   onClose: () => void;
@@ -39,52 +18,36 @@ const UpgradePrompt = ({ open, onClose, blockedAction }: UpgradePromptProps) => 
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
             Daily limit reached
           </DialogTitle>
           <DialogDescription>
-            You've reached your daily {label} limit on your current plan. Upgrade for more.
+            You've used all {label} for today. Your limits reset at midnight UTC. Need higher limits? Contact our team.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-          {TIERS.map((tier) => (
-            <div
-              key={tier.name}
-              className={`rounded-lg border p-4 space-y-3 ${
-                tier.name === "Pro"
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "border-border bg-card"
-              }`}
-            >
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">{tier.name}</h3>
-                <p className="text-2xl font-bold text-foreground mt-1">{tier.price}</p>
-              </div>
-              <ul className="space-y-2">
-                {tier.features.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Check className="h-3 w-3 text-primary shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              {tier.current ? (
-                <div className="text-xs text-muted-foreground text-center py-2">Current plan</div>
-              ) : (
-                <a
-                  href="mailto:sales@grapevine.io?subject=Upgrade%20Inquiry"
-                  className="flex items-center justify-center gap-2 w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-                >
-                  <Mail className="h-3.5 w-3.5" />
-                  Contact Us
-                </a>
-              )}
-            </div>
-          ))}
+        <div className="mt-4 space-y-3">
+          <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-foreground">Professional Plan — $299/mo</h3>
+            <ul className="space-y-1.5">
+              {["100 AI queries / day", "50 memo generations / day", "50 enrichments / day", "Unlimited company profiles", "Full platform access"].map((f) => (
+                <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Check className="h-3 w-3 text-primary shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <a
+            href="mailto:sales@grapevine.io?subject=Increase%20Usage%20Limits"
+            className="flex items-center justify-center gap-2 w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Contact Sales
+          </a>
         </div>
       </DialogContent>
     </Dialog>

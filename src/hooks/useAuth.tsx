@@ -67,7 +67,7 @@ async function seedDemoContent(userId: string) {
     // 4. Seed subscription tier (analyst - entry paid tier)
     await supabase.from("subscription_tiers").insert({
       user_id: userId,
-      tier: "analyst",
+      tier: "professional",
     });
 
     console.log("Demo content seeded for new user");

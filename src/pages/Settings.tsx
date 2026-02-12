@@ -188,17 +188,17 @@ const Settings = () => {
             </div>
             <div>
               <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                Free Trial
+                Professional — $299/mo
               </span>
               <p className="text-xs text-muted-foreground mt-2">
-                Upgrade to Analyst ($499/mo), Professional ($1,499/mo), or Institutional ($3,999/mo).
+                Full access to all platform features. 100 AI queries, 50 memos, 50 enrichments per day.
               </p>
               <a
-                href="mailto:sales@grapevine.io?subject=Upgrade%20Inquiry"
+                href="mailto:sales@grapevine.io?subject=Enterprise%20Inquiry"
                 className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
               >
                 <Mail className="h-3 w-3" />
-                Contact Sales
+                Enterprise? Contact Us
               </a>
             </div>
           </div>
