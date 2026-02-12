@@ -167,7 +167,7 @@ const Landing = () => {
             </Button>
           </motion.div>
           <motion.p variants={fadeUp} custom={4} className="text-xs text-muted-foreground mt-4">
-            Bloomberg: $2,665/mo · PitchBook: $2,083/mo · <span className="text-primary font-medium">Grapevine: $299/mo</span>
+            Bloomberg: $2,665/mo · PitchBook: $2,083/mo · <span className="text-primary font-medium">Grapevine: $399/mo</span>
           </motion.p>
         </motion.div>
       </section>
