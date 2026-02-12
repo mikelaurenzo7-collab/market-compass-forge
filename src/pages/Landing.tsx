@@ -87,7 +87,7 @@ const tiers = [
       "CSV export",
       "Email alerts",
     ],
-    cta: "Start Free Trial",
+    cta: "Start Trial",
     highlight: false,
   },
   {
@@ -104,7 +104,7 @@ const tiers = [
       "API access",
       "Priority support",
     ],
-    cta: "Start Free Trial",
+    cta: "Start Trial",
     highlight: true,
   },
   {
@@ -186,10 +186,10 @@ const Landing = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between px-6 h-14">
           <Link to="/" className="flex items-center gap-2.5">
             <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
-              <span className="text-xs font-bold text-primary-foreground">LG</span>
+              <span className="text-xs font-bold text-primary-foreground">GV</span>
             </div>
             <span className="text-sm font-semibold tracking-tight">
-              Laurenzo's Grapevine
+              Grapevine
             </span>
           </Link>
           <div className="flex items-center gap-3">
@@ -222,11 +222,11 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="text-base px-8 glow-primary" asChild>
               <Link to="/auth">
-                Start Free Trial <ArrowRight className="ml-2 h-4 w-4" />
+                Start Trial <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
             <Button variant="outline" size="lg" className="text-base px-8" asChild>
-              <a href="mailto:sales@laurenzosgrapevine.io">Request Demo</a>
+              <a href="mailto:sales@grapevine.io">Request Demo</a>
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-4">
@@ -382,7 +382,7 @@ const Landing = () => {
                   asChild
                 >
                   {t.name === "Institutional" ? (
-                    <a href="mailto:sales@laurenzosgrapevine.io">{t.cta}</a>
+                    <a href="mailto:sales@grapevine.io">{t.cta}</a>
                   ) : (
                     <Link to="/auth">{t.cta}</Link>
                   )}
@@ -399,21 +399,21 @@ const Landing = () => {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
             <div className="flex items-center gap-2">
               <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-                <span className="text-[8px] font-bold text-primary-foreground">LG</span>
+                <span className="text-[8px] font-bold text-primary-foreground">GV</span>
               </div>
-              <span className="text-xs font-semibold">Laurenzo's Grapevine</span>
+              <span className="text-xs font-semibold">Grapevine</span>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <a href="mailto:careers@laurenzosgrapevine.io" className="hover:text-foreground transition-colors">Careers</a>
+              <a href="mailto:careers@grapevine.io" className="hover:text-foreground transition-colors">Careers</a>
               <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
               <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-              <a href="mailto:contact@laurenzosgrapevine.io" className="hover:text-foreground transition-colors">Contact</a>
+              <a href="mailto:contact@grapevine.io" className="hover:text-foreground transition-colors">Contact</a>
             </div>
           </div>
           <p className="text-[10px] text-muted-foreground text-center sm:text-left leading-relaxed">
-            Laurenzo's Grapevine provides private market data and valuations for informational purposes only.
+            Grapevine provides private market data and valuations for informational purposes only.
             Estimated valuations are based on proprietary models and should not be considered investment advice.
-            Always conduct independent due diligence. © {new Date().getFullYear()} Laurenzo's Grapevine. All rights reserved.
+            Always conduct independent due diligence. © {new Date().getFullYear()} Grapevine. All rights reserved.
           </p>
         </div>
       </footer>

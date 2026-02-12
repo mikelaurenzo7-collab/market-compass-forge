@@ -957,6 +957,42 @@ export type Database = {
         }
         Relationships: []
       }
+      intro_requests: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          id: string
+          message: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_name: string
+          entity_type: string
+          id?: string
+          message?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_name?: string
+          entity_type?: string
+          id?: string
+          message?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       investor_company: {
         Row: {
           company_id: string

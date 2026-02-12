@@ -2,6 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Badge } from "@/components/ui/badge";
 import { Home, DollarSign, Maximize2, Building, Calendar } from "lucide-react";
 import { formatCurrency } from "@/hooks/useData";
+import RequestIntroButton from "@/components/RequestIntroButton";
 
 interface PrivateListing {
   id: string;
@@ -103,6 +104,17 @@ export const ListingDetailPanel = ({ listing, open, onOpenChange }: ListingDetai
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-2">Description</h4>
               <p className="text-sm text-muted-foreground leading-relaxed">{listing.description}</p>
+            </div>
+          )}
+
+          {/* Request Intro */}
+          {listing.status === "available" && (
+            <div className="pt-2">
+              <RequestIntroButton
+                entityType="private_listing"
+                entityId={listing.id}
+                entityName={listing.property_name || `${listing.property_type} · ${listing.city}, ${listing.state}`}
+              />
             </div>
           )}
 

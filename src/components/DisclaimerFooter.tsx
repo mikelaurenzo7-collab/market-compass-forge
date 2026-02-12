@@ -14,9 +14,9 @@ const DisclaimerFooter = () => (
       </div>
       
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/50">
-        <span className="text-[10px] text-muted-foreground">© {new Date().getFullYear()} Laurenzo's Grapevine. All rights reserved.</span>
+        <span className="text-[10px] text-muted-foreground">© {new Date().getFullYear()} Grapevine. All rights reserved.</span>
         <div className="flex items-center gap-3 text-[10px]">
-          <a href="mailto:contact@laurenzosgrapevine.com" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+          <a href="mailto:contact@grapevine.io" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
             <Mail className="h-3 w-3" />
             <span className="hidden sm:inline">Contact</span>
           </a>

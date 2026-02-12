@@ -23,9 +23,9 @@ const Privacy = () => (
       <h2 className="text-lg font-semibold text-foreground mt-8">4. Cookies</h2>
       <p className="text-muted-foreground leading-relaxed">We use essential cookies for authentication and session management. No third-party advertising cookies are used.</p>
       <h2 className="text-lg font-semibold text-foreground mt-8">5. Your Rights</h2>
-      <p className="text-muted-foreground leading-relaxed">You may request access to, correction of, or deletion of your personal data by contacting us at <a href="mailto:privacy@laurenzosgrapevine.io" className="text-primary hover:underline">privacy@laurenzosgrapevine.io</a>.</p>
+      <p className="text-muted-foreground leading-relaxed">You may request access to, correction of, or deletion of your personal data by contacting us at <a href="mailto:privacy@grapevine.io" className="text-primary hover:underline">privacy@grapevine.io</a>.</p>
       <h2 className="text-lg font-semibold text-foreground mt-8">6. Contact</h2>
-      <p className="text-muted-foreground leading-relaxed">For privacy-related inquiries, email <a href="mailto:privacy@laurenzosgrapevine.io" className="text-primary hover:underline">privacy@laurenzosgrapevine.io</a>.</p>
+      <p className="text-muted-foreground leading-relaxed">For privacy-related inquiries, email <a href="mailto:privacy@grapevine.io" className="text-primary hover:underline">privacy@grapevine.io</a>.</p>
     </main>
   </div>
 );
