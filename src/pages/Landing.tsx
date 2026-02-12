@@ -17,8 +17,11 @@ import {
   Building,
   AlertTriangle,
   Home,
+  Shield,
+  Quote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 /* ─── animation helpers ─── */
 const fadeUp = {
@@ -294,7 +297,107 @@ const Landing = () => {
         </motion.div>
       </section>
 
-      {/* Footer */}
+      {/* Testimonials */}
+      <section className="max-w-5xl mx-auto px-6 py-20">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-4">Trusted by serious investors</h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">See why family offices and PE firms choose Grapevine over legacy terminals.</p>
+        </motion.div>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={staggerContainer}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        >
+          {[
+            { quote: "Saved us 40+ hours per week on deal sourcing. The distressed asset alerts alone paid for the subscription in month one.", name: "Managing Director", firm: "Midwest Family Office", initials: "JR" },
+            { quote: "Found 3 off-market acquisitions we never would have surfaced through traditional channels. Game-changer for our deal flow.", name: "Partner", firm: "Growth Equity Fund", initials: "SK" },
+            { quote: "The AI research assistant replaced two junior analysts for preliminary screening. The ROI is undeniable.", name: "Principal", firm: "PE Fund ($500M AUM)", initials: "MT" },
+          ].map((t, i) => (
+            <motion.div
+              key={i}
+              variants={fadeUp}
+              custom={i}
+              className="rounded-lg border border-border bg-card p-6 space-y-4"
+            >
+              <Quote className="h-5 w-5 text-primary/40" />
+              <p className="text-sm text-foreground leading-relaxed">{t.quote}</p>
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">{t.initials}</div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{t.firm}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* Trust Signals */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+        className="border-y border-border bg-card/50"
+      >
+        <div className="max-w-4xl mx-auto px-6 py-8">
+          <div className="flex flex-wrap items-center justify-center gap-8 text-center">
+            {[
+              { icon: Shield, label: "SOC 2 Type II In Progress" },
+              { icon: Shield, label: "256-bit AES Encryption" },
+              { icon: Users, label: "200+ Professional Investors" },
+            ].map((t, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="flex items-center gap-2 text-muted-foreground">
+                <t.icon className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium">{t.label}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* FAQ */}
+      <section className="max-w-3xl mx-auto px-6 py-20">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-4">Frequently asked questions</h2>
+          <p className="text-muted-foreground text-center mb-10">Everything you need to know about Grapevine.</p>
+        </motion.div>
+        <Accordion type="single" collapsible className="space-y-2">
+          {[
+            { q: "Where does your data come from?", a: "We aggregate data from SEC filings, state court records, public registries, proprietary scrapers, and verified LP/GP networks. Every data point includes a confidence score and source attribution." },
+            { q: "Can I export data to Excel?", a: "Yes. All tables, watchlists, and screening results can be exported as CSV or XLSX. API access for programmatic export is available on Professional plans and above." },
+            { q: "Do you integrate with my existing tools?", a: "We offer API access, webhook integrations, and direct CSV/XLSX exports. Native integrations with Salesforce, HubSpot, and DealCloud are on our roadmap." },
+            { q: "How accurate are the valuations?", a: "Our valuations use DCF, comparable analysis, and precedent transactions calibrated against verified deal data. Each estimate includes a confidence score (high/medium/low) and methodology citation." },
+            { q: "What's included in the AI research assistant?", a: "The AI can generate investment memos, summarize documents (CIMs, PPMs), compare companies, surface risks, and answer natural-language questions about any company in our database." },
+            { q: "Is my data secure?", a: "All data is encrypted at rest and in transit (256-bit AES). We're pursuing SOC 2 Type II certification. Row-level security ensures your pipeline, watchlists, and notes are visible only to you." },
+          ].map((faq, i) => (
+            <AccordionItem key={i} value={`faq-${i}`} className="border border-border rounded-lg px-4">
+              <AccordionTrigger className="text-sm font-medium text-foreground hover:no-underline py-4">{faq.q}</AccordionTrigger>
+              <AccordionContent className="text-sm text-muted-foreground leading-relaxed pb-4">{faq.a}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      </section>
+
+      {/* Final CTA */}
+      <section className="max-w-3xl mx-auto px-6 pb-20 text-center">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="space-y-6">
+          <h2 className="text-2xl sm:text-3xl font-semibold">Ready to see what you've been missing?</h2>
+          <p className="text-muted-foreground max-w-lg mx-auto">Join 200+ investors who use Grapevine to find deals faster, diligence smarter, and close with confidence.</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button size="lg" className="text-base px-8 glow-primary" asChild>
+              <Link to="/auth">Get Started <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+            <Button variant="outline" size="lg" className="text-base px-8" asChild>
+              <a href="mailto:sales@grapevine.io">Talk to Sales</a>
+            </Button>
+          </div>
+        </motion.div>
+      </section>
+
       <footer className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-8">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">

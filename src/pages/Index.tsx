@@ -10,43 +10,16 @@ import NewsFeed from "@/components/NewsFeed";
 import UsageMeters from "@/components/UsageMeters";
 import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
-import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building } from "lucide-react";
+import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building, Briefcase, Bell } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useHotkeys } from "@/hooks/useHotkeys";
+import OnboardingFlow, { useOnboardingStatus } from "@/components/OnboardingFlow";
+import EmptyState from "@/components/EmptyState";
+import { AnimatePresence } from "framer-motion";
 
-const OnboardingCard = () => {
-  const navigate = useNavigate();
-  const steps = [
-    { icon: Search, label: "Screen companies", desc: "Filter by sector, stage, revenue, and valuation", action: () => navigate("/watchlists") },
-    { icon: FileText, label: "Research with AI", desc: "Chat with AI about any company or generate memos", action: () => navigate("/research") },
-    { icon: TrendingUp, label: "Build your pipeline", desc: "Track deals through sourcing to commitment", action: () => navigate("/deals") },
-  ];
-
-  return (
-    <div className="rounded-lg border border-primary/20 bg-primary/5 p-5 space-y-4">
-      <div>
-        <h2 className="text-sm font-semibold text-foreground">Welcome to Grapevine</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">Elite private investment intelligence platform</p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {steps.map((step, i) => (
-          <button key={i} onClick={step.action} className="flex items-start gap-3 p-3 rounded-md border border-border bg-card hover:bg-secondary/50 transition-colors text-left group">
-            <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-              <step.icon className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground flex items-center gap-1">{step.label} <ArrowRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{step.desc}</p>
-            </div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-};
-
+// Legacy OnboardingCard removed – replaced by OnboardingFlow component
 const RecentPipelineDeals = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -61,7 +34,20 @@ const RecentPipelineDeals = () => {
     staleTime: 30_000,
   });
 
-  if (!recentDeals?.length) return null;
+  if (!recentDeals?.length) return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">Your Pipeline</h3>
+      </div>
+      <EmptyState
+        icon={Briefcase}
+        title="No deals yet"
+        description="Start tracking deals by adding companies to your pipeline."
+        actionLabel="Add First Deal"
+        onAction={() => navigate("/companies")}
+      />
+    </div>
+  );
 
   const STAGE_LABELS: Record<string, string> = { sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence", ic_review: "IC Review", committed: "Committed", passed: "Passed" };
 
@@ -108,7 +94,20 @@ const WatchlistWidget = () => {
     staleTime: 30_000,
   });
 
-  if (!watchlists?.length) return null;
+  if (!watchlists?.length) return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="px-4 py-3 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground">Watchlists</h3>
+      </div>
+      <EmptyState
+        icon={List}
+        title="No watchlists yet"
+        description="Create watchlists to track companies by sector, theme, or strategy."
+        actionLabel="Create Watchlist"
+        onAction={() => navigate("/watchlists")}
+      />
+    </div>
+  );
 
   return (
     <div className="rounded-lg border border-border bg-card">
@@ -286,7 +285,8 @@ const Index = () => {
     staleTime: 60_000,
   });
 
-  const showOnboarding = pipelineCount === 0;
+  const { data: onboardingCompleted } = useOnboardingStatus();
+  const showOnboarding = !onboardingCompleted;
   const freshnessLabel = latestEventDate
     ? `Data as of ${format(new Date(latestEventDate), "MMM d, yyyy")}`
     : "Private Investment Intelligence";
@@ -334,7 +334,9 @@ const Index = () => {
         </div>
       )}
 
-      {showOnboarding && <OnboardingCard />}
+      <AnimatePresence>
+        {showOnboarding && <OnboardingFlow />}
+      </AnimatePresence>
 
       {/* Metrics Row */}
       {isLoading ? (
