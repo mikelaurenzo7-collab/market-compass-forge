@@ -32,6 +32,7 @@ import { LogOut } from "lucide-react";
 const mainModules = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { id: "companies", label: "Private Companies", icon: Building2, path: "/companies" },
+  { id: "discover", label: "Discover", icon: Search, path: "/discover" },
   { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
   { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
   { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
