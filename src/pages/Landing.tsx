@@ -332,6 +332,67 @@ const Landing = () => {
               </div>
             </motion.div>
           ))}
+      </motion.div>
+      </section>
+
+      {/* Case Study Spotlight */}
+      <section className="max-w-5xl mx-auto px-6 py-20">
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-60px" }}
+          variants={staggerContainer}
+          className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card overflow-hidden"
+        >
+          <div className="grid md:grid-cols-2 gap-0">
+            <div className="p-8 md:p-10 space-y-6">
+              <motion.div variants={fadeUp} custom={0}>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                  Case Study
+                </span>
+              </motion.div>
+              <motion.h3 variants={fadeUp} custom={1} className="text-xl sm:text-2xl font-semibold text-foreground leading-tight">
+                How a Midwest Family Office Sourced $200M in Off-Market Deals Using Grapevine
+              </motion.h3>
+              <motion.p variants={fadeUp} custom={2} className="text-sm text-muted-foreground leading-relaxed">
+                A single-family office managing $800M in AUM was spending 60+ hours per week manually screening opportunities across fragmented data sources. After switching to Grapevine, they consolidated their entire deal sourcing workflow into one platform.
+              </motion.p>
+              <motion.div variants={fadeUp} custom={3}>
+                <Button variant="outline" size="sm" className="gap-1" asChild>
+                  <a href="mailto:sales@grapevine.io">
+                    Learn How They Did It <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                </Button>
+              </motion.div>
+            </div>
+            <div className="p-8 md:p-10 bg-card/80 border-t md:border-t-0 md:border-l border-border/50 flex flex-col justify-center">
+              <motion.div
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                variants={staggerContainer}
+                className="grid grid-cols-2 gap-6"
+              >
+                {[
+                  { before: "60 hrs/wk", after: "12 hrs/wk", label: "Sourcing Time", improvement: "-80%" },
+                  { before: "2 deals/yr", after: "9 deals/yr", label: "Deal Flow", improvement: "+350%" },
+                  { before: "Manual", after: "AI-Assisted", label: "Screening", improvement: "Automated" },
+                  { before: "18% IRR", after: "26% IRR", label: "Portfolio IRR", improvement: "+8pts" },
+                ].map((m, i) => (
+                  <motion.div key={i} variants={fadeUp} custom={i} className="space-y-1.5">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{m.label}</p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-bold font-mono text-foreground">{m.after}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-muted-foreground line-through">{m.before}</span>
+                      <span className="text-[10px] font-semibold text-primary">{m.improvement}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
         </motion.div>
       </section>
 
@@ -349,6 +410,7 @@ const Landing = () => {
               { icon: Shield, label: "SOC 2 Type II In Progress" },
               { icon: Shield, label: "256-bit AES Encryption" },
               { icon: Users, label: "200+ Professional Investors" },
+              { icon: BarChart3, label: "5M+ API Calls Processed" },
             ].map((t, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="flex items-center gap-2 text-muted-foreground">
                 <t.icon className="h-4 w-4 text-primary" />
