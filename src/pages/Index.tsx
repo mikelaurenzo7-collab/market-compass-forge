@@ -7,6 +7,7 @@ import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
 import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
 import NewsFeed from "@/components/NewsFeed";
+import UsageMeters from "@/components/UsageMeters";
 import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
 import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building } from "lucide-react";
@@ -366,6 +367,7 @@ const Index = () => {
         </div>
 
         <div className="space-y-4">
+          <UsageMeters />
           {visibleWidgets.includes("watchlist") && <WatchlistWidget />}
           {visibleWidgets.includes("pipeline") && <RecentPipelineDeals />}
           {visibleWidgets.includes("distressed") && <DistressedWidget />}

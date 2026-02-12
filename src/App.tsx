@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import IntelligenceFeed from "./pages/IntelligenceFeed";
 import DistressedAssets from "./pages/DistressedAssets";
+import AdminDashboard from "./pages/AdminDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import { toast } from "sonner";
@@ -69,6 +70,7 @@ const App = () => (
               <Route path="/watchlists" element={<Screening />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/admin" element={<AdminDashboard />} />
               {/* Legacy redirects */}
               <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
               <Route path="/markets/public" element={<Navigate to="/intelligence" replace />} />

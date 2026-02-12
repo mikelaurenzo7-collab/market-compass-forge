@@ -19,11 +19,14 @@ import {
   ChevronRight,
   FileSearch,
   AlertTriangle,
+  ShieldCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { LogOut } from "lucide-react";
 
 const mainModules = [
@@ -46,8 +49,20 @@ const insightModules = [
 const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const location = useLocation();
   const { data: unreadCount } = useUnreadCount();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+
+  const { data: userRole } = useQuery({
+    queryKey: ["sidebar-role", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user!.id).maybeSingle();
+      return data?.role ?? "analyst";
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isAdminOrPartner = userRole === "admin" || userRole === "partner";
 
   const linkClass = (path: string) => {
     const isActive = path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
@@ -61,6 +76,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const bottomModules = [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+    ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin", badge: 0 }] : []),
   ];
 
   const SectionLabel = ({ children }: { children: string }) => (
