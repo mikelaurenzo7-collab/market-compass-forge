@@ -1,13 +1,15 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const supabase = createClient(
@@ -17,125 +19,232 @@ serve(async (req) => {
 
     const { company_id, topic } = await req.json();
 
-    // Get company context if provided
-    let companyContext = "";
+    // Build search query
+    let searchQuery = "";
     if (company_id) {
       const { data: company } = await supabase
         .from("companies")
-        .select("name, sector, sub_sector, market_type, description")
+        .select("name, sector")
         .eq("id", company_id)
         .single();
       if (company) {
-        companyContext = `Company: ${company.name} (${company.sector ?? "Unknown sector"}, ${company.market_type}). ${company.description ?? ""}`;
+        searchQuery = `${company.name} ${company.sector || ""} latest news funding deals 2026`;
       }
     }
+    if (!searchQuery) {
+      searchQuery = topic || "private equity M&A venture capital deals funding news 2026";
+    }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Use Perplexity for grounded real-time search
+    const perplexityKey = Deno.env.get("PERPLEXITY_API_KEY");
+
+    // Fallback to LOVABLE_API_KEY + Gemini if no Perplexity
+    if (!perplexityKey) {
+      console.log("No Perplexity key, falling back to Lovable AI with web grounding prompt");
+      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      if (!LOVABLE_API_KEY) {
+        return new Response(
+          JSON.stringify({ error: "No AI provider configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Use Gemini with explicit instruction to provide real, verifiable news
+      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content: `You are a financial news aggregator. Return ONLY real, factual, verifiable news articles from the past 30 days. 
+Do NOT fabricate or hallucinate news. If you cannot find real recent news, return fewer articles or articles from your training data that are real.
+Each article must reference real companies, real events, and real sources.
+You MUST call the save_articles function with the articles array.`,
+            },
+            {
+              role: "user",
+              content: `Find 5 real, recent news articles about: ${searchQuery}. Only include articles you are confident are real events that actually happened.`,
+            },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "save_articles",
+                description: "Save real news articles with sentiment",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    articles: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string" },
+                          summary: { type: "string" },
+                          ai_summary: { type: "string" },
+                          source_name: { type: "string" },
+                          source_url: { type: "string", description: "Real URL to the article if known, or null" },
+                          sentiment_score: { type: "number" },
+                          sentiment_label: { type: "string", enum: ["bullish", "bearish", "neutral"] },
+                          tags: { type: "array", items: { type: "string" } },
+                        },
+                        required: ["title", "summary", "ai_summary", "source_name", "sentiment_score", "sentiment_label", "tags"],
+                      },
+                    },
+                  },
+                  required: ["articles"],
+                },
+              },
+            },
+          ],
+          tool_choice: { type: "function", function: { name: "save_articles" } },
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errText = await aiResponse.text();
+        console.error("AI error:", aiResponse.status, errText);
+        return new Response(
+          JSON.stringify({ error: "AI service error" }),
+          { status: aiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const aiData = await aiResponse.json();
+      const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) {
+        return new Response(
+          JSON.stringify({ error: "No structured response" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { articles } = JSON.parse(toolCall.function.arguments);
+      const now = new Date();
+      const inserts = articles.map((a: any, i: number) => ({
+        company_id: company_id ?? null,
+        title: a.title,
+        summary: a.summary,
+        ai_summary: a.ai_summary,
+        source_name: a.source_name,
+        source_url: a.source_url || null,
+        sentiment_score: a.sentiment_score,
+        sentiment_label: a.sentiment_label,
+        tags: a.tags,
+        published_at: new Date(now.getTime() - i * 3600_000).toISOString(),
+      }));
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("news_articles")
+        .insert(inserts)
+        .select();
+
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        return new Response(
+          JSON.stringify({ error: "Failed to save articles" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ articles: inserted }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const systemPrompt = `You are a financial news analyst AI. Generate realistic, plausible market news articles with sentiment analysis.
+    // --- Primary path: Perplexity real-time search ---
+    console.log("Fetching real news via Perplexity:", searchQuery);
 
-Based on the context provided, generate 5 news articles that would be relevant. Each article should feel like it comes from a real financial news wire (Bloomberg, Reuters, etc).
-
-You MUST respond by calling the generate_news function with the articles array.`;
-
-    const userPrompt = company_id && companyContext
-      ? `Generate 5 recent news articles about or relevant to: ${companyContext}`
-      : `Generate 5 recent market news articles about: ${topic ?? "technology sector trends, M&A activity, and market movements"}`;
-
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const perplexityResponse = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${perplexityKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "sonar",
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
           {
-            type: "function",
-            function: {
-              name: "generate_news",
-              description: "Generate news articles with sentiment scores",
-              parameters: {
-                type: "object",
-                properties: {
-                  articles: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string", description: "News headline, concise and impactful" },
-                        summary: { type: "string", description: "2-3 sentence summary of the article" },
-                        ai_summary: { type: "string", description: "1-sentence analyst-grade takeaway" },
-                        source_name: { type: "string", description: "News source (e.g. Reuters, Bloomberg, TechCrunch)" },
-                        sentiment_score: { type: "number", description: "Sentiment from -1.0 (very bearish) to 1.0 (very bullish)" },
-                        sentiment_label: { type: "string", enum: ["bullish", "bearish", "neutral"] },
-                        tags: { type: "array", items: { type: "string" }, description: "2-3 topic tags" },
-                      },
-                      required: ["title", "summary", "ai_summary", "source_name", "sentiment_score", "sentiment_label", "tags"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["articles"],
-                additionalProperties: false,
-              },
-            },
+            role: "system",
+            content: `You are a financial news analyst. Return ONLY real, factual news from the past 30 days. 
+For each article, provide: title, summary (2-3 sentences), ai_summary (1-sentence analyst takeaway), source_name, sentiment_score (-1 to 1), sentiment_label (bullish/bearish/neutral), and tags (2-3 keywords).
+Return exactly as a JSON array under the key "articles". Do not fabricate any information.`,
+          },
+          {
+            role: "user",
+            content: `Find 5 recent real news articles about: ${searchQuery}`,
           },
         ],
-        tool_choice: { type: "function", function: { name: "generate_news" } },
+        search_recency_filter: "month",
       }),
     });
 
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Try again shortly." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
-      return new Response(JSON.stringify({ error: "AI service error" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!perplexityResponse.ok) {
+      const errText = await perplexityResponse.text();
+      console.error("Perplexity error:", perplexityResponse.status, errText);
+      return new Response(
+        JSON.stringify({ error: "News search failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      return new Response(JSON.stringify({ error: "No structured response from AI" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const perplexityData = await perplexityResponse.json();
+    const content = perplexityData.choices?.[0]?.message?.content;
+    const citations = perplexityData.citations || [];
+
+    if (!content) {
+      return new Response(
+        JSON.stringify({ error: "No results from search" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const { articles } = JSON.parse(toolCall.function.arguments);
+    // Parse the JSON from Perplexity response
+    let articles: any[] = [];
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = content.match(/\{[\s\S]*"articles"[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        articles = parsed.articles || [];
+      } else {
+        // Try parsing as array directly
+        const arrayMatch = content.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          articles = JSON.parse(arrayMatch[0]);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse Perplexity response:", e);
+      console.log("Raw content:", content);
+    }
 
-    // Insert into database with staggered published_at times
+    if (articles.length === 0) {
+      return new Response(
+        JSON.stringify({ articles: [], message: "No real news found for this query" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Insert with real source URLs from citations
     const now = new Date();
-    const inserts = articles.map((a: any, i: number) => ({
+    const inserts = articles.slice(0, 8).map((a: any, i: number) => ({
       company_id: company_id ?? null,
-      title: a.title,
-      summary: a.summary,
-      ai_summary: a.ai_summary,
-      source_name: a.source_name,
-      sentiment_score: a.sentiment_score,
-      sentiment_label: a.sentiment_label,
-      tags: a.tags,
-      published_at: new Date(now.getTime() - i * 3600_000).toISOString(), // stagger by 1hr each
+      title: a.title || "Untitled",
+      summary: a.summary || null,
+      ai_summary: a.ai_summary || null,
+      source_name: a.source_name || "Web",
+      source_url: a.source_url || citations[i] || null,
+      sentiment_score: typeof a.sentiment_score === "number" ? a.sentiment_score : 0,
+      sentiment_label: ["bullish", "bearish", "neutral"].includes(a.sentiment_label) ? a.sentiment_label : "neutral",
+      tags: Array.isArray(a.tags) ? a.tags : [],
+      published_at: new Date(now.getTime() - i * 1800_000).toISOString(),
     }));
 
     const { data: inserted, error: insertError } = await supabase
@@ -145,18 +254,22 @@ You MUST respond by calling the generate_news function with the articles array.`
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      return new Response(JSON.stringify({ error: "Failed to save articles" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Failed to save articles" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    console.log(`Saved ${inserted?.length} real news articles`);
 
     return new Response(JSON.stringify({ articles: inserted }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("fetch-news error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

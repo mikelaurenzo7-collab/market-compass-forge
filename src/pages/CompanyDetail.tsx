@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useAutoEnrich } from "@/hooks/useAutoEnrich";
 import { ArrowLeft, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer, AlertCircle } from "lucide-react";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import AIResearchChat from "@/components/AIResearchChat";
@@ -33,6 +34,9 @@ const CompanyDetail = () => {
   const { data: funding } = useCompanyFunding(id!);
   const { data: financials } = useCompanyFinancials(id!);
   const { data: events } = useActivityEvents(id);
+  
+  // Auto-enrich company with real data via Firecrawl on first view
+  useAutoEnrich(id, !!user);
   
   const [noteContent, setNoteContent] = useState("");
   const searchParams = new URLSearchParams(window.location.search);

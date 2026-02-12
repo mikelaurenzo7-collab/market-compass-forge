@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   TrendingUp, TrendingDown, Minus, Sparkles, ExternalLink,
   Building2, Landmark, BarChart3, CreditCard, Globe, Briefcase,
-  Users, FileText, Loader2,
+  Users, FileText, Loader2, RefreshCw,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 type SentimentType = "bullish" | "bearish" | "neutral";
 type CategoryType = "pe_ma" | "real_estate" | "venture" | "credit" | "macro" | "personnel";
@@ -63,7 +64,33 @@ const useIntelligenceSignals = () =>
 
 const IntelligenceFeed = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryType | "all">("all");
+  const queryClient = useQueryClient();
   const { data: items, isLoading } = useIntelligenceSignals();
+
+  const fetchSignals = useMutation({
+    mutationFn: async (category?: string) => {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-intelligence`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ category: category || null }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error);
+      }
+      return resp.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["intelligence-signals"] });
+      toast.success("Intelligence signals updated with latest market data");
+    },
+    onError: (e) => {
+      toast.error(String(e.message));
+    },
+  });
 
   const allItems = items ?? [];
   const filtered = activeCategory === "all"
@@ -99,6 +126,14 @@ const IntelligenceFeed = () => {
             <span className="text-muted-foreground">{sentimentCounts.neutral}→</span>
             <span className="text-destructive">{sentimentCounts.bearish}↓</span>
           </div>
+          <button
+            onClick={() => fetchSignals.mutate(activeCategory === "all" ? undefined : activeCategory)}
+            disabled={fetchSignals.isPending}
+            className="h-7 px-2 rounded text-[10px] font-mono text-primary uppercase tracking-wider hover:bg-primary/10 transition-colors flex items-center gap-1 disabled:opacity-50"
+          >
+            {fetchSignals.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Refresh
+          </button>
         </div>
       </div>
 
@@ -183,7 +218,15 @@ const IntelligenceFeed = () => {
       {!isLoading && filtered.length === 0 && (
         <div className="rounded-lg border border-border bg-card p-12 text-center">
           <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No intelligence items in this category yet</p>
+          <p className="text-sm text-muted-foreground mb-3">No intelligence signals yet</p>
+          <button
+            onClick={() => fetchSignals.mutate(activeCategory === "all" ? undefined : activeCategory)}
+            disabled={fetchSignals.isPending}
+            className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {fetchSignals.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+            Fetch Real-Time Signals
+          </button>
         </div>
       )}
     </div>
