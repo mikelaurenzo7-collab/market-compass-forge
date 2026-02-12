@@ -194,7 +194,7 @@ const Settings = () => {
                 Upgrade to Analyst ($499/mo), Professional ($1,499/mo), or Institutional ($3,999/mo).
               </p>
               <a
-                href="mailto:sales@laurenzosgrapevine.io?subject=Upgrade%20Inquiry"
+                href="mailto:sales@grapevine.io?subject=Upgrade%20Inquiry"
                 className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
               >
                 <Mail className="h-3 w-3" />

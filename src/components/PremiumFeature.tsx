@@ -5,10 +5,9 @@ import { Lock, Zap } from "lucide-react";
 import { ReactNode, useState } from "react";
 import UpgradePrompt from "./UpgradePrompt";
 
-type Tier = "free" | "analyst" | "professional" | "institutional";
+type Tier = "analyst" | "professional" | "institutional";
 
 const TIER_RANK: Record<string, number> = {
-  free: 0,
   analyst: 1,
   pro: 1, // alias
   professional: 2,
@@ -17,7 +16,6 @@ const TIER_RANK: Record<string, number> = {
 };
 
 const TIER_LABELS: Record<string, string> = {
-  free: "Free",
   analyst: "Analyst ($499/mo)",
   professional: "Professional ($1,499/mo)",
   institutional: "Institutional ($3,999/mo)",
@@ -46,7 +44,7 @@ export function useSubscriptionTier() {
         .eq("user_id", user!.id)
         .maybeSingle();
       if (error) throw error;
-      return (data?.tier ?? "free") as string;
+      return (data?.tier ?? "analyst") as string;
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
@@ -63,7 +61,7 @@ const PremiumFeature = ({ tier, children, featureName, inline = false }: Premium
 
   if (isLoading) return null;
 
-  const granted = hasAccess(userTier ?? "free", tier);
+  const granted = hasAccess(userTier ?? "analyst", tier);
 
   if (granted) return <>{children}</>;
 

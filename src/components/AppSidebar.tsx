@@ -98,7 +98,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border">
         <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shrink-0">
-          <span className="text-xs font-bold text-primary-foreground">LG</span>
+          <span className="text-xs font-bold text-primary-foreground">GV</span>
         </div>
         {!collapsed && (
           <span className="text-sm font-semibold text-foreground tracking-tight">Grapevine</span>

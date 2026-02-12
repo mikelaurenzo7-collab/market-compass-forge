@@ -2,6 +2,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, DollarSign, MapPin, Building2, Percent } from "lucide-react";
 import { formatCurrency } from "@/hooks/useData";
+import RequestIntroButton from "@/components/RequestIntroButton";
 
 interface DistressedAsset {
   id: string;
@@ -103,6 +104,17 @@ export const DistressedDetailPanel = ({ asset, open, onOpenChange }: DistressedD
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-2">Contact Information</h4>
               <p className="text-sm font-mono text-muted-foreground">{asset.contact_info}</p>
+            </div>
+          )}
+
+          {/* Request Intro */}
+          {asset.status === "active" && (
+            <div className="pt-2">
+              <RequestIntroButton
+                entityType="distressed_asset"
+                entityId={asset.id}
+                entityName={asset.name}
+              />
             </div>
           )}
 
