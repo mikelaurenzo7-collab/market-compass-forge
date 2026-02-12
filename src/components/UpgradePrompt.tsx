@@ -31,7 +31,7 @@ const UpgradePrompt = ({ open, onClose, blockedAction }: UpgradePromptProps) => 
 
         <div className="mt-4 space-y-3">
           <div className="rounded-lg border border-border bg-card p-4 space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">Professional Plan — $299/mo</h3>
+            <h3 className="text-sm font-semibold text-foreground">Professional Plan — $399/mo</h3>
             <ul className="space-y-1.5">
               {["100 AI queries / day", "50 memo generations / day", "50 enrichments / day", "Unlimited company profiles", "Full platform access"].map((f) => (
                 <li key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
