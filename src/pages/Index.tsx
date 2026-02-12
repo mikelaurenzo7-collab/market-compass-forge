@@ -1,12 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
 import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
-import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
-import NewsFeed from "@/components/NewsFeed";
 import UsageMeters from "@/components/UsageMeters";
 import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
@@ -18,8 +16,74 @@ import { useHotkeys } from "@/hooks/useHotkeys";
 import OnboardingFlow, { useOnboardingStatus } from "@/components/OnboardingFlow";
 import EmptyState from "@/components/EmptyState";
 import { AnimatePresence } from "framer-motion";
+import { Skeleton } from "@/components/ui/skeleton";
 
-// Legacy OnboardingCard removed – replaced by OnboardingFlow component
+// Lazy load heavy chart components
+const DealFlowChart = lazy(() => import("@/components/Charts").then(m => ({ default: m.DealFlowChart })));
+const SectorHeatmap = lazy(() => import("@/components/Charts").then(m => ({ default: m.SectorHeatmap })));
+const NewsFeed = lazy(() => import("@/components/NewsFeed"));
+
+const ChartSkeleton = () => (
+  <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-4 w-32" />
+      <Skeleton className="h-3 w-20" />
+    </div>
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-6 w-full" style={{ opacity: 1 - i * 0.15 }} />
+      ))}
+    </div>
+  </div>
+);
+
+const WidgetSkeleton = () => (
+  <div className="rounded-lg border border-border bg-card">
+    <div className="px-4 py-3 border-b border-border">
+      <Skeleton className="h-4 w-28" />
+    </div>
+    <div className="divide-y divide-border/50">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="px-4 py-3 flex items-center justify-between">
+          <div className="space-y-1">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+          <Skeleton className="h-4 w-12" />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Batched dashboard data hook — single query for pipeline count, latest event, and market counts
+const useDashboardBatch = () => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["dashboard-batch", user?.id],
+    queryFn: async () => {
+      const [pipelineRes, companiesRes, distressedRes, listingsRes, sectorRes, latestEventRes] = await Promise.all([
+        user ? supabase.from("deal_pipeline").select("*", { count: "exact", head: true }).eq("user_id", user.id) : Promise.resolve({ count: 0 }),
+        supabase.from("companies").select("id", { count: "exact", head: true }),
+        supabase.from("distressed_assets").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("private_listings").select("id", { count: "exact", head: true }).eq("status", "available"),
+        supabase.from("companies").select("sector").not("sector", "is", null),
+        supabase.from("activity_events").select("published_at").order("published_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      const sectorSet = new Set((sectorRes.data ?? []).map((r: any) => r.sector));
+      return {
+        pipelineCount: (pipelineRes as any).count ?? 0,
+        companyCount: companiesRes.count ?? 0,
+        distressedCount: distressedRes.count ?? 0,
+        listingsCount: listingsRes.count ?? 0,
+        sectorCount: sectorSet.size,
+        latestEventDate: latestEventRes.data?.published_at ?? null,
+      };
+    },
+    staleTime: 30_000,
+  });
+};
+
 const RecentPipelineDeals = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -220,6 +284,7 @@ const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { data: batch } = useDashboardBatch();
 
   const [customizingDashboard, setCustomizingDashboard] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState<string[]>([
@@ -244,51 +309,10 @@ const Index = () => {
     else updateWidgets([...visibleWidgets, id]);
   };
 
-  const { data: pipelineCount } = useQuery({
-    queryKey: ["pipeline-count"],
-    queryFn: async () => {
-      const { count, error } = await supabase.from("deal_pipeline").select("*", { count: "exact", head: true }).eq("user_id", user!.id);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-
-  const { data: totalCounts } = useQuery({
-    queryKey: ["market-counts"],
-    queryFn: async () => {
-      const [companiesRes, sectorRes, distressedRes, listingsRes] = await Promise.all([
-        supabase.from("companies").select("id", { count: "exact", head: true }),
-        supabase.from("companies").select("sector").not("sector", "is", null),
-        supabase.from("distressed_assets").select("id", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("private_listings").select("id", { count: "exact", head: true }).eq("status", "available"),
-      ]);
-      const sectorSet = new Set((sectorRes.data ?? []).map((r) => r.sector));
-      return {
-        companyCount: companiesRes.count ?? 0,
-        sectorCount: sectorSet.size,
-        distressedCount: distressedRes.count ?? 0,
-        listingsCount: listingsRes.count ?? 0,
-      };
-    },
-    staleTime: 60_000,
-  });
-
-  const { data: latestEventDate } = useQuery({
-    queryKey: ["latest-event-date"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("activity_events").select("published_at").order("published_at", { ascending: false }).limit(1).single();
-      if (error) return null;
-      return data?.published_at;
-    },
-    staleTime: 60_000,
-  });
-
   const { data: onboardingCompleted } = useOnboardingStatus();
   const showOnboarding = !onboardingCompleted;
-  const freshnessLabel = latestEventDate
-    ? `Data as of ${format(new Date(latestEventDate), "MMM d, yyyy")}`
+  const freshnessLabel = batch?.latestEventDate
+    ? `Data as of ${format(new Date(batch.latestEventDate), "MMM d, yyyy")}`
     : "Private Investment Intelligence";
 
   useHotkeys([{
@@ -346,15 +370,23 @@ const Index = () => {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
           <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} />
-          <MetricCard label="Private Companies" value={String(totalCounts?.companyCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Tracked</span>} />
-          <MetricCard label="Distressed Alerts" value={String(totalCounts?.distressedCount ?? 0)} subtitle={<span className="flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Active</span>} />
-          <MetricCard label="Off-Market Listings" value={String(totalCounts?.listingsCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Building className="h-2.5 w-2.5" /> Available</span>} />
+          <MetricCard label="Private Companies" value={String(batch?.companyCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Tracked</span>} />
+          <MetricCard label="Distressed Alerts" value={String(batch?.distressedCount ?? 0)} subtitle={<span className="flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Active</span>} />
+          <MetricCard label="Off-Market Listings" value={String(batch?.listingsCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Building className="h-2.5 w-2.5" /> Available</span>} />
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {visibleWidgets.includes("deal-flow") && <div className="min-h-[300px]"><DealFlowChart /></div>}
-        {visibleWidgets.includes("sector-heatmap") && <div className="min-h-[300px]"><SectorHeatmap /></div>}
+        {visibleWidgets.includes("deal-flow") && (
+          <Suspense fallback={<ChartSkeleton />}>
+            <div className="min-h-[300px]"><DealFlowChart /></div>
+          </Suspense>
+        )}
+        {visibleWidgets.includes("sector-heatmap") && (
+          <Suspense fallback={<ChartSkeleton />}>
+            <div className="min-h-[300px]"><SectorHeatmap /></div>
+          </Suspense>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -374,7 +406,11 @@ const Index = () => {
           {visibleWidgets.includes("pipeline") && <RecentPipelineDeals />}
           {visibleWidgets.includes("distressed") && <DistressedWidget />}
           {visibleWidgets.includes("off-market") && <OffMarketWidget />}
-          {visibleWidgets.includes("intelligence-feed") && <NewsFeed compact />}
+          {visibleWidgets.includes("intelligence-feed") && (
+            <Suspense fallback={<WidgetSkeleton />}>
+              <NewsFeed compact />
+            </Suspense>
+          )}
         </div>
       </div>
     </div>
