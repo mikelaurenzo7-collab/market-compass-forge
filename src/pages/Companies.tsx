@@ -7,6 +7,7 @@ import { exportCompaniesCSV } from "@/lib/export";
 import { useTableNavigation } from "@/hooks/useHotkeys";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { TableSkeleton } from "@/components/SkeletonLoaders";
+import { SyntheticDataWarning } from "@/components/DataBadges";
 
 const STAGES = ["All", "Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage"];
 const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce", "Services", "Construction", "Manufacturing", "Professional Services", "Financial Services", "Distribution", "Real Estate", "Hospitality", "Restaurant"];
@@ -144,9 +145,11 @@ const Companies = () => {
   );
 
   if (isLoading) {
-    return (
-      <div className="p-4 sm:p-6 space-y-4">
-        <div>
+  return (
+    <div className="p-4 sm:p-6 space-y-4">
+      <SyntheticDataWarning />
+      
+      <div>
           <h1 className="text-xl font-semibold text-foreground">Companies</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Loading...</p>
         </div>
@@ -157,6 +160,8 @@ const Companies = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
+      <SyntheticDataWarning />
+      
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Companies</h1>

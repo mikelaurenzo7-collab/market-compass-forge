@@ -70,15 +70,16 @@ const EnrichmentPanel = ({ companyId, companyName }: EnrichmentPanelProps) => {
         </button>
       </div>
 
-      <div className="divide-y divide-border/50 max-h-80 overflow-y-auto">
-        {isLoading && (
-          <div className="p-6 flex justify-center">
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          </div>
-        )}
+       <div className="divide-y divide-border/50 max-h-80 overflow-y-auto">
+         {isLoading && (
+           <div className="p-6 flex flex-col items-center gap-2">
+             <Loader2 className="h-4 w-4 animate-spin text-primary" />
+             <p className="text-xs text-muted-foreground">Fetching real data…</p>
+           </div>
+         )}
 
-        {!isLoading && enrichments && enrichments.length > 0
-          ? enrichments.map((e) => (
+         {!isLoading && enrichments && enrichments.length > 0
+           ? enrichments.map((e) => (
               <div key={e.id} className="px-4 py-3 space-y-1">
                 <div className="flex items-start gap-2">
                   {typeIcon(e.data_type)}
@@ -118,11 +119,12 @@ const EnrichmentPanel = ({ companyId, companyName }: EnrichmentPanelProps) => {
                 </div>
               </div>
             ))
-          : !isLoading && (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                No enrichment data yet. Click "Enrich Now" to scrape.
-              </div>
-            )}
+           : !isLoading && (
+               <div className="p-6 text-center space-y-2">
+                 <p className="text-sm text-muted-foreground">No real data collected yet</p>
+                 <p className="text-xs text-muted-foreground/60">Click "Enrich Now" to scrape {companyName}'s website and recent news</p>
+               </div>
+             )}
       </div>
       <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
     </div>

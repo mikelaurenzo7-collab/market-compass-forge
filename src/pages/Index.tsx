@@ -8,7 +8,7 @@ import CompanyTable from "@/components/CompanyTable";
 import UsageMeters from "@/components/UsageMeters";
 import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
-import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building, Briefcase, Bell } from "lucide-react";
+import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building, Briefcase, Bell, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -280,6 +280,48 @@ const OffMarketWidget = () => {
   );
 };
 
+const RealDataStats = () => {
+  const { data: stats } = useQuery({
+    queryKey: ["real-data-stats"],
+    queryFn: async () => {
+      const [enrichmentsRes, newsRes, intelligenceRes] = await Promise.all([
+        supabase.from("company_enrichments").select("id", { count: "exact", head: true }),
+        supabase.from("news_articles").select("id", { count: "exact", head: true }),
+        supabase.from("intelligence_signals").select("id", { count: "exact", head: true }),
+      ]);
+      return {
+        enrichments: enrichmentsRes.count ?? 0,
+        news: newsRes.count ?? 0,
+        signals: intelligenceRes.count ?? 0,
+      };
+    },
+    staleTime: 60_000,
+  });
+
+  return (
+    <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Zap className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold text-foreground">Real Data in Use</h3>
+      </div>
+      <div className="grid grid-cols-3 gap-3 text-center">
+        <div>
+          <p className="text-lg font-bold text-primary">{stats?.enrichments ?? 0}</p>
+          <p className="text-[11px] text-muted-foreground">Enriched Companies</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold text-primary">{stats?.news ?? 0}</p>
+          <p className="text-[11px] text-muted-foreground">Real-Time News</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold text-primary">{stats?.signals ?? 0}</p>
+          <p className="text-[11px] text-muted-foreground">Market Signals</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
@@ -361,6 +403,9 @@ const Index = () => {
       <AnimatePresence>
         {showOnboarding && <OnboardingFlow />}
       </AnimatePresence>
+
+      {/* Real Data Stats */}
+      <RealDataStats />
 
       {/* Metrics Row */}
       {isLoading ? (
