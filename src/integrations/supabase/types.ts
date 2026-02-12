@@ -267,6 +267,7 @@ export type Database = {
           logo_url: string | null
           market_type: string
           name: string
+          search_vector: unknown
           sector: string | null
           stage: string | null
           status: string | null
@@ -285,6 +286,7 @@ export type Database = {
           logo_url?: string | null
           market_type?: string
           name: string
+          search_vector?: unknown
           sector?: string | null
           stage?: string | null
           status?: string | null
@@ -303,6 +305,7 @@ export type Database = {
           logo_url?: string | null
           market_type?: string
           name?: string
+          search_vector?: unknown
           sector?: string | null
           stage?: string | null
           status?: string | null
@@ -609,6 +612,7 @@ export type Database = {
           location_city: string | null
           location_state: string | null
           name: string
+          search_vector: unknown
           sector: string | null
           source: string | null
           status: string
@@ -628,6 +632,7 @@ export type Database = {
           location_city?: string | null
           location_state?: string | null
           name: string
+          search_vector?: unknown
           sector?: string | null
           source?: string | null
           status?: string
@@ -647,6 +652,7 @@ export type Database = {
           location_city?: string | null
           location_state?: string | null
           name?: string
+          search_vector?: unknown
           sector?: string | null
           source?: string | null
           status?: string
@@ -928,6 +934,7 @@ export type Database = {
           created_at: string
           headline: string
           id: string
+          search_vector: unknown
           sentiment: string
           source: string
           tags: string[] | null
@@ -939,6 +946,7 @@ export type Database = {
           created_at?: string
           headline: string
           id?: string
+          search_vector?: unknown
           sentiment?: string
           source?: string
           tags?: string[] | null
@@ -950,6 +958,7 @@ export type Database = {
           created_at?: string
           headline?: string
           id?: string
+          search_vector?: unknown
           sentiment?: string
           source?: string
           tags?: string[] | null
@@ -1194,6 +1203,7 @@ export type Database = {
           created_at: string
           id: string
           published_at: string | null
+          search_vector: unknown
           sentiment_label: string | null
           sentiment_score: number | null
           source_name: string | null
@@ -1208,6 +1218,7 @@ export type Database = {
           created_at?: string
           id?: string
           published_at?: string | null
+          search_vector?: unknown
           sentiment_label?: string | null
           sentiment_score?: number | null
           source_name?: string | null
@@ -1222,6 +1233,7 @@ export type Database = {
           created_at?: string
           id?: string
           published_at?: string | null
+          search_vector?: unknown
           sentiment_label?: string | null
           sentiment_score?: number | null
           source_name?: string | null
@@ -1906,7 +1918,37 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mv_dashboard_summary: {
+        Row: {
+          active_distressed: number | null
+          median_valuation: number | null
+          refreshed_at: string | null
+          total_companies: number | null
+          total_deal_value: number | null
+          total_news: number | null
+          total_rounds: number | null
+          total_signals: number | null
+        }
+        Relationships: []
+      }
+      mv_sector_multiples: {
+        Row: {
+          deal_count_12m: number | null
+          ev_ebitda_count: number | null
+          ev_ebitda_mean: number | null
+          ev_ebitda_median: number | null
+          ev_ebitda_p25: number | null
+          ev_ebitda_p75: number | null
+          ev_rev_count: number | null
+          ev_rev_mean: number | null
+          ev_rev_median: number | null
+          ev_rev_p25: number | null
+          ev_rev_p75: number | null
+          funding_count_12m: number | null
+          sector: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_role: {
@@ -1919,6 +1961,17 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      refresh_materialized_views: { Args: never; Returns: undefined }
+      search_all: {
+        Args: { result_limit?: number; search_query: string }
+        Returns: {
+          entity_id: string
+          entity_type: string
+          name: string
+          rank: number
+          subtitle: string
+        }[]
       }
     }
     Enums: {

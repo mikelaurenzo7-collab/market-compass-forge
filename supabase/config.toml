@@ -32,3 +32,9 @@ verify_jwt = false
 
 [functions.accept-invite]
 verify_jwt = false
+
+[functions.compute-scores]
+verify_jwt = false
+
+[functions.refresh-views]
+verify_jwt = false

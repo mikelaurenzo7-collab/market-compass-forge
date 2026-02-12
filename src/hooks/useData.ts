@@ -132,6 +132,23 @@ export const useDashboardMetrics = () =>
   useQuery({
     queryKey: ["dashboard-metrics"],
     queryFn: async () => {
+      // Try materialized view first (instant, pre-computed)
+      const { data: mv, error: mvError } = await supabase
+        .from("mv_dashboard_summary")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (!mvError && mv) {
+        return {
+          totalCompanies: Number(mv.total_companies) ?? 0,
+          totalDealValue: Number(mv.total_deal_value) ?? 0,
+          medianValuation: Number(mv.median_valuation) ?? 0,
+          totalRounds: Number(mv.total_rounds) ?? 0,
+        };
+      }
+
+      // Fallback to live queries
       const [companiesRes, roundsRes] = await Promise.all([
         supabase.from("companies").select("id", { count: "exact", head: true }),
         supabase.from("funding_rounds").select("amount, valuation_post, date").order("date", { ascending: false }),
@@ -139,16 +156,13 @@ export const useDashboardMetrics = () =>
 
       const totalCompanies = companiesRes.count ?? 0;
       const rounds = roundsRes.data ?? [];
-
       const totalDealValue = rounds.reduce((sum, r) => sum + (r.amount ?? 0), 0);
-      const valuations = rounds.filter((r) => r.valuation_post).map((r) => r.valuation_post!);
-      valuations.sort((a, b) => a - b);
-      const medianValuation = valuations.length
-        ? valuations[Math.floor(valuations.length / 2)]
-        : 0;
+      const valuations = rounds.filter((r) => r.valuation_post).map((r) => r.valuation_post!).sort((a, b) => a - b);
+      const medianValuation = valuations.length ? valuations[Math.floor(valuations.length / 2)] : 0;
 
       return { totalCompanies, totalDealValue, medianValuation, totalRounds: rounds.length };
     },
+    staleTime: 5 * 60 * 1000, // 5 minute cache
   });
 
 export const useSectorData = () =>
@@ -228,13 +242,25 @@ export const useSearchCompanies = (query: string) =>
   useQuery({
     queryKey: ["search-companies", query],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("companies")
-        .select("id, name, sector, stage")
-        .ilike("name", `%${query}%`)
-        .limit(10);
-      if (error) throw error;
-      return data;
+      // Use full-text search with ranking
+      const { data, error } = await supabase.rpc("search_all", {
+        search_query: query,
+        result_limit: 10,
+      });
+      if (error) {
+        // Fallback to ilike
+        const { data: fallback, error: fbErr } = await supabase
+          .from("companies")
+          .select("id, name, sector, stage")
+          .ilike("name", `%${query}%`)
+          .limit(10);
+        if (fbErr) throw fbErr;
+        return fallback;
+      }
+      // Filter to companies only and map to expected shape
+      return (data ?? [])
+        .filter((r: any) => r.entity_type === "company")
+        .map((r: any) => ({ id: r.entity_id, name: r.name, sector: r.subtitle, stage: null }));
     },
     enabled: query.length >= 2,
   });
