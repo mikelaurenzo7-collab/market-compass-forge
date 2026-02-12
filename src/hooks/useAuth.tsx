@@ -103,12 +103,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 },
                 { onConflict: "user_id" }
               );
-            // Try to accept any pending team invite
-            try {
-              await supabase.functions.invoke("accept-invite");
-            } catch {
-              // No invite, that's fine
-            }
+            // Try to accept any pending team invite (silently ignore if none)
+            supabase.functions.invoke("accept-invite").catch(() => {});
             // Seed demo content for new users
             seedDemoContent(session.user.id);
           }, 0);
