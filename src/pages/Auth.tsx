@@ -1,12 +1,78 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Mail, Lock, AlertCircle, Loader2, ArrowLeft } from "lucide-react";
+import { Zap, Mail, Lock, AlertCircle, Loader2, ArrowLeft, Check, X } from "lucide-react";
 import { z } from "zod";
+import { motion, AnimatePresence } from "framer-motion";
 
 const emailSchema = z.string().email("Invalid email address");
-const passwordSchema = z.string().min(6, "Password must be at least 6 characters");
+const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
+
+const PASSWORD_RULES = [
+  { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+  { label: "Uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+  { label: "Lowercase letter", test: (p: string) => /[a-z]/.test(p) },
+  { label: "Number", test: (p: string) => /[0-9]/.test(p) },
+  { label: "Special character", test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+];
+
+const getStrength = (password: string) => {
+  const passed = PASSWORD_RULES.filter(r => r.test(password)).length;
+  if (passed <= 1) return { level: 0, label: "Weak", color: "bg-destructive" };
+  if (passed <= 2) return { level: 1, label: "Fair", color: "bg-orange-500" };
+  if (passed <= 3) return { level: 2, label: "Good", color: "bg-yellow-500" };
+  if (passed <= 4) return { level: 3, label: "Strong", color: "bg-primary/70" };
+  return { level: 4, label: "Excellent", color: "bg-primary" };
+};
+
+const PasswordStrengthMeter = ({ password }: { password: string }) => {
+  const strength = useMemo(() => getStrength(password), [password]);
+  const passedRules = useMemo(() => PASSWORD_RULES.map(r => ({ ...r, passed: r.test(password) })), [password]);
+
+  if (!password) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="space-y-2 overflow-hidden"
+    >
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex gap-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+                i <= strength.level ? strength.color : "bg-secondary"
+              }`}
+            />
+          ))}
+        </div>
+        <span className={`text-[10px] font-medium uppercase tracking-wider ${
+          strength.level >= 3 ? "text-primary" : strength.level >= 2 ? "text-yellow-500" : "text-destructive"
+        }`}>
+          {strength.label}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+        {passedRules.map((rule) => (
+          <div key={rule.label} className="flex items-center gap-1.5">
+            {rule.passed ? (
+              <Check className="h-3 w-3 text-primary shrink-0" />
+            ) : (
+              <X className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+            )}
+            <span className={`text-[11px] ${rule.passed ? "text-foreground" : "text-muted-foreground/60"}`}>
+              {rule.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </motion.div>
+  );
+};
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -229,6 +295,9 @@ const Auth = () => {
                 required
               />
             </div>
+            <AnimatePresence>
+              {!isLogin && <PasswordStrengthMeter password={password} />}
+            </AnimatePresence>
           </div>
 
           <button
