@@ -56,53 +56,8 @@ export function hasAccess(userTier: string, requiredTier: Tier): boolean {
 }
 
 const PremiumFeature = ({ tier, children, featureName, inline = false }: PremiumFeatureProps) => {
-  const { data: userTier, isLoading } = useSubscriptionTier();
-  const [showUpgrade, setShowUpgrade] = useState(false);
-
-  if (isLoading) return null;
-
-  const granted = hasAccess(userTier ?? "analyst", tier);
-
-  if (granted) return <>{children}</>;
-
-  if (inline) {
-    return (
-      <button
-        onClick={() => setShowUpgrade(true)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-border bg-muted/30 text-muted-foreground text-xs font-medium hover:bg-muted/50 transition-colors"
-      >
-        <Lock className="h-3 w-3" />
-        {featureName ?? "Premium"} · Upgrade
-        <UpgradePrompt open={showUpgrade} onClose={() => setShowUpgrade(false)} blockedAction={featureName ?? null} />
-      </button>
-    );
-  }
-
-  return (
-    <>
-      <div className="rounded-lg border border-border bg-card p-6 flex flex-col items-center justify-center text-center space-y-3 min-h-[200px]">
-        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-          <Lock className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">
-            {featureName ?? "This feature"} requires {TIER_LABELS[tier] ?? tier}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            Upgrade your plan to unlock this capability.
-          </p>
-        </div>
-        <button
-          onClick={() => setShowUpgrade(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Zap className="h-3.5 w-3.5" />
-          View Plans
-        </button>
-      </div>
-      <UpgradePrompt open={showUpgrade} onClose={() => setShowUpgrade(false)} blockedAction={featureName ?? null} />
-    </>
-  );
+  // Single-tier model: all authenticated users get full access
+  return <>{children}</>;
 };
 
 export default PremiumFeature;

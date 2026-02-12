@@ -26,7 +26,7 @@ async function checkRateLimit(supabase: any, userId: string, tier: string): Prom
     .eq("action", "api_request")
     .gte("created_at", todayStart.toISOString());
 
-  const limits: Record<string, number> = { free: 100, pro: 10000, enterprise: 1000000 };
+  const limits: Record<string, number> = { free: 500, professional: 10000, pro: 10000, enterprise: 1000000 };
   const limit = limits[tier] ?? limits.free;
   const used = count ?? 0;
 

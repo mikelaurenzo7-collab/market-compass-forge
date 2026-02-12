@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const FREE_LIMITS: Record<string, number> = {
-  ai_research: 10,
-  memo_generation: 3,
-  enrichment: 5,
+  ai_research: 100,
+  memo_generation: 50,
+  enrichment: 50,
 };
 
 export function useUsageTracking() {
