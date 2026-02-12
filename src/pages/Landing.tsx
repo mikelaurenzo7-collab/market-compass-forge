@@ -265,7 +265,7 @@ const Landing = () => {
         >
           <span className="text-xs font-medium text-primary uppercase tracking-wider">Professional</span>
           <div className="mt-3 mb-1">
-            <span className="text-4xl font-bold font-mono">$299</span>
+            <span className="text-4xl font-bold font-mono">$399</span>
             <span className="text-muted-foreground text-sm">/mo</span>
           </div>
           <p className="text-sm text-muted-foreground mb-6">Everything you need for private market intelligence. Per seat.</p>

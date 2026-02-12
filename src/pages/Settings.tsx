@@ -188,7 +188,7 @@ const Settings = () => {
             </div>
             <div>
               <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                Professional — $299/mo
+                Professional — $399/mo
               </span>
               <p className="text-xs text-muted-foreground mt-2">
                 Full access to all platform features. 100 AI queries, 50 memos, 50 enrichments per day.
