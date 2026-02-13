@@ -36,6 +36,17 @@ The SEC EDGAR API is completely free, requires no API key, and provides real-tim
 - Required: Add a `cik_number` column to the `companies` table for SEC cross-referencing
 - Proxy through backend function since SEC does not support CORS
 
+## Phase 1b: Public Markets Discovery (DONE)
+
+Separate `/public-markets` page with SEC-powered discovery for all US public companies.
+
+**What we built:**
+- Edge function `seed-public-companies` that imports all ~10,000+ US public companies from SEC's `company_tickers.json`
+- Public Markets discovery page with search, sector filter, sortable table (name, ticker, market cap, price, P/E, change)
+- Market data integration via `public_market_data` table for ticker/exchange mapping
+- Sidebar navigation with "Public Markets" entry under Platform
+- Full company detail pages work for public companies (with SEC Filings tab)
+
 ## Phase 2: Product Polish for Beta Readiness
 
 These improvements make the platform feel professional and complete for beta users.
@@ -51,8 +62,8 @@ These improvements make the platform feel professional and complete for beta use
 - Add a "Market Pulse" widget showing key macro indicators
 
 **2c. Company Detail Upgrades**
-- New "Filings" tab showing SEC filing history with links to full documents
-- Financial charts auto-populated from SEC XBRL data for public companies
+- New "Filings" tab showing SEC filing history with links to full documents (DONE)
+- Financial charts auto-populated from SEC XBRL data for public companies (DONE)
 - Key personnel section enriched with SEC officer/director data
 - Insider trading activity section from SEC filings
 

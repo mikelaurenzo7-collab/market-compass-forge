@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.fetch-sec-filings]
 verify_jwt = false
+
+[functions.seed-public-companies]
+verify_jwt = false
