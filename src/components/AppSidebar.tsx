@@ -20,6 +20,7 @@ import {
   FileSearch,
   AlertTriangle,
   ShieldCheck,
+  Globe,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -39,6 +40,7 @@ const mainModules = [
   { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
   { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
   { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
+  { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
 ];
 
 const insightModules = [

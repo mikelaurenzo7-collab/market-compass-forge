@@ -965,6 +965,69 @@ export type Database = {
         }
         Relationships: []
       }
+      global_opportunities: {
+        Row: {
+          country: string
+          created_at: string | null
+          deal_value_local: number | null
+          deal_value_usd: number | null
+          description: string | null
+          id: string
+          key_metrics: Json | null
+          listed_date: string | null
+          local_currency: string | null
+          name: string
+          opportunity_type: string
+          region: string
+          risk_rating: string | null
+          sector: string | null
+          source_url: string | null
+          sovereign_fund_interest: string[] | null
+          stage: string | null
+          status: string | null
+        }
+        Insert: {
+          country: string
+          created_at?: string | null
+          deal_value_local?: number | null
+          deal_value_usd?: number | null
+          description?: string | null
+          id?: string
+          key_metrics?: Json | null
+          listed_date?: string | null
+          local_currency?: string | null
+          name: string
+          opportunity_type?: string
+          region: string
+          risk_rating?: string | null
+          sector?: string | null
+          source_url?: string | null
+          sovereign_fund_interest?: string[] | null
+          stage?: string | null
+          status?: string | null
+        }
+        Update: {
+          country?: string
+          created_at?: string | null
+          deal_value_local?: number | null
+          deal_value_usd?: number | null
+          description?: string | null
+          id?: string
+          key_metrics?: Json | null
+          listed_date?: string | null
+          local_currency?: string | null
+          name?: string
+          opportunity_type?: string
+          region?: string
+          risk_rating?: string | null
+          sector?: string | null
+          source_url?: string | null
+          sovereign_fund_interest?: string[] | null
+          stage?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       intelligence_signals: {
         Row: {
           ai_summary: string | null

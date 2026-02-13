@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.seed-public-companies]
 verify_jwt = false
+
+[functions.seed-global-opportunities]
+verify_jwt = false
