@@ -22,6 +22,8 @@ import {
   AlertTriangle,
   ShieldCheck,
   Globe,
+  Activity,
+  Crosshair,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -42,6 +44,8 @@ const mainModules = [
   { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
   { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
   { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
+  { id: "sector-momentum", label: "Sector Momentum", icon: Activity, path: "/sector-momentum" },
+  { id: "competitive-intel", label: "Competitive Intel", icon: Crosshair, path: "/competitive-intel" },
 ];
 
 const insightModules = [
