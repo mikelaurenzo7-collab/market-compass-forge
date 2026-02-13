@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.populate-relationships]
 verify_jwt = false
+
+[functions.bulk-sec-ingest]
+verify_jwt = false
+
+[functions.fetch-market-data]
+verify_jwt = false

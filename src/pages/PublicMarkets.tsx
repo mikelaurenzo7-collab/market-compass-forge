@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePublicCompanies, useSeedPublicCompanies } from "@/hooks/usePublicCompanies";
 import { formatCurrency } from "@/hooks/useData";
+import { useMutation } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowUpDown,
   Download,
@@ -13,6 +15,7 @@ import {
   Database,
   Building2,
   BarChart3,
+  RefreshCw,
 } from "lucide-react";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { TableSkeleton } from "@/components/SkeletonLoaders";
@@ -54,6 +57,20 @@ const PublicMarkets = () => {
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+
+  const refreshMarketData = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.functions.invoke("fetch-market-data", { body: { limit: 50 } });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "Market data refreshed");
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to refresh market data");
+    },
+  });
 
   const filtered = useMemo(() => {
     if (!companies) return [];
@@ -232,20 +249,34 @@ const PublicMarkets = () => {
             {isEmpty ? "Import from SEC" : "Refresh SEC Data"}
           </button>
           {!isEmpty && (
-            <button
-              onClick={() =>
-                exportCompaniesCSV(
-                  filtered.map((c) => ({
-                    ...c,
-                    latestRound: null,
-                    latestFinancials: null,
-                  }))
-                )
-              }
-              className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" /> Export CSV
-            </button>
+            <>
+              <button
+                onClick={() => refreshMarketData.mutate()}
+                disabled={refreshMarketData.isPending}
+                className="h-9 px-3 rounded-md bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {refreshMarketData.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Refresh Prices
+              </button>
+              <button
+                onClick={() =>
+                  exportCompaniesCSV(
+                    filtered.map((c) => ({
+                      ...c,
+                      latestRound: null,
+                      latestFinancials: null,
+                    }))
+                  )
+                }
+                className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" /> Export CSV
+              </button>
+            </>
           )}
         </div>
       </div>

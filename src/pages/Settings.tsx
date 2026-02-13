@@ -9,6 +9,7 @@ import ApiKeyManager from "@/components/ApiKeyManager";
 import DataIngestion from "@/components/DataIngestion";
 import BriefingSettings from "@/components/BriefingSettings";
 import TeamManager from "@/components/TeamManager";
+import DataSourcesPanel from "@/components/DataSourcesPanel";
 
 const ROLE_LABELS: Record<string, string> = {
   analyst: "Analyst",
@@ -28,7 +29,7 @@ const Settings = () => {
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
-  const [activeTab, setActiveTab] = useState<"profile" | "briefing" | "api" | "data" | "team">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "briefing" | "api" | "data" | "sources" | "team">("profile");
 
   useEffect(() => {
     localStorage.setItem("ui-density", density);
@@ -97,6 +98,7 @@ const Settings = () => {
     { id: "briefing" as const, label: "Briefing", icon: Mail },
     { id: "api" as const, label: "API Access", icon: Key },
     { id: "data" as const, label: "Data Import", icon: Upload },
+    { id: "sources" as const, label: "Data Sources", icon: Monitor },
     { id: "team" as const, label: "Team", icon: Users },
   ];
 
@@ -247,6 +249,8 @@ const Settings = () => {
       {activeTab === "api" && <ApiKeyManager />}
 
       {activeTab === "data" && <DataIngestion />}
+
+      {activeTab === "sources" && <DataSourcesPanel />}
 
       {activeTab === "team" && <TeamManager />}
     </div>

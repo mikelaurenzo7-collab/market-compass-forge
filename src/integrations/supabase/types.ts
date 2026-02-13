@@ -265,6 +265,8 @@ export type Database = {
           hq_city: string | null
           hq_country: string | null
           id: string
+          last_market_fetch: string | null
+          last_sec_fetch: string | null
           logo_url: string | null
           market_type: string
           name: string
@@ -285,6 +287,8 @@ export type Database = {
           hq_city?: string | null
           hq_country?: string | null
           id?: string
+          last_market_fetch?: string | null
+          last_sec_fetch?: string | null
           logo_url?: string | null
           market_type?: string
           name: string
@@ -305,6 +309,8 @@ export type Database = {
           hq_city?: string | null
           hq_country?: string | null
           id?: string
+          last_market_fetch?: string | null
+          last_sec_fetch?: string | null
           logo_url?: string | null
           market_type?: string
           name?: string
@@ -1610,7 +1616,11 @@ export type Database = {
           company_id: string
           created_at: string | null
           dividend_yield: number | null
+          ebitda: number | null
+          enterprise_value: number | null
           eps: number | null
+          ev_ebitda: number | null
+          ev_revenue: number | null
           exchange: string | null
           fifty_two_week_high: number | null
           fifty_two_week_low: number | null
@@ -1619,6 +1629,7 @@ export type Database = {
           pe_ratio: number | null
           price: number | null
           price_change_pct: number | null
+          revenue: number | null
           ticker: string
           updated_at: string | null
           volume_avg: number | null
@@ -1628,7 +1639,11 @@ export type Database = {
           company_id: string
           created_at?: string | null
           dividend_yield?: number | null
+          ebitda?: number | null
+          enterprise_value?: number | null
           eps?: number | null
+          ev_ebitda?: number | null
+          ev_revenue?: number | null
           exchange?: string | null
           fifty_two_week_high?: number | null
           fifty_two_week_low?: number | null
@@ -1637,6 +1652,7 @@ export type Database = {
           pe_ratio?: number | null
           price?: number | null
           price_change_pct?: number | null
+          revenue?: number | null
           ticker: string
           updated_at?: string | null
           volume_avg?: number | null
@@ -1646,7 +1662,11 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           dividend_yield?: number | null
+          ebitda?: number | null
+          enterprise_value?: number | null
           eps?: number | null
+          ev_ebitda?: number | null
+          ev_revenue?: number | null
           exchange?: string | null
           fifty_two_week_high?: number | null
           fifty_two_week_low?: number | null
@@ -1655,6 +1675,7 @@ export type Database = {
           pe_ratio?: number | null
           price?: number | null
           price_change_pct?: number | null
+          revenue?: number | null
           ticker?: string
           updated_at?: string | null
           volume_avg?: number | null
