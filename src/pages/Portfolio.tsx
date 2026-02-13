@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePortfolios, usePortfolioPositions, useCreatePortfolio, useAddPosition, useRemovePosition, useDeletePortfolio, type PortfolioPosition } from "@/hooks/usePortfolio";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, ArrowUpRight, ArrowDownRight, Building2, Search, BarChart3 } from "lucide-react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
@@ -28,6 +28,17 @@ function getCurrentPrice(pos: PortfolioPosition): number | null {
 
 const Portfolio = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('portfolio-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'portfolio_positions' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["portfolio-positions"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
   const { data: portfolios, isLoading: loadingPortfolios } = usePortfolios();
   const createPortfolio = useCreatePortfolio();
   const deletePortfolio = useDeletePortfolio();

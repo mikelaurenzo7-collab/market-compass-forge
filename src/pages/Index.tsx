@@ -1,5 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
@@ -354,7 +354,23 @@ const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: batch } = useDashboardBatch();
+
+  // Realtime: refresh dashboard when activity events or signals change
+  useEffect(() => {
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activity_events' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard-batch"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'intelligence_signals' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["dashboard-batch"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const [customizingDashboard, setCustomizingDashboard] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState<string[]>([
