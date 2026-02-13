@@ -20,6 +20,7 @@ import CompanyScore from "@/components/CompanyScore";
 import FinancialsChart from "@/components/FinancialsChart";
 import DCFCalculator from "@/components/DCFCalculator";
 import ValuationFootballField from "@/components/ValuationFootballField";
+import CompanyAIAssessment from "@/components/CompanyAIAssessment";
 import SECFilingsTab from "@/components/SECFilingsTab";
 import { useCompanyScore } from "@/hooks/useCompanyScore";
 import { useSectorMultiples } from "@/hooks/useSectorMultiples";
@@ -499,6 +500,14 @@ const CompanyDetail = () => {
 
           <div className="space-y-4">
             <CompanyScore score={score} />
+            <CompanyAIAssessment
+              sector={company.sector}
+              stage={company.stage}
+              growthRate={score?.revenueCAGR}
+              revenue={latestFinancial?.revenue}
+              ebitda={latestFinancial?.ebitda}
+              companyName={company.name}
+            />
             {/* Activity */}
             <div className="rounded-lg border border-border bg-card">
               <div className="px-4 py-3 border-b border-border">
@@ -696,6 +705,7 @@ const CompanyDetail = () => {
               growthRate: score?.revenueCAGR ?? undefined,
               grossMargin: latestFinancial.gross_margin,
               stage: company.stage,
+              sector: company.sector,
               sectorMultiples: sectorMultiples ? {
                 evRevenue: { p25: sectorMultiples.evRevenue.p25, median: sectorMultiples.evRevenue.median, p75: sectorMultiples.evRevenue.p75 },
                 evEbitda: { p25: sectorMultiples.evEbitda.p25, median: sectorMultiples.evEbitda.median, p75: sectorMultiples.evEbitda.p75 },

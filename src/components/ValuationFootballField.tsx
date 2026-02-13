@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAlphaSignals } from "@/hooks/useAlphaSignals";
+import ConfidenceBadge from "@/components/ConfidenceBadge";
 
 interface ValuationRange {
   method: string;
@@ -13,9 +15,10 @@ interface ValuationRange {
 export interface FootballFieldCompanyData {
   revenue?: number | null;
   ebitda?: number | null;
-  growthRate?: number | null; // YoY or CAGR as decimal
-  grossMargin?: number | null; // as decimal
+  growthRate?: number | null;
+  grossMargin?: number | null;
   stage?: string | null;
+  sector?: string | null;
   sectorMultiples?: {
     evRevenue: { p25: number; median: number; p75: number };
     evEbitda: { p25: number; median: number; p75: number };
@@ -105,19 +108,53 @@ const computeCompanyRanges = (data: FootballFieldCompanyData): ValuationRange[] 
 const formatVal = (v: number) => `$${v}M`;
 
 const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: ValuationRange[]; companyData?: FootballFieldCompanyData }) => {
+  const { data: alphaSignals } = useAlphaSignals();
+
   const computedRanges = useMemo(() => {
     if (propRanges) return propRanges;
     if (companyData) return computeCompanyRanges(companyData);
     return defaultRanges;
   }, [propRanges, companyData]);
 
-  const [ranges, setRanges] = useState<ValuationRange[]>(computedRanges);
+  // Compute AI-Adjusted bar from alpha signals
+  const aiAdjustedRange = useMemo(() => {
+    if (!alphaSignals?.length || !companyData?.sector) return null;
+    const sectorSignal = alphaSignals.find(s =>
+      companyData.sector?.toLowerCase().includes(s.sector.toLowerCase()) ||
+      s.sector.toLowerCase().includes(companyData.sector?.toLowerCase() ?? "")
+    );
+    if (!sectorSignal || !sectorSignal.magnitude_pct) return null;
+
+    // Apply magnitude shift to the Comp Companies range
+    const compRange = computedRanges.find(r => r.method === "Comp Companies");
+    if (!compRange) return null;
+
+    const shift = 1 + (sectorSignal.magnitude_pct / 100);
+    return {
+      range: {
+        method: "AI Adjusted",
+        low: Math.round(compRange.low * shift),
+        mid: Math.round(compRange.mid * shift),
+        high: Math.round(compRange.high * shift),
+        color: "hsl(var(--chart-3))",
+      } as ValuationRange,
+      signal: sectorSignal,
+    };
+  }, [alphaSignals, companyData?.sector, computedRanges]);
+
+  const allRanges = useMemo(() => {
+    const base = [...computedRanges];
+    if (aiAdjustedRange) base.push(aiAdjustedRange.range);
+    return base;
+  }, [computedRanges, aiAdjustedRange]);
+
+  const [ranges, setRanges] = useState<ValuationRange[]>(allRanges);
   const [editing, setEditing] = useState(false);
 
   // Update when computed ranges change
   useMemo(() => {
-    if (!editing) setRanges(computedRanges);
-  }, [computedRanges, editing]);
+    if (!editing) setRanges(allRanges);
+  }, [allRanges, editing]);
 
   const allVals = ranges.flatMap((r) => [r.low, r.high]);
   const globalMin = Math.min(...allVals) * 0.85;
@@ -139,9 +176,17 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-sm font-semibold">Valuation Football Field</CardTitle>
-          {isCompanyDriven && (
-            <p className="text-[10px] text-muted-foreground mt-0.5">Computed from company financials & sector multiples</p>
-          )}
+          <div className="flex items-center gap-2 mt-0.5">
+            {isCompanyDriven && (
+              <p className="text-[10px] text-muted-foreground">Computed from company financials & sector multiples</p>
+            )}
+            {aiAdjustedRange && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-chart-3/10 text-chart-3 border border-chart-3/20">
+                AI {aiAdjustedRange.signal.direction === "bullish" ? "↑" : aiAdjustedRange.signal.direction === "bearish" ? "↓" : "→"}
+                {Math.abs(aiAdjustedRange.signal.magnitude_pct).toFixed(1)}%
+              </span>
+            )}
+          </div>
         </div>
         <button
           onClick={() => setEditing(!editing)}
@@ -151,17 +196,23 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
         </button>
       </CardHeader>
       <CardContent className="space-y-4">
-        {ranges.map((r, idx) => (
+        {ranges.map((r, idx) => {
+          const isAI = r.method === "AI Adjusted";
+          return (
           <div key={r.method} className="space-y-1">
             <div className="flex items-center gap-3">
-              <div className="w-32 shrink-0 text-xs text-muted-foreground font-medium text-right">{r.method}</div>
+              <div className="w-32 shrink-0 text-xs text-muted-foreground font-medium text-right flex items-center justify-end gap-1">
+                {isAI && <span className="text-[8px] px-1 py-0.5 rounded bg-chart-3/10 text-chart-3">AI</span>}
+                {r.method}
+              </div>
               <div className="flex-1 relative h-7 rounded bg-muted/30">
                 <div
-                  className="absolute top-1 bottom-1 rounded-sm opacity-80"
+                  className={`absolute top-1 bottom-1 rounded-sm ${isAI ? "opacity-40 border-2 border-dashed" : "opacity-80"}`}
                   style={{
                     left: `${toPercent(r.low)}%`,
                     width: `${toPercent(r.high) - toPercent(r.low)}%`,
-                    backgroundColor: r.color,
+                    backgroundColor: isAI ? "transparent" : r.color,
+                    borderColor: isAI ? r.color : undefined,
                   }}
                 />
                 <div
@@ -188,7 +239,7 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
                 </span>
               </div>
             </div>
-            {editing && (
+            {editing && !isAI && (
               <div className="flex items-center gap-2 ml-[calc(8rem+0.75rem)]">
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                   Low:
@@ -205,7 +256,8 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
               </div>
             )}
           </div>
-        ))}
+          );
+        })}
         <div className="flex items-center gap-3 mt-4">
           <div className="w-32" />
           <div className="flex-1 flex justify-between text-[9px] text-muted-foreground font-mono">

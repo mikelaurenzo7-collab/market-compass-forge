@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useMacroIndicators } from "@/hooks/useMacroIndicators";
 
 export interface DCFCompanyProps {
   initialRevenue?: number; // in $M
@@ -20,6 +21,12 @@ const formatVal = (v: number) => {
 // ─── DCF TAB ────────────────────────────────────────────────────────────────
 
 const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName }: DCFCompanyProps) => {
+  const { data: macroIndicators } = useMacroIndicators();
+  const treasuryYield = macroIndicators?.find(m => m.series_id === "DGS10");
+  const riskFreeRate = treasuryYield?.value ?? 4.28;
+  const equityRiskPremium = 5.5; // standard ERP
+  const macroWacc = Math.round((riskFreeRate + equityRiskPremium) * 10) / 10;
+
   const [inputs, setInputs] = useState({
     revenue: initialRevenue ?? 100,
     revenueGrowth: initialGrowth ?? 15,
@@ -27,10 +34,17 @@ const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName }: D
     taxRate: 25,
     capexPct: 5,
     nwcPct: 2,
-    wacc: 10,
+    wacc: macroWacc,
     terminalGrowth: 3,
     projectionYears: 5,
   });
+
+  // Update WACC when macro data loads
+  useEffect(() => {
+    if (treasuryYield) {
+      setInputs(prev => ({ ...prev, wacc: macroWacc }));
+    }
+  }, [treasuryYield, macroWacc]);
 
   // Update when props change (e.g. navigating between companies)
   useEffect(() => {
@@ -122,6 +136,15 @@ const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName }: D
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {treasuryYield && (
+            <div className="mb-3 px-3 py-2 rounded-md bg-primary/5 border border-primary/10 flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-[11px] text-muted-foreground">
+                Risk-free rate: <span className="font-mono font-medium text-foreground">{riskFreeRate.toFixed(2)}%</span> (10Y Treasury, {treasuryYield.observation_date})
+                — WACC auto-set to <span className="font-mono font-medium text-foreground">{macroWacc}%</span>
+              </span>
+            </div>
+          )}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {fields.map((f) => (
               <div key={f.key} className="space-y-1">

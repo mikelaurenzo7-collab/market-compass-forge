@@ -1,4 +1,5 @@
 import { BarChart3, TrendingUp, Globe, Trophy, Loader2, Activity, Target, Zap, Users } from "lucide-react";
+import MacroImpactMatrix from "@/components/MacroImpactMatrix";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, RadialBarChart, RadialBar } from "recharts";
 import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
 import { useValuationByStage, useGeographicDistribution, useTopCompaniesByARR } from "@/hooks/useAnalyticsData";
@@ -320,6 +321,9 @@ const Analytics = () => {
           )}
         </div>
       </div>
+
+      {/* Macro Impact Matrix */}
+      <MacroImpactMatrix />
 
       {/* Market Analytics */}
       <div className="border-t border-border pt-6">
