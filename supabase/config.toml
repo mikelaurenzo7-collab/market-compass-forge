@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.refresh-views]
 verify_jwt = false
+
+[functions.fetch-sec-filings]
+verify_jwt = false

@@ -18,6 +18,7 @@ import CompanyScore from "@/components/CompanyScore";
 import FinancialsChart from "@/components/FinancialsChart";
 import DCFCalculator from "@/components/DCFCalculator";
 import ValuationFootballField from "@/components/ValuationFootballField";
+import SECFilingsTab from "@/components/SECFilingsTab";
 import { useCompanyScore } from "@/hooks/useCompanyScore";
 import { useSectorMultiples } from "@/hooks/useSectorMultiples";
 import { AddToWatchlistButton } from "@/components/WatchlistManager";
@@ -41,7 +42,7 @@ const CompanyDetail = () => {
   const [noteContent, setNoteContent] = useState("");
   const searchParams = new URLSearchParams(window.location.search);
   const initialTab = (searchParams.get("tab") as any) || "overview";
-  const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "analysis" | "news" | "research" | "memo">(initialTab);
+  const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "analysis" | "news" | "research" | "memo" | "filings">(initialTab);
 
   const handleTabChange = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -370,7 +371,7 @@ const CompanyDetail = () => {
 
       {/* Tab navigation */}
       <div className="flex gap-1 border-b border-border no-print overflow-x-auto">
-        {(["overview", "financials", "valuation", "deals", "analysis", "news", "research", "memo"] as const).map((tab) => (
+        {(["overview", "financials", "valuation", "filings", "deals", "analysis", "news", "research", "memo"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
@@ -380,7 +381,7 @@ const CompanyDetail = () => {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "overview" ? "Overview" : tab === "financials" ? "Financials" : tab === "valuation" ? "Valuation" : tab === "deals" ? "Deal History" : tab === "analysis" ? "AI Analysis" : tab === "news" ? "News & Sentiment" : tab === "research" ? "AI Research" : "Investment Memo"}
+            {tab === "overview" ? "Overview" : tab === "financials" ? "Financials" : tab === "valuation" ? "Valuation" : tab === "filings" ? "SEC Filings" : tab === "deals" ? "Deal History" : tab === "analysis" ? "AI Analysis" : tab === "news" ? "News & Sentiment" : tab === "research" ? "AI Research" : "Investment Memo"}
           </button>
         ))}
       </div>
@@ -764,6 +765,15 @@ const CompanyDetail = () => {
             )}
           </div>
         </div>
+      )}
+
+      {activeTab === "filings" && (
+        <SECFilingsTab
+          companyId={id!}
+          companyName={company.name}
+          cikNumber={(company as any).cik_number}
+          marketType={company.market_type}
+        />
       )}
 
       {activeTab === "news" && (
