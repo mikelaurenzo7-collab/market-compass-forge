@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import PipelineAnalytics from "@/components/PipelineAnalytics";
+import PageTransition from "@/components/PageTransition";
 import DealTransactionsTable from "@/components/DealTransactionsTable";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -93,6 +94,7 @@ const Deals = () => {
   const handleDrop = (stage: string) => { if (dragItem) { updateStage.mutate({ id: dragItem, stage }); setDragItem(null); } };
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
@@ -216,6 +218,7 @@ const Deals = () => {
         />
       )}
     </div>
+    </PageTransition>
   );
 };
 

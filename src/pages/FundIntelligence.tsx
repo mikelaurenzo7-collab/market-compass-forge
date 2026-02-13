@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import PageTransition from "@/components/PageTransition";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -76,6 +77,7 @@ const FundIntelligence = () => {
   const avgIrr = (funds ?? []).reduce((s, f) => s + (f.net_irr ?? 0), 0) / (funds?.length || 1);
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-4">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Fund Intelligence</h1>
@@ -246,6 +248,7 @@ const FundIntelligence = () => {
         </TabsContent>
       </Tabs>
     </div>
+    </PageTransition>
   );
 };
 

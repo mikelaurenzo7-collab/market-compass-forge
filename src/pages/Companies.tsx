@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import PageTransition from "@/components/PageTransition";
 import { useCompaniesWithFinancialsAll, formatCurrency } from "@/hooks/useData";
 import { ArrowUpDown, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import CompanyAvatar from "@/components/CompanyAvatar";
@@ -159,6 +160,7 @@ const Companies = () => {
   }
 
   return (
+    <PageTransition>
     <div className="p-4 sm:p-6 space-y-4">
       <SyntheticDataWarning />
       
@@ -270,6 +272,7 @@ const Companies = () => {
         </div>
       )}
     </div>
+    </PageTransition>
   );
 };
 

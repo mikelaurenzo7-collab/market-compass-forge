@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, Plus, Trash2, Loader2, Check, X, BellRing, Eye, EyeOff, FileText, AlertTriangle, TrendingDown, Zap } from "lucide-react";
+import PageTransition from "@/components/PageTransition";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 
@@ -115,6 +116,7 @@ const Alerts = () => {
   const unreadCount = notifications?.filter((n) => !n.is_read).length ?? 0;
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-6 max-w-5xl">
       <div className="flex items-center justify-between">
         <div>
@@ -304,6 +306,7 @@ const Alerts = () => {
         </div>
       </div>
     </div>
+    </PageTransition>
   );
 };
 

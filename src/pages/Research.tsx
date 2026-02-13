@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { FileText, Sparkles, Search, Brain, FileSearch } from "lucide-react";
+import { FileText, Sparkles, Search, Brain, FileSearch, BookOpen, MessageSquare, Lightbulb } from "lucide-react";
 import { useSearchCompanies } from "@/hooks/useData";
 import AIResearchChat from "@/components/AIResearchChat";
 import InvestmentMemo from "@/components/InvestmentMemo";
+import PageTransition from "@/components/PageTransition";
+import { AnimatedTabContent } from "@/components/AnimatedTabs";
 
 const Research = () => {
   const [searchParams] = useSearchParams();
@@ -31,6 +33,7 @@ const Research = () => {
   };
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
@@ -94,24 +97,48 @@ const Research = () => {
               ))}
             </div>
           </div>
-          {activeTab === "chat" ? (
-            <AIResearchChat companyId={selectedCompany.id} companyName={selectedCompany.name} sector={selectedCompany.sector} />
-          ) : (
-            <InvestmentMemo companyId={selectedCompany.id} companyName={selectedCompany.name} />
-          )}
+          <AnimatedTabContent activeKey={activeTab}>
+            {activeTab === "chat" ? (
+              <AIResearchChat companyId={selectedCompany.id} companyName={selectedCompany.name} sector={selectedCompany.sector} />
+            ) : (
+              <InvestmentMemo companyId={selectedCompany.id} companyName={selectedCompany.name} />
+            )}
+          </AnimatedTabContent>
         </>
       )}
 
       {!selectedCompany && (
-        <div className="flex items-center justify-center h-48 rounded-lg border border-border bg-card">
-          <div className="text-center text-muted-foreground">
-            <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm font-medium">Select a company to begin research</p>
-            <p className="text-xs mt-1">Use the search above to find a company, then chat with AI or generate investment memos</p>
+        <div className="rounded-lg border border-border bg-card p-8">
+          <div className="max-w-lg mx-auto text-center space-y-6">
+            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+              <Brain className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-foreground mb-1">AI-Powered Company Research</h2>
+              <p className="text-sm text-muted-foreground">Search for any company to unlock deep analysis, generate investment memos, and chat with AI about financials and strategy.</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-border p-3 text-left">
+                <MessageSquare className="h-4 w-4 text-primary mb-2" />
+                <p className="text-xs font-medium text-foreground">AI Chat</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Ask questions about any company's strategy, risks, and competitive position</p>
+              </div>
+              <div className="rounded-lg border border-border p-3 text-left">
+                <BookOpen className="h-4 w-4 text-primary mb-2" />
+                <p className="text-xs font-medium text-foreground">Investment Memos</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Generate institutional-quality memos with one click</p>
+              </div>
+              <div className="rounded-lg border border-border p-3 text-left">
+                <Lightbulb className="h-4 w-4 text-primary mb-2" />
+                <p className="text-xs font-medium text-foreground">Deep Insights</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Surface risks, opportunities, and data-driven recommendations</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
     </div>
+    </PageTransition>
   );
 };
 
