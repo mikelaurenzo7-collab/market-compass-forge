@@ -1,160 +1,161 @@
 
+# Full Product Audit, Real-Time Data Integration, and Expansion Plan
 
-# Global Investment Opportunities -- New Asset Class Module
+## Part 1: Product Audit -- Current State
 
-## Overview
+### Data Reality Check
 
-Add a dedicated **Global Markets** page (`/global`) that surfaces international investment opportunities across emerging markets, frontier economies, and developed non-US markets. This becomes a unique moat because no sub-$1,000/mo platform offers cross-border deal intelligence alongside domestic private + public market coverage.
+| Asset Class | DB Records | Status |
+|---|---|---|
+| Private Companies | 841 | Seeded with synthetic data, functional |
+| Public Companies | 0 | Table exists, seeder built, but never executed -- page is empty |
+| Public Market Data | 0 | No ticker/price/market cap data at all |
+| Distressed Assets | 301 | Well-populated, functional |
+| Off-Market Real Estate | 200 | Populated, functional |
+| Global Opportunities | 80 | Freshly seeded, functional |
+| Intelligence Signals | 385 | AI-generated, functional |
+| News Articles | 60 | Sparse but functional |
+| Funds | 65 | Populated |
+| LP Entities | 51 | Populated |
+| Investors | 401 | Well-populated |
+| Financials | 967 | Populated for private companies |
+| Funding Rounds | 706 | Well-populated |
+| Relationship Edges | 0 | Table created but never populated |
+| Deal Transactions (precedent) | 70 | Populated |
+| Precedent Transactions | 57 | Populated |
+| CRE Transactions | 65 | Populated |
+| CRE Market Data | 92 | Populated |
 
-## What Makes This a Moat
+### Real-Time Subscriptions Audit
 
-1. **Cross-border intelligence is fragmented** -- Bloomberg Terminal covers global equities but costs $25K/yr. PitchBook is US/EU-centric. Nobody aggregates global PE/VC, sovereign wealth fund activity, and emerging market opportunities in one view at our price point.
-2. **Compounds with existing data** -- Our SEC pipeline, fund intelligence (LP/GP directory), and relationship graph become more valuable when extended internationally. A family office tracking a US SaaS company can now see which sovereign wealth funds from Singapore or Abu Dhabi are co-investing.
-3. **Network effect on relationships** -- Every global entity added to the relationship graph deepens the "who knows who" moat.
+Only **2 components** use Supabase Realtime:
+1. `NewsFeed.tsx` -- listens for new `news_articles` INSERTs
+2. `SharedNotes.tsx` -- listens for changes on company notes
 
-## Data Strategy (No Paid APIs Required)
+**All other pages** are static query-only. No realtime on:
+- Deal Pipeline (drag-and-drop stage changes by teammates are invisible)
+- Intelligence Signals (no live updates)
+- Distressed Assets (no notifications on new listings)
+- Global Opportunities (no live feed)
+- Alert Notifications (no live badge updates)
+- Activity Events (no live feed on dashboard)
 
-We seed the global opportunities table with curated data across key regions, then enrich over time via Firecrawl web scraping of public deal announcements, sovereign fund disclosures, and international stock exchange filings.
+### Critical Gaps Identified
 
-**Regions covered:**
-- Emerging Asia (India, Southeast Asia, China)
-- Middle East & Africa (UAE, Saudi, Nigeria, Kenya)
-- Latin America (Brazil, Mexico, Colombia)
-- Europe (UK, DACH, Nordics)
-- Frontier (Vietnam, Bangladesh, Egypt)
+1. **Public Markets is completely empty** -- the SEC seeder exists but was never run; 0 public companies, 0 market data rows, 0 CIK numbers
+2. **Relationship Graph has no data** -- the `relationship_edges` table was created but never populated from existing `investor_company`, `key_personnel`, and `fund_commitments` data
+3. **No realtime on 90% of pages** -- only News Feed and Shared Notes have live subscriptions
+4. **Dashboard "Data as of" is misleading** -- it shows the latest activity event date, not actual data freshness
+5. **Companies page shows only private** -- filtering by `market_type` is not applied, but since public_companies count is 0, this is moot
 
-**Opportunity types:**
-- Cross-border M&A targets
-- Emerging market PE/VC deals
-- Sovereign wealth fund co-investment opportunities
-- International distressed / restructuring
-- Global infrastructure projects
+---
 
-## What We Build
+## Part 2: Real-Time Data Integration
 
-### 1. New Database Table: `global_opportunities`
+### Add Supabase Realtime subscriptions to all key tables
 
-Stores international investment opportunities with region, country, currency, deal type, and risk metrics.
+**Tables to enable realtime on (via migration):**
+- `intelligence_signals`
+- `distressed_assets`
+- `global_opportunities`
+- `deal_pipeline`
+- `alert_notifications`
+- `activity_events`
 
+**Components to add realtime listeners:**
+
+| Component/Page | Table | Event | Behavior |
+|---|---|---|---|
+| `IntelligenceFeed.tsx` | `intelligence_signals` | INSERT | Auto-append new signals with fade-in animation |
+| `DistressedAssets.tsx` | `distressed_assets` | INSERT/UPDATE | Invalidate query, show toast for new listings |
+| `GlobalMarkets.tsx` | `global_opportunities` | INSERT/UPDATE | Invalidate query, show toast |
+| `Deals.tsx` | `deal_pipeline` | UPDATE | Auto-refresh kanban when a teammate moves a deal |
+| `Alerts.tsx` | `alert_notifications` | INSERT | Live badge counter + toast notification |
+| `Index.tsx` (Dashboard) | `activity_events` | INSERT | Refresh dashboard metrics and activity feed |
+| `Portfolio.tsx` | `portfolio_positions` | * | Refresh positions when changed |
+
+### Implementation pattern (consistent across all pages):
 ```text
-global_opportunities
---------------------
-id (uuid, PK)
-name (text) -- Company or project name
-country (text) -- ISO country
-region (text) -- Emerging Asia, LATAM, MENA, Europe, Frontier
-sector (text)
-opportunity_type (text) -- cross_border_ma, pe_vc, swf_coinvest, distressed, infrastructure
-description (text)
-deal_value_usd (numeric) -- Normalized to USD
-local_currency (text)
-deal_value_local (numeric)
-stage (text) -- sourced, screening, active, closed
-risk_rating (text) -- low, medium, high, very_high
-sovereign_fund_interest (text[]) -- Names of SWFs known to be involved
-key_metrics (jsonb) -- GDP growth, FX rate, country risk premium, etc.
-source_url (text)
-listed_date (date)
-status (text) -- active, under_review, closed
-created_at (timestamptz)
+useEffect(() => {
+  const channel = supabase
+    .channel('table-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'target_table' }, () => {
+      queryClient.invalidateQueries({ queryKey: ['relevant-key'] });
+    })
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}, [queryClient]);
 ```
 
-RLS: Publicly readable (same pattern as distressed_assets).
+---
 
-### 2. New Page: `/global` (Global Markets)
+## Part 3: Expansion and Perfection
 
-A discovery page following the same proven pattern as Distressed Assets and Public Markets:
+### 3a. Populate the Relationship Graph
 
-- **Summary cards**: Total opportunities, Avg deal size, Region breakdown, Active deals
-- **Filters**: Region, Country, Sector, Opportunity Type, Risk Rating, Deal Size range
-- **Sortable table**: Name, Country, Region, Sector, Deal Value, Risk Rating, Status, Source
-- **Detail panel** (drawer): Full description, key metrics (country risk premium, FX considerations, GDP growth), sovereign fund involvement, source links
-- **Export CSV** for filtered results
+Create a backend function `populate-relationships` that:
+- Reads all `investor_company` records and creates edges: investor -> company (type: "invested_in")
+- Reads `key_personnel` and creates edges: person -> company (type: "board_member" or "executive")
+- Reads `fund_commitments` and creates edges: LP -> fund (type: "committed_to")
+- Discovers co-investor links: if two investors share 2+ portfolio companies, create an edge (type: "co_investor")
+- Inserts into `relationship_edges` with deduplication
 
-### 3. Sidebar + Routing Integration
+### 3b. Seed Public Companies
 
-- Add "Global Markets" nav item with a Globe icon between "Distressed Assets" and the Insights section
-- Route: `/global` protected behind auth
-- Import and lazy-load the page component
+Run the existing `seed-public-companies` edge function to populate ~10,000+ companies from SEC EDGAR, then add a "Refresh Market Data" button that fetches live prices (or triggers the existing SEC filings pipeline).
 
-### 4. Dashboard Integration
+### 3c. Dashboard Improvements
 
-- Add a "Global Pulse" widget on the dashboard showing recent international opportunities by region
-- Cross-link from Fund Intelligence page when a fund has international LP relationships
+- Add a "Last Refreshed" timestamp that tracks the actual most recent data update across all tables
+- Add realtime counters for new signals/alerts since last visit
+- Show a "New since last visit" badge on sidebar nav items
 
-### 5. Seed Data via Backend Function
+### 3d. Live Status Indicators
 
-A `seed-global-opportunities` backend function that inserts ~50-100 curated opportunities across all regions with realistic deal structures, risk ratings, and sovereign fund associations.
+Add a consistent "LIVE" pulse indicator to all realtime-enabled pages (same pattern as NewsFeed and IntelligenceFeed), so users know data is streaming.
+
+---
 
 ## Technical Details
 
-### Files to Create
+### Database Migration
 
-| File | Purpose |
-|------|---------|
-| `supabase/migrations/[timestamp].sql` | Create `global_opportunities` table with RLS |
-| `src/pages/GlobalMarkets.tsx` | Main discovery page with filters, table, detail panel |
-| `src/components/GlobalDetailPanel.tsx` | Drawer showing full opportunity details |
-| `src/hooks/useGlobalOpportunities.ts` | Data hook for fetching/filtering |
-| `supabase/functions/seed-global-opportunities/index.ts` | Seed function with curated data |
+```text
+-- Enable realtime for key tables
+ALTER PUBLICATION supabase_realtime ADD TABLE public.intelligence_signals;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.distressed_assets;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.global_opportunities;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.deal_pipeline;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.alert_notifications;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.activity_events;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.portfolio_positions;
+```
 
 ### Files to Modify
 
 | File | Change |
-|------|--------|
-| `src/App.tsx` | Add `/global` route |
-| `src/components/AppSidebar.tsx` | Add "Global Markets" nav item |
-| `src/lib/export.ts` | Add `exportGlobalOpportunitiesCSV` |
-| `supabase/config.toml` | Register seed function |
-| `src/pages/Index.tsx` | Add "Global Pulse" dashboard widget |
+|---|---|
+| `src/pages/IntelligenceFeed.tsx` | Add realtime subscription + LIVE indicator |
+| `src/pages/DistressedAssets.tsx` | Add realtime subscription + LIVE indicator + toast on new listings |
+| `src/pages/GlobalMarkets.tsx` | Add realtime subscription + LIVE indicator |
+| `src/pages/Deals.tsx` | Add realtime subscription for pipeline changes |
+| `src/pages/Alerts.tsx` | Add realtime subscription for new notifications |
+| `src/pages/Index.tsx` | Add realtime subscription for activity events + signals |
+| `src/pages/Portfolio.tsx` | Add realtime subscription for position changes |
+| `src/components/AppSidebar.tsx` | Add live unread count badge for alerts |
 
-### Database Migration SQL (Simplified)
+### Files to Create
 
-```text
-CREATE TABLE global_opportunities (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  country text NOT NULL,
-  region text NOT NULL,
-  sector text,
-  opportunity_type text NOT NULL DEFAULT 'pe_vc',
-  description text,
-  deal_value_usd numeric,
-  local_currency text DEFAULT 'USD',
-  deal_value_local numeric,
-  stage text DEFAULT 'active',
-  risk_rating text DEFAULT 'medium',
-  sovereign_fund_interest text[] DEFAULT '{}',
-  key_metrics jsonb DEFAULT '{}',
-  source_url text,
-  listed_date date DEFAULT CURRENT_DATE,
-  status text DEFAULT 'active',
-  created_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE global_opportunities ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Global opportunities are publicly readable"
-  ON global_opportunities FOR SELECT USING (true);
-```
-
-### Seed Data Coverage (~80 opportunities)
-
-- **Emerging Asia (20)**: Indian SaaS unicorns, Southeast Asian fintech, Chinese cross-border logistics
-- **MENA (15)**: Saudi Vision 2030 infrastructure, UAE fintech, African mobile banking
-- **LATAM (15)**: Brazilian agritech, Mexican manufacturing nearshoring, Colombian fintech
-- **Europe (15)**: UK distressed retail, Nordic cleantech, DACH industrial automation
-- **Frontier (15)**: Vietnamese manufacturing, Bangladeshi textiles, Egyptian renewables
-
-Each opportunity includes realistic deal values (converted to USD), country-specific risk ratings, sovereign fund associations (e.g., "Mubadala", "Temasek", "GIC", "PIF"), and key metrics like country risk premium and GDP growth rate.
+| File | Purpose |
+|---|---|
+| `supabase/functions/populate-relationships/index.ts` | Populate relationship_edges from existing data |
 
 ### Implementation Sequence
 
-1. Database migration (create table + RLS)
-2. Seed backend function with curated global data
-3. Data hook (`useGlobalOpportunities`)
-4. Detail panel component
-5. Main page with filters, stats, table
-6. Sidebar + routing integration
-7. Dashboard "Global Pulse" widget
-8. Export utility
-
+1. Database migration -- enable realtime on 7 tables
+2. Add realtime subscriptions to all 8 pages/components listed above
+3. Add LIVE pulse indicators to IntelligenceFeed, DistressedAssets, GlobalMarkets, Dashboard
+4. Create and deploy `populate-relationships` edge function
+5. Add "Populate Graph" trigger to the People page or RelationshipGraph component
+6. Add sidebar alert badge with live unread count
+7. Test end-to-end realtime across all pages
