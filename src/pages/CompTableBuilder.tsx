@@ -6,10 +6,10 @@ import { exportToCSV } from "@/lib/export";
 import ReactMarkdown from "react-markdown";
 import {
   Table, Search, Plus, X, Download, Sparkles, Building2,
-  TrendingUp, ArrowUpRight, ArrowDownRight, Loader2, Printer,
+  TrendingUp, ArrowUpRight, ArrowDownRight, Loader2, Printer, Wand2,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 type CompanyRow = {
   id: string;
@@ -258,6 +258,34 @@ const CompTableBuilder = ({ embedded }: { embedded?: boolean } = {}) => {
           >
             <Plus className="h-4 w-4" /> Add Company
           </button>
+          {selectedIds.length >= 1 && (
+            <button
+              onClick={async () => {
+                // Auto-find public comps based on first selected company's sector
+                const firstCompany = compRows?.[0];
+                if (!firstCompany?.sector) {
+                  toast({ title: "Select a company with a sector first", variant: "destructive" });
+                  return;
+                }
+                const { data: matches } = await supabase
+                  .from("companies")
+                  .select("id")
+                  .eq("market_type", "public")
+                  .eq("sector", firstCompany.sector)
+                  .not("id", "in", `(${selectedIds.join(",")})`)
+                  .limit(5);
+                if (matches?.length) {
+                  setSelectedIds(prev => [...prev, ...matches.map(m => m.id)].slice(0, 10));
+                  toast({ title: `Added ${matches.length} public comps`, description: `Matched by sector: ${firstCompany.sector}` });
+                } else {
+                  toast({ title: "No public comps found", description: "Try a different sector", variant: "destructive" });
+                }
+              }}
+              className="h-9 px-3 rounded-md border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors flex items-center gap-2"
+            >
+              <Wand2 className="h-4 w-4" /> Find Public Comps
+            </button>
+          )}
           {compRows && compRows.length >= 2 && (
             <button
               onClick={runAiAnalysis}

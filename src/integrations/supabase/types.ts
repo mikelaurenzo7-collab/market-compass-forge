@@ -599,6 +599,41 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_votes: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          pipeline_deal_id: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          pipeline_deal_id: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          pipeline_deal_id?: string
+          user_id?: string
+          vote?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_votes_pipeline_deal_id_fkey"
+            columns: ["pipeline_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       distressed_assets: {
         Row: {
           asking_price: number | null
@@ -1571,6 +1606,42 @@ export type Database = {
           },
         ]
       }
+      relationship_edges: {
+        Row: {
+          confidence: string
+          created_at: string
+          id: string
+          relationship_type: string
+          source_id: string
+          source_type: string
+          source_url: string | null
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          confidence?: string
+          created_at?: string
+          id?: string
+          relationship_type: string
+          source_id: string
+          source_type: string
+          source_url?: string | null
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          confidence?: string
+          created_at?: string
+          id?: string
+          relationship_type?: string
+          source_id?: string
+          source_type?: string
+          source_url?: string | null
+          target_id?: string
+          target_type?: string
+        }
+        Relationships: []
+      }
       sec_filings: {
         Row: {
           accession_number: string
@@ -1848,6 +1919,7 @@ export type Database = {
       }
       user_alerts: {
         Row: {
+          alert_type: string
           conditions: Json
           created_at: string
           id: string
@@ -1857,6 +1929,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          alert_type?: string
           conditions?: Json
           created_at?: string
           id?: string
@@ -1866,6 +1939,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          alert_type?: string
           conditions?: Json
           created_at?: string
           id?: string

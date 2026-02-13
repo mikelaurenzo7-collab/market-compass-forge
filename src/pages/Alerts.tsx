@@ -2,18 +2,25 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Bell, Plus, Trash2, Loader2, Check, X, BellRing, Eye, EyeOff } from "lucide-react";
+import { Bell, Plus, Trash2, Loader2, Check, X, BellRing, Eye, EyeOff, FileText, AlertTriangle, TrendingDown, Zap } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 
 const SECTOR_OPTIONS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce"];
 const ROUND_OPTIONS = ["Seed", "Series A", "Series B", "Series C", "Series D", "Late Stage", "IPO"];
+const ALERT_TYPES = [
+  { value: "custom", label: "Custom", icon: <Zap className="h-3.5 w-3.5" />, description: "Funding rounds & events" },
+  { value: "sec_filing", label: "SEC Filing", icon: <FileText className="h-3.5 w-3.5" />, description: "10-K, 10-Q, 8-K filings" },
+  { value: "distressed_new", label: "Distressed", icon: <AlertTriangle className="h-3.5 w-3.5" />, description: "New distressed assets" },
+  { value: "price_move", label: "Price Move", icon: <TrendingDown className="h-3.5 w-3.5" />, description: "Significant price changes" },
+];
 
 const Alerts = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
+  const [alertType, setAlertType] = useState("custom");
   const [sector, setSector] = useState("");
   const [roundType, setRoundType] = useState("");
   const [minAmount, setMinAmount] = useState("");
@@ -57,6 +64,7 @@ const Alerts = () => {
       const { error } = await supabase.from("user_alerts").insert({
         user_id: user!.id,
         name,
+        alert_type: alertType,
         conditions,
       });
       if (error) throw error;
@@ -64,7 +72,7 @@ const Alerts = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-alerts"] });
       setShowCreate(false);
-      setName(""); setSector(""); setRoundType(""); setMinAmount(""); setKeywords("");
+      setName(""); setAlertType("custom"); setSector(""); setRoundType(""); setMinAmount(""); setKeywords("");
       toast({ title: "Alert created", description: "You'll be notified when conditions are met." });
     },
   });
@@ -117,6 +125,22 @@ const Alerts = () => {
       {showCreate && (
         <div className="rounded-lg border border-border bg-card p-4 space-y-3 animate-fade-in">
           <h3 className="text-sm font-semibold text-foreground">Create Alert Rule</h3>
+          {/* Alert type selector */}
+          <div className="flex gap-2 flex-wrap">
+            {ALERT_TYPES.map(t => (
+              <button
+                key={t.value}
+                onClick={() => setAlertType(t.value)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-md border text-xs font-medium transition-colors ${
+                  alertType === t.value
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               value={name}
@@ -132,21 +156,25 @@ const Alerts = () => {
               <option value="">Any sector</option>
               {SECTOR_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select
-              value={roundType}
-              onChange={(e) => setRoundType(e.target.value)}
-              className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              <option value="">Any round type</option>
-              {ROUND_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <input
-              value={minAmount}
-              onChange={(e) => setMinAmount(e.target.value)}
-              placeholder="Min amount ($M)"
-              type="number"
-              className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            {alertType === "custom" && (
+              <select
+                value={roundType}
+                onChange={(e) => setRoundType(e.target.value)}
+                className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Any round type</option>
+                {ROUND_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            )}
+            {(alertType === "custom" || alertType === "distressed_new") && (
+              <input
+                value={minAmount}
+                onChange={(e) => setMinAmount(e.target.value)}
+                placeholder={alertType === "distressed_new" ? "Max price ($M)" : "Min amount ($M)"}
+                type="number"
+                className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            )}
             <input
               value={keywords}
               onChange={(e) => setKeywords(e.target.value)}
@@ -206,6 +234,9 @@ const Alerts = () => {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
+                    {(alert as any).alert_type && (alert as any).alert_type !== "custom" && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-medium uppercase">{(alert as any).alert_type.replace("_", " ")}</span>
+                    )}
                     {cond.sector && <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-accent-foreground">{cond.sector}</span>}
                     {cond.round_type && <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-accent-foreground">{cond.round_type}+</span>}
                     {cond.min_amount && <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-accent-foreground">≥${(cond.min_amount / 1e6).toFixed(0)}M</span>}
