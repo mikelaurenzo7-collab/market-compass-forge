@@ -10,6 +10,8 @@ import DataIngestion from "@/components/DataIngestion";
 import BriefingSettings from "@/components/BriefingSettings";
 import TeamManager from "@/components/TeamManager";
 import DataSourcesPanel from "@/components/DataSourcesPanel";
+import PageTransition from "@/components/PageTransition";
+import { AnimatedTabContent } from "@/components/AnimatedTabs";
 
 const ROLE_LABELS: Record<string, string> = {
   analyst: "Analyst",
@@ -103,6 +105,7 @@ const Settings = () => {
   ];
 
   return (
+    <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-4xl">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Settings</h1>
@@ -127,6 +130,7 @@ const Settings = () => {
         ))}
       </div>
 
+      <AnimatedTabContent activeKey={activeTab}>
       {activeTab === "profile" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Profile */}
@@ -253,7 +257,9 @@ const Settings = () => {
       {activeTab === "sources" && <DataSourcesPanel />}
 
       {activeTab === "team" && <TeamManager />}
+      </AnimatedTabContent>
     </div>
+    </PageTransition>
   );
 };
 

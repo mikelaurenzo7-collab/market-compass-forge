@@ -6,6 +6,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAutoEnrich } from "@/hooks/useAutoEnrich";
 import { ArrowLeft, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer, AlertCircle } from "lucide-react";
+import { AnimatedTabContent } from "@/components/AnimatedTabs";
+import { Skeleton } from "@/components/ui/skeleton";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import AIResearchChat from "@/components/AIResearchChat";
 import NewsFeed from "@/components/NewsFeed";
@@ -221,8 +223,36 @@ const CompanyDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="p-4 sm:p-6 space-y-6 max-w-6xl">
+        <div className="flex items-start gap-4">
+          <Skeleton className="h-9 w-9 rounded-md" />
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-4 w-full max-w-xl" />
+        <Skeleton className="h-10 w-full max-w-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <Skeleton className="h-48 rounded-lg" />
+            <Skeleton className="h-32 rounded-lg" />
+          </div>
+          <div className="space-y-4">
+            <Skeleton className="h-40 rounded-lg" />
+            <Skeleton className="h-32 rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -386,6 +416,7 @@ const CompanyDetail = () => {
         ))}
       </div>
 
+      <AnimatedTabContent activeKey={activeTab}>
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
@@ -790,6 +821,7 @@ const CompanyDetail = () => {
       {activeTab === "memo" && (
         <InvestmentMemo companyId={id!} companyName={company.name} />
       )}
+      </AnimatedTabContent>
     </div>
   );
 };

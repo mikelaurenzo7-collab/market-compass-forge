@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   LayoutDashboard,
   Building2,
@@ -90,12 +91,23 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   );
 
   const renderLinks = (modules: typeof mainModules) =>
-    modules.map((m) => (
-      <NavLink key={m.id} to={m.path} end={m.path === "/dashboard"} className={linkClass(m.path)} onClick={onNavigate}>
-        <m.icon className="h-4 w-4 shrink-0" />
-        {!collapsed && <span className="truncate">{m.label}</span>}
-      </NavLink>
-    ));
+    modules.map((m) => {
+      const link = (
+        <NavLink key={m.id} to={m.path} end={m.path === "/dashboard"} className={linkClass(m.path)} onClick={onNavigate}>
+          <m.icon className="h-4 w-4 shrink-0" />
+          {!collapsed && <span className="truncate">{m.label}</span>}
+        </NavLink>
+      );
+      if (collapsed) {
+        return (
+          <Tooltip key={m.id} delayDuration={0}>
+            <TooltipTrigger asChild>{link}</TooltipTrigger>
+            <TooltipContent side="right" className="text-xs">{m.label}</TooltipContent>
+          </Tooltip>
+        );
+      }
+      return link;
+    });
 
   return (
     <aside className={`${collapsed ? "w-14" : "w-56"} shrink-0 border-r border-border bg-sidebar flex flex-col h-screen sticky top-0 transition-all duration-200`}>

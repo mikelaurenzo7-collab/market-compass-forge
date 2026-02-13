@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AlertTriangle, Building2, DollarSign, TrendingDown, Filter, Download } from "lucide-react";
+import PageTransition from "@/components/PageTransition";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,8 +15,8 @@ import { exportDistressedAssetsCSV } from "@/lib/export";
 import { LiveIndicator } from "@/components/LiveIndicator";
 
 const STATUS_STYLES: Record<string, string> = {
-  active: "bg-green-500/10 text-green-500 border-green-500/20",
-  under_contract: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  active: "bg-success/10 text-success border-success/20",
+  under_contract: "bg-warning/10 text-warning border-warning/20",
   sold: "bg-muted text-muted-foreground border-border",
 };
 
@@ -77,7 +78,8 @@ const DistressedAssets = () => {
   }
 
    return (
-     <div className="p-4 sm:p-6 space-y-4">
+      <PageTransition>
+      <div className="p-4 sm:p-6 space-y-4">
        <div className="flex items-center justify-between">
          <div>
            <h1 className="text-xl font-semibold text-foreground">Distressed & Special Situations</h1>
@@ -274,8 +276,9 @@ const DistressedAssets = () => {
          open={detailPanelOpen}
          onOpenChange={setDetailPanelOpen}
        />
-     </div>
-   );
+      </div>
+      </PageTransition>
+    );
  };
  
  export default DistressedAssets;

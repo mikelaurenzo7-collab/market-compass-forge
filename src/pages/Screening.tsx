@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Search, Filter, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -278,7 +279,29 @@ const Screening = () => {
   );
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+    return (
+      <div className="p-6 space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Screening</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Loading companies...</p>
+        </div>
+        <Skeleton className="h-32 rounded-lg" />
+        <div className="rounded-lg border border-border overflow-hidden">
+          <div className="space-y-0">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-border/50">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-6 w-6 rounded-md" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-20 ml-auto" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
