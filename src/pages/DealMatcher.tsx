@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Sparkles, Loader2, Target, AlertTriangle, TrendingUp, ArrowRight, RefreshCw, Zap, Shield, Globe, Building2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, Loader2, Target, AlertTriangle, TrendingUp, ArrowRight, RefreshCw, Zap, Shield, Globe, Building2, ChevronDown, ChevronUp } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/hooks/useData";
@@ -57,10 +57,105 @@ const ScoreRing = ({ score }: { score: number }) => {
     <div className="relative h-12 w-12 shrink-0">
       <svg className="h-12 w-12 -rotate-90" viewBox="0 0 44 44">
         <circle cx="22" cy="22" r={radius} fill="none" stroke="hsl(var(--border))" strokeWidth="3" />
-        <circle cx="22" cy="22" r={radius} fill="none" stroke={color} strokeWidth="3" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" className="transition-all duration-700" />
+        <motion.circle
+          cx="22" cy="22" r={radius} fill="none" stroke={color} strokeWidth="3"
+          strokeDasharray={circumference} strokeLinecap="round"
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+        />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center text-xs font-mono font-bold text-foreground">{score}</span>
     </div>
+  );
+};
+
+const DealMatchCard = ({ m, i, navigate }: { m: DealMatch; i: number; navigate: any }) => {
+  const [expanded, setExpanded] = useState(false);
+  const TypeIcon = typeIcons[m.type] ?? Building2;
+
+  return (
+    <motion.div
+      key={`${m.type}-${m.id}-${i}`}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: i * 0.04 }}
+      className="rounded-lg border border-border bg-card hover:border-primary/30 transition-colors overflow-hidden"
+    >
+      <div
+        className="flex items-start gap-4 p-4 cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <ScoreRing score={m.matchScore} />
+        <div className="flex-1 min-w-0 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-foreground">{m.name}</span>
+            <Badge variant="outline" className="text-[9px] gap-1 px-1.5 py-0">
+              <TypeIcon className="h-2.5 w-2.5" />
+              {typeLabels[m.type]}
+            </Badge>
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0">{m.sector}</Badge>
+            <span className={`text-[9px] px-2 py-0.5 rounded-full border font-medium ${actionColors[m.actionRecommendation]}`}>
+              {actionLabels[m.actionRecommendation]}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground">{m.matchReason}</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+          {expanded ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 pt-0 border-t border-border/50">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                <div className="flex items-start gap-2 p-3 rounded-md bg-primary/5 border border-primary/10">
+                  <TrendingUp className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Valuation Insight</p>
+                    <p className="text-xs text-foreground">{m.valuationInsight}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2 p-3 rounded-md bg-destructive/5 border border-destructive/10">
+                  <Shield className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Risk Flag</p>
+                    <p className="text-xs text-foreground">{m.riskFlag}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (m.type === "distressed") navigate("/distressed");
+                    else if (m.type === "global") navigate("/global");
+                    else navigate("/deals");
+                  }}
+                >
+                  View Details <ArrowRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
@@ -106,6 +201,18 @@ const DealMatcher = () => {
 
   const hasResults = matches.length > 0;
 
+  // Group matches by action recommendation
+  const grouped = hasResults
+    ? {
+        fast_track: matches.filter((m) => m.actionRecommendation === "fast_track"),
+        investigate: matches.filter((m) => m.actionRecommendation === "investigate"),
+        monitor: matches.filter((m) => m.actionRecommendation === "monitor"),
+        pass: matches.filter((m) => m.actionRecommendation === "pass"),
+      }
+    : null;
+
+  const avgScore = hasResults ? Math.round(matches.reduce((sum, m) => sum + m.matchScore, 0) / matches.length) : 0;
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
@@ -117,7 +224,7 @@ const DealMatcher = () => {
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {hasResults
-              ? `${matches.length} matches across ${meta.sectorsAnalyzed?.length ?? 0} sectors · ${meta.pipelineCount ?? 0} pipeline companies analyzed`
+              ? `${matches.length} matches across ${meta.sectorsAnalyzed?.length ?? 0} sectors · avg score ${avgScore} · ${meta.pipelineCount ?? 0} pipeline companies`
               : "Smart matching across distressed assets, global opportunities, and comparable deals"}
           </p>
         </div>
@@ -136,6 +243,23 @@ const DealMatcher = () => {
           {runMatcher.isPending ? "Analyzing…" : hasResults ? "Re-scan" : "Run AI Matcher"}
         </Button>
       </div>
+
+      {/* Summary stats */}
+      {hasResults && grouped && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: "Fast Track", count: grouped.fast_track.length, color: "text-primary" },
+            { label: "Investigate", count: grouped.investigate.length, color: "text-accent-foreground" },
+            { label: "Monitor", count: grouped.monitor.length, color: "text-muted-foreground" },
+            { label: "Pass", count: grouped.pass.length, color: "text-destructive" },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-lg border border-border bg-card p-3 text-center">
+              <p className={`text-2xl font-bold font-mono ${stat.color}`}>{stat.count}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Empty state */}
       {!hasResults && !runMatcher.isPending && (
@@ -165,58 +289,16 @@ const DealMatcher = () => {
         <div className="rounded-lg border border-border bg-card p-12 text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
           <p className="text-sm text-muted-foreground">Scanning distressed assets, global opportunities, and deal comps…</p>
+          <p className="text-xs text-muted-foreground/60">This typically takes 10–20 seconds</p>
         </div>
       )}
 
       {/* Results */}
       {hasResults && (
         <div className="space-y-3">
-          {matches.map((m, i) => {
-            const TypeIcon = typeIcons[m.type] ?? Building2;
-            return (
-              <motion.div
-                key={`${m.type}-${m.id}-${i}`}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
-                className="rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors cursor-pointer"
-                onClick={() => {
-                  if (m.type === "distressed") navigate(`/distressed`);
-                  else if (m.type === "global") navigate(`/global`);
-                  else navigate(`/deals`);
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  <ScoreRing score={m.matchScore} />
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-foreground">{m.name}</span>
-                      <Badge variant="outline" className="text-[9px] gap-1 px-1.5 py-0">
-                        <TypeIcon className="h-2.5 w-2.5" />
-                        {typeLabels[m.type]}
-                      </Badge>
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0">{m.sector}</Badge>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full border font-medium ${actionColors[m.actionRecommendation]}`}>
-                        {actionLabels[m.actionRecommendation]}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{m.matchReason}</p>
-                    <div className="flex items-center gap-4 text-[11px]">
-                      <span className="flex items-center gap-1 text-primary">
-                        <TrendingUp className="h-3 w-3" />
-                        {m.valuationInsight}
-                      </span>
-                      <span className="flex items-center gap-1 text-destructive/80">
-                        <Shield className="h-3 w-3" />
-                        {m.riskFlag}
-                      </span>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
-                </div>
-              </motion.div>
-            );
-          })}
+          {matches.map((m, i) => (
+            <DealMatchCard key={`${m.type}-${m.id}-${i}`} m={m} i={i} navigate={navigate} />
+          ))}
         </div>
       )}
     </div>

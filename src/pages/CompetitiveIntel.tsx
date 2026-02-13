@@ -1,13 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crosshair, TrendingUp, TrendingDown, Newspaper, DollarSign, Loader2, Building2, ArrowUpRight } from "lucide-react";
+import { Crosshair, TrendingUp, TrendingDown, Newspaper, DollarSign, Loader2, Building2, ArrowUpRight, Filter, BarChart3 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatCurrency } from "@/hooks/useData";
 import { useAuth } from "@/hooks/useAuth";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { subDays, formatDistanceToNow } from "date-fns";
 
 type CompetitorSignal = {
@@ -28,7 +29,6 @@ const useCompetitiveIntel = () => {
   return useQuery({
     queryKey: ["competitive-intel", user?.id],
     queryFn: async () => {
-      // Get user's pipeline sectors for targeting
       const { data: pipelineDeals } = await supabase
         .from("deal_pipeline")
         .select("companies(id, name, sector)")
@@ -55,13 +55,13 @@ const useCompetitiveIntel = () => {
       }
 
       const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+      const dateOnly = thirtyDaysAgo.split("T")[0];
 
-      // Fetch recent competitive signals in parallel
       const [recentFunding, recentNews, recentDeals] = await Promise.all([
         supabase
           .from("funding_rounds")
           .select("id, company_id, round_type, amount, date, companies(name, sector)")
-          .gte("date", thirtyDaysAgo.split("T")[0])
+          .gte("date", dateOnly)
           .order("date", { ascending: false })
           .limit(100),
         supabase
@@ -73,18 +73,17 @@ const useCompetitiveIntel = () => {
         supabase
           .from("deal_transactions")
           .select("id, target_company, target_industry, deal_value, deal_type, announced_date")
-          .gte("announced_date", thirtyDaysAgo.split("T")[0])
+          .gte("announced_date", dateOnly)
           .order("announced_date", { ascending: false })
           .limit(50),
       ]);
 
       const signals: CompetitorSignal[] = [];
 
-      // Process funding rounds in target sectors
       (recentFunding.data ?? []).forEach((r: any) => {
         const sector = r.companies?.sector;
         if (!sector || !targetSectors.includes(sector)) return;
-        if (pipelineCompanyIds.has(r.company_id) || watchlistCompanyIds.has(r.company_id)) return; // skip own targets
+        if (pipelineCompanyIds.has(r.company_id) || watchlistCompanyIds.has(r.company_id)) return;
         signals.push({
           id: `fund-${r.id}`,
           companyName: r.companies?.name ?? "Unknown",
@@ -99,7 +98,6 @@ const useCompetitiveIntel = () => {
         });
       });
 
-      // Process news about competitors
       (recentNews.data ?? []).forEach((n: any) => {
         const sector = n.companies?.sector;
         if (!sector || !targetSectors.includes(sector)) return;
@@ -118,7 +116,6 @@ const useCompetitiveIntel = () => {
         });
       });
 
-      // Process deals
       (recentDeals.data ?? []).forEach((d: any) => {
         const industry = d.target_industry;
         if (!industry || !targetSectors.some((s) => industry.toLowerCase().includes(s.toLowerCase()))) return;
@@ -136,11 +133,13 @@ const useCompetitiveIntel = () => {
         });
       });
 
-      // Sort by recency
       signals.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-      // Sector summary
       const sectorSummary: Record<string, { funding: number; deals: number; newsCount: number; sentiment: number }> = {};
+      // Initialize all target sectors so cards always show
+      targetSectors.forEach((s) => {
+        sectorSummary[s] = { funding: 0, deals: 0, newsCount: 0, sentiment: 0 };
+      });
       signals.forEach((s) => {
         if (!sectorSummary[s.sector]) sectorSummary[s.sector] = { funding: 0, deals: 0, newsCount: 0, sentiment: 0 };
         if (s.signalType === "funding") sectorSummary[s.sector].funding += s.value ?? 0;
@@ -155,7 +154,7 @@ const useCompetitiveIntel = () => {
         signals: signals.slice(0, 50),
         sectorSummary: Object.entries(sectorSummary)
           .map(([sector, data]) => ({ sector, ...data }))
-          .sort((a, b) => b.funding - a.funding),
+          .sort((a, b) => (b.funding + b.newsCount * 1000) - (a.funding + a.newsCount * 1000)),
         targetSectors,
         totalSignals: signals.length,
       };
@@ -186,67 +185,106 @@ const signalColor = (type: string) => {
 const CompetitiveIntel = () => {
   const navigate = useNavigate();
   const { data, isLoading } = useCompetitiveIntel();
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="h-8 w-64 bg-muted/30 rounded animate-pulse" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="rounded-lg border border-border bg-card p-4 h-24 animate-pulse" />
+          ))}
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4 h-96 animate-pulse" />
       </div>
     );
   }
 
   const signals = data?.signals ?? [];
   const sectorSummary = data?.sectorSummary ?? [];
+  const filteredSignals = activeFilter ? signals.filter((s) => s.sector === activeFilter) : signals;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-          <Crosshair className="h-5 w-5 text-primary" />
-          Competitive Intelligence
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Track competitor movements across your target sectors · <span className="font-mono text-primary">{data?.totalSignals ?? 0}</span> signals (30d)
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+            <Crosshair className="h-5 w-5 text-primary" />
+            Competitive Intelligence
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Track competitor movements across your target sectors · <span className="font-mono text-primary">{data?.totalSignals ?? 0}</span> signals (30d)
+          </p>
+        </div>
+        {activeFilter && (
+          <Button variant="ghost" size="sm" onClick={() => setActiveFilter(null)} className="gap-1.5 text-xs">
+            <Filter className="h-3 w-3" /> Clear filter
+          </Button>
+        )}
       </div>
 
       {/* Sector Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {sectorSummary.slice(0, 4).map((s, i) => (
-          <motion.div
-            key={s.sector}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="rounded-lg border border-border bg-card p-4 space-y-2"
-          >
-            <p className="text-xs text-muted-foreground truncate">{s.sector}</p>
-            <p className="text-lg font-bold font-mono text-foreground">{formatCurrency(s.funding)}</p>
-            <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-              <span>{s.deals} deals</span>
-              <span>{s.newsCount} news</span>
-              <span className={s.sentiment > 0 ? "text-primary" : s.sentiment < 0 ? "text-destructive" : ""}>
-                {s.sentiment > 0 ? "↑" : s.sentiment < 0 ? "↓" : "→"} sentiment
-              </span>
-            </div>
-          </motion.div>
-        ))}
+        {sectorSummary.slice(0, 4).map((s, i) => {
+          const isActive = activeFilter === s.sector;
+          const totalActivity = s.deals + s.newsCount;
+          return (
+            <motion.div
+              key={s.sector}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => setActiveFilter(isActive ? null : s.sector)}
+              className={`rounded-lg border bg-card p-4 space-y-2 cursor-pointer transition-all ${
+                isActive ? "border-primary ring-1 ring-primary/20" : "border-border hover:border-primary/30"
+              }`}
+            >
+              <p className="text-xs text-muted-foreground truncate">{s.sector}</p>
+              <p className="text-lg font-bold font-mono text-foreground">
+                {s.funding > 0 ? formatCurrency(s.funding) : `${totalActivity} signals`}
+              </p>
+              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span>{s.deals} deals</span>
+                <span>{s.newsCount} news</span>
+                <span className={s.sentiment > 0 ? "text-primary" : s.sentiment < 0 ? "text-destructive" : ""}>
+                  {s.sentiment > 0 ? "↑" : s.sentiment < 0 ? "↓" : "→"} sentiment
+                </span>
+              </div>
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Signal Feed */}
       <div className="rounded-lg border border-border bg-card">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Live Signal Feed</h3>
-          <span className="text-[10px] text-muted-foreground">Last 30 days · auto-filtered to your sectors</span>
+          <h3 className="text-sm font-semibold text-foreground">
+            Live Signal Feed
+            {activeFilter && <span className="text-primary ml-2">· {activeFilter}</span>}
+          </h3>
+          <span className="text-[10px] text-muted-foreground">
+            {filteredSignals.length} signals · Last 30 days
+          </span>
         </div>
         <div className="divide-y divide-border/50 max-h-[600px] overflow-y-auto">
-          {signals.length === 0 ? (
-            <div className="text-center py-12 text-sm text-muted-foreground">
-              Add companies to your pipeline to start tracking competitor movements.
+          {filteredSignals.length === 0 ? (
+            <div className="text-center py-12 space-y-3">
+              <BarChart3 className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  {activeFilter ? `No signals for ${activeFilter}` : "No competitor signals yet"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {activeFilter
+                    ? "Try clearing the filter or check back later."
+                    : "Add companies to your pipeline to start tracking competitor movements."}
+                </p>
+              </div>
             </div>
           ) : (
-            signals.map((s, i) => (
+            filteredSignals.map((s, i) => (
               <motion.div
                 key={s.id}
                 initial={{ opacity: 0, x: -8 }}
