@@ -2,9 +2,10 @@ import { useState, useMemo } from "react";
 import { usePortfolios, usePortfolioPositions, useCreatePortfolio, useAddPosition, useRemovePosition, useDeletePortfolio, type PortfolioPosition } from "@/hooks/usePortfolio";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, ArrowUpRight, ArrowDownRight, Building2, Search } from "lucide-react";
+import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, ArrowUpRight, ArrowDownRight, Building2, Search, BarChart3 } from "lucide-react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
+import PortfolioBenchmark from "@/components/PortfolioBenchmark";
 
 const COLORS = [
   "hsl(270, 60%, 55%)", "hsl(142, 60%, 45%)", "hsl(38, 92%, 50%)",
@@ -35,6 +36,7 @@ const Portfolio = () => {
 
   const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
   const [showAddPosition, setShowAddPosition] = useState(false);
+  const [showBenchmark, setShowBenchmark] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [newPos, setNewPos] = useState({ company_id: "", shares: "", entry_price: "", entry_date: new Date().toISOString().split("T")[0], notes: "" });
 
@@ -138,6 +140,14 @@ const Portfolio = () => {
               ))}
             </select>
           )}
+          {positions && positions.length > 0 && (
+            <button
+              onClick={() => setShowBenchmark(!showBenchmark)}
+              className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center gap-2 ${showBenchmark ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+            >
+              <BarChart3 className="h-4 w-4" /> Benchmark
+            </button>
+          )}
           <button onClick={handleCreatePortfolio} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
             <Plus className="h-4 w-4" /> New Portfolio
           </button>
@@ -166,6 +176,11 @@ const Portfolio = () => {
 
       {selectedId && (
         <>
+          {/* Benchmark section */}
+          {showBenchmark && positions && positions.length > 0 && (
+            <PortfolioBenchmark positions={positions as any} />
+          )}
+
           {/* Metric cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <MetricBox label="Portfolio Value" value={formatCurrency(metrics.totalValue)} icon={<DollarSign className="h-4 w-4" />} />

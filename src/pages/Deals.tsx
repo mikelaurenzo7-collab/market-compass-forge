@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/hooks/useData";
-import { GripVertical, Trash2, Download, BarChart3, LayoutGrid, Table as TableIcon } from "lucide-react";
+import { GripVertical, Trash2, Download, BarChart3, LayoutGrid, Table as TableIcon, MessageSquare } from "lucide-react";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { exportPipelineCSV } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
@@ -15,6 +15,7 @@ import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { KanbanSkeleton } from "@/components/SkeletonLoaders";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileDealCard from "@/components/MobileCompanyCard";
+import DealWorkspace from "@/components/DealWorkspace";
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -40,6 +41,7 @@ const Deals = () => {
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [workspaceDeal, setWorkspaceDeal] = useState<{ id: string; companyId: string; companyName: string } | null>(null);
 
   const { data: deals, isLoading } = useQuery({
     queryKey: ["pipeline"],
@@ -175,6 +177,13 @@ const Deals = () => {
                             <button onClick={() => removeDeal.mutate(deal.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all">
                               <Trash2 className="h-3 w-3" />
                             </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setWorkspaceDeal({ id: deal.id, companyId: deal.company_id, companyName: deal.companies?.name ?? "Unknown" }); }}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
+                              title="Open deal workspace"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -185,6 +194,16 @@ const Deals = () => {
             )
           )}
         </>
+      )}
+
+      {/* Deal Workspace Modal */}
+      {workspaceDeal && (
+        <DealWorkspace
+          dealId={workspaceDeal.id}
+          companyId={workspaceDeal.companyId}
+          companyName={workspaceDeal.companyName}
+          onClose={() => setWorkspaceDeal(null)}
+        />
       )}
     </div>
   );
