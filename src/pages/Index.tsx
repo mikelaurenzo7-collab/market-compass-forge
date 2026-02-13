@@ -8,7 +8,7 @@ import CompanyTable from "@/components/CompanyTable";
 import UsageMeters from "@/components/UsageMeters";
 import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
-import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building, Briefcase, Bell, Zap } from "lucide-react";
+import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building, Briefcase, Bell, Zap, Globe } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -305,6 +305,51 @@ const DataSourcesBadge = () => {
   );
 };
 
+const GlobalPulseWidget = () => {
+  const navigate = useNavigate();
+  const { data: opportunities } = useQuery({
+    queryKey: ["global-dashboard"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("global_opportunities").select("id, name, region, country, deal_value_usd, opportunity_type, risk_rating").eq("status", "active").order("created_at", { ascending: false }).limit(5);
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 60_000,
+  });
+
+  if (!opportunities?.length) return null;
+
+  const fmt = (v: number | null) => {
+    if (!v) return "—";
+    if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+    if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+    return `$${v.toLocaleString()}`;
+  };
+
+  return (
+    <div className="rounded-lg border border-border bg-card">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Globe className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Global Pulse</h3>
+        </div>
+        <button onClick={() => navigate("/global")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">View All</button>
+      </div>
+      <div className="divide-y divide-border/50">
+        {opportunities.map((o: any) => (
+          <div key={o.id} onClick={() => navigate("/global")} className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors">
+            <div>
+              <p className="text-sm font-medium text-foreground truncate">{o.name}</p>
+              <p className="text-[10px] text-muted-foreground">{o.country} · {o.region}</p>
+            </div>
+            <span className="text-xs font-mono font-medium text-foreground shrink-0">{fmt(o.deal_value_usd)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
@@ -354,6 +399,7 @@ const Index = () => {
     { id: "distressed", label: "Distressed Opportunities" },
     { id: "off-market", label: "Off-Market Properties" },
     { id: "intelligence-feed", label: "Intelligence Feed" },
+    { id: "global-pulse", label: "Global Pulse" },
   ];
 
   return (
@@ -434,6 +480,7 @@ const Index = () => {
           {visibleWidgets.includes("pipeline") && <RecentPipelineDeals />}
           {visibleWidgets.includes("distressed") && <DistressedWidget />}
           {visibleWidgets.includes("off-market") && <OffMarketWidget />}
+          {visibleWidgets.includes("global-pulse") && <GlobalPulseWidget />}
           {visibleWidgets.includes("intelligence-feed") && (
             <Suspense fallback={<WidgetSkeleton />}>
               <NewsFeed compact />

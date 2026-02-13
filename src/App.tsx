@@ -28,6 +28,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Discover from "./pages/Discover";
 import PublicMarkets from "./pages/PublicMarkets";
+import GlobalMarkets from "./pages/GlobalMarkets";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/distressed" element={<DistressedAssets />} />
               <Route path="/discover" element={<Discover />} />
               <Route path="/public-markets" element={<PublicMarkets />} />
+              <Route path="/global" element={<GlobalMarkets />} />
               <Route path="/research" element={<Research />} />
               <Route path="/documents" element={<DocumentAnalyzer />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
