@@ -1,160 +1,160 @@
 
 
-# Grapevine Moat Analysis and Enhancement Plan
+# Global Investment Opportunities -- New Asset Class Module
 
-## Current Moats Assessment
+## Overview
 
-After a deep exploration of the codebase, here is where Grapevine stands competitively and where we can build defensible advantages that Bloomberg and PitchBook cannot easily replicate.
+Add a dedicated **Global Markets** page (`/global`) that surfaces international investment opportunities across emerging markets, frontier economies, and developed non-US markets. This becomes a unique moat because no sub-$1,000/mo platform offers cross-border deal intelligence alongside domestic private + public market coverage.
 
-### Existing Moats (Strong)
-1. **Proprietary Scoring Engine** -- The `useCompanyScore` algorithm is a 6-factor weighted model (ARR scale, valuation vs. sector median, growth CAGR, sector momentum, operational efficiency, capital efficiency) with Rule of 40 and forward multiple analysis. This is institutional-grade and unique to us.
-2. **SEC EDGAR Pipeline** -- Real-time public company data at zero cost, proxied through our backend. No competitor at our price point offers this.
-3. **AI Research + Memo Generation** -- Streaming AI research with sector-specific playbooks (AI/ML, Fintech, SaaS, Cybersecurity) and one-click investment memo generation with PDF export. Sticky workflow.
-4. **Cross-Asset Coverage** -- Private companies, public markets, distressed assets, off-market real estate, fund intelligence -- all in one platform. Bloomberg has public markets. PitchBook has private. Nobody has both + distressed + real estate at $399/mo.
+## What Makes This a Moat
 
-### Existing Moats (Weak / Underutilized)
-5. **Data Enrichment** -- Firecrawl auto-enrichment exists but is passive. Not proactive enough to build a data moat.
-6. **Intelligence Feed** -- Perplexity-powered signals exist but are generic. No personalization or alerting tied to portfolio.
-7. **Document Analyzer** -- Has demo fallback data. Real pipeline exists but is underutilized.
+1. **Cross-border intelligence is fragmented** -- Bloomberg Terminal covers global equities but costs $25K/yr. PitchBook is US/EU-centric. Nobody aggregates global PE/VC, sovereign wealth fund activity, and emerging market opportunities in one view at our price point.
+2. **Compounds with existing data** -- Our SEC pipeline, fund intelligence (LP/GP directory), and relationship graph become more valuable when extended internationally. A family office tracking a US SaaS company can now see which sovereign wealth funds from Singapore or Abu Dhabi are co-investing.
+3. **Network effect on relationships** -- Every global entity added to the relationship graph deepens the "who knows who" moat.
 
----
+## Data Strategy (No Paid APIs Required)
 
-## New Moats to Build
+We seed the global opportunities table with curated data across key regions, then enrich over time via Firecrawl web scraping of public deal announcements, sovereign fund disclosures, and international stock exchange filings.
 
-### Moat 1: Relationship Graph ("Who Knows Who")
+**Regions covered:**
+- Emerging Asia (India, Southeast Asia, China)
+- Middle East & Africa (UAE, Saudi, Nigeria, Kenya)
+- Latin America (Brazil, Mexico, Colombia)
+- Europe (UK, DACH, Nordics)
+- Frontier (Vietnam, Bangladesh, Egypt)
 
-**Why this is a moat:** In private markets, deals happen through relationships. No existing tool maps the connections between investors, fund managers, company executives, and deal intermediaries. This is data that compounds over time and cannot be replicated overnight.
+**Opportunity types:**
+- Cross-border M&A targets
+- Emerging market PE/VC deals
+- Sovereign wealth fund co-investment opportunities
+- International distressed / restructuring
+- Global infrastructure projects
 
-**What we build:**
-- A `relationship_edges` table storing entity-to-entity connections (investor -> company, person -> fund, company -> company via shared investors)
-- A force-directed network visualization using the existing d3-force dependency (already installed)
-- "Shared investors" and "Common board members" sections on company detail pages
-- A `/people` page upgrade that shows connection degrees ("2nd degree connection to your portfolio")
+## What We Build
 
-**Technical approach:**
-- New table: `relationship_edges (id, source_type, source_id, target_type, target_id, relationship_type, confidence, source_url)`
-- Populate from existing `investor_company`, `key_personnel`, and `fund_commitments` tables
-- D3 force-directed graph component for visual exploration
-- Edge function to auto-discover relationships when viewing a company
+### 1. New Database Table: `global_opportunities`
 
-### Moat 2: Comp Builder with SEC-Powered Public Benchmarks
+Stores international investment opportunities with region, country, currency, deal type, and risk metrics.
 
-**Why this is a moat:** When valuing a private company, the most important thing is finding the right public comparables. We have SEC XBRL data for every US public company. We can auto-suggest public comps based on sector, size, and growth profile -- then pull their real financials into a side-by-side comp table.
+```text
+global_opportunities
+--------------------
+id (uuid, PK)
+name (text) -- Company or project name
+country (text) -- ISO country
+region (text) -- Emerging Asia, LATAM, MENA, Europe, Frontier
+sector (text)
+opportunity_type (text) -- cross_border_ma, pe_vc, swf_coinvest, distressed, infrastructure
+description (text)
+deal_value_usd (numeric) -- Normalized to USD
+local_currency (text)
+deal_value_local (numeric)
+stage (text) -- sourced, screening, active, closed
+risk_rating (text) -- low, medium, high, very_high
+sovereign_fund_interest (text[]) -- Names of SWFs known to be involved
+key_metrics (jsonb) -- GDP growth, FX rate, country risk premium, etc.
+source_url (text)
+listed_date (date)
+status (text) -- active, under_review, closed
+created_at (timestamptz)
+```
 
-**What we build:**
-- Upgrade `CompTableBuilder` to auto-suggest public company comparables from our SEC data
-- "Find Public Comps" button that matches a private company's sector, revenue range, and growth rate against public companies with real XBRL financials
-- Side-by-side view: your private target vs. 5-8 public comps with real Revenue, EBITDA, margins, and multiples
-- Export the comp table as a formatted PDF/CSV ready for an IC deck
+RLS: Publicly readable (same pattern as distressed_assets).
 
-**Technical approach:**
-- New edge function `comp-analysis` upgrade: query SEC financial facts for matching public companies by sector + revenue range
-- Frontend: add "Auto-Match Public Comps" to the existing comp builder
-- Pull real EV/Revenue, EV/EBITDA from SEC XBRL for each suggested comp
+### 2. New Page: `/global` (Global Markets)
 
-### Moat 3: Deal Alerts Engine (Proactive Intelligence)
+A discovery page following the same proven pattern as Distressed Assets and Public Markets:
 
-**Why this is a moat:** Instead of users checking the dashboard, Grapevine pushes actionable alerts when something changes -- a new SEC filing on a watchlisted company, a distressed asset matching their criteria, or a sector multiple shift. This creates daily engagement and habit-forming behavior.
+- **Summary cards**: Total opportunities, Avg deal size, Region breakdown, Active deals
+- **Filters**: Region, Country, Sector, Opportunity Type, Risk Rating, Deal Size range
+- **Sortable table**: Name, Country, Region, Sector, Deal Value, Risk Rating, Status, Source
+- **Detail panel** (drawer): Full description, key metrics (country risk premium, FX considerations, GDP growth), sovereign fund involvement, source links
+- **Export CSV** for filtered results
 
-**What we build:**
-- Upgrade the existing `check-alerts` edge function to monitor SEC filings, distressed asset additions, and intelligence signals
-- Smart alert rules: "Notify me when any company in my watchlist files a 10-K" or "Alert me to new distressed assets in Healthcare under $5M"
-- Email digest integration using the existing Resend API key
-- In-app notification center with unread badges (partially built, wire it up)
+### 3. Sidebar + Routing Integration
 
-**Technical approach:**
-- Expand `user_alerts` table to support `alert_type` enum: `sec_filing`, `distressed_new`, `signal_match`, `watchlist_change`, `price_move`
-- Scheduled edge function runs daily, checks each user's alert rules against new data
-- Resend email with formatted HTML digest
+- Add "Global Markets" nav item with a Globe icon between "Distressed Assets" and the Insights section
+- Route: `/global` protected behind auth
+- Import and lazy-load the page component
 
-### Moat 4: Portfolio Benchmarking ("How Am I Doing?")
+### 4. Dashboard Integration
 
-**Why this is a moat:** The `portfolios` and `portfolio_positions` tables exist but the Portfolio page is likely basic. For family offices and PE firms, the killer feature is: "How does my portfolio perform vs. sector benchmarks, vs. public market equivalents?"
+- Add a "Global Pulse" widget on the dashboard showing recent international opportunities by region
+- Cross-link from Fund Intelligence page when a fund has international LP relationships
 
-**What we build:**
-- Portfolio performance dashboard: total value, MOIC, IRR (estimated from entry price and current estimated value)
-- Public Market Equivalent (PME) comparison: compare your private portfolio returns against S&P 500 or sector ETFs
-- Sector concentration analysis with risk warnings
-- Quarterly mark-to-market using sector multiples from our scoring engine
+### 5. Seed Data via Backend Function
 
-**Technical approach:**
-- Enhance `Portfolio.tsx` with Recharts performance charts
-- Use `useSectorMultiples` to estimate current fair value of private positions
-- PME calculation: compare against a synthetic public market benchmark using SEC data
-
-### Moat 5: Collaborative Due Diligence Workspace
-
-**Why this is a moat:** Investment decisions are team-based. `SharedNotes` and `team_activity` tables exist but the collaboration story is thin. Building a "war room" for each deal in the pipeline -- where team members can assign tasks, share notes, flag risks, and vote on decisions -- creates massive switching costs.
-
-**What we build:**
-- Deal workspace view within the pipeline: notes timeline, task assignments, document attachments, and team voting
-- "@mention" team members in notes (leveraging existing `team_invitations` table)
-- Decision log: "IC voted 3-1 to proceed to DD" with timestamps
-- Attach document analyses to specific pipeline deals
-
-**Technical approach:**
-- Enhance `Deals.tsx` with a deal detail panel showing all collaborative context
-- Connect `pipeline_tasks`, `team_activity`, `user_notes`, and `company_documents` into a unified deal view
-- Add a `deal_votes` table for IC decision tracking
-
----
-
-## Implementation Priority
-
-Ranked by defensibility and time-to-impact:
-
-| Priority | Moat | Effort | Impact | Defensibility |
-|----------|------|--------|--------|---------------|
-| 1 | Comp Builder with SEC Public Benchmarks | Medium | Very High | High -- real data advantage |
-| 2 | Deal Alerts Engine | Medium | High | High -- habit-forming |
-| 3 | Relationship Graph | High | Very High | Very High -- compounds over time |
-| 4 | Portfolio Benchmarking | Medium | High | Medium -- differentiator |
-| 5 | Collaborative Due Diligence | Medium | Medium | Very High -- switching costs |
+A `seed-global-opportunities` backend function that inserts ~50-100 curated opportunities across all regions with realistic deal structures, risk ratings, and sovereign fund associations.
 
 ## Technical Details
 
-### New Database Tables
+### Files to Create
+
+| File | Purpose |
+|------|---------|
+| `supabase/migrations/[timestamp].sql` | Create `global_opportunities` table with RLS |
+| `src/pages/GlobalMarkets.tsx` | Main discovery page with filters, table, detail panel |
+| `src/components/GlobalDetailPanel.tsx` | Drawer showing full opportunity details |
+| `src/hooks/useGlobalOpportunities.ts` | Data hook for fetching/filtering |
+| `supabase/functions/seed-global-opportunities/index.ts` | Seed function with curated data |
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/App.tsx` | Add `/global` route |
+| `src/components/AppSidebar.tsx` | Add "Global Markets" nav item |
+| `src/lib/export.ts` | Add `exportGlobalOpportunitiesCSV` |
+| `supabase/config.toml` | Register seed function |
+| `src/pages/Index.tsx` | Add "Global Pulse" dashboard widget |
+
+### Database Migration SQL (Simplified)
 
 ```text
-relationship_edges
-------------------
-id, source_type (company/investor/person/fund), source_id,
-target_type, target_id, relationship_type (invested_in/board_member/
-co_investor/acquired/partnership), confidence, source_url, created_at
+CREATE TABLE global_opportunities (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  country text NOT NULL,
+  region text NOT NULL,
+  sector text,
+  opportunity_type text NOT NULL DEFAULT 'pe_vc',
+  description text,
+  deal_value_usd numeric,
+  local_currency text DEFAULT 'USD',
+  deal_value_local numeric,
+  stage text DEFAULT 'active',
+  risk_rating text DEFAULT 'medium',
+  sovereign_fund_interest text[] DEFAULT '{}',
+  key_metrics jsonb DEFAULT '{}',
+  source_url text,
+  listed_date date DEFAULT CURRENT_DATE,
+  status text DEFAULT 'active',
+  created_at timestamptz DEFAULT now()
+);
 
-deal_votes
-----------
-id, pipeline_deal_id, user_id, vote (proceed/pass/hold),
-comment, created_at
+ALTER TABLE global_opportunities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Global opportunities are publicly readable"
+  ON global_opportunities FOR SELECT USING (true);
 ```
 
-### New/Modified Edge Functions
+### Seed Data Coverage (~80 opportunities)
 
-1. `comp-analysis` -- Upgrade to auto-match public comps from SEC data
-2. `check-alerts` -- Expand to monitor SEC filings, distressed, and signals
-3. `daily-briefing` -- Wire up Resend email with personalized digest
+- **Emerging Asia (20)**: Indian SaaS unicorns, Southeast Asian fintech, Chinese cross-border logistics
+- **MENA (15)**: Saudi Vision 2030 infrastructure, UAE fintech, African mobile banking
+- **LATAM (15)**: Brazilian agritech, Mexican manufacturing nearshoring, Colombian fintech
+- **Europe (15)**: UK distressed retail, Nordic cleantech, DACH industrial automation
+- **Frontier (15)**: Vietnamese manufacturing, Bangladeshi textiles, Egyptian renewables
 
-### Key Files to Create/Modify
-
-| Action | File | Purpose |
-|--------|------|---------|
-| Create | `src/components/RelationshipGraph.tsx` | D3 force-directed network viz |
-| Create | `src/components/PortfolioBenchmark.tsx` | PME and sector benchmark charts |
-| Create | `src/components/DealWorkspace.tsx` | Collaborative deal detail panel |
-| Modify | `src/pages/CompTableBuilder.tsx` | Add "Find Public Comps" from SEC |
-| Modify | `src/pages/Deals.tsx` | Add deal workspace and voting |
-| Modify | `src/pages/Portfolio.tsx` | Add performance and benchmarking |
-| Modify | `src/pages/Alerts.tsx` | Add smart alert rule configuration |
-| Modify | `src/components/CompanyScore.tsx` | Add public comp benchmarking |
-| Migration | New tables | `relationship_edges`, `deal_votes` |
+Each opportunity includes realistic deal values (converted to USD), country-specific risk ratings, sovereign fund associations (e.g., "Mubadala", "Temasek", "GIC", "PIF"), and key metrics like country risk premium and GDP growth rate.
 
 ### Implementation Sequence
 
-1. SEC-powered Comp Builder upgrade (highest ROI, fastest to ship)
-2. Smart Alert Engine with SEC filing monitoring
-3. Portfolio Benchmarking with PME
-4. Relationship Graph (d3-force is already installed)
-5. Collaborative Deal Workspace with voting
-
-Each phase builds on existing infrastructure and makes the platform stickier. The SEC data integration from Phase 1 directly feeds into the Comp Builder and Alert Engine -- creating a flywheel where more data leads to better analysis, which drives more engagement.
+1. Database migration (create table + RLS)
+2. Seed backend function with curated global data
+3. Data hook (`useGlobalOpportunities`)
+4. Detail panel component
+5. Main page with filters, stats, table
+6. Sidebar + routing integration
+7. Dashboard "Global Pulse" widget
+8. Export utility
 
