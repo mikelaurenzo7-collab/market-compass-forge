@@ -40,10 +40,11 @@ const staggerContainer = {
 
 /* ─── data ─── */
 const features = [
-  { icon: Building2, title: "Private Company Profiles", description: "Deep profiles on private companies with estimated financials, ownership structures, key personnel, and funding history — from Main Street to mid-market." },
+  { icon: Building2, title: "Private Company Intelligence", description: "Deep profiles on private companies with estimated financials, ownership structures, key personnel, and funding history — from Main Street to mid-market. Our bread and butter." },
+  { icon: TrendingUp, title: "Public Market Analytics", description: "Real-time SEC EDGAR filings, XBRL-extracted financials, and institutional-grade valuation metrics for every US public company. Cross-reference with private market comparables." },
+  { icon: DollarSign, title: "Valuation Engine", description: "DCF with WACC-driven discount rates, LBO with realistic leverage assumptions, comparable analysis against sector medians, and precedent transactions. Every number is sourced and auditable." },
   { icon: AlertTriangle, title: "Distressed & Special Situations", description: "Track bankruptcies, receiverships, foreclosures, and turnaround opportunities. Discover undervalued businesses and assets before they hit the open market." },
   { icon: Home, title: "Off-Market Real Estate", description: "Access pocket listings, pre-foreclosures, 1031 exchanges, and private network deals across multifamily, industrial, retail, and office properties." },
-  { icon: DollarSign, title: "Valuation Engine", description: "DCF, LBO, comparable analysis, and precedent transactions. Interactive tools that update in real-time as you adjust assumptions." },
   { icon: Handshake, title: "Deal Flow Tracking", description: "Track M&A, LBO, growth equity, and acquisition targets across sectors. Filter by deal type, size, geography, and multiples." },
   { icon: Landmark, title: "Fund Intelligence", description: "LP/GP data, fund performance metrics (IRR, TVPI, DPI), and capital allocation tracking across strategies and vintages." },
   { icon: Building, title: "Real Estate Analytics", description: "Commercial real estate market intelligence — cap rates, transaction data, and submarket analytics for institutional investors." },
@@ -51,8 +52,9 @@ const features = [
 ];
 
 const singleTierFeatures = [
-  "Unlimited company profiles",
-  "Full valuation suite (DCF, LBO, Comps)",
+  "Unlimited private company profiles",
+  "Full SEC EDGAR integration (10,000+ public companies)",
+  "Full valuation suite (DCF, LBO, Comps, Football Field)",
   "100 AI queries / day",
   "50 memo generations / day",
   "Fund intelligence & LP/GP data",
@@ -146,15 +148,15 @@ const Landing = () => {
         >
           <motion.div variants={fadeUp} custom={0} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-medium text-primary mb-6">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Private Market Intelligence Platform
+            Private & Public Market Intelligence
           </motion.div>
           <motion.h1 variants={fadeUp} custom={1} className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
-            What Bloomberg Can't Tell You
+            The Markets Others
             <br />
-            <span className="text-primary">About Private Markets</span>
+            <span className="text-primary">Can't Show You</span>
           </motion.h1>
           <motion.p variants={fadeUp} custom={2} className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-            Private company data, distressed opportunities, off-market deals, and fund intelligence — built for wealthy individuals, family offices, and institutional investors at 1/10th the cost of legacy terminals.
+            Private company intelligence, SEC-powered public market data, distressed opportunities, and off-market deals — built for investors who need every edge, at 1/10th the cost of legacy terminals.
           </motion.p>
           <motion.div variants={fadeUp} custom={3} className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Button size="lg" className="text-base px-8 glow-primary" asChild>
@@ -222,8 +224,8 @@ const Landing = () => {
       {/* Features */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-4">Institutional-grade intelligence, AI-native platform</h2>
-          <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">From deal sourcing to IC memo — distressed assets, off-market listings, and private company intelligence in one platform.</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-4">Full-spectrum intelligence, AI-native platform</h2>
+          <p className="text-muted-foreground text-center mb-12 max-w-xl mx-auto">Private markets, public filings, distressed assets, and off-market listings — institutional-grade tools for every asset class in one platform.</p>
         </motion.div>
         <motion.div
           initial="hidden"
@@ -254,7 +256,7 @@ const Landing = () => {
       <section className="max-w-3xl mx-auto px-6 py-20">
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }}>
           <h2 className="text-2xl sm:text-3xl font-semibold text-center mb-4">One plan. Full access. No surprises.</h2>
-          <p className="text-muted-foreground text-center mb-12">Bloomberg Terminal: $2,665/mo · PitchBook: $2,083/mo — and they don't even cover private markets properly.</p>
+          <p className="text-muted-foreground text-center mb-12">Bloomberg Terminal: $2,665/mo · PitchBook: $2,083/mo — and neither gives you private market depth plus SEC filings in one place.</p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -268,7 +270,7 @@ const Landing = () => {
             <span className="text-4xl font-bold font-mono">$399</span>
             <span className="text-muted-foreground text-sm">/mo</span>
           </div>
-          <p className="text-sm text-muted-foreground mb-6">Everything you need for private market intelligence. Per seat.</p>
+          <p className="text-sm text-muted-foreground mb-6">Everything you need for private & public market intelligence. Per seat.</p>
           <ul className="space-y-2.5 mb-8">
             {singleTierFeatures.map((feat) => (
               <li key={feat} className="flex items-start gap-2 text-sm text-muted-foreground">
@@ -421,11 +423,11 @@ const Landing = () => {
         </motion.div>
         <Accordion type="single" collapsible className="space-y-2">
           {[
-            { q: "Where does your data come from?", a: "We aggregate data from SEC filings, state court records, public registries, proprietary scrapers, and verified LP/GP networks. Every data point includes a confidence score and source attribution." },
+            { q: "Where does your data come from?", a: "Private company data comes from proprietary scrapers, verified LP/GP networks, and court records. Public company data comes directly from SEC EDGAR — real-time filings, XBRL-extracted financials, and insider transactions. Every data point includes a confidence score and source attribution." },
             { q: "Can I export data to Excel?", a: "Yes. All tables, watchlists, and screening results can be exported as CSV or XLSX. API access for programmatic export is available on Professional plans and above." },
             { q: "Do you integrate with my existing tools?", a: "We offer API access, webhook integrations, and direct CSV/XLSX exports. Native integrations with Salesforce, HubSpot, and DealCloud are on our roadmap." },
-            { q: "How accurate are the valuations?", a: "Our valuations use DCF, comparable analysis, and precedent transactions calibrated against verified deal data. Each estimate includes a confidence score (high/medium/low) and methodology citation." },
-            { q: "What's included in the AI research assistant?", a: "The AI can generate investment memos, summarize documents (CIMs, PPMs), compare companies, surface risks, and answer natural-language questions about any company in our database." },
+            { q: "How accurate are the valuations?", a: "Our valuations use DCF with WACC-derived discount rates, comparable analysis against real sector medians, LBO with realistic leverage assumptions, and precedent transaction benchmarks. Public company valuations are derived from actual SEC XBRL filings. Each estimate includes methodology and confidence scoring." },
+            { q: "What's included in the AI research assistant?", a: "The AI can generate investment memos, summarize documents (CIMs, PPMs), compare companies across public and private markets, surface risks, and answer natural-language questions about any company in our database." },
             { q: "Is my data secure?", a: "All data is encrypted at rest and in transit (256-bit AES). We're pursuing SOC 2 Type II certification. Row-level security ensures your pipeline, watchlists, and notes are visible only to you." },
           ].map((faq, i) => (
             <AccordionItem key={i} value={`faq-${i}`} className="border border-border rounded-lg px-4">
@@ -469,8 +471,8 @@ const Landing = () => {
             </div>
           </div>
           <p className="text-[10px] text-muted-foreground text-center sm:text-left leading-relaxed">
-            Grapevine provides private market data and valuations for informational purposes only.
-            Estimated valuations are based on proprietary models and should not be considered investment advice.
+            Grapevine provides private and public market data and valuations for informational purposes only.
+            Estimated valuations are based on proprietary models, SEC filings, and sector benchmarks and should not be considered investment advice.
             Always conduct independent due diligence. © {new Date().getFullYear()} Grapevine. All rights reserved.
           </p>
         </div>

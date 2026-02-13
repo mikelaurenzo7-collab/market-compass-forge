@@ -657,11 +657,14 @@ const CompanyDetail = () => {
             </div>
           </div>
 
-          {/* Football Field — computed from company data */}
+          {/* Football Field — computed from company data with growth and margin inputs */}
           <ValuationFootballField
             companyData={{
               revenue: latestFinancial.revenue,
               ebitda: latestFinancial.ebitda,
+              growthRate: score?.revenueCAGR ?? undefined,
+              grossMargin: latestFinancial.gross_margin,
+              stage: company.stage,
               sectorMultiples: sectorMultiples ? {
                 evRevenue: { p25: sectorMultiples.evRevenue.p25, median: sectorMultiples.evRevenue.median, p75: sectorMultiples.evRevenue.p75 },
                 evEbitda: { p25: sectorMultiples.evEbitda.p25, median: sectorMultiples.evEbitda.median, p75: sectorMultiples.evEbitda.p75 },
