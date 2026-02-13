@@ -256,6 +256,7 @@ export type Database = {
       }
       companies: {
         Row: {
+          cik_number: string | null
           created_at: string
           description: string | null
           domain: string | null
@@ -275,6 +276,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cik_number?: string | null
           created_at?: string
           description?: string | null
           domain?: string | null
@@ -294,6 +296,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cik_number?: string | null
           created_at?: string
           description?: string | null
           domain?: string | null
@@ -1563,6 +1566,103 @@ export type Database = {
             foreignKeyName: "public_market_data_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sec_filings: {
+        Row: {
+          accession_number: string
+          cik_number: string
+          company_id: string
+          created_at: string
+          description: string | null
+          filing_date: string
+          filing_type: string
+          id: string
+          primary_document_url: string | null
+        }
+        Insert: {
+          accession_number: string
+          cik_number: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          filing_date: string
+          filing_type: string
+          id?: string
+          primary_document_url?: string | null
+        }
+        Update: {
+          accession_number?: string
+          cik_number?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          filing_date?: string
+          filing_type?: string
+          id?: string
+          primary_document_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sec_filings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sec_financial_facts: {
+        Row: {
+          cik_number: string
+          company_id: string
+          concept: string
+          created_at: string
+          filed_date: string | null
+          form_type: string | null
+          id: string
+          period_end: string
+          period_start: string | null
+          taxonomy: string
+          unit: string
+          value: number
+        }
+        Insert: {
+          cik_number: string
+          company_id: string
+          concept: string
+          created_at?: string
+          filed_date?: string | null
+          form_type?: string | null
+          id?: string
+          period_end: string
+          period_start?: string | null
+          taxonomy?: string
+          unit?: string
+          value: number
+        }
+        Update: {
+          cik_number?: string
+          company_id?: string
+          concept?: string
+          created_at?: string
+          filed_date?: string | null
+          form_type?: string | null
+          id?: string
+          period_end?: string
+          period_start?: string | null
+          taxonomy?: string
+          unit?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sec_financial_facts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
