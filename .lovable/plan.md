@@ -1,161 +1,160 @@
 
 
-# Grapevine Product Perfection Plan
+# Grapevine Moat Analysis and Enhancement Plan
 
-## Where We Are Today
+## Current Moats Assessment
 
-Grapevine has a strong foundation: landing page, auth, dashboard, company profiles with scoring, valuation tools (DCF/LBO/comps/football field), deal pipeline, fund intelligence (LP/GP directory), distressed assets, off-market real estate, AI research chat, document analyzer, intelligence feed, watchlists, alerts, and team collaboration. The architecture has materialized views, full-text search, and server-side compute. All data is currently synthetic/seeded.
+After a deep exploration of the codebase, here is where Grapevine stands competitively and where we can build defensible advantages that Bloomberg and PitchBook cannot easily replicate.
 
-## What This Plan Delivers
+### Existing Moats (Strong)
+1. **Proprietary Scoring Engine** -- The `useCompanyScore` algorithm is a 6-factor weighted model (ARR scale, valuation vs. sector median, growth CAGR, sector momentum, operational efficiency, capital efficiency) with Rule of 40 and forward multiple analysis. This is institutional-grade and unique to us.
+2. **SEC EDGAR Pipeline** -- Real-time public company data at zero cost, proxied through our backend. No competitor at our price point offers this.
+3. **AI Research + Memo Generation** -- Streaming AI research with sector-specific playbooks (AI/ML, Fintech, SaaS, Cybersecurity) and one-click investment memo generation with PDF export. Sticky workflow.
+4. **Cross-Asset Coverage** -- Private companies, public markets, distressed assets, off-market real estate, fund intelligence -- all in one platform. Bloomberg has public markets. PitchBook has private. Nobody has both + distressed + real estate at $399/mo.
 
-A phased set of improvements aligned to the GTM strategy, prioritizing features that make the product **demo-ready and investor-ready** without waiting for paid data APIs. The SEC EDGAR integration gives us **real, free financial data** for public companies immediately.
+### Existing Moats (Weak / Underutilized)
+5. **Data Enrichment** -- Firecrawl auto-enrichment exists but is passive. Not proactive enough to build a data moat.
+6. **Intelligence Feed** -- Perplexity-powered signals exist but are generic. No personalization or alerting tied to portfolio.
+7. **Document Analyzer** -- Has demo fallback data. Real pipeline exists but is underutilized.
 
 ---
 
-## Phase 1: SEC EDGAR Integration (Free Real Data)
+## New Moats to Build
 
-The SEC EDGAR API is completely free, requires no API key, and provides real-time filings data for all publicly traded companies. This is the single highest-impact integration we can do at zero cost.
+### Moat 1: Relationship Graph ("Who Knows Who")
+
+**Why this is a moat:** In private markets, deals happen through relationships. No existing tool maps the connections between investors, fund managers, company executives, and deal intermediaries. This is data that compounds over time and cannot be replicated overnight.
 
 **What we build:**
-- A new `fetch-sec-filings` backend function that pulls company filings, financials (revenue, net income, total assets, EPS), and insider transactions from `data.sec.gov`
-- A CIK (Central Index Key) lookup system to map our company names to SEC identifiers
-- A new "SEC Filings" tab on company detail pages showing 10-K, 10-Q, 8-K filings with direct links
-- Auto-population of financial data (revenue, EBITDA, margins) from XBRL-tagged filings for any public company in our database
-- A "Public Market Data" enrichment that runs when viewing a public company (similar to the existing Firecrawl auto-enrich pattern)
-
-**Data available for free:**
-- Full filing history (10-K, 10-Q, 8-K, S-1, etc.)
-- Extracted financial facts via XBRL (Revenue, NetIncome, Assets, EPS, etc.)
-- Company metadata (SIC codes, addresses, officer/director names)
-- Recent filings feed (real-time as filed)
+- A `relationship_edges` table storing entity-to-entity connections (investor -> company, person -> fund, company -> company via shared investors)
+- A force-directed network visualization using the existing d3-force dependency (already installed)
+- "Shared investors" and "Common board members" sections on company detail pages
+- A `/people` page upgrade that shows connection degrees ("2nd degree connection to your portfolio")
 
 **Technical approach:**
-- New database table `sec_filings` to cache filing metadata
-- New database table `sec_financial_facts` to store extracted XBRL data points
-- Backend function calls `data.sec.gov/submissions/CIK{cik}.json` and `data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json`
-- Required: Add a `cik_number` column to the `companies` table for SEC cross-referencing
-- Proxy through backend function since SEC does not support CORS
+- New table: `relationship_edges (id, source_type, source_id, target_type, target_id, relationship_type, confidence, source_url)`
+- Populate from existing `investor_company`, `key_personnel`, and `fund_commitments` tables
+- D3 force-directed graph component for visual exploration
+- Edge function to auto-discover relationships when viewing a company
 
-## Phase 1b: Public Markets Discovery (DONE)
+### Moat 2: Comp Builder with SEC-Powered Public Benchmarks
 
-Separate `/public-markets` page with SEC-powered discovery for all US public companies.
+**Why this is a moat:** When valuing a private company, the most important thing is finding the right public comparables. We have SEC XBRL data for every US public company. We can auto-suggest public comps based on sector, size, and growth profile -- then pull their real financials into a side-by-side comp table.
 
-**What we built:**
-- Edge function `seed-public-companies` that imports all ~10,000+ US public companies from SEC's `company_tickers.json`
-- Public Markets discovery page with search, sector filter, sortable table (name, ticker, market cap, price, P/E, change)
-- Market data integration via `public_market_data` table for ticker/exchange mapping
-- Sidebar navigation with "Public Markets" entry under Platform
-- Full company detail pages work for public companies (with SEC Filings tab)
+**What we build:**
+- Upgrade `CompTableBuilder` to auto-suggest public company comparables from our SEC data
+- "Find Public Comps" button that matches a private company's sector, revenue range, and growth rate against public companies with real XBRL financials
+- Side-by-side view: your private target vs. 5-8 public comps with real Revenue, EBITDA, margins, and multiples
+- Export the comp table as a formatted PDF/CSV ready for an IC deck
 
-## Phase 2: Product Polish for Beta Readiness
+**Technical approach:**
+- New edge function `comp-analysis` upgrade: query SEC financial facts for matching public companies by sector + revenue range
+- Frontend: add "Auto-Match Public Comps" to the existing comp builder
+- Pull real EV/Revenue, EV/EBITDA from SEC XBRL for each suggested comp
 
-These improvements make the platform feel professional and complete for beta users.
+### Moat 3: Deal Alerts Engine (Proactive Intelligence)
 
-**2a. Data Freshness and Transparency**
-- Show "Last updated" timestamps on all data cards
-- Add clear "Sample Data" badges on synthetic data (already partially built) and "SEC Filing" / "Verified" badges on real data
-- Settings page option to toggle sample data visibility
+**Why this is a moat:** Instead of users checking the dashboard, Grapevine pushes actionable alerts when something changes -- a new SEC filing on a watchlisted company, a distressed asset matching their criteria, or a sector multiple shift. This creates daily engagement and habit-forming behavior.
 
-**2b. Dashboard Refinements**
-- Remove the "Real Data in Use" stats widget (internal metric, not user-facing value)
-- Add a "Recent Filings" widget showing latest SEC filings across tracked companies
-- Add a "Market Pulse" widget showing key macro indicators
+**What we build:**
+- Upgrade the existing `check-alerts` edge function to monitor SEC filings, distressed asset additions, and intelligence signals
+- Smart alert rules: "Notify me when any company in my watchlist files a 10-K" or "Alert me to new distressed assets in Healthcare under $5M"
+- Email digest integration using the existing Resend API key
+- In-app notification center with unread badges (partially built, wire it up)
 
-**2c. Company Detail Upgrades**
-- New "Filings" tab showing SEC filing history with links to full documents (DONE)
-- Financial charts auto-populated from SEC XBRL data for public companies (DONE)
-- Key personnel section enriched with SEC officer/director data
-- Insider trading activity section from SEC filings
+**Technical approach:**
+- Expand `user_alerts` table to support `alert_type` enum: `sec_filing`, `distressed_new`, `signal_match`, `watchlist_change`, `price_move`
+- Scheduled edge function runs daily, checks each user's alert rules against new data
+- Resend email with formatted HTML digest
 
-**2d. Landing Page Improvements**
-- Replace placeholder testimonials with more credible copy or remove them until real ones exist
-- Add a "Data Sources" section showing SEC, Firecrawl, and Perplexity logos/badges
-- Add an interactive demo preview (screenshot or animated GIF of the dashboard)
+### Moat 4: Portfolio Benchmarking ("How Am I Doing?")
 
-## Phase 3: Core UX Improvements
+**Why this is a moat:** The `portfolios` and `portfolio_positions` tables exist but the Portfolio page is likely basic. For family offices and PE firms, the killer feature is: "How does my portfolio perform vs. sector benchmarks, vs. public market equivalents?"
 
-**3a. Onboarding Flow**
-- Guided tour highlighting key features (valuations, AI research, deal pipeline)
-- Prompt users to add their first watchlist and pipeline deal
-- Sector preference selection to personalize the dashboard
+**What we build:**
+- Portfolio performance dashboard: total value, MOIC, IRR (estimated from entry price and current estimated value)
+- Public Market Equivalent (PME) comparison: compare your private portfolio returns against S&P 500 or sector ETFs
+- Sector concentration analysis with risk warnings
+- Quarterly mark-to-market using sector multiples from our scoring engine
 
-**3b. Performance and Reliability**
-- Add error boundaries around all dashboard widgets so one failure doesn't crash the page
-- Implement optimistic updates for pipeline stage changes and note creation
-- Add skeleton loading states to any pages still missing them
+**Technical approach:**
+- Enhance `Portfolio.tsx` with Recharts performance charts
+- Use `useSectorMultiples` to estimate current fair value of private positions
+- PME calculation: compare against a synthetic public market benchmark using SEC data
 
-**3c. Export and Reporting**
-- One-click PDF export of company profiles (already have print support -- upgrade to styled PDF)
-- Batch export of watchlist companies to CSV with financial data
-- Investment memo export as formatted PDF
+### Moat 5: Collaborative Due Diligence Workspace
 
-## Phase 4: Monetization Readiness
+**Why this is a moat:** Investment decisions are team-based. `SharedNotes` and `team_activity` tables exist but the collaboration story is thin. Building a "war room" for each deal in the pipeline -- where team members can assign tasks, share notes, flag risks, and vote on decisions -- creates massive switching costs.
 
-**4a. Stripe Payment Integration**
-- Stripe is already connected (secret key present). Wire up subscription checkout for the $399/mo Professional plan
-- Add a billing page in Settings showing current plan, usage, and payment method
-- Implement usage gates: cap AI queries and memo generations for free-tier users
-- Trial period support (e.g., 14-day free trial with full access)
+**What we build:**
+- Deal workspace view within the pipeline: notes timeline, task assignments, document attachments, and team voting
+- "@mention" team members in notes (leveraging existing `team_invitations` table)
+- Decision log: "IC voted 3-1 to proceed to DD" with timestamps
+- Attach document analyses to specific pipeline deals
 
-**4b. Usage Tracking Enforcement**
-- The `useUsageTracking` hook exists but needs enforcement gates on AI Research, Memo Generation, and Document Analysis
-- Show usage meters prominently with upgrade prompts when approaching limits
+**Technical approach:**
+- Enhance `Deals.tsx` with a deal detail panel showing all collaborative context
+- Connect `pipeline_tasks`, `team_activity`, `user_notes`, and `company_documents` into a unified deal view
+- Add a `deal_votes` table for IC decision tracking
 
 ---
+
+## Implementation Priority
+
+Ranked by defensibility and time-to-impact:
+
+| Priority | Moat | Effort | Impact | Defensibility |
+|----------|------|--------|--------|---------------|
+| 1 | Comp Builder with SEC Public Benchmarks | Medium | Very High | High -- real data advantage |
+| 2 | Deal Alerts Engine | Medium | High | High -- habit-forming |
+| 3 | Relationship Graph | High | Very High | Very High -- compounds over time |
+| 4 | Portfolio Benchmarking | Medium | High | Medium -- differentiator |
+| 5 | Collaborative Due Diligence | Medium | Medium | Very High -- switching costs |
 
 ## Technical Details
 
 ### New Database Tables
 
 ```text
-sec_filings
------------
-id, company_id, cik_number, accession_number, filing_type,
-filing_date, description, primary_document_url, created_at
+relationship_edges
+------------------
+id, source_type (company/investor/person/fund), source_id,
+target_type, target_id, relationship_type (invested_in/board_member/
+co_investor/acquired/partnership), confidence, source_url, created_at
 
-sec_financial_facts
--------------------
-id, company_id, cik_number, taxonomy, concept, period_start,
-period_end, value, unit, form_type, filed_date, created_at
+deal_votes
+----------
+id, pipeline_deal_id, user_id, vote (proceed/pass/hold),
+comment, created_at
 ```
 
-### New Backend Functions
+### New/Modified Edge Functions
 
-1. `fetch-sec-filings` -- Fetches and caches SEC filing data for a given CIK
-2. `fetch-sec-financials` -- Extracts XBRL financial facts and stores them
+1. `comp-analysis` -- Upgrade to auto-match public comps from SEC data
+2. `check-alerts` -- Expand to monitor SEC filings, distressed, and signals
+3. `daily-briefing` -- Wire up Resend email with personalized digest
 
-### Files to Create/Modify
+### Key Files to Create/Modify
 
 | Action | File | Purpose |
 |--------|------|---------|
-| Create | `supabase/functions/fetch-sec-filings/index.ts` | SEC EDGAR API proxy |
-| Create | `src/hooks/useSECFilings.ts` | React hooks for SEC data |
-| Create | `src/components/SECFilingsTab.tsx` | Filings list UI component |
-| Create | `src/components/SECFinancials.tsx` | XBRL financial data display |
-| Modify | `src/pages/CompanyDetail.tsx` | Add Filings tab, wire SEC data |
-| Modify | `src/pages/Index.tsx` | Remove internal stats, add filings widget |
-| Modify | `src/pages/Landing.tsx` | Polish copy, add data sources section |
-| Modify | `src/components/FinancialsChart.tsx` | Overlay SEC data when available |
-| Migration | New tables + `cik_number` column | Database schema |
+| Create | `src/components/RelationshipGraph.tsx` | D3 force-directed network viz |
+| Create | `src/components/PortfolioBenchmark.tsx` | PME and sector benchmark charts |
+| Create | `src/components/DealWorkspace.tsx` | Collaborative deal detail panel |
+| Modify | `src/pages/CompTableBuilder.tsx` | Add "Find Public Comps" from SEC |
+| Modify | `src/pages/Deals.tsx` | Add deal workspace and voting |
+| Modify | `src/pages/Portfolio.tsx` | Add performance and benchmarking |
+| Modify | `src/pages/Alerts.tsx` | Add smart alert rule configuration |
+| Modify | `src/components/CompanyScore.tsx` | Add public comp benchmarking |
+| Migration | New tables | `relationship_edges`, `deal_votes` |
 
-### SEC EDGAR API Details
+### Implementation Sequence
 
-- Base URL: `https://data.sec.gov`
-- No authentication required
-- Required header: `User-Agent: Grapevine contact@grapevine.io`
-- Rate limit: 10 requests/second (we'll respect this server-side)
-- Key endpoints:
-  - `/submissions/CIK{cik}.json` -- Company filings list
-  - `/api/xbrl/companyfacts/CIK{cik}.json` -- All financial facts
-  - `/api/xbrl/companyconcept/CIK{cik}/us-gaap/{concept}.json` -- Specific metric
+1. SEC-powered Comp Builder upgrade (highest ROI, fastest to ship)
+2. Smart Alert Engine with SEC filing monitoring
+3. Portfolio Benchmarking with PME
+4. Relationship Graph (d3-force is already installed)
+5. Collaborative Deal Workspace with voting
 
-### Implementation Order
-
-1. Database migration (new tables + cik_number column)
-2. `fetch-sec-filings` backend function
-3. SEC UI components and CompanyDetail integration
-4. Dashboard widget updates
-5. Landing page polish
-6. Stripe checkout wiring
-7. Usage enforcement gates
+Each phase builds on existing infrastructure and makes the platform stickier. The SEC data integration from Phase 1 directly feeds into the Comp Builder and Alert Engine -- creating a flywheel where more data leads to better analysis, which drives more engagement.
 
