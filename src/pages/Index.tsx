@@ -280,42 +280,25 @@ const OffMarketWidget = () => {
   );
 };
 
-const RealDataStats = () => {
-  const { data: stats } = useQuery({
-    queryKey: ["real-data-stats"],
-    queryFn: async () => {
-      const [enrichmentsRes, newsRes, intelligenceRes] = await Promise.all([
-        supabase.from("company_enrichments").select("id", { count: "exact", head: true }),
-        supabase.from("news_articles").select("id", { count: "exact", head: true }),
-        supabase.from("intelligence_signals").select("id", { count: "exact", head: true }),
-      ]);
-      return {
-        enrichments: enrichmentsRes.count ?? 0,
-        news: newsRes.count ?? 0,
-        signals: intelligenceRes.count ?? 0,
-      };
-    },
-    staleTime: 60_000,
-  });
-
+const DataSourcesBadge = () => {
   return (
-    <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
         <Zap className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Real Data in Use</h3>
+        <h3 className="text-sm font-semibold text-foreground">Data Sources</h3>
       </div>
       <div className="grid grid-cols-3 gap-3 text-center">
-        <div>
-          <p className="text-lg font-bold text-primary">{stats?.enrichments ?? 0}</p>
-          <p className="text-[11px] text-muted-foreground">Enriched Companies</p>
+        <div className="rounded-md bg-muted/30 p-2">
+          <p className="text-xs font-semibold text-foreground">SEC EDGAR</p>
+          <p className="text-[10px] text-muted-foreground">Public Filings</p>
         </div>
-        <div>
-          <p className="text-lg font-bold text-primary">{stats?.news ?? 0}</p>
-          <p className="text-[11px] text-muted-foreground">Real-Time News</p>
+        <div className="rounded-md bg-muted/30 p-2">
+          <p className="text-xs font-semibold text-foreground">Firecrawl</p>
+          <p className="text-[10px] text-muted-foreground">Web Intelligence</p>
         </div>
-        <div>
-          <p className="text-lg font-bold text-primary">{stats?.signals ?? 0}</p>
-          <p className="text-[11px] text-muted-foreground">Market Signals</p>
+        <div className="rounded-md bg-muted/30 p-2">
+          <p className="text-xs font-semibold text-foreground">Proprietary</p>
+          <p className="text-[10px] text-muted-foreground">Private Markets</p>
         </div>
       </div>
     </div>
@@ -377,7 +360,7 @@ const Index = () => {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Market Overview</h1>
+          <h1 className="text-xl font-semibold text-foreground">Market Intelligence</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{freshnessLabel}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setCustomizingDashboard(!customizingDashboard)} className="gap-1">
@@ -404,8 +387,8 @@ const Index = () => {
         {showOnboarding && <OnboardingFlow />}
       </AnimatePresence>
 
-      {/* Real Data Stats */}
-      <RealDataStats />
+      {/* Data Sources */}
+      <DataSourcesBadge />
 
       {/* Metrics Row */}
       {isLoading ? (

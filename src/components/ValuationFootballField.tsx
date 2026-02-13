@@ -13,6 +13,9 @@ interface ValuationRange {
 export interface FootballFieldCompanyData {
   revenue?: number | null;
   ebitda?: number | null;
+  growthRate?: number | null; // YoY or CAGR as decimal
+  grossMargin?: number | null; // as decimal
+  stage?: string | null;
   sectorMultiples?: {
     evRevenue: { p25: number; median: number; p75: number };
     evEbitda: { p25: number; median: number; p75: number };
@@ -30,37 +33,72 @@ const computeCompanyRanges = (data: FootballFieldCompanyData): ValuationRange[] 
   const rev = data.revenue ?? 0;
   const ebitda = data.ebitda ?? 0;
   const sm = data.sectorMultiples;
+  const growth = data.growthRate ?? 0.15; // default 15% if unknown
+  const margin = data.grossMargin ?? 0.5;
 
   if (rev <= 0 || !sm) return defaultRanges;
 
-  const revM = rev / 1e6; // convert to $M
+  const revM = rev / 1e6;
+  const ebitdaM = ebitda > 0 ? ebitda / 1e6 : revM * Math.max(0.05, margin - 0.35);
 
-  // DCF: estimate range from 4-12x revenue with growth adjustments
-  const dcfLow = revM * 3.5;
-  const dcfMid = revM * 6;
-  const dcfHigh = revM * 10;
+  // ── DCF: 5-year projection with WACC-derived discount ──
+  // WACC estimate: risk-free (4.5%) + equity risk premium adjusted by stage
+  const stageRiskPremium = data.stage?.toLowerCase().includes("series a") ? 0.12
+    : data.stage?.toLowerCase().includes("series b") ? 0.09
+    : data.stage?.toLowerCase().includes("growth") ? 0.06
+    : data.stage?.toLowerCase().includes("public") ? 0.03 : 0.07;
+  const wacc = 0.045 + stageRiskPremium; // 7.5% - 16.5%
+  const terminalMultiple = Math.max(4, Math.min(15, 8 + growth * 10)); // 4-15x based on growth
 
-  // Comp Companies: use sector EV/Revenue multiples applied to revenue
-  const compLow = revM * (sm.evRevenue.p25 || 3);
-  const compMid = revM * (sm.evRevenue.median || 5);
-  const compHigh = revM * (sm.evRevenue.p75 || 8);
+  // Project 5 years of FCF from EBITDA proxy
+  const projectedFCFs = Array.from({ length: 5 }, (_, yr) => {
+    const projectedEbitda = ebitdaM * Math.pow(1 + growth, yr + 1);
+    const fcf = projectedEbitda * 0.75; // ~25% reinvestment/capex/tax
+    return fcf / Math.pow(1 + wacc, yr + 1);
+  });
+  const pvFCF = projectedFCFs.reduce((s, v) => s + v, 0);
+  const terminalYear5Ebitda = ebitdaM * Math.pow(1 + growth, 5);
+  const terminalValue = (terminalYear5Ebitda * terminalMultiple) / Math.pow(1 + wacc, 5);
+  const dcfMid = Math.round(pvFCF + terminalValue);
+  const dcfLow = Math.round(dcfMid * 0.7);
+  const dcfHigh = Math.round(dcfMid * 1.35);
 
-  // Precedent Txns: use precedent multiples
-  const ptLow = revM * ((sm.evRevenue.p25 || 3) * 0.9);
-  const ptMid = revM * ((sm.evRevenue.median || 5) * 1.05);
-  const ptHigh = revM * ((sm.evRevenue.p75 || 8) * 1.15);
+  // ── Comp Companies: sector P25/Median/P75 EV/Revenue applied directly ──
+  const compLow = Math.round(revM * (sm.evRevenue.p25 || 3));
+  const compMid = Math.round(revM * (sm.evRevenue.median || 5));
+  const compHigh = Math.round(revM * (sm.evRevenue.p75 || 8));
 
-  // LBO: back into EV from target 15-25% IRR (simplified)
-  const ebitdaM = ebitda > 0 ? ebitda / 1e6 : revM * 0.2;
-  const lboLow = ebitdaM * 5; // ~25% IRR target
-  const lboMid = ebitdaM * 7; // ~20% IRR target
-  const lboHigh = ebitdaM * 9; // ~15% IRR target
+  // ── Precedent Transactions: typically trade at a premium to public comps ──
+  const controlPremium = 1.15; // ~15% control premium for M&A
+  const ptLow = Math.round(revM * (sm.evRevenue.p25 || 3) * controlPremium * 0.9);
+  const ptMid = Math.round(revM * (sm.evRevenue.median || 5) * controlPremium);
+  const ptHigh = Math.round(revM * (sm.evRevenue.p75 || 8) * controlPremium * 1.05);
+
+  // ── LBO: back into EV from target 20-25% IRR with realistic leverage ──
+  // Assume 4-6x leverage on EBITDA, 5-year hold, ~3x equity return target
+  const leverageLow = 4.0;
+  const leverageMid = 5.0;
+  const leverageHigh = 6.0;
+  const debtLow = ebitdaM * leverageLow;
+  const debtMid = ebitdaM * leverageMid;
+  const debtHigh = ebitdaM * leverageHigh;
+  // Exit at sector median multiple, equity = EV - debt
+  const exitEbitda = ebitdaM * Math.pow(1 + Math.min(growth, 0.15), 5);
+  const exitMultiple = sm.evEbitda.median > 0 ? sm.evEbitda.median : 8;
+  const exitEV = exitEbitda * exitMultiple;
+  // Target 3x equity return → entry equity = exit equity / 3
+  const lboEquityLow = Math.max(10, (exitEV - debtHigh) / 3.5);
+  const lboEquityMid = Math.max(10, (exitEV - debtMid) / 3.0);
+  const lboEquityHigh = Math.max(10, (exitEV - debtLow) / 2.5);
+  const lboLow = Math.round(lboEquityLow + debtLow);
+  const lboMid = Math.round(lboEquityMid + debtMid);
+  const lboHigh = Math.round(lboEquityHigh + debtHigh);
 
   return [
-    { method: "DCF Analysis", low: Math.round(dcfLow), mid: Math.round(dcfMid), high: Math.round(dcfHigh), color: "hsl(var(--primary))" },
-    { method: "Comp Companies", low: Math.round(compLow), mid: Math.round(compMid), high: Math.round(compHigh), color: "hsl(var(--chart-1))" },
-    { method: "Precedent Txns", low: Math.round(ptLow), mid: Math.round(ptMid), high: Math.round(ptHigh), color: "hsl(var(--chart-2))" },
-    { method: "LBO Analysis", low: Math.round(lboLow), mid: Math.round(lboMid), high: Math.round(lboHigh), color: "hsl(var(--chart-4))" },
+    { method: "DCF Analysis", low: dcfLow, mid: dcfMid, high: dcfHigh, color: "hsl(var(--primary))" },
+    { method: "Comp Companies", low: compLow, mid: compMid, high: compHigh, color: "hsl(var(--chart-1))" },
+    { method: "Precedent Txns", low: ptLow, mid: ptMid, high: ptHigh, color: "hsl(var(--chart-2))" },
+    { method: "LBO Analysis", low: lboLow, mid: lboMid, high: lboHigh, color: "hsl(var(--chart-4))" },
   ];
 };
 
