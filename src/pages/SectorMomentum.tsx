@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Activity, Zap, ArrowUpRight, ArrowDownRight, Minus, Loader2, RefreshCw } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, ArrowUpRight, ArrowDownRight, Minus, Loader2, RefreshCw, BarChart3, Info } from "lucide-react";
 import { useSectorMomentum } from "@/hooks/useSectorMomentum";
 import { useGenerateAlphaSignals } from "@/hooks/useAlphaSignals";
 import { formatCurrency } from "@/hooks/useData";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 
 const ChartTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="glass rounded-md border border-border px-3 py-2 text-xs">
-      <p className="text-muted-foreground mb-1">{label}</p>
+    <div className="rounded-md border border-border bg-card px-3 py-2 text-xs shadow-lg">
+      <p className="text-muted-foreground mb-1 font-medium">{label}</p>
       {payload.map((p: any, i: number) => (
         <p key={i} className="font-mono text-foreground">
           {p.name}: <span className="text-primary">{typeof p.value === "number" ? (p.value > 1e6 ? `$${(p.value / 1e6).toFixed(0)}M` : p.value.toFixed(1)) : p.value}</span>
@@ -35,8 +35,10 @@ const SectorMomentum = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="h-8 w-64 bg-muted/30 rounded animate-pulse" />
+        <div className="rounded-lg border border-border bg-card p-4 h-72 animate-pulse" />
+        <div className="rounded-lg border border-border bg-card p-4 h-48 animate-pulse" />
       </div>
     );
   }
@@ -45,12 +47,13 @@ const SectorMomentum = () => {
   const gaining = data?.gaining ?? [];
   const declining = data?.declining ?? [];
 
-  // Prepare chart data for capital flow
   const capitalChart = flows.slice(0, 10).map((f) => ({
     sector: f.sector.length > 15 ? f.sector.slice(0, 13) + "…" : f.sector,
     capital: f.totalCapital,
     deals: f.dealCount,
   }));
+
+  const hasData = flows.length > 0;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -62,7 +65,7 @@ const SectorMomentum = () => {
             Sector Momentum
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Capital flows, rotation patterns, and sentiment velocity across sectors
+            Capital flows, rotation patterns, and sentiment velocity across {flows.length} sectors
           </p>
         </div>
         <Button
@@ -97,15 +100,41 @@ const SectorMomentum = () => {
         </button>
       </div>
 
-      {view === "flows" ? (
+      {!hasData ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-lg border border-dashed border-border bg-card p-12 text-center space-y-4"
+        >
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+            <BarChart3 className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">No Sector Data Yet</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+              Sector momentum requires funding round data. Add companies and their funding history to start tracking capital flows.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => generateSignals.mutate()} disabled={generateSignals.isPending} className="gap-2">
+            <RefreshCw className={`h-4 w-4 ${generateSignals.isPending ? "animate-spin" : ""}`} />
+            Generate AI Signals
+          </Button>
+        </motion.div>
+      ) : view === "flows" ? (
         <>
           {/* Capital Flow Chart */}
           <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-4">Capital Flow by Sector (6mo)</h3>
-            <ResponsiveContainer width="100%" height={280}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-foreground">Capital Flow by Sector (6mo)</h3>
+              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Info className="h-3 w-3" />
+                Based on {flows.reduce((sum, f) => sum + f.dealCount, 0)} deals
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={Math.max(180, flows.length * 40)}>
               <BarChart data={capitalChart} layout="vertical" margin={{ left: 80 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `$${(v / 1e9).toFixed(1)}B`} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`} />
                 <YAxis type="category" dataKey="sector" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} width={80} />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar dataKey="capital" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Capital" />
@@ -139,8 +168,8 @@ const SectorMomentum = () => {
                     >
                       <td className="px-4 py-3 font-medium text-foreground">{f.sector}</td>
                       <td className="px-4 py-3 text-right font-mono text-foreground">{f.dealCount}</td>
-                      <td className="px-4 py-3 text-right font-mono text-foreground">{formatCurrency(f.totalCapital)}</td>
-                      <td className="px-4 py-3 text-right font-mono text-muted-foreground">{formatCurrency(f.avgDealSize)}</td>
+                      <td className="px-4 py-3 text-right font-mono text-foreground">{f.totalCapital > 0 ? formatCurrency(f.totalCapital) : "—"}</td>
+                      <td className="px-4 py-3 text-right font-mono text-muted-foreground">{f.avgDealSize > 0 ? formatCurrency(f.avgDealSize) : "—"}</td>
                       <td className="px-4 py-3 text-right">
                         <span className={`font-mono text-xs font-medium ${f.trend > 0 ? "text-primary" : f.trend < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                           {f.trend > 0 ? "+" : ""}{f.trend.toFixed(0)}%
@@ -179,7 +208,11 @@ const SectorMomentum = () => {
             </div>
             <div className="space-y-3">
               {gaining.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">No significant inflows detected</p>
+                <div className="text-center py-8 space-y-2">
+                  <TrendingUp className="h-8 w-8 text-muted-foreground/20 mx-auto" />
+                  <p className="text-sm text-muted-foreground">No significant inflows detected</p>
+                  <p className="text-xs text-muted-foreground/70">Requires 12+ months of deal data to detect rotation</p>
+                </div>
               )}
               {gaining.map((s, i) => (
                 <motion.div
@@ -219,7 +252,11 @@ const SectorMomentum = () => {
             </div>
             <div className="space-y-3">
               {declining.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">No significant outflows detected</p>
+                <div className="text-center py-8 space-y-2">
+                  <TrendingDown className="h-8 w-8 text-muted-foreground/20 mx-auto" />
+                  <p className="text-sm text-muted-foreground">No significant outflows detected</p>
+                  <p className="text-xs text-muted-foreground/70">Requires 12+ months of deal data to detect rotation</p>
+                </div>
               )}
               {declining.map((s, i) => (
                 <motion.div
@@ -269,6 +306,11 @@ const SectorMomentum = () => {
                     <span className="font-medium">{gaining[0]?.signalDirection}</span>.
                   </p>
                 </>
+              ) : gaining.length > 0 ? (
+                <p>
+                  Capital is flowing <span className="text-primary font-medium">into {gaining.slice(0, 3).map(g => g.sector).join(", ")}</span>.
+                  Not enough historical data to detect outflow patterns yet.
+                </p>
               ) : (
                 <p>Not enough historical data to detect clear rotation patterns. As more deals flow through the system, rotation signals will surface automatically.</p>
               )}
