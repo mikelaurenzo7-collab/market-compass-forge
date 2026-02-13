@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -66,6 +66,16 @@ const IntelligenceFeed = () => {
   const [activeCategory, setActiveCategory] = useState<CategoryType | "all">("all");
   const queryClient = useQueryClient();
   const { data: items, isLoading } = useIntelligenceSignals();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('intelligence-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intelligence_signals' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["intelligence-signals"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const fetchSignals = useMutation({
     mutationFn: async (category?: string) => {

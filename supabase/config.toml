@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.seed-global-opportunities]
 verify_jwt = false
+
+[functions.populate-relationships]
+verify_jwt = false

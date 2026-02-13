@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import PipelineAnalytics from "@/components/PipelineAnalytics";
 import DealTransactionsTable from "@/components/DealTransactionsTable";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -42,6 +42,16 @@ const Deals = () => {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [workspaceDeal, setWorkspaceDeal] = useState<{ id: string; companyId: string; companyName: string } | null>(null);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('deals-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deal_pipeline' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const { data: deals, isLoading } = useQuery({
     queryKey: ["pipeline"],

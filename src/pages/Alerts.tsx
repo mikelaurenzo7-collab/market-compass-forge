@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,6 +100,17 @@ const Alerts = () => {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alert-notifications"] }),
   });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('alerts-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alert_notifications' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["alert-notifications"] });
+        queryClient.invalidateQueries({ queryKey: ["unread-notifications"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const unreadCount = notifications?.filter((n) => !n.is_read).length ?? 0;
 

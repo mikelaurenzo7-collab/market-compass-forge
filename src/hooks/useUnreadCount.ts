@@ -1,9 +1,23 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 export const useUnreadCount = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('unread-badge-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alert_notifications' }, () => {
+        queryClient.invalidateQueries({ queryKey: ["unread-notifications"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
+
   return useQuery({
     queryKey: ["unread-notifications"],
     queryFn: async () => {
@@ -16,6 +30,6 @@ export const useUnreadCount = () => {
       return count ?? 0;
     },
     enabled: !!user,
-    staleTime: 30_000, // 30s for notifications
+    staleTime: 30_000,
   });
 };

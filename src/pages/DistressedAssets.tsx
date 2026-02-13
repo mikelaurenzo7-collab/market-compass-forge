@@ -1,5 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useDistressedAssets, formatCurrency } from "@/hooks/useData";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { AlertTriangle, Building2, DollarSign, TrendingDown, Filter, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +19,22 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const DistressedAssets = () => {
+   const queryClient = useQueryClient();
    const { data: assets, isLoading } = useDistressedAssets();
+
+   useEffect(() => {
+     const channel = supabase
+       .channel('distressed-realtime')
+       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'distressed_assets' }, (payload) => {
+         queryClient.invalidateQueries({ queryKey: ["distressed-assets"] });
+         toast.info(`New distressed listing: ${(payload.new as any)?.name ?? "Unknown"}`);
+       })
+       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'distressed_assets' }, () => {
+         queryClient.invalidateQueries({ queryKey: ["distressed-assets"] });
+       })
+       .subscribe();
+     return () => { supabase.removeChannel(channel); };
+   }, [queryClient]);
    const [typeFilter, setTypeFilter] = useState("all");
    const [distressFilter, setDistressFilter] = useState("all");
    const [stateFilter, setStateFilter] = useState("all");

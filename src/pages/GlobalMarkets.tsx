@@ -1,5 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useGlobalOpportunities, type GlobalOpportunity } from "@/hooks/useGlobalOpportunities";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { GlobalDetailPanel } from "@/components/GlobalDetailPanel";
 import { Globe, DollarSign, TrendingUp, ShieldAlert, Filter, Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +37,21 @@ const fmt = (v: number | null | undefined) => {
 const REGIONS = ["Emerging Asia", "MENA", "LATAM", "Europe", "Frontier"];
 
 const GlobalMarkets = () => {
+  const queryClient = useQueryClient();
   const { data: opportunities, isLoading } = useGlobalOpportunities();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('global-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'global_opportunities' }, (payload) => {
+        queryClient.invalidateQueries({ queryKey: ["global-opportunities"] });
+        if (payload.eventType === 'INSERT') {
+          toast.info(`New global opportunity: ${(payload.new as any)?.name ?? "Unknown"}`);
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
   const [regionFilter, setRegionFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [riskFilter, setRiskFilter] = useState("all");
