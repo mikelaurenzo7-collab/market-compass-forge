@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { exportToCSV } from "@/lib/export";
+import { LiveIndicator } from "@/components/LiveIndicator";
 
 const RISK_STYLES: Record<string, string> = {
   low: "bg-green-500/10 text-green-500 border-green-500/20",
@@ -107,12 +108,15 @@ const GlobalMarkets = () => {
     );
   }
 
-  return (
-    <div className="p-4 sm:p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Global Investment Opportunities</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Cross-border M&A, PE/VC, sovereign wealth fund co-investments, and emerging market deals</p>
-      </div>
+   return (
+     <div className="p-4 sm:p-6 space-y-4">
+       <div className="flex items-center justify-between">
+         <div>
+           <h1 className="text-xl font-semibold text-foreground">Global Investment Opportunities</h1>
+           <p className="text-sm text-muted-foreground mt-0.5">Cross-border M&A, PE/VC, sovereign wealth fund co-investments, and emerging market deals</p>
+         </div>
+         <LiveIndicator />
+       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

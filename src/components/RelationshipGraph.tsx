@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Network, ZoomIn, ZoomOut, Maximize2, Loader2 } from "lucide-react";
+import { Network, ZoomIn, ZoomOut, Maximize2, Loader2, Zap } from "lucide-react";
 import * as d3 from "d3-force";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type GraphNode = {
   id: string;
@@ -43,6 +45,7 @@ export default function RelationshipGraph({ companyId }: { companyId?: string })
   const [zoom, setZoom] = useState(1);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // Fetch relationship edges
   const { data: edges, isLoading } = useQuery({
@@ -55,6 +58,31 @@ export default function RelationshipGraph({ companyId }: { companyId?: string })
       const { data, error } = await query.limit(200);
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  // Populate relationships mutation
+  const { mutate: populateGraph, isPending: isPopulating } = useMutation({
+    mutationFn: async () => {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/populate-relationships`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error);
+      }
+      return resp.json();
+    },
+    onSuccess: () => {
+      toast.success("Relationship graph populated from existing data");
+      queryClient.invalidateQueries({ queryKey: ["relationship-edges"] });
+    },
+    onError: (e: any) => {
+      toast.error(`Failed to populate graph: ${e.message}`);
     },
   });
 
@@ -216,10 +244,22 @@ export default function RelationshipGraph({ companyId }: { companyId?: string })
 
   if (!edges?.length) {
     return (
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
-        <Network className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
-        <p className="text-sm text-muted-foreground">No relationship data yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Relationships are auto-discovered from investor, personnel, and deal data</p>
+      <div className="rounded-lg border border-border bg-card p-8 text-center space-y-4">
+        <Network className="h-8 w-8 mx-auto text-muted-foreground/30" />
+        <div>
+          <p className="text-sm text-muted-foreground font-medium">No relationship data yet</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Relationships are auto-discovered from investor, personnel, and deal data</p>
+        </div>
+        <Button
+          onClick={() => populateGraph()}
+          disabled={isPopulating}
+          variant="outline"
+          size="sm"
+          className="gap-1.5 mx-auto"
+        >
+          <Zap className="h-4 w-4" />
+          {isPopulating ? "Populating..." : "Populate Graph"}
+        </Button>
       </div>
     );
   }
