@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.fetch-market-data]
 verify_jwt = false
+
+[functions.alpha-signals]
+verify_jwt = false

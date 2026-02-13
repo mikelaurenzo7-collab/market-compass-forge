@@ -103,6 +103,45 @@ export type Database = {
           },
         ]
       }
+      alpha_signals: {
+        Row: {
+          confidence: string
+          direction: string
+          generated_at: string
+          id: string
+          macro_context: Json | null
+          magnitude_pct: number | null
+          model_used: string | null
+          reasoning: string | null
+          sector: string
+          signal_type: string
+        }
+        Insert: {
+          confidence?: string
+          direction?: string
+          generated_at?: string
+          id?: string
+          macro_context?: Json | null
+          magnitude_pct?: number | null
+          model_used?: string | null
+          reasoning?: string | null
+          sector: string
+          signal_type?: string
+        }
+        Update: {
+          confidence?: string
+          direction?: string
+          generated_at?: string
+          id?: string
+          macro_context?: Json | null
+          magnitude_pct?: number | null
+          model_used?: string | null
+          reasoning?: string | null
+          sector?: string
+          signal_type?: string
+        }
+        Relationships: []
+      }
       api_key_secrets: {
         Row: {
           api_key_id: string
@@ -1300,6 +1339,36 @@ export type Database = {
           name?: string
           strategies?: string[] | null
           type?: string
+        }
+        Relationships: []
+      }
+      macro_indicators: {
+        Row: {
+          fetched_at: string
+          id: string
+          label: string
+          observation_date: string
+          series_id: string
+          unit: string
+          value: number
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          label: string
+          observation_date: string
+          series_id: string
+          unit?: string
+          value: number
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          label?: string
+          observation_date?: string
+          series_id?: string
+          unit?: string
+          value?: number
         }
         Relationships: []
       }
