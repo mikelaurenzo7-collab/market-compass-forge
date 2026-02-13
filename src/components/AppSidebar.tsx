@@ -24,6 +24,7 @@ import {
   Globe,
   Activity,
   Crosshair,
+  Sparkles,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -46,6 +47,7 @@ const mainModules = [
   { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
   { id: "sector-momentum", label: "Sector Momentum", icon: Activity, path: "/sector-momentum" },
   { id: "competitive-intel", label: "Competitive Intel", icon: Crosshair, path: "/competitive-intel" },
+  { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
 ];
 
 const insightModules = [

@@ -31,6 +31,7 @@ import PublicMarkets from "./pages/PublicMarkets";
 import GlobalMarkets from "./pages/GlobalMarkets";
 import SectorMomentum from "./pages/SectorMomentum";
 import CompetitiveIntel from "./pages/CompetitiveIntel";
+import DealMatcher from "./pages/DealMatcher";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -74,6 +75,7 @@ const App = () => (
               <Route path="/global" element={<GlobalMarkets />} />
               <Route path="/sector-momentum" element={<SectorMomentum />} />
               <Route path="/competitive-intel" element={<CompetitiveIntel />} />
+              <Route path="/deal-matcher" element={<DealMatcher />} />
               <Route path="/research" element={<Research />} />
               <Route path="/documents" element={<DocumentAnalyzer />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
