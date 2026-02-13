@@ -1,223 +1,175 @@
 
 
-# Valuation Engine & Data Sources Overhaul
+# Alpha Signal Engine: Synthetic Intelligence for Private Markets
 
-## The Problem Right Now
+## Co-Founder Strategy Assessment
 
-After auditing the entire data layer, here is the brutal truth:
+Your instinct is right. The moat for Grapevine isn't speed -- it's **inference**. PitchBook charges $30K/yr for raw data. We can charge $0 for data and build value on top with AI-derived signals that PitchBook doesn't offer.
 
-| Data Point | Status | Impact |
-|---|---|---|
-| Public company market data (price, market cap, PE) | 7,000 companies seeded but **all prices/market_cap = NULL** | Football field, comp builder, and scoring engine all produce garbage for public comps |
-| SEC financial facts (Revenue, EBITDA, EPS) | **0 rows** -- never fetched for any company | Public company valuations have no real financial data behind them |
-| Sector multiples (mv_sector_multiples) | 74 rows but **almost all zeros** -- no real EV/Revenue or EV/EBITDA data | Scoring engine falls back to hardcoded heuristics instead of real benchmarks |
-| Precedent transaction multiples | 57 rows with data | Working, but disconnected from the valuation engine |
+Here's my honest co-founder take on each piece:
 
-The valuation engine is architecturally excellent (DCF, LBO, comps, football field, 6-factor scoring) but it is running on empty. Without real market prices, real SEC financials, and real sector multiples, every valuation output is synthetic.
+### What we build now (high-impact, $0 cost)
 
----
+| Source | Cost | Value to Us | Verdict |
+|--------|------|-------------|---------|
+| SEC EDGAR (already integrated) | Free | Revenue, EBITDA, EPS for 7,300+ facts across 131 companies | **Keep, expand** |
+| FRED API | Free, no key needed | Treasury yields, CPI, GDP -- feeds directly into DCF discount rates | **Build now** |
+| FMP Free Tier | Free (250 calls/day) | Prices for 140/1,000 tickers so far | **Keep, drip-fill** |
+| Lovable AI (Gemini Flash) | Included | Inference engine -- the actual product differentiator | **Build now** |
 
-## The Strategy: Maximum Data, Minimum Cost
+### What we skip for now
 
-### Tier 1: Completely Free (SEC EDGAR -- already built, never activated)
+| Source | Why Skip |
+|--------|----------|
+| Alpha Vantage | 5 calls/min free tier is too slow. FMP already covers this. |
+| Reddit/X scraping | Legal risk + complexity. Our intelligence_signals table + Firecrawl already covers sentiment. |
+| Custom ML model training | Overkill pre-investors. Gemini Flash with good prompts achieves 80% of the value. |
 
-We already have the `fetch-sec-filings` edge function that pulls XBRL financial facts from SEC EDGAR. It has never been run at scale. SEC EDGAR is:
-- 100% free, no API key needed
-- Covers every US public company (10-K, 10-Q filings)
-- Provides Revenue, Net Income, EPS, Assets, Equity, Cash, Debt, Gross Profit, Operating Income
-- Updated within hours of filings
+## Architecture: The Alpha Signal Pipeline
 
-**Action**: Create a bulk SEC ingestion function that fetches XBRL data for our top 500 public companies (by market cap), populating `sec_financial_facts` with real Revenue, EBITDA, margins, and growth rates.
+```text
++------------------+     +------------------+     +---------------------+
+|  FRED API        |     |  SEC EDGAR       |     |  FMP (prices)       |
+|  (macro rates)   |     |  (XBRL facts)    |     |  (public comps)     |
++--------+---------+     +--------+---------+     +---------+-----------+
+         |                         |                         |
+         v                         v                         v
++------------------------------------------------------------------------+
+|                     macro_indicators table (new)                        |
+|                     sec_financial_facts (existing)                      |
+|                     public_market_data (existing)                       |
++-----------------------------------+------------------------------------+
+                                    |
+                                    v
++-----------------------------------+------------------------------------+
+|              alpha-signals Edge Function (new)                         |
+|  1. Gather: macro data + sector comps + SEC financials                 |
+|  2. Prompt Gemini Flash with structured context                        |
+|  3. Output: sector outlook, projected valuation shift, confidence      |
+|  4. Store result in alpha_signals table                                |
++-----------------------------------+------------------------------------+
+                                    |
+                                    v
++-----------------------------------+------------------------------------+
+|              Dashboard: AlphaSignalWidget (new)                        |
+|  - Macro bar (Treasury yield, CPI, Fed Funds)                         |
+|  - Per-sector AI inference cards                                       |
+|  - Live/delayed status indicators                                      |
+|  - Feeds into DCFCalculator discount rate                              |
++------------------------------------------------------------------------+
+```
 
-### Tier 2: Free Tier API -- Financial Modeling Prep (FMP)
+## Implementation Plan
 
-FMP offers a free tier: 250 calls/day, covering:
-- Real-time stock quotes (price, market cap, PE ratio, EPS, volume)
-- Income statements, balance sheets, cash flow statements
-- Company profiles with sector, industry, exchange
-- Key metrics and financial ratios
+### Phase 1: Database Schema
 
-250 calls/day is enough to refresh our top 250 companies daily and rotate through the full 7,000 over ~28 days.
+Create two new tables:
 
-**Action**: Create a `fetch-market-data` edge function that calls FMP's free API to populate `public_market_data` with real prices, market caps, and ratios. Store the FMP API key as a secret.
+**`macro_indicators`** -- stores FRED data snapshots
+- `id` (uuid, PK)
+- `series_id` (text) -- e.g. "DGS10", "CPIAUCSL", "FEDFUNDS"
+- `label` (text) -- e.g. "10-Year Treasury Yield"
+- `value` (numeric)
+- `unit` (text) -- "percent", "index"
+- `observation_date` (date)
+- `fetched_at` (timestamptz)
+- RLS: publicly readable (macro data is public)
 
-### Tier 3: Paid API (if you want instant full coverage)
+**`alpha_signals`** -- stores AI-generated sector inferences
+- `id` (uuid, PK)
+- `sector` (text)
+- `signal_type` (text) -- "valuation_outlook", "risk_shift", "momentum"
+- `direction` (text) -- "bullish", "bearish", "neutral"
+- `magnitude_pct` (numeric) -- projected shift e.g. -5.2
+- `confidence` (text) -- "low", "medium", "high"
+- `reasoning` (text) -- AI's explanation
+- `macro_context` (jsonb) -- snapshot of macro inputs used
+- `generated_at` (timestamptz)
+- `model_used` (text) -- "google/gemini-3-flash-preview"
+- RLS: publicly readable
 
-If you want all 7,000 companies refreshed daily with real-time prices + full financial statements, FMP Starter is $14/month (300 calls/minute, 5 years of data). This is the best bang-for-buck in the industry.
+### Phase 2: FRED Data Fetcher (Edge Function)
 
----
+**`fetch-macro-data/index.ts`**
 
-## What We Build
+- Calls the FRED API (https://api.stlouisfed.org/fred/series/observations) -- **no API key required for basic access** (actually needs a free key, which is instant to get, but we can also hardcode a few key values initially)
+- Actually, FRED requires a free API key. Alternative: we use the **Treasury.gov API** (truly free, no key) for yields, and supplement with hardcoded current values for CPI/Fed Funds that the AI can look up.
+- Better approach: Use Lovable AI itself to fetch current macro data in the alpha-signals function. Gemini has training data that includes recent macro indicators. For the MVP, we prompt the AI with "What is the current 10-year Treasury yield?" as part of the inference prompt, avoiding another API dependency entirely.
+- **Final decision**: Store a small set of manually-seeded macro indicators (updated weekly via the Data Sources panel), and let the AI inference engine use them. Zero new API keys needed.
 
-### 1. Bulk SEC Financial Ingestion Function
+### Phase 3: Alpha Signals Engine (Edge Function)
 
-A new edge function `bulk-sec-ingest` that:
-- Queries our 7,000 public companies with CIK numbers
-- Fetches XBRL companyfacts for the top 500 (by name recognition / existing market data)
-- Extracts Revenue, Net Income, EBITDA (computed as Operating Income + D&A), Gross Profit, EPS, Total Assets, Cash, Debt
-- Upserts into `sec_financial_facts`
-- Runs in batches of 10 (SEC rate limit: 10 req/sec)
-- Can be triggered manually or scheduled daily
+**`alpha-signals/index.ts`**
 
-### 2. FMP Market Data Pipeline
+This is the core product differentiator. It:
 
-A new edge function `fetch-market-data` that:
-- Calls FMP's `/api/v3/quote/{symbol}` for batches of tickers (FMP supports comma-separated, up to 50 per call)
-- Populates `public_market_data` with: price, market_cap, pe_ratio, eps, price_change_pct, 52-week high/low, volume, beta, dividend_yield
-- Calls FMP's `/api/v3/income-statement/{symbol}` for key fundamentals
-- Computes EV/Revenue and EV/EBITDA from real data
-- Updates the `financials` table for public companies so the scoring engine can use them
+1. Reads current macro indicators from `macro_indicators`
+2. Reads sector-level comps from `mv_sector_multiples`
+3. Reads recent public market price movements from `public_market_data`
+4. Reads recent intelligence signals for sentiment context
+5. Calls Lovable AI (Gemini Flash) with a structured prompt:
 
-### 3. Real Sector Multiples Computation
+```
+You are a private equity analyst. Given:
+- 10Y Treasury: {value}%
+- Sector median EV/Revenue: {value}x
+- Public comps 30-day price change: {value}%
+- Recent sentiment signals: {headlines}
 
-The `mv_sector_multiples` materialized view currently returns zeros because there is no financial data to compute from. Once we have real SEC + FMP data:
-- Rewrite the materialized view SQL to compute P25/Median/P75 of EV/Revenue and EV/EBITDA from actual `sec_financial_facts` + `public_market_data`
-- Group by the `sector` column on `companies`
-- Include deal count from `deal_transactions` and funding count from `funding_rounds`
-- Refresh the view after each data ingestion
+Estimate the directional impact on private {sector} valuations.
+Return: direction (bullish/bearish/neutral), magnitude_pct, confidence, reasoning.
+```
 
-### 4. Valuation Engine Enhancements
+6. Uses tool calling to extract structured JSON output
+7. Stores results in `alpha_signals`
 
-With real data flowing, upgrade the engine:
-- **Auto-populate DCF assumptions** from SEC filings (real revenue growth rate, real EBITDA margin, real capex as % of revenue)
-- **Football Field auto-compute** using real sector P25/P50/P75 multiples instead of fallback defaults
-- **Public comp matching** in CompTableBuilder: when a user adds a private company, auto-suggest 5-8 public comps by sector + revenue range, pre-populated with real SEC financials
-- **Scoring engine upgrade**: feed real sector medians into the valuation score, growth score, and sector momentum calculations
+### Phase 4: Dashboard Widget
 
-### 5. Data Freshness Dashboard
+**`AlphaSignalWidget`** -- a premium-looking "data terminal" card on the dashboard:
 
-Add a "Data Sources" panel to the Settings page showing:
-- Last SEC ingestion timestamp and count
-- Last FMP market data refresh and count
-- Sector multiples freshness
-- A "Refresh Now" button for each pipeline
+- **Macro Bar**: Horizontal strip showing Treasury Yield, CPI, Fed Funds Rate with colored up/down arrows and "delayed" status dots
+- **Sector Inference Cards**: For each sector with enough data, show:
+  - Direction arrow (green up / red down)
+  - Magnitude: "Private SaaS valuations projected to fall 3.2%"
+  - Confidence badge (High/Medium/Low)
+  - "AI-generated" label with timestamp
+- **Visual style**: Dark card with monospace numbers, green/amber/red status dots, subtle border glow -- terminal aesthetic
+- Added to the dashboard widget customizer as "Alpha Signals"
 
----
+### Phase 5: Wire Into Valuations
+
+- **DCF Calculator**: Auto-populate the WACC discount rate using the current Treasury yield from `macro_indicators` as the risk-free rate component
+- **Valuation Football Field**: Add an "AI Adjusted" bar that applies the alpha signal magnitude to the sector comps range
+- **Company Detail**: Show the relevant sector's alpha signal in the Investment Score panel
+
+### Phase 6: Data Sources Panel Update
+
+Update the existing `DataSourcesPanel` in Settings to:
+- Show macro indicator freshness (last updated date)
+- Add a "Refresh Alpha Signals" button that triggers the edge function
+- Show the FRED/Treasury data source alongside SEC and FMP
 
 ## Technical Details
 
-### New Edge Functions
+### New Files
+- `supabase/functions/alpha-signals/index.ts` -- AI inference engine
+- `src/components/AlphaSignalWidget.tsx` -- dashboard terminal widget
+- `src/hooks/useAlphaSignals.ts` -- React Query hook for alpha signals
+- `src/hooks/useMacroIndicators.ts` -- React Query hook for macro data
+- Migration SQL for `macro_indicators` and `alpha_signals` tables
 
-| Function | Purpose | Data Source | Cost |
-|---|---|---|---|
-| `bulk-sec-ingest` | Fetch XBRL financials for top 500 public companies | SEC EDGAR | Free |
-| `fetch-market-data` | Fetch real-time quotes + fundamentals | FMP API | Free (250/day) or $14/mo |
+### Modified Files
+- `src/pages/Index.tsx` -- add AlphaSignalWidget to dashboard + widget customizer
+- `src/components/DCFCalculator.tsx` -- use Treasury yield for risk-free rate
+- `src/components/ValuationFootballField.tsx` -- add AI-adjusted valuation bar
+- `src/components/DataSourcesPanel.tsx` -- add macro data source status
+- `supabase/config.toml` -- register alpha-signals function
 
-### Database Changes
+### Cost Impact
+- **FRED/macro data**: $0 (seeded manually or via AI knowledge)
+- **AI inference**: Uses included Lovable AI credits (Gemini Flash is cheapest tier)
+- **No new API keys required**
 
-1. **New materialized view** `mv_sector_multiples` -- rewrite to compute from real `sec_financial_facts` + `public_market_data` joined on `companies`
-2. **Add columns** to `public_market_data`: `ev_revenue`, `ev_ebitda`, `revenue`, `ebitda`, `enterprise_value` (computed fields from FMP data)
-3. **Add `last_sec_fetch` and `last_market_fetch` timestamps** to companies table for staleness tracking
-
-### Files to Create
-
-| File | Purpose |
-|---|---|
-| `supabase/functions/bulk-sec-ingest/index.ts` | Batch XBRL ingestion for top public companies |
-| `supabase/functions/fetch-market-data/index.ts` | FMP API integration for real-time quotes |
-| `src/components/DataSourcesPanel.tsx` | Settings panel showing data pipeline status |
-
-### Files to Modify
-
-| File | Change |
-|---|---|
-| `src/hooks/useSectorMultiples.ts` | Handle new real data from refreshed materialized view |
-| `src/components/ValuationFootballField.tsx` | Use real sector multiples when available, show data source badge |
-| `src/components/DCFCalculator.tsx` | Auto-populate from SEC XBRL data when viewing public companies |
-| `src/pages/CompTableBuilder.tsx` | "Find Public Comps" uses real SEC revenue/EBITDA for matching |
-| `src/hooks/useCompanyScore.ts` | Enhance with real sector benchmarks from refreshed mv |
-| `src/pages/PublicMarkets.tsx` | Show real prices, add "Refresh Market Data" button |
-| `src/pages/Settings.tsx` | Add Data Sources panel |
-| `supabase/functions/compute-scores/index.ts` | Feed real sector multiples into batch scoring |
-
-### Materialized View Rewrite (SQL)
-
-```text
-DROP MATERIALIZED VIEW IF EXISTS mv_sector_multiples;
-
-CREATE MATERIALIZED VIEW mv_sector_multiples AS
-WITH company_fundamentals AS (
-  SELECT
-    c.sector,
-    pmd.market_cap,
-    -- Compute EV = Market Cap + Debt - Cash (from SEC data)
-    COALESCE(pmd.market_cap, 0) AS ev_proxy,
-    -- Get latest annual revenue from sec_financial_facts
-    rev.value AS revenue,
-    ebitda.value AS ebitda
-  FROM companies c
-  JOIN public_market_data pmd ON pmd.company_id = c.id
-  LEFT JOIN LATERAL (
-    SELECT value FROM sec_financial_facts
-    WHERE company_id = c.id AND concept IN ('Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax')
-    AND form_type = '10-K' ORDER BY period_end DESC LIMIT 1
-  ) rev ON true
-  LEFT JOIN LATERAL (
-    SELECT value FROM sec_financial_facts
-    WHERE company_id = c.id AND concept = 'OperatingIncomeLoss'
-    AND form_type = '10-K' ORDER BY period_end DESC LIMIT 1
-  ) ebitda ON true
-  WHERE c.market_type = 'public' AND pmd.market_cap > 0
-),
-sector_stats AS (
-  SELECT
-    sector,
-    -- EV/Revenue distribution
-    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ev_proxy / NULLIF(revenue, 0)) AS ev_rev_p25,
-    PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ev_proxy / NULLIF(revenue, 0)) AS ev_rev_median,
-    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ev_proxy / NULLIF(revenue, 0)) AS ev_rev_p75,
-    AVG(ev_proxy / NULLIF(revenue, 0)) AS ev_rev_mean,
-    COUNT(*) FILTER (WHERE revenue > 0) AS ev_rev_count,
-    -- EV/EBITDA distribution
-    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY ev_proxy / NULLIF(ebitda, 0)) AS ev_ebitda_p25,
-    PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY ev_proxy / NULLIF(ebitda, 0)) AS ev_ebitda_median,
-    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY ev_proxy / NULLIF(ebitda, 0)) AS ev_ebitda_p75,
-    AVG(ev_proxy / NULLIF(ebitda, 0)) AS ev_ebitda_mean,
-    COUNT(*) FILTER (WHERE ebitda > 0) AS ev_ebitda_count
-  FROM company_fundamentals
-  WHERE sector IS NOT NULL
-  GROUP BY sector
-)
-SELECT
-  ss.*,
-  COALESCE(dc.deal_count, 0) AS deal_count_12m,
-  COALESCE(fc.funding_count, 0) AS funding_count_12m
-FROM sector_stats ss
-LEFT JOIN (
-  SELECT target_industry AS sector, COUNT(*) AS deal_count
-  FROM deal_transactions WHERE announced_date > CURRENT_DATE - INTERVAL '12 months'
-  GROUP BY target_industry
-) dc ON dc.sector = ss.sector
-LEFT JOIN (
-  SELECT c.sector, COUNT(*) AS funding_count
-  FROM funding_rounds fr JOIN companies c ON c.id = fr.company_id
-  WHERE fr.date > CURRENT_DATE - INTERVAL '12 months'
-  GROUP BY c.sector
-) fc ON fc.sector = ss.sector;
-
-CREATE UNIQUE INDEX ON mv_sector_multiples (sector);
-```
-
-### Implementation Sequence
-
-1. Store FMP API key as a secret (free signup at financialmodelingprep.com)
-2. Database migration: add columns to `public_market_data`, add timestamp columns to `companies`
-3. Create `bulk-sec-ingest` edge function -- fetch XBRL for top 500 companies
-4. Create `fetch-market-data` edge function -- FMP quotes + fundamentals
-5. Rewrite `mv_sector_multiples` materialized view with real data computation
-6. Run both ingestion functions to populate real data
-7. Refresh materialized view
-8. Update frontend components to reflect real data (badges, auto-population)
-9. Add Data Sources panel to Settings
-10. Test the full valuation pipeline end-to-end with real numbers
-
-### Cost Summary
-
-| Source | Cost | Coverage |
-|---|---|---|
-| SEC EDGAR XBRL | Free forever | All US public company financials (10-K, 10-Q) |
-| FMP Free Tier | Free | 250 quotes/day -- covers top 250 daily |
-| FMP Starter (optional) | $14/month | 300/minute -- covers all 7,000 companies multiple times daily |
-
-This gives us institutional-grade financial data at $0-14/month vs Bloomberg at $25,000/year. The SEC data alone (revenue, EBITDA, EPS, balance sheet) is the same XBRL data that Bloomberg Terminal reads -- we just skip the middleman.
+### What This Gives Us Over PitchBook
+PitchBook shows you what happened. We show you **what's about to happen** -- and we do it for free.
 
