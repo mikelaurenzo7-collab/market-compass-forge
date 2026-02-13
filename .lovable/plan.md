@@ -1,37 +1,150 @@
-## Real Data Integration
 
-### Completed
 
-**1. News feed now uses real data (Perplexity + Gemini fallback)**
-- `fetch-news` edge function rewired to Perplexity Sonar for grounded real-time news search
-- Falls back to Gemini with explicit "real news only" instructions if Perplexity unavailable
-- Citations from Perplexity attached as `source_url` on articles
+# Grapevine Product Perfection Plan
 
-**2. Intelligence signals now use real data**
-- New `fetch-intelligence` edge function fetches real market signals across 6 categories (PE/M&A, Real Estate, Venture, Credit, Macro, Personnel)
-- Uses Perplexity with `search_recency_filter: "month"` for fresh data
-- Falls back to Gemini with structured function calling
+## Where We Are Today
 
-**3. Auto-enrich companies on view**
-- New `useAutoEnrich` hook triggers Firecrawl scraping when a company is viewed
-- Only triggers if no enrichment data exists or data is >7 days old
-- Prevents duplicate triggers with ref guard
+Grapevine has a strong foundation: landing page, auth, dashboard, company profiles with scoring, valuation tools (DCF/LBO/comps/football field), deal pipeline, fund intelligence (LP/GP directory), distressed assets, off-market real estate, AI research chat, document analyzer, intelligence feed, watchlists, alerts, and team collaboration. The architecture has materialized views, full-text search, and server-side compute. All data is currently synthetic/seeded.
 
-**4. UI updated to reflect real data**
-- NewsFeed "Generate" button renamed to "Fetch Latest News"
-- IntelligenceFeed has new "Refresh" and "Fetch Real-Time Signals" buttons
-- All language updated from "AI-generated" to "real-time" framing
+## What This Plan Delivers
 
-### Data sources
-- **Company enrichment**: Firecrawl (website scraping + web search)
-- **News**: Perplexity Sonar (real-time search) → Gemini fallback
-- **Intelligence signals**: Perplexity Sonar → Gemini fallback
-- **Financials/funding**: Existing database (synthetic — needs real API integration)
-- **Distressed assets/CRE**: Existing database (synthetic — needs real API integration)
+A phased set of improvements aligned to the GTM strategy, prioritizing features that make the product **demo-ready and investor-ready** without waiting for paid data APIs. The SEC EDGAR integration gives us **real, free financial data** for public companies immediately.
 
-### Still synthetic (requires premium data APIs)
-- Company financials (revenue, ARR, burn rate)
-- Funding rounds and valuations
-- Distressed asset listings
-- CRE market data and transactions
-- Precedent transaction multiples
+---
+
+## Phase 1: SEC EDGAR Integration (Free Real Data)
+
+The SEC EDGAR API is completely free, requires no API key, and provides real-time filings data for all publicly traded companies. This is the single highest-impact integration we can do at zero cost.
+
+**What we build:**
+- A new `fetch-sec-filings` backend function that pulls company filings, financials (revenue, net income, total assets, EPS), and insider transactions from `data.sec.gov`
+- A CIK (Central Index Key) lookup system to map our company names to SEC identifiers
+- A new "SEC Filings" tab on company detail pages showing 10-K, 10-Q, 8-K filings with direct links
+- Auto-population of financial data (revenue, EBITDA, margins) from XBRL-tagged filings for any public company in our database
+- A "Public Market Data" enrichment that runs when viewing a public company (similar to the existing Firecrawl auto-enrich pattern)
+
+**Data available for free:**
+- Full filing history (10-K, 10-Q, 8-K, S-1, etc.)
+- Extracted financial facts via XBRL (Revenue, NetIncome, Assets, EPS, etc.)
+- Company metadata (SIC codes, addresses, officer/director names)
+- Recent filings feed (real-time as filed)
+
+**Technical approach:**
+- New database table `sec_filings` to cache filing metadata
+- New database table `sec_financial_facts` to store extracted XBRL data points
+- Backend function calls `data.sec.gov/submissions/CIK{cik}.json` and `data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json`
+- Required: Add a `cik_number` column to the `companies` table for SEC cross-referencing
+- Proxy through backend function since SEC does not support CORS
+
+## Phase 2: Product Polish for Beta Readiness
+
+These improvements make the platform feel professional and complete for beta users.
+
+**2a. Data Freshness and Transparency**
+- Show "Last updated" timestamps on all data cards
+- Add clear "Sample Data" badges on synthetic data (already partially built) and "SEC Filing" / "Verified" badges on real data
+- Settings page option to toggle sample data visibility
+
+**2b. Dashboard Refinements**
+- Remove the "Real Data in Use" stats widget (internal metric, not user-facing value)
+- Add a "Recent Filings" widget showing latest SEC filings across tracked companies
+- Add a "Market Pulse" widget showing key macro indicators
+
+**2c. Company Detail Upgrades**
+- New "Filings" tab showing SEC filing history with links to full documents
+- Financial charts auto-populated from SEC XBRL data for public companies
+- Key personnel section enriched with SEC officer/director data
+- Insider trading activity section from SEC filings
+
+**2d. Landing Page Improvements**
+- Replace placeholder testimonials with more credible copy or remove them until real ones exist
+- Add a "Data Sources" section showing SEC, Firecrawl, and Perplexity logos/badges
+- Add an interactive demo preview (screenshot or animated GIF of the dashboard)
+
+## Phase 3: Core UX Improvements
+
+**3a. Onboarding Flow**
+- Guided tour highlighting key features (valuations, AI research, deal pipeline)
+- Prompt users to add their first watchlist and pipeline deal
+- Sector preference selection to personalize the dashboard
+
+**3b. Performance and Reliability**
+- Add error boundaries around all dashboard widgets so one failure doesn't crash the page
+- Implement optimistic updates for pipeline stage changes and note creation
+- Add skeleton loading states to any pages still missing them
+
+**3c. Export and Reporting**
+- One-click PDF export of company profiles (already have print support -- upgrade to styled PDF)
+- Batch export of watchlist companies to CSV with financial data
+- Investment memo export as formatted PDF
+
+## Phase 4: Monetization Readiness
+
+**4a. Stripe Payment Integration**
+- Stripe is already connected (secret key present). Wire up subscription checkout for the $399/mo Professional plan
+- Add a billing page in Settings showing current plan, usage, and payment method
+- Implement usage gates: cap AI queries and memo generations for free-tier users
+- Trial period support (e.g., 14-day free trial with full access)
+
+**4b. Usage Tracking Enforcement**
+- The `useUsageTracking` hook exists but needs enforcement gates on AI Research, Memo Generation, and Document Analysis
+- Show usage meters prominently with upgrade prompts when approaching limits
+
+---
+
+## Technical Details
+
+### New Database Tables
+
+```text
+sec_filings
+-----------
+id, company_id, cik_number, accession_number, filing_type,
+filing_date, description, primary_document_url, created_at
+
+sec_financial_facts
+-------------------
+id, company_id, cik_number, taxonomy, concept, period_start,
+period_end, value, unit, form_type, filed_date, created_at
+```
+
+### New Backend Functions
+
+1. `fetch-sec-filings` -- Fetches and caches SEC filing data for a given CIK
+2. `fetch-sec-financials` -- Extracts XBRL financial facts and stores them
+
+### Files to Create/Modify
+
+| Action | File | Purpose |
+|--------|------|---------|
+| Create | `supabase/functions/fetch-sec-filings/index.ts` | SEC EDGAR API proxy |
+| Create | `src/hooks/useSECFilings.ts` | React hooks for SEC data |
+| Create | `src/components/SECFilingsTab.tsx` | Filings list UI component |
+| Create | `src/components/SECFinancials.tsx` | XBRL financial data display |
+| Modify | `src/pages/CompanyDetail.tsx` | Add Filings tab, wire SEC data |
+| Modify | `src/pages/Index.tsx` | Remove internal stats, add filings widget |
+| Modify | `src/pages/Landing.tsx` | Polish copy, add data sources section |
+| Modify | `src/components/FinancialsChart.tsx` | Overlay SEC data when available |
+| Migration | New tables + `cik_number` column | Database schema |
+
+### SEC EDGAR API Details
+
+- Base URL: `https://data.sec.gov`
+- No authentication required
+- Required header: `User-Agent: Grapevine contact@grapevine.io`
+- Rate limit: 10 requests/second (we'll respect this server-side)
+- Key endpoints:
+  - `/submissions/CIK{cik}.json` -- Company filings list
+  - `/api/xbrl/companyfacts/CIK{cik}.json` -- All financial facts
+  - `/api/xbrl/companyconcept/CIK{cik}/us-gaap/{concept}.json` -- Specific metric
+
+### Implementation Order
+
+1. Database migration (new tables + cik_number column)
+2. `fetch-sec-filings` backend function
+3. SEC UI components and CompanyDetail integration
+4. Dashboard widget updates
+5. Landing page polish
+6. Stripe checkout wiring
+7. Usage enforcement gates
+
