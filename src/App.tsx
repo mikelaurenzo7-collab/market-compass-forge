@@ -27,6 +27,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import Discover from "./pages/Discover";
+import PublicMarkets from "./pages/PublicMarkets";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -66,6 +67,7 @@ const App = () => (
               <Route path="/real-estate" element={<RealEstateIntel />} />
               <Route path="/distressed" element={<DistressedAssets />} />
               <Route path="/discover" element={<Discover />} />
+              <Route path="/public-markets" element={<PublicMarkets />} />
               <Route path="/research" element={<Research />} />
               <Route path="/documents" element={<DocumentAnalyzer />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
@@ -75,7 +77,7 @@ const App = () => (
               <Route path="/admin" element={<AdminDashboard />} />
               {/* Legacy redirects */}
               <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
-              <Route path="/markets/public" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/markets/public" element={<Navigate to="/public-markets" replace />} />
               <Route path="/screening" element={<Navigate to="/watchlists" replace />} />
               <Route path="/comps" element={<Navigate to="/valuations" replace />} />
               <Route path="/analytics" element={<Navigate to="/fund-intelligence" replace />} />
