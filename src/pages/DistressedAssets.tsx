@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { DistressedDetailPanel } from "@/components/DistressedDetailPanel";
 import { exportDistressedAssetsCSV } from "@/lib/export";
+import { LiveIndicator } from "@/components/LiveIndicator";
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-green-500/10 text-green-500 border-green-500/20",
@@ -75,12 +76,15 @@ const DistressedAssets = () => {
     );
   }
 
-  return (
-    <div className="p-4 sm:p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">Distressed & Special Situations</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Distressed businesses, foreclosed properties, and turnaround opportunities</p>
-      </div>
+   return (
+     <div className="p-4 sm:p-6 space-y-4">
+       <div className="flex items-center justify-between">
+         <div>
+           <h1 className="text-xl font-semibold text-foreground">Distressed & Special Situations</h1>
+           <p className="text-sm text-muted-foreground mt-0.5">Distressed businesses, foreclosed properties, and turnaround opportunities</p>
+         </div>
+         <LiveIndicator />
+       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

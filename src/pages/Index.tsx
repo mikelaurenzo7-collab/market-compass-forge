@@ -17,6 +17,7 @@ import OnboardingFlow, { useOnboardingStatus } from "@/components/OnboardingFlow
 import EmptyState from "@/components/EmptyState";
 import { AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LiveIndicator } from "@/components/LiveIndicator";
 
 // Lazy load heavy chart components
 const DealFlowChart = lazy(() => import("@/components/Charts").then(m => ({ default: m.DealFlowChart })));
@@ -418,18 +419,21 @@ const Index = () => {
     { id: "global-pulse", label: "Global Pulse" },
   ];
 
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Market Intelligence</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{freshnessLabel}</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setCustomizingDashboard(!customizingDashboard)} className="gap-1">
-          <Settings2 className="h-4 w-4" />
-          <span className="hidden sm:inline">{customizingDashboard ? "Done" : "Customize"}</span>
-        </Button>
-      </div>
+   return (
+     <div className="p-4 sm:p-6 space-y-6">
+       <div className="flex items-center justify-between">
+         <div>
+           <h1 className="text-xl font-semibold text-foreground">Market Intelligence</h1>
+           <p className="text-sm text-muted-foreground mt-0.5">{freshnessLabel}</p>
+         </div>
+         <div className="flex items-center gap-3">
+           <LiveIndicator />
+           <Button variant="outline" size="sm" onClick={() => setCustomizingDashboard(!customizingDashboard)} className="gap-1">
+             <Settings2 className="h-4 w-4" />
+           <span className="hidden sm:inline">{customizingDashboard ? "Done" : "Customize"}</span>
+         </Button>
+       </div>
+       </div>
 
       {customizingDashboard && (
         <div className="rounded-lg border border-border bg-card p-4 space-y-3 animate-fadeIn">
