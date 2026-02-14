@@ -8,9 +8,11 @@ interface EmptyStateProps {
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 }
 
-export default function EmptyState({ icon: Icon, title, description, actionLabel, onAction }: EmptyStateProps) {
+export default function EmptyState({ icon: Icon, title, description, actionLabel, onAction, secondaryLabel, onSecondary }: EmptyStateProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
@@ -23,11 +25,18 @@ export default function EmptyState({ icon: Icon, title, description, actionLabel
       </div>
       <h3 className="text-sm font-semibold text-foreground mb-1">{title}</h3>
       <p className="text-xs text-muted-foreground max-w-xs mb-4">{description}</p>
-      {actionLabel && onAction && (
-        <Button size="sm" onClick={onAction} className="gap-1.5">
-          {actionLabel} <ArrowRight className="h-3 w-3" />
-        </Button>
-      )}
+      <div className="flex items-center gap-2">
+        {actionLabel && onAction && (
+          <Button size="sm" onClick={onAction} className="gap-1.5">
+            {actionLabel} <ArrowRight className="h-3 w-3" />
+          </Button>
+        )}
+        {secondaryLabel && onSecondary && (
+          <Button size="sm" variant="outline" onClick={onSecondary}>
+            {secondaryLabel}
+          </Button>
+        )}
+      </div>
     </motion.div>
   );
 }

@@ -32,6 +32,7 @@ import Screening from "./pages/Screening";
 import Developers from "./pages/Developers";
 import Portfolio from "./pages/Portfolio";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
+import InvestorMetrics from "./pages/InvestorMetrics";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/developers" element={<Developers />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/metrics" element={<InvestorMetrics />} />
               {/* Legacy redirects */}
               <Route path="/discover" element={<Navigate to="/companies" replace />} />
               <Route path="/competitive-intel" element={<Navigate to="/intelligence" replace />} />

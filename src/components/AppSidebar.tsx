@@ -24,6 +24,7 @@ import {
   LogOut,
   FileText,
   Search,
+  BarChart3,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -42,6 +43,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Command Center",
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+      { id: "metrics", label: "Platform Metrics", icon: BarChart3, path: "/metrics" },
     ],
   },
   {

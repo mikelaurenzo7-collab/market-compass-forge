@@ -108,10 +108,12 @@ const RecentPipelineDeals = () => {
       </div>
       <EmptyState
         icon={Briefcase}
-        title="No deals yet"
-        description="Start tracking deals by adding companies to your pipeline."
-        actionLabel="Add First Deal"
+        title="No deals in pipeline"
+        description="Browse 7,800+ companies or use AI Deal Matcher to find opportunities that fit your thesis."
+        actionLabel="Browse Companies"
         onAction={() => navigate("/companies")}
+        secondaryLabel="AI Match"
+        onSecondary={() => navigate("/deal-matcher")}
       />
     </div>
   );
@@ -169,9 +171,11 @@ const WatchlistWidget = () => {
       <EmptyState
         icon={List}
         title="No watchlists yet"
-        description="Create watchlists to track companies by sector, theme, or strategy."
-        actionLabel="Create Watchlist"
-        onAction={() => navigate("/watchlists")}
+        description="Group companies by sector, theme, or strategy. Get alerts when new intel surfaces."
+        actionLabel="Build Watchlist"
+        onAction={() => navigate("/screening")}
+        secondaryLabel="AI Screening"
+        onSecondary={() => navigate("/screening")}
       />
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import PageTransition from "@/components/PageTransition";
 import { useCompaniesWithFinancialsAll, formatCurrency } from "@/hooks/useData";
-import { ArrowUpDown, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpDown, Download, ChevronLeft, ChevronRight, Database } from "lucide-react";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { exportCompaniesCSV } from "@/lib/export";
 import { useTableNavigation } from "@/hooks/useHotkeys";
@@ -171,12 +171,21 @@ const Companies = () => {
             <span className="font-mono text-primary">{filtered.length}</span> private companies tracked
           </p>
         </div>
-        <button
-          onClick={() => exportCompaniesCSV(filtered)}
-          className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2 self-start"
-        >
-          <Download className="h-4 w-4" /> Export CSV
-        </button>
+        <div className="flex items-center gap-3 self-start">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50 border border-border text-xs">
+            <Database className="h-3 w-3 text-primary" />
+            <span className="text-muted-foreground">Financials:</span>
+            <span className="font-mono font-medium text-foreground">
+              {companies ? `${companies.filter((c: any) => c.latestFinancials?.revenue || c.latestFinancials?.arr).length}/${companies.length}` : "—"}
+            </span>
+          </div>
+          <button
+            onClick={() => exportCompaniesCSV(filtered)}
+            className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-3">
