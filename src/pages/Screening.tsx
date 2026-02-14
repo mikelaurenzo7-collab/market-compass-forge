@@ -2,12 +2,12 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, Filter, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Filter, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FolderOpen, Trash2, Star } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 type Filters = {
@@ -72,6 +72,60 @@ const Screening = () => {
   const [pageSize, setPageSize] = useState(50);
   const isMobile = useIsMobile();
   const [filtersOpen, setFiltersOpen] = useState(!isMobile);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [screenName, setScreenName] = useState("");
+
+  // Saved screens
+  const { data: savedScreens } = useQuery({
+    queryKey: ["saved-screens"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("saved_screens" as any)
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!user,
+  });
+
+  const saveScreenMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from("saved_screens" as any).insert({
+        user_id: user!.id,
+        name,
+        filters: filters as any,
+        sort_key: sortKey,
+        sort_asc: sortAsc,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saved-screens"] });
+      toast.success("Screen saved");
+      setShowSaveDialog(false);
+      setScreenName("");
+    },
+  });
+
+  const deleteScreenMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("saved_screens" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saved-screens"] });
+      toast.success("Screen deleted");
+    },
+  });
+
+  const loadScreen = (screen: any) => {
+    setFilters({ ...EMPTY_FILTERS, ...screen.filters });
+    setSortKey(screen.sort_key ?? "valuation");
+    setSortAsc(screen.sort_asc ?? false);
+    setPage(0);
+    toast.success(`Loaded: ${screen.name}`);
+  };
 
   const updateFilter = useCallback(<K extends keyof Filters>(key: K, val: Filters[K]) => {
     setFilters((prev) => ({ ...prev, [key]: val }));
@@ -86,7 +140,7 @@ const Screening = () => {
 
   const savePreset = () => {
     localStorage.setItem("screening-filters", JSON.stringify(filters));
-    toast.success("Filter preset saved");
+    toast.success("Filter preset saved to browser");
   };
 
   const resetFilters = () => {
@@ -306,22 +360,53 @@ const Screening = () => {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Screening</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             <span className="font-mono text-primary">{filtered.length}</span> companies match your criteria
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <button onClick={() => setShowSaveDialog(true)} className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
+            <Star className="h-4 w-4" /> Save Screen
+          </button>
           <button onClick={savePreset} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
-            <Save className="h-4 w-4" /> Save
+            <Save className="h-4 w-4" /> Quick Save
           </button>
           <button onClick={resetFilters} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
             <RotateCcw className="h-4 w-4" /> Reset
           </button>
         </div>
       </div>
+
+      {/* Save screen dialog */}
+      {showSaveDialog && (
+        <div className="rounded-lg border border-primary/30 bg-card p-4 flex gap-2 items-center animate-fade-in">
+          <FolderOpen className="h-4 w-4 text-primary shrink-0" />
+          <input value={screenName} onChange={(e) => setScreenName(e.target.value)} placeholder="Screen name (e.g. 'AI Series B+')" autoFocus className="flex-1 h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <button onClick={() => screenName.trim() && saveScreenMutation.mutate(screenName.trim())} disabled={!screenName.trim() || saveScreenMutation.isPending} className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
+            {saveScreenMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+          </button>
+          <button onClick={() => setShowSaveDialog(false)} className="text-xs text-muted-foreground hover:text-foreground">Cancel</button>
+        </div>
+      )}
+
+      {/* Saved screens */}
+      {savedScreens && savedScreens.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium self-center mr-1">Saved:</span>
+          {savedScreens.map((s: any) => (
+            <div key={s.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-border bg-card text-xs group">
+              <button onClick={() => loadScreen(s)} className="text-foreground hover:text-primary transition-colors font-medium">{s.name}</button>
+              <button onClick={() => deleteScreenMutation.mutate(s.id)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all">
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (

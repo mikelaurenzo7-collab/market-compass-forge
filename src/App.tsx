@@ -29,6 +29,7 @@ import GlobalMarkets from "./pages/GlobalMarkets";
 import SectorPulse from "./pages/SectorPulse";
 import DealMatcher from "./pages/DealMatcher";
 import Screening from "./pages/Screening";
+import Developers from "./pages/Developers";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/watchlists" element={<Screening />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/developers" element={<Developers />} />
               <Route path="/admin" element={<AdminDashboard />} />
               {/* Legacy redirects */}
               <Route path="/discover" element={<Navigate to="/companies" replace />} />
