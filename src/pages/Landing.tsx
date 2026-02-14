@@ -192,10 +192,39 @@ const Landing = () => {
           )}
         </motion.div>
 
-        {/* Stats teaser */}
-        <motion.p custom={5} variants={fadeUp} className="text-xs text-muted-foreground/60 max-w-sm leading-relaxed">
-          7,800+ companies · 350+ distressed assets · AI-powered screening & deal matching · REST API
-        </motion.p>
+        {/* Platform stats */}
+        <motion.div custom={5} variants={fadeUp} className="w-full max-w-md">
+          <div className="grid grid-cols-4 gap-3 text-center">
+            {[
+              { value: "7,800+", label: "Companies" },
+              { value: "350+", label: "Distressed Assets" },
+              { value: "24/7", label: "AI Screening" },
+              { value: "REST", label: "API Access" },
+            ].map((s) => (
+              <div key={s.label} className="space-y-0.5">
+                <p className="text-lg sm:text-xl font-black text-foreground font-mono tracking-tight">{s.value}</p>
+                <p className="text-[10px] text-muted-foreground/70">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Data sources */}
+        <motion.div custom={6} variants={fadeUp} className="flex flex-col items-center gap-2">
+          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-medium">Powered by</p>
+          <div className="flex items-center gap-4">
+            {["SEC EDGAR", "FRED", "FMP", "Firecrawl"].map((src) => (
+              <span key={src} className="text-[11px] font-mono text-muted-foreground/40 border border-border/40 rounded px-2 py-0.5">{src}</span>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Social proof */}
+        <motion.div custom={7} variants={fadeUp}>
+          <p className="text-xs text-muted-foreground/50 italic">
+            Trusted by emerging fund managers, family offices, and independent sponsors
+          </p>
+        </motion.div>
       </motion.div>
 
       {/* Footer */}

@@ -92,12 +92,21 @@ const Companies = () => {
     });
   }, [companies]);
 
+  const [financialsOnly, setFinancialsOnly] = useState(false);
+
+  const coverageStats = useMemo(() => {
+    if (!companies) return { withFinancials: 0, total: 0, pct: 0 };
+    const withFin = companies.filter((c: any) => c.latestFinancials?.revenue || c.latestFinancials?.arr).length;
+    return { withFinancials: withFin, total: companies.length, pct: companies.length > 0 ? Math.round((withFin / companies.length) * 100) : 0 };
+  }, [companies]);
+
   const filtered = useMemo(() => {
     return scoredCompanies
       .filter((c: any) => {
         if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
         if (sectorFilter !== "All" && c.sector !== sectorFilter) return false;
         if (stageFilter !== "All" && c.stage !== stageFilter) return false;
+        if (financialsOnly && !(c.latestFinancials?.revenue || c.latestFinancials?.arr)) return false;
         return true;
       })
       .sort((a: any, b: any) => {
@@ -113,7 +122,7 @@ const Companies = () => {
         if (typeof av === "string") return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
         return sortAsc ? av - bv : bv - av;
       });
-  }, [scoredCompanies, search, sectorFilter, stageFilter, sortKey, sortAsc]);
+  }, [scoredCompanies, search, sectorFilter, stageFilter, sortKey, sortAsc, financialsOnly]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
@@ -171,14 +180,20 @@ const Companies = () => {
             <span className="font-mono text-primary">{filtered.length}</span> private companies tracked
           </p>
         </div>
-        <div className="flex items-center gap-3 self-start">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50 border border-border text-xs">
-            <Database className="h-3 w-3 text-primary" />
-            <span className="text-muted-foreground">Financials:</span>
-            <span className="font-mono font-medium text-foreground">
-              {companies ? `${companies.filter((c: any) => c.latestFinancials?.revenue || c.latestFinancials?.arr).length}/${companies.length}` : "—"}
-            </span>
-          </div>
+        <div className="flex items-center gap-2 sm:gap-3 self-start flex-wrap">
+          <button
+            onClick={() => setFinancialsOnly(!financialsOnly)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-colors ${
+              financialsOnly
+                ? "border-primary/40 bg-primary/10 text-primary"
+                : "bg-muted/50 border-border text-muted-foreground hover:border-primary/30"
+            }`}
+          >
+            <Database className="h-3 w-3" />
+            <span>Coverage:</span>
+            <span className="font-mono font-medium">{coverageStats.pct}%</span>
+            <span className={`h-1.5 w-1.5 rounded-full ${coverageStats.pct >= 50 ? "bg-success" : coverageStats.pct >= 25 ? "bg-warning" : "bg-destructive"}`} />
+          </button>
           <button
             onClick={() => exportCompaniesCSV(filtered)}
             className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
@@ -244,10 +259,14 @@ const Companies = () => {
                 <SortHeader label="Company" sortId="name" />
                 <SortHeader label="Sector" sortId="sector" />
                 <SortHeader label="Valuation" sortId="valuation" align="right" />
-                <SortHeader label="Revenue" sortId="revenue" align="right" />
+                <th className="px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-right hidden md:table-cell cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => toggleSort("revenue")}>
+                  <span className="inline-flex items-center gap-1">Revenue <ArrowUpDown className={`h-3 w-3 ${sortKey === "revenue" ? "text-primary" : "opacity-30"}`} /></span>
+                </th>
                 <SortHeader label="Score" sortId="score" align="right" />
-                <SortHeader label="Stage" sortId="stage" />
-                <th className="px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left">HQ</th>
+                <th className="px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left hidden sm:table-cell cursor-pointer hover:text-foreground transition-colors select-none" onClick={() => toggleSort("stage")}>
+                  <span className="inline-flex items-center gap-1">Stage <ArrowUpDown className={`h-3 w-3 ${sortKey === "stage" ? "text-primary" : "opacity-30"}`} /></span>
+                </th>
+                <th className="px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium text-left hidden lg:table-cell">HQ</th>
               </tr>
             </thead>
             <tbody>
@@ -260,31 +279,31 @@ const Companies = () => {
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === "Enter") navigate(`/companies/${c.id}`); }}
                 >
-                  <td className="px-4 py-2.5">
+                  <td className="px-3 sm:px-4 py-2.5">
                     <CompanyHoverCard company={{ id: c.id, name: c.name, sector: c.sector, stage: c.stage, hq_country: c.hq_country, employee_count: c.employee_count, valuation: c.latestRound?.valuation_post, arr: c.latestFinancials?.arr }}>
                       <div className="flex items-center gap-2">
                         <CompanyAvatar name={c.name} sector={c.sector} />
-                        <span className="text-foreground font-medium">{c.name}</span>
+                        <span className="text-foreground font-medium truncate max-w-[120px] sm:max-w-none">{c.name}</span>
                       </div>
                     </CompanyHoverCard>
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
-                  <td className="px-4 py-2.5 text-right text-foreground font-medium font-mono">
+                  <td className="px-3 sm:px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
+                  <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-medium font-mono">
                     {formatCurrency(c.latestRound?.valuation_post ?? null)}
                   </td>
-                  <td className="px-4 py-2.5 text-right text-foreground font-mono">
+                  <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-mono hidden md:table-cell">
                     {formatCurrency(c.latestFinancials?.revenue ?? c.latestFinancials?.arr ?? null)}
                   </td>
-                  <td className="px-4 py-2.5 text-right">
+                  <td className="px-3 sm:px-4 py-2.5 text-right">
                     <span className={`font-mono font-bold text-xs ${c._gradeColor}`}>{c._grade}</span>
                     <span className="text-[10px] text-muted-foreground ml-1 font-mono">{c._score}</span>
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="px-3 sm:px-4 py-2.5 hidden sm:table-cell">
                     <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                       {c.stage ?? "—"}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{c.hq_country ?? "—"}</td>
+                  <td className="px-3 sm:px-4 py-2.5 text-muted-foreground hidden lg:table-cell">{c.hq_country ?? "—"}</td>
                 </tr>
               ))}
             </tbody>
