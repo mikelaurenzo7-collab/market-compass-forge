@@ -95,7 +95,7 @@ const Deals = () => {
 
   return (
     <PageTransition>
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Deal Flow</h1>
