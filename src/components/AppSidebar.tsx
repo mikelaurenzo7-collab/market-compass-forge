@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  FileText,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -56,6 +57,8 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
       { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
       { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
+      { id: "screening", label: "Screening", icon: Search, path: "/screening" },
+      { id: "portfolio", label: "Portfolio", icon: TrendingUp, path: "/portfolio" },
     ],
   },
   {
@@ -64,6 +67,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "research", label: "Research & AI", icon: Search, path: "/research" },
       { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
       { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
+      { id: "documents", label: "Document Analyzer", icon: FileText, path: "/document-analyzer" },
     ],
   },
   {

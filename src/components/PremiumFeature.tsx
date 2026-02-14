@@ -16,9 +16,9 @@ const TIER_RANK: Record<string, number> = {
 };
 
 const TIER_LABELS: Record<string, string> = {
-  analyst: "Analyst ($499/mo)",
-  professional: "Professional ($1,499/mo)",
-  institutional: "Institutional ($3,999/mo)",
+  analyst: "Analyst ($299/mo)",
+  professional: "Professional ($599/mo)",
+  institutional: "Institutional ($1,999/mo)",
 };
 
 interface PremiumFeatureProps {

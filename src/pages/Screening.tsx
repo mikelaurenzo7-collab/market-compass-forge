@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Search, Filter, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FolderOpen, Trash2, Star } from "lucide-react";
+import { Search, Filter, Loader2, ArrowUpDown, Plus, Save, RotateCcw, FileText, CheckSquare, Square, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, FolderOpen, Trash2, Star, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { supabase } from "@/integrations/supabase/client";
@@ -370,6 +370,35 @@ const Screening = () => {
         <div className="flex gap-2 flex-wrap">
           <button onClick={() => setShowSaveDialog(true)} className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
             <Star className="h-4 w-4" /> Save Screen
+          </button>
+          <button
+            onClick={() => {
+              const headers = ["Name", "Sector", "Stage", "Country", "ARR ($M)", "EBITDA ($M)", "Valuation ($B)", "Employees", "Score", "Grade"];
+              const rows = filtered.map((c: any) => [
+                c.name,
+                c.sector ?? "",
+                c.stage ?? "",
+                c.hq_country ?? "",
+                ((c.latestFinancials?.arr ?? 0) / 1e6).toFixed(1),
+                ((c.latestFinancials?.ebitda ?? 0) / 1e6).toFixed(1),
+                ((c.latestRound?.valuation_post ?? 0) / 1e9).toFixed(2),
+                c.employee_count ?? "",
+                c._score,
+                c._grade,
+              ]);
+              const csv = [headers, ...rows].map(r => r.map((v: any) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `grapevine-screen-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast.success(`Exported ${filtered.length} companies to CSV`);
+            }}
+            className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" /> Export CSV
           </button>
           <button onClick={savePreset} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
             <Save className="h-4 w-4" /> Quick Save
