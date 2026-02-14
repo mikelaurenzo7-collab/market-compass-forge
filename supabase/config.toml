@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.compute-health-score]
 verify_jwt = false
+
+[functions.morning-briefing]
+verify_jwt = false
