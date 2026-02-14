@@ -4,27 +4,23 @@ import {
   LayoutDashboard,
   Building2,
   TrendingUp,
-  BarChart3,
-  Search,
-  Bell,
-  FileText,
-  Settings,
-  Zap,
-  DollarSign,
+  Globe,
   Handshake,
-  Landmark,
-  Building,
+  Sparkles,
+  DollarSign,
+  Search,
   Rss,
+  Activity,
+  Building,
+  AlertTriangle,
+  Landmark,
+  Bell,
   Star,
+  Settings,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
-  FileSearch,
-  AlertTriangle,
-  ShieldCheck,
-  Globe,
-  Activity,
-  Crosshair,
-  Sparkles,
+  LogOut,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -32,29 +28,51 @@ import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut } from "lucide-react";
 
-const mainModules = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-  { id: "companies", label: "Private Companies", icon: Building2, path: "/companies" },
-  { id: "public-markets", label: "Public Markets", icon: TrendingUp, path: "/public-markets" },
-  { id: "discover", label: "Discover", icon: Search, path: "/discover" },
-  { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
-  { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
-  { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
-  { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
-  { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
-  { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
-  { id: "sector-momentum", label: "Sector Momentum", icon: Activity, path: "/sector-momentum" },
-  { id: "competitive-intel", label: "Competitive Intel", icon: Crosshair, path: "/competitive-intel" },
-  { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
-];
+interface NavGroup {
+  label: string;
+  items: { id: string; label: string; icon: typeof LayoutDashboard; path: string }[];
+}
 
-const insightModules = [
-  { id: "research", label: "Research & AI", icon: Search, path: "/research" },
-  { id: "documents", label: "Document Analyzer", icon: FileSearch, path: "/documents" },
-  { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
-  { id: "watchlists", label: "Watchlists", icon: Star, path: "/watchlists" },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Command Center",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+    ],
+  },
+  {
+    label: "Markets",
+    items: [
+      { id: "companies", label: "Private Markets", icon: Building2, path: "/companies" },
+      { id: "public-markets", label: "Public Markets", icon: TrendingUp, path: "/public-markets" },
+      { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
+    ],
+  },
+  {
+    label: "Deal Engine",
+    items: [
+      { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
+      { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
+      { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
+    ],
+  },
+  {
+    label: "Intelligence",
+    items: [
+      { id: "research", label: "Research & AI", icon: Search, path: "/research" },
+      { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
+      { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
+    ],
+  },
+  {
+    label: "Alternatives",
+    items: [
+      { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
+      { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
+      { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
+    ],
+  },
 ];
 
 const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
@@ -75,51 +93,59 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
   const isAdminOrPartner = userRole === "admin" || userRole === "partner";
 
-  const linkClass = (path: string) => {
-    const isActive = path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
-    return `w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
-      isActive
-        ? "bg-accent text-accent-foreground font-medium"
-        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-    }`;
-  };
+  const isActive = (path: string) =>
+    path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
 
-  const bottomModules = [
+  const bottomItems = [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
+    { id: "watchlists", label: "Watchlists", icon: Star, path: "/watchlists" },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
-    ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin", badge: 0 }] : []),
+    ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
   ];
 
-  const SectionLabel = ({ children }: { children: string }) => (
-    collapsed ? null : (
-      <p className="px-3 pt-4 pb-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">{children}</p>
-    )
-  );
+  const renderLink = (item: { id: string; label: string; icon: typeof LayoutDashboard; path: string; badge?: number }) => {
+    const active = isActive(item.path);
+    const link = (
+      <NavLink
+        key={item.id}
+        to={item.path}
+        end={item.path === "/dashboard"}
+        className={`group relative w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-200 ${
+          active
+            ? "bg-primary/8 text-primary font-medium"
+            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:translate-x-[1px]"
+        }`}
+        onClick={onNavigate}
+      >
+        {active && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-primary shadow-[0_0_8px_hsl(var(--primary)/0.6)]" />
+        )}
+        <item.icon className={`h-4 w-4 shrink-0 transition-colors ${active ? "text-primary" : ""}`} />
+        {!collapsed && <span className="truncate">{item.label}</span>}
+        {"badge" in item && (item.badge ?? 0) > 0 && (
+          <span className="absolute right-2 top-1/2 -translate-y-1/2 h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-mono font-medium flex items-center justify-center px-1">
+            {item.badge}
+          </span>
+        )}
+      </NavLink>
+    );
 
-  const renderLinks = (modules: typeof mainModules) =>
-    modules.map((m) => {
-      const link = (
-        <NavLink key={m.id} to={m.path} end={m.path === "/dashboard"} className={linkClass(m.path)} onClick={onNavigate}>
-          <m.icon className="h-4 w-4 shrink-0" />
-          {!collapsed && <span className="truncate">{m.label}</span>}
-        </NavLink>
+    if (collapsed) {
+      return (
+        <Tooltip key={item.id} delayDuration={0}>
+          <TooltipTrigger asChild>{link}</TooltipTrigger>
+          <TooltipContent side="right" className="text-xs">{item.label}</TooltipContent>
+        </Tooltip>
       );
-      if (collapsed) {
-        return (
-          <Tooltip key={m.id} delayDuration={0}>
-            <TooltipTrigger asChild>{link}</TooltipTrigger>
-            <TooltipContent side="right" className="text-xs">{m.label}</TooltipContent>
-          </Tooltip>
-        );
-      }
-      return link;
-    });
+    }
+    return link;
+  };
 
   return (
     <aside className={`${collapsed ? "w-14" : "w-56"} shrink-0 border-r border-border bg-sidebar flex flex-col h-screen sticky top-0 transition-all duration-200`}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border">
-        <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shrink-0">
+        <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shrink-0 shadow-[0_0_12px_hsl(var(--primary)/0.3)]">
           <span className="text-xs font-bold text-primary-foreground">GV</span>
         </div>
         {!collapsed && (
@@ -128,26 +154,36 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 px-2 py-1 overflow-y-auto space-y-0.5">
-        <SectionLabel>Platform</SectionLabel>
-        {renderLinks(mainModules)}
-        <SectionLabel>Insights</SectionLabel>
-        {renderLinks(insightModules)}
+      <nav className="flex-1 px-2 py-2 overflow-y-auto space-y-1">
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={group.label}>
+            {/* Glow separator between groups */}
+            {gi > 0 && (
+              <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+            )}
+            {!collapsed && (
+              <div className="flex items-center gap-2 px-3 pt-2 pb-1">
+                <span className="h-1 w-1 rounded-full bg-primary/50" />
+                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
+                  {group.label}
+                </p>
+              </div>
+            )}
+            {collapsed && gi > 0 && (
+              <div className="flex justify-center py-1">
+                <span className="h-1 w-1 rounded-full bg-primary/40" />
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item) => renderLink(item))}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Bottom nav */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
-        {bottomModules.map((m) => (
-          <NavLink key={m.id} to={m.path} className={`${linkClass(m.path)} relative`} onClick={onNavigate}>
-            <m.icon className="h-4 w-4 shrink-0" />
-            {!collapsed && <span className="truncate">{m.label}</span>}
-            {"badge" in m && m.badge > 0 && (
-              <span className="absolute right-2 top-1/2 -translate-y-1/2 h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-mono font-medium flex items-center justify-center px-1">
-                {m.badge}
-              </span>
-            )}
-          </NavLink>
-        ))}
+        {bottomItems.map((item) => renderLink(item as any))}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
