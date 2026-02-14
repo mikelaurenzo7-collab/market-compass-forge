@@ -507,6 +507,7 @@ const CompanyDetail = () => {
               revenue={latestFinancial?.revenue}
               ebitda={latestFinancial?.ebitda}
               companyName={company.name}
+              companyId={id}
             />
             {/* Activity */}
             <div className="rounded-lg border border-border bg-card">
