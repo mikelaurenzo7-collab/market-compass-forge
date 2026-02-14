@@ -1,38 +1,28 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowRight, CheckCircle, Mail, Sparkles, Zap, Database, Search, Globe, Shield, BarChart3, TrendingUp, Code, FileText, Building2, AlertTriangle } from "lucide-react";
+import { CheckCircle, Mail, Sparkles, ArrowRight } from "lucide-react";
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
+  hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.12, duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { delay: i * 0.15, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
   }),
 };
 
-const STATS = [
-  { value: "7,800+", label: "Companies" },
-  { value: "350+", label: "Distressed Assets" },
-  { value: "260+", label: "Off-Market Listings" },
-  { value: "65+", label: "Funds Tracked" },
-];
-
-const FEATURES = [
-  { icon: Search, title: "AI-Powered Screening", desc: "Multi-factor company screening with composite scores, saved views, and bulk pipeline adds." },
-  { icon: Zap, title: "Alpha Signals", desc: "AI-generated sector signals with confidence scores, directional calls, and macro context." },
-  { icon: BarChart3, title: "Valuation Engine", desc: "DCF, comps, precedent transactions, and football field charts — all in one click." },
-  { icon: Globe, title: "Global Deal Flow", desc: "Cross-border PE/VC, infrastructure, and sovereign fund opportunities across 40+ countries." },
-  { icon: AlertTriangle, title: "Distressed & Off-Market", desc: "350+ distressed assets and 260+ private CRE listings no other platform tracks." },
-  { icon: FileText, title: "AI Document Analysis", desc: "Drop in a CIM or 10-K and get extracted metrics, risk factors, and valuation indicators." },
-  { icon: Building2, title: "Fund Intelligence", desc: "PE/VC fund benchmarking with IRR, TVPI, DPI, and quartile rankings." },
-  { icon: Code, title: "REST API", desc: "14 endpoints, 10K calls/day. Pull data into your models, scripts, and spreadsheets." },
-];
+const pulseGlow = {
+  initial: { scale: 1, opacity: 0.6 },
+  animate: {
+    scale: [1, 1.15, 1],
+    opacity: [0.6, 1, 0.6],
+    transition: { duration: 3, repeat: Infinity, ease: "easeInOut" as const },
+  },
+};
 
 const INTERESTS = [
   "Fund Intelligence",
@@ -69,267 +59,166 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden flex flex-col">
-      {/* Ambient glow */}
+    <div className="min-h-screen bg-background text-foreground overflow-hidden flex flex-col items-center justify-center relative">
+      {/* Layered ambient background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,hsl(var(--primary)/0.15),transparent)]" />
-        <div className="absolute bottom-0 left-0 right-0 h-1/3 bg-[radial-gradient(ellipse_60%_40%_at_50%_100%,hsl(var(--primary)/0.08),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,hsl(var(--primary)/0.12),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_80%,hsl(var(--primary)/0.06),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_20%_70%,hsl(var(--primary)/0.04),transparent)]" />
+        {/* Grain texture */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
       </div>
 
+      {/* Floating orb behind logo */}
+      <motion.div
+        variants={pulseGlow}
+        initial="initial"
+        animate="animate"
+        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-primary/8 blur-[120px] pointer-events-none"
+      />
+
       {/* Nav */}
-      <nav className="relative z-20 flex items-center justify-between px-6 md:px-12 py-5 max-w-6xl mx-auto w-full">
-        <div className="flex items-center gap-3">
+      <nav className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-6 md:px-12 py-5 max-w-6xl mx-auto w-full">
+        <div className="flex items-center gap-3 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.3s]">
           <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
             <span className="text-sm font-bold text-primary-foreground">GV</span>
           </div>
           <span className="text-lg font-semibold tracking-tight">Grapevine</span>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/auth")}
-            className="text-muted-foreground hover:text-foreground gap-1.5"
-          >
-            Sign In <ArrowRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <button
+          onClick={() => navigate("/auth")}
+          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.5s]"
+        >
+          Beta Login <ArrowRight className="h-3 w-3" />
+        </button>
       </nav>
 
       {/* Hero */}
-      <section className="relative z-10 flex flex-col items-center max-w-3xl mx-auto px-6 py-16 md:py-24 text-center">
-        <motion.div initial="hidden" animate="visible" className="space-y-6 w-full">
-          <motion.div custom={0} variants={fadeUp}>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border border-primary/30 text-primary bg-primary/5">
-              <Sparkles className="h-3 w-3" />
-              Now in Early Access
-            </span>
-          </motion.div>
-
-          <motion.h1 custom={1} variants={fadeUp} className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.1]">
-            The unfair advantage
-            <br />
-            <span className="text-primary">for private markets.</span>
-          </motion.h1>
-
-          <motion.p custom={2} variants={fadeUp} className="text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            Everything PitchBook does — at 1/10th the price — plus AI that does the work for you.
-            Built for emerging managers who move first.
-          </motion.p>
-
-          {/* Stats strip */}
-          <motion.div custom={3} variants={fadeUp} className="grid grid-cols-2 md:grid-cols-4 gap-px rounded-xl border border-border overflow-hidden bg-border max-w-2xl mx-auto">
-            {STATS.map((s) => (
-              <div key={s.label} className="bg-card px-4 py-3 text-center">
-                <p className="text-xl font-bold font-mono text-primary">{s.value}</p>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
-              </div>
-            ))}
-          </motion.div>
-
-          {/* CTA buttons */}
-          <motion.div custom={4} variants={fadeUp} className="flex gap-3 justify-center">
-            <Button onClick={() => navigate("/auth")} size="lg" className="gap-2 shadow-lg shadow-primary/20">
-              <Zap className="h-4 w-4" /> Start Free Trial
-            </Button>
-            <Button onClick={() => document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" })} variant="outline" size="lg" className="gap-2">
-              View Pricing <ArrowRight className="h-4 w-4" />
-            </Button>
-          </motion.div>
-        </motion.div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="relative z-10 max-w-6xl mx-auto px-6 py-16">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="space-y-10">
-          <motion.div custom={0} variants={fadeUp} className="text-center">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">Everything you need to source, analyze, and close deals</h2>
-            <p className="text-muted-foreground mt-2 max-w-lg mx-auto">One platform replaces your Bloomberg terminal, PitchBook subscription, and half your analyst team.</p>
-          </motion.div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {FEATURES.map((f, i) => (
-              <motion.div
-                key={f.title}
-                custom={i + 1}
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="rounded-xl border border-border bg-card p-5 space-y-3 hover:border-primary/30 transition-colors"
-              >
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <f.icon className="h-4.5 w-4.5 text-primary" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
-              </motion.div>
-            ))}
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        className="relative z-10 flex flex-col items-center px-6 max-w-2xl text-center space-y-8"
+      >
+        {/* Logo mark - big and bold */}
+        <motion.div custom={0} variants={fadeUp}>
+          <div className="relative">
+            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/30 mx-auto">
+              <span className="text-4xl sm:text-5xl font-black text-primary-foreground tracking-tight">GV</span>
+            </div>
+            {/* Reflection */}
+            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-primary/20 blur-xl absolute top-4 left-1/2 -translate-x-1/2 -z-10" />
           </div>
         </motion.div>
-      </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="relative z-10 max-w-4xl mx-auto px-6 py-16">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }} className="space-y-8">
-          <motion.div custom={0} variants={fadeUp} className="text-center">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">Simple, transparent pricing</h2>
-            <p className="text-muted-foreground mt-2">No per-seat fees. No data add-ons. Everything included.</p>
-          </motion.div>
+        {/* Brand name */}
+        <motion.h1
+          custom={1}
+          variants={fadeUp}
+          className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-none"
+        >
+          Grapevine
+        </motion.h1>
 
-          <motion.div custom={1} variants={fadeUp} className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {/* Professional */}
-            <div className="rounded-xl border-2 border-primary bg-card p-6 space-y-4 relative">
-              <div className="absolute -top-3 left-6">
-                <span className="px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-primary text-primary-foreground">Most Popular</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-foreground">Professional</h3>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-bold text-primary">$599</span>
-                  <span className="text-sm text-muted-foreground">/mo</span>
-                </div>
-              </div>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                {[
-                  "7,800+ company profiles",
-                  "200 AI queries / day",
-                  "100 memo generations / day",
-                  "100 company enrichments / day",
-                  "REST API (10K calls/day)",
-                  "AI deal matcher & screening",
-                  "Distressed asset access",
-                  "Off-market CRE listings",
-                  "Fund benchmarking",
-                  "Document analysis",
-                  "Email briefings & alerts",
-                  "Unlimited team members",
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <CheckCircle className="h-3.5 w-3.5 text-primary shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Button onClick={() => navigate("/auth")} className="w-full gap-2 shadow-lg shadow-primary/20">
-                <Zap className="h-4 w-4" /> Get Started
-              </Button>
-            </div>
+        {/* Tagline */}
+        <motion.p
+          custom={2}
+          variants={fadeUp}
+          className="text-lg sm:text-xl text-muted-foreground max-w-md leading-relaxed"
+        >
+          The unfair advantage for private markets.
+          <br />
+          <span className="text-foreground font-medium">AI-powered intelligence</span> for investors who move first.
+        </motion.p>
 
-            {/* Enterprise */}
-            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
-              <div>
-                <h3 className="text-lg font-bold text-foreground">Enterprise</h3>
-                <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-3xl font-bold text-foreground">Custom</span>
-                </div>
-              </div>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                {[
-                  "Everything in Professional",
-                  "Unlimited AI queries",
-                  "1M+ API calls / day",
-                  "Custom data integrations",
-                  "SSO & SOC 2 compliance",
-                  "Dedicated account manager",
-                  "Custom deployment options",
-                  "Priority support SLA",
-                ].map((f) => (
-                  <li key={f} className="flex items-center gap-2">
-                    <CheckCircle className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Button variant="outline" className="w-full gap-2" asChild>
-                <a href="mailto:sales@grapevine.io?subject=Enterprise%20Inquiry">
-                  <Mail className="h-4 w-4" /> Contact Sales
-                </a>
-              </Button>
-            </div>
-          </motion.div>
-
-          <motion.p custom={2} variants={fadeUp} className="text-center text-xs text-muted-foreground">
-            PitchBook charges $25,000+/yr per seat. Bloomberg Terminal is $24,000/yr. Grapevine gives you both — plus AI — for $599/mo.
-          </motion.p>
+        {/* Coming soon badge */}
+        <motion.div custom={3} variants={fadeUp}>
+          <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-primary/30 text-primary bg-primary/5 backdrop-blur-sm shadow-lg shadow-primary/10">
+            <Sparkles className="h-4 w-4" />
+            Coming Soon
+          </span>
         </motion.div>
-      </section>
 
-      {/* Waitlist form */}
-      <section className="relative z-10 max-w-md mx-auto px-6 py-16">
-        <motion.div initial="hidden" whileInView="visible" viewport={{ once: true }}>
-          <motion.div custom={0} variants={fadeUp}>
-            {submitted ? (
-              <div className="rounded-xl border border-primary/20 bg-card p-8 text-center space-y-3">
-                <CheckCircle className="h-10 w-10 text-primary mx-auto" />
-                <p className="text-sm font-semibold text-foreground">You're on the list!</p>
-                <p className="text-xs text-muted-foreground">
-                  We'll reach out to {form.email} when early access opens.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card p-6 space-y-3 text-left">
-                <p className="text-sm font-semibold text-foreground text-center mb-1">Join the Waitlist</p>
-                <Input
-                  placeholder="Your name *"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                  className="bg-background"
-                />
-                <Input
-                  type="email"
-                  placeholder="you@firm.com *"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  className="bg-background"
-                />
-                <Input
-                  placeholder="Firm (optional)"
-                  value={form.firm}
-                  onChange={(e) => setForm({ ...form, firm: e.target.value })}
-                  className="bg-background"
-                />
-                <Select value={form.interest} onValueChange={(v) => setForm({ ...form, interest: v })}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="Primary interest (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INTERESTS.map((i) => (
-                      <SelectItem key={i} value={i}>{i}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  type="submit"
-                  className="w-full gap-2 shadow-lg shadow-primary/20"
-                  disabled={loading || !form.name || !form.email}
-                >
-                  <Mail className="h-4 w-4" />
-                  {loading ? "Joining..." : "Request Early Access"}
-                </Button>
-              </form>
-            )}
-          </motion.div>
+        {/* Waitlist form */}
+        <motion.div custom={4} variants={fadeUp} className="w-full max-w-sm">
+          {submitted ? (
+            <div className="rounded-2xl border border-primary/20 bg-card/80 backdrop-blur-sm p-8 text-center space-y-3 shadow-xl">
+              <CheckCircle className="h-10 w-10 text-primary mx-auto" />
+              <p className="text-sm font-semibold text-foreground">You're on the list!</p>
+              <p className="text-xs text-muted-foreground">
+                We'll reach out to <span className="text-foreground">{form.email}</span> when your invite is ready.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-6 space-y-3 text-left shadow-xl">
+              <p className="text-sm font-semibold text-foreground text-center mb-2">Request Early Access</p>
+              <Input
+                placeholder="Your name *"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+                className="bg-background/60 border-border/60"
+              />
+              <Input
+                type="email"
+                placeholder="you@firm.com *"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                required
+                className="bg-background/60 border-border/60"
+              />
+              <Input
+                placeholder="Firm (optional)"
+                value={form.firm}
+                onChange={(e) => setForm({ ...form, firm: e.target.value })}
+                className="bg-background/60 border-border/60"
+              />
+              <Select value={form.interest} onValueChange={(v) => setForm({ ...form, interest: v })}>
+                <SelectTrigger className="bg-background/60 border-border/60">
+                  <SelectValue placeholder="Primary interest (optional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INTERESTS.map((i) => (
+                    <SelectItem key={i} value={i}>{i}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                type="submit"
+                className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30"
+                disabled={loading || !form.name || !form.email}
+              >
+                <Mail className="h-4 w-4" />
+                {loading ? "Joining..." : "Join the Waitlist"}
+              </button>
+            </form>
+          )}
         </motion.div>
-      </section>
+
+        {/* Stats teaser */}
+        <motion.p custom={5} variants={fadeUp} className="text-xs text-muted-foreground/60 max-w-sm leading-relaxed">
+          7,800+ companies · 350+ distressed assets · AI-powered screening & deal matching · REST API
+        </motion.p>
+      </motion.div>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border px-6 py-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="h-5 w-5 rounded bg-primary flex items-center justify-center">
-              <span className="text-[8px] font-bold text-primary-foreground">GV</span>
-            </div>
-            <span>© {new Date().getFullYear()} Grapevine. All rights reserved.</span>
-          </div>
+      <footer className="fixed bottom-0 left-0 right-0 z-10 px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between text-[10px] text-muted-foreground/40">
+          <span>© {new Date().getFullYear()} Grapevine</span>
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/terms")} className="hover:text-foreground transition-colors">Terms</button>
-            <button onClick={() => navigate("/privacy")} className="hover:text-foreground transition-colors">Privacy</button>
-            <button onClick={() => navigate("/auth")} className="hover:text-foreground transition-colors">Sign In</button>
+            <button onClick={() => navigate("/terms")} className="hover:text-muted-foreground transition-colors">Terms</button>
+            <button onClick={() => navigate("/privacy")} className="hover:text-muted-foreground transition-colors">Privacy</button>
+            <button onClick={() => navigate("/auth")} className="hover:text-muted-foreground transition-colors">Beta Login</button>
           </div>
         </div>
       </footer>
+
+      {/* CSS animation keyframe for fadeIn */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
