@@ -1,219 +1,98 @@
 
-# Grapevine: Investor-Ready & User-Ready Roadmap
 
-## Current State Assessment
+# What's Next for Grapevine: Product Evaluation and Roadmap
 
-### **What's Working**
-- **Data Infrastructure**: 7,844 companies, 1,032 financials seeded, 734 funding rounds, 12 active demo deals
-- **AI Moats**: Morning Briefing, Deal Matcher, Alpha Signals, Investment Memo generation
-- **Platform Architecture**: 5-group navigation, lazy-loaded dashboard, realtime updates, REST API
-- **Auth & Security**: User authentication, RLS policies, JWT edge function protection
-- **Monetization Baseline**: $599/month Professional tier, usage limits, API access tier
+## What's Already Shipped
 
-### **Critical Gaps (Blocking Investor & User Confidence)**
+| Area | Status |
+|------|--------|
+| 5-step onboarding flow | Done |
+| Cinematic sparklines + ticker tape | Done |
+| AI Copilot (floating assistant) | Done |
+| Compare mode (Cmd+Shift+C) | Done |
+| Live sector multiples + dynamic DCF | Done |
+| Portfolio analytics (CAPM-based WACC) | Done |
+| Investor Metrics page (/metrics) | Done |
+| Usage meters on dashboard | Done |
+| Ambient grid + glassmorphism + tilt cards | Done |
+| Landing page with waitlist | Done |
 
-**1. Onboarding Leaks**
-- Onboarding references `/watchlists` (renamed to `/screening` — broken link)
-- 3-step flow is too minimal; doesn't showcase AI capabilities (briefing generation, memo creation)
-- No "aha moment" — users land in empty dashboard with no context
+## What's Missing (Prioritized)
 
-**2. Missing Investor Metrics**
-- No usage analytics dashboard (feature exists but it's in `/analytics`, not discoverable)
-- No ARR tracking or revenue projection metrics
-- No user retention/engagement metrics visible to founders
-- Landing page claims "Now in Early Access" but no conversion/cohort data
+### Tier 1: Activation and Retention (High Impact, Low Effort)
 
-**3. Data Quality Visibility**
-- "Data Coverage" indicator missing on Companies page (only 1,032/7,844 have financials = 13%)
-- No transparency on financial data confidence scores
-- Users can't distinguish high-confidence from low-confidence metrics
+**1. Auto-Generate Morning Briefing on First Login**
+Currently the briefing requires a manual button click. After onboarding completes, automatically trigger the `morning-briefing` edge function so users see an "aha moment" immediately.
+- Files: `OnboardingFlow.tsx`, `Index.tsx`
 
-**4. User Activation Bottlenecks**
-- Empty state messaging is generic ("No deals yet") — should guide to screening/matching
-- No "quick start" templates (e.g., "5 AI/ML companies to track", "Current distressed assets")
-- Briefing generation is a manual button click — should auto-generate on first login
-- No email preview/send test flow (exists but hidden in Settings > Briefing)
+**2. Empty State Redesign**
+Replace generic "No deals yet" messages with contextual CTAs that guide users to Screening, Deal Matcher, or Companies. Each empty state should link to the most relevant next action.
+- Files: `EmptyState.tsx`, `Deals.tsx`, `Portfolio.tsx`
 
-**5. Feature Discoverability**
-- API Docs page exists but no in-app discovery (no "API" CTA on dashboard)
-- Valuation Football Field component exists but only accessible via CompanyDetail
-- No "Pro Tips" or feature discovery tooltips
-- No "What's New" or changelog visible to users
+**3. Quick-Start Templates on Companies Page**
+Add pre-built filter presets like "Top AI/ML Companies", "Series B+ Growth", "Distressed Opportunities" that instantly populate the table so first-time users never see an empty screen.
+- Files: `Companies.tsx`, `Screening.tsx`
 
-**6. Mobile Experience**
-- Dashboard is desktop-first; no responsive optimization for mobile usage
-- Deal kanban isn't mobile-optimized
-- Nav sidebar transitions are abrupt on mobile
+### Tier 2: Monetization and Conversion (High Impact, Medium Effort)
 
-**7. Free-to-Paid Conversion**
-- No trial/free tier defined (everything requires login)
-- No usage meter feedback (users hit limits silently)
-- Pricing page exists but no clear value props tied to use cases
-- No "Upgrade Required" CTAs when hitting limits
+**4. Free Tier Definition and Upgrade Prompts**
+Define explicit free-tier limits (5 screens, 10 AI queries/month, 5 memos/month) and show an `UpgradePrompt` component when users approach or exceed limits. Color-code usage meters (green/yellow/red) at 75%/90%/100%.
+- Files: `UsageMeters.tsx`, `UpgradePrompt.tsx`, new usage enforcement hook
 
----
+**5. "What's New" Changelog Modal**
+Show a modal on login when new features have shipped. Archive past entries. Drives feature discovery and re-engagement.
+- Files: new `WhatsNewModal.tsx` (already exists but may need wiring), `AppLayout.tsx`
 
-## Phase 2: Investor-Ready & User-Ready Implementation
+### Tier 3: Investor Confidence and Polish (Medium Impact)
 
-### **Part A: User Activation & Onboarding (Days 1-3 of product experience)**
+**6. Data Coverage Transparency**
+Add a "Data Coverage: X% with financials" badge to the Companies page header. Allow filtering to "companies with financials only." Show per-sector coverage breakdown.
+- Files: `Companies.tsx`, `CompanyTable.tsx`
 
-1. **Enhanced Onboarding Flow**
-   - Expand from 3 to 5 steps:
-     - Step 1: "Screen your first deal" (browse companies, save 1)
-     - Step 2: "Create a watchlist" (group 5+ companies)
-     - **NEW Step 3: "Generate your briefing"** (auto-generate morning briefing, preview format)
-     - **NEW Step 4: "Write an investment memo"** (generate memo for 1 saved company)
-     - Step 5: "Set up alerts" (choose sectors/stages)
-   - Fix broken `/watchlists` → `/screening` link in onboarding
-   - Add skip button, track completion %
-   - Show "Congratulations" screen with next steps (settings, API key, etc.)
+**7. Landing Page Social Proof**
+Add real platform stats to the landing page (7,800+ companies, 350+ distressed assets, etc.) and a "Trusted by emerging fund managers" section. Show data source logos (SEC EDGAR, FRED).
+- Files: `Landing.tsx`
 
-2. **Quick-Start Templates**
-   - Pre-canned watchlists on Companies page: "Top 10 AI Picks", "Series B+ Growth", "Distressed Opportunities"
-   - Auto-add these to user profile on first visit (optional toggle)
-   - Load 10-20 companies instantly so dashboard isn't empty
+**8. Mobile Responsiveness Pass**
+The dashboard, deal kanban, and company table need responsive breakpoint adjustments. Target 1-column on mobile, 2-column on tablet.
+- Files: `Index.tsx`, `Deals.tsx`, `CompanyTable.tsx`, `AppLayout.tsx`
 
-3. **Auto-Generated Morning Briefing**
-   - Trigger generation on first login after onboarding (not manual button)
-   - Collapse/expand by default, show summary
-   - Add "Send Test" CTA linked to email digest preferences
-   - Store briefing timestamp for "as of" indicator
+### Tier 4: Power User Delight
 
-4. **Empty State Redesign**
-   - Replace "No deals yet" with actionable CTAs
-   - Pipeline empty state: "Browse 7,800+ companies or import your target list"
-   - Watchlist empty state: "Use AI screening to build your first watchlist"
-   - Link to relevant pages (Companies, Screening, Deal Matcher)
+**9. Email Briefing Preview and Send Test**
+Surface the briefing email preview flow more prominently. Add a "Send Test Email" CTA from the dashboard briefing widget, not just buried in Settings.
+- Files: `MorningBriefing.tsx`, `BriefingSettings.tsx`
 
-### **Part B: Investor Metrics & Credibility (Founder Dashboard)**
+**10. Keyboard Shortcut Discovery**
+Add a `?` shortcut that opens a keyboard shortcut cheat sheet overlay, showing all available hotkeys (Cmd+K, Cmd+Shift+C, Cmd+J, etc.).
+- Files: new `KeyboardShortcuts.tsx` (already exists), `AppLayout.tsx`
 
-5. **Add Usage Analytics Tab to Settings**
-   - Move existing `/analytics` insights into Settings > Usage
-   - Display: monthly active users, API calls, memo generations, pipeline deals
-   - Show trends (week-over-week growth, engagement heatmap)
-   - Export as CSV for investor updates
+## Recommended Implementation Order
 
-6. **Data Coverage Transparency**
-   - Add badge on Companies page: "Data Coverage: 13% with financials"
-   - Show breakdown by sector (AI/ML: 85% coverage, Services: 2% coverage)
-   - Allow filtering to "Companies with financials only"
-   - Confidence score indicator (high/medium/low) on each company card
+```text
+Phase 1 (Quick Wins)
+  [1] Auto-generate briefing on first login
+  [2] Empty state redesign with contextual CTAs
+  [3] Quick-start templates on Companies page
 
-7. **Investor Dashboard (New `/metrics` route)**
-   - Key metrics: ARR, user cohorts, retention rate, API usage
-   - User growth chart (MoM %)
-   - Feature adoption: % users generating briefings, memos, alerts
-   - Data freshness indicator (last update to intelligence signals, public company data, distressed assets)
-   - "Ready for demo" banner with key talking points
+Phase 2 (Monetization)
+  [4] Free tier limits + upgrade prompts
+  [5] What's New modal
 
-### **Part C: Feature Discoverability & Value Communication**
+Phase 3 (Polish)
+  [6] Data coverage badge
+  [7] Landing page social proof
+  [8] Mobile responsiveness
 
-8. **In-App Feature Tooltips**
-   - Onboarding overlay: "Tip: Try the AI Deal Matcher to find 10 similar companies"
-   - Dashboard card: "Pro tip: Customize your briefing in Settings"
-   - Companies table: "Keyboard shortcut: ⌘J to jump to company detail"
-   - One-time tooltip on first visit to each major feature
+Phase 4 (Delight)
+  [9] Email briefing preview
+  [10] Keyboard shortcut overlay
+```
 
-9. **"What's New" Modal**
-   - Show on login if new features added (e.g., "REST API now live!")
-   - Link to `/developers` for API documentation
-   - Archive view in Help/Support
+## Technical Notes
 
-10. **Mobile Responsiveness**
-    - Responsive grid for dashboard (1 col mobile, 2 col tablet, 3 col desktop)
-    - Mobile-optimized deal kanban with swipe navigation
-    - Sidebar drawer transitions polished (already partially done)
-    - Test on iPhone 14 / iPad
-
-### **Part D: Free-to-Paid Conversion Funnel**
-
-11. **Usage Meter Visibility & Warnings**
-    - Show active usage meters on dashboard (AI Research: 5/200, Memo Gen: 12/100)
-    - Color-coded warnings at 75%, 90%, 100% usage
-    - "Upgrade to Professional" CTA when approaching limit
-    - Grace period: notify 7 days before reset
-
-12. **Free Tier Offer**
-    - Define free tier: 5 saved screens, 10 AI research calls/month, 5 memos/month, 1 watchlist
-    - Professional tier: Unlimited + API access + early data + email briefings ($599/mo)
-    - Add "Free" badge to Settings > Plan
-    - Show feature comparison on Plans page
-
-13. **Conversion CTA Placement**
-    - Upgrade prompt when trying to exceed free limits
-    - "API Access (Pro)" badge on `/developers` page
-    - "Try Premium" button in Intelligence Feed (competitive signals)
-    - Email briefing setup → "Professional feature, upgrade to enable"
-
-### **Part E: Metrics for Investor Confidence**
-
-14. **Showcase Real Data**
-    - Landing page: Show real stats (7,800 companies, 350 distressed assets, 98% uptime)
-    - Dashboard: "Last updated 2 hours ago" → real freshness
-    - Public Companies page: Show import progress (e.g., "3,200 / 7,000 companies updated today")
-    - API docs: Show call stats (e.g., "API processed 50,000 calls today")
-
-15. **Institutional Credibility**
-    - Add "Trusted by emerging fund managers" testimonial section on landing
-    - Show data sources prominently (SEC EDGAR, Firecrawl, FRED)
-    - Add compliance/disclaimer footer ("All analysis for informational purposes only")
-    - SOC 2 / GDPR badge (when applicable)
-
----
-
-## Technical Implementation Map
-
-| Feature | Files | Complexity | Why |
-|---------|-------|------------|-----|
-| Fix onboarding links & expand flow | `OnboardingFlow.tsx`, `useAuth.tsx` | Low | Route mismatch, immediate wins |
-| Auto-generate briefing on first login | `useAuth.tsx`, `MorningBriefing.tsx` | Medium | Aha moment, user activation |
-| Quick-start templates | `Companies.tsx`, `Screening.tsx`, new hook | Low | Data already exists, UX only |
-| Data Coverage indicator | `Companies.tsx` | Low | SQL query + badge component |
-| Usage Analytics tab | `Settings.tsx`, new `useAnalyticsData` | Medium | Aggregate existing queries |
-| Investor Metrics page | New `/metrics` page, new queries | High | Custom dashboard, auth checks |
-| Mobile responsiveness | `AppLayout.tsx`, dashboard components | Medium | Breakpoint tweaks + layout |
-| Free tier enforcement | `UsageMeters.tsx`, `UpgradePrompt.tsx` | Medium | Existing components, wire together |
-| Feature tooltips | New `useOnboardingTips` hook, components | Low | Library-based (Popover) |
-| Data freshness display | `Index.tsx` dashboard, queries | Low | Timestamp logic |
-
----
-
-## Expected Investor Impact
-
-After implementation:
-- **"Day 1 Aha"**: User opens app → sees populated dashboard with template companies → generates first briefing in 2 min
-- **"Week 1 Activation"**: User creates own watchlist, generates memo, saves screening
-- **"Month 1 Retention"**: Auto-generated briefings + alerts drive daily engagement
-- **"Investor Confidence"**: Metrics dashboard shows growth, data freshness, user actions
-
----
-
-## Sequence (Prioritized)
-
-**Tier 1 (Days 1-2): Quick Wins — $100K+ impact**
-1. Fix onboarding route links
-2. Auto-generate briefing on first login
-3. Quick-start templates (Companies page)
-4. Data Coverage badge (Companies page)
-
-**Tier 2 (Days 3-4): Investor Metrics**
-5. Usage Analytics tab (Settings)
-6. Investor Metrics dashboard (`/metrics`)
-7. Mobile responsiveness polish
-
-**Tier 3 (Days 5-6): Monetization & Discoverability**
-8. Free tier limits + enforcement
-9. Feature tooltips (optional, delight feature)
-10. "What's New" modal
-11. Email briefing preview/send test
-
----
-
-## Why This Matters
-
-**For Users**: First-time activation jumps from "browse empty dashboard" to "briefing generated" in <5 min. Retention improves because briefings + alerts create habit loops.
-
-**For Investors**: Metrics dashboard shows traction (DAU, feature adoption, API usage). Data coverage transparency builds trust. Free tier creates funnel for conversion.
-
-**For Founders**: Onboarding → activation → retention → monetization loop is now instrumented and visible.
+- Items 1-3 are primarily UI/UX changes with no database migrations needed
+- Item 4 requires wiring the existing `UpgradePrompt` and `UsageMeters` components together with threshold logic
+- The `/metrics` route exists but is commented out of public routes in `App.tsx` (line 87) -- it's accessible via sidebar navigation but not formally routed. This should be re-enabled or kept as an internal tool
+- The `WhatsNewModal.tsx` component already exists in the codebase and just needs to be integrated into `AppLayout.tsx` with a version-check trigger
 
