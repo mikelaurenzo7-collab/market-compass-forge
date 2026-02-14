@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAlphaSignals } from "@/hooks/useAlphaSignals";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
+import { motion } from "framer-motion";
+import { BarChart3, Crosshair } from "lucide-react";
 
 interface ValuationRange {
   method: string;
@@ -36,7 +38,7 @@ const computeCompanyRanges = (data: FootballFieldCompanyData): ValuationRange[] 
   const rev = data.revenue ?? 0;
   const ebitda = data.ebitda ?? 0;
   const sm = data.sectorMultiples;
-  const growth = data.growthRate ?? 0.15; // default 15% if unknown
+  const growth = data.growthRate ?? 0.15;
   const margin = data.grossMargin ?? 0.5;
 
   if (rev <= 0 || !sm) return defaultRanges;
@@ -44,19 +46,16 @@ const computeCompanyRanges = (data: FootballFieldCompanyData): ValuationRange[] 
   const revM = rev / 1e6;
   const ebitdaM = ebitda > 0 ? ebitda / 1e6 : revM * Math.max(0.05, margin - 0.35);
 
-  // ── DCF: 5-year projection with WACC-derived discount ──
-  // WACC estimate: risk-free (4.5%) + equity risk premium adjusted by stage
   const stageRiskPremium = data.stage?.toLowerCase().includes("series a") ? 0.12
     : data.stage?.toLowerCase().includes("series b") ? 0.09
     : data.stage?.toLowerCase().includes("growth") ? 0.06
     : data.stage?.toLowerCase().includes("public") ? 0.03 : 0.07;
-  const wacc = 0.045 + stageRiskPremium; // 7.5% - 16.5%
-  const terminalMultiple = Math.max(4, Math.min(15, 8 + growth * 10)); // 4-15x based on growth
+  const wacc = 0.045 + stageRiskPremium;
+  const terminalMultiple = Math.max(4, Math.min(15, 8 + growth * 10));
 
-  // Project 5 years of FCF from EBITDA proxy
   const projectedFCFs = Array.from({ length: 5 }, (_, yr) => {
     const projectedEbitda = ebitdaM * Math.pow(1 + growth, yr + 1);
-    const fcf = projectedEbitda * 0.75; // ~25% reinvestment/capex/tax
+    const fcf = projectedEbitda * 0.75;
     return fcf / Math.pow(1 + wacc, yr + 1);
   });
   const pvFCF = projectedFCFs.reduce((s, v) => s + v, 0);
@@ -66,30 +65,24 @@ const computeCompanyRanges = (data: FootballFieldCompanyData): ValuationRange[] 
   const dcfLow = Math.round(dcfMid * 0.7);
   const dcfHigh = Math.round(dcfMid * 1.35);
 
-  // ── Comp Companies: sector P25/Median/P75 EV/Revenue applied directly ──
   const compLow = Math.round(revM * (sm.evRevenue.p25 || 3));
   const compMid = Math.round(revM * (sm.evRevenue.median || 5));
   const compHigh = Math.round(revM * (sm.evRevenue.p75 || 8));
 
-  // ── Precedent Transactions: typically trade at a premium to public comps ──
-  const controlPremium = 1.15; // ~15% control premium for M&A
+  const controlPremium = 1.15;
   const ptLow = Math.round(revM * (sm.evRevenue.p25 || 3) * controlPremium * 0.9);
   const ptMid = Math.round(revM * (sm.evRevenue.median || 5) * controlPremium);
   const ptHigh = Math.round(revM * (sm.evRevenue.p75 || 8) * controlPremium * 1.05);
 
-  // ── LBO: back into EV from target 20-25% IRR with realistic leverage ──
-  // Assume 4-6x leverage on EBITDA, 5-year hold, ~3x equity return target
   const leverageLow = 4.0;
   const leverageMid = 5.0;
   const leverageHigh = 6.0;
   const debtLow = ebitdaM * leverageLow;
   const debtMid = ebitdaM * leverageMid;
   const debtHigh = ebitdaM * leverageHigh;
-  // Exit at sector median multiple, equity = EV - debt
   const exitEbitda = ebitdaM * Math.pow(1 + Math.min(growth, 0.15), 5);
   const exitMultiple = sm.evEbitda.median > 0 ? sm.evEbitda.median : 8;
   const exitEV = exitEbitda * exitMultiple;
-  // Target 3x equity return → entry equity = exit equity / 3
   const lboEquityLow = Math.max(10, (exitEV - debtHigh) / 3.5);
   const lboEquityMid = Math.max(10, (exitEV - debtMid) / 3.0);
   const lboEquityHigh = Math.max(10, (exitEV - debtLow) / 2.5);
@@ -107,6 +100,65 @@ const computeCompanyRanges = (data: FootballFieldCompanyData): ValuationRange[] 
 
 const formatVal = (v: number) => `$${v}M`;
 
+const AnimatedBar = ({ range, index, globalMin, span, isAI }: { range: ValuationRange; index: number; globalMin: number; span: number; isAI: boolean }) => {
+  const toPercent = (v: number) => ((v - globalMin) / span) * 100;
+  const leftPct = toPercent(range.low);
+  const widthPct = toPercent(range.high) - leftPct;
+  const midPct = toPercent(range.mid);
+
+  return (
+    <div className="relative h-9 rounded-md bg-muted/20 overflow-hidden group">
+      {/* Gradient background bar */}
+      <motion.div
+        className={`absolute top-1.5 bottom-1.5 rounded-sm ${isAI ? "border-2 border-dashed" : ""}`}
+        style={{
+          borderColor: isAI ? range.color : undefined,
+          background: isAI ? "transparent" : `linear-gradient(90deg, ${range.color}33 0%, ${range.color}88 50%, ${range.color}33 100%)`,
+        }}
+        initial={{ left: `${leftPct}%`, width: 0, opacity: 0 }}
+        animate={{ width: `${widthPct}%`, opacity: 1 }}
+        transition={{ duration: 0.8, delay: index * 0.12, ease: [0.22, 1, 0.36, 1] }}
+      />
+      {/* Mid marker with glow */}
+      <motion.div
+        className="absolute top-0 bottom-0 w-0.5"
+        style={{ backgroundColor: range.color, boxShadow: `0 0 8px ${range.color}60` }}
+        initial={{ left: `${midPct}%`, scaleY: 0 }}
+        animate={{ scaleY: 1 }}
+        transition={{ duration: 0.5, delay: index * 0.12 + 0.4 }}
+      />
+      {/* Value labels */}
+      <motion.span
+        className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
+        style={{ left: `${leftPct}%`, transform: "translateX(-50%)" }}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.12 + 0.3 }}
+      >
+        {formatVal(range.low)}
+      </motion.span>
+      <motion.span
+        className="absolute -top-4 text-[9px] font-mono font-bold"
+        style={{ left: `${midPct}%`, transform: "translateX(-50%)", color: range.color }}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.12 + 0.5 }}
+      >
+        {formatVal(range.mid)}
+      </motion.span>
+      <motion.span
+        className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
+        style={{ left: `${toPercent(range.high)}%`, transform: "translateX(-50%)" }}
+        initial={{ opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.12 + 0.3 }}
+      >
+        {formatVal(range.high)}
+      </motion.span>
+    </div>
+  );
+};
+
 const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: ValuationRange[]; companyData?: FootballFieldCompanyData }) => {
   const { data: alphaSignals } = useAlphaSignals();
 
@@ -118,7 +170,6 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
 
   const dataSource = companyData?.sectorMultiples ? "live" : "default";
 
-  // Compute AI-Adjusted bar from alpha signals
   const aiAdjustedRange = useMemo(() => {
     if (!alphaSignals?.length || !companyData?.sector) return null;
     const sectorSignal = alphaSignals.find(s =>
@@ -126,11 +177,8 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
       s.sector.toLowerCase().includes(companyData.sector?.toLowerCase() ?? "")
     );
     if (!sectorSignal || !sectorSignal.magnitude_pct) return null;
-
-    // Apply magnitude shift to the Comp Companies range
     const compRange = computedRanges.find(r => r.method === "Comp Companies");
     if (!compRange) return null;
-
     const shift = 1 + (sectorSignal.magnitude_pct / 100);
     return {
       range: {
@@ -153,7 +201,6 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
   const [ranges, setRanges] = useState<ValuationRange[]>(allRanges);
   const [editing, setEditing] = useState(false);
 
-  // Update when computed ranges change
   useMemo(() => {
     if (!editing) setRanges(allRanges);
   }, [allRanges, editing]);
@@ -163,27 +210,41 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
   const globalMax = Math.max(...allVals) * 1.1;
   const span = globalMax - globalMin;
 
-  const toPercent = (v: number) => ((v - globalMin) / span) * 100;
-
   const updateRange = (idx: number, field: "low" | "mid" | "high", value: string) => {
     const num = parseFloat(value);
     if (isNaN(num)) return;
     setRanges((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: num } : r));
   };
 
+  // Consensus zone: overlap of all non-AI ranges
+  const consensus = useMemo(() => {
+    const nonAI = ranges.filter(r => r.method !== "AI Adjusted");
+    if (nonAI.length < 2) return null;
+    const overlapLow = Math.max(...nonAI.map(r => r.low));
+    const overlapHigh = Math.min(...nonAI.map(r => r.high));
+    if (overlapLow >= overlapHigh) return null;
+    const midValues = nonAI.map(r => r.mid);
+    const avgMid = Math.round(midValues.reduce((a, b) => a + b, 0) / midValues.length);
+    return { low: overlapLow, high: overlapHigh, mid: avgMid };
+  }, [ranges]);
+
   const isCompanyDriven = !!companyData && !propRanges;
 
   return (
-    <Card className="border-border bg-card">
+    <Card className="border-border bg-card overflow-hidden">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <div>
-          <CardTitle className="text-sm font-semibold">Valuation Football Field</CardTitle>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-semibold">Valuation Football Field</CardTitle>
+          </div>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
             {isCompanyDriven && (
               <p className="text-[10px] text-muted-foreground">Computed from company financials & sector multiples</p>
             )}
             {dataSource === "live" && isCompanyDriven && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-success/10 text-success border border-success/20">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                 Live Data
               </span>
             )}
@@ -197,72 +258,55 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
         </div>
         <button
           onClick={() => setEditing(!editing)}
-          className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          className="text-[10px] px-2.5 py-1 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
           {editing ? "Done" : "Edit"}
         </button>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
+        {/* Consensus zone callout */}
+        {consensus && (
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-2 p-2.5 rounded-md bg-primary/5 border border-primary/15"
+          >
+            <Crosshair className="h-4 w-4 text-primary shrink-0" />
+            <div>
+              <p className="text-[11px] font-semibold text-primary">Consensus Range</p>
+              <p className="text-[10px] text-muted-foreground">
+                All methodologies converge at <span className="font-mono font-medium text-foreground">{formatVal(consensus.low)} – {formatVal(consensus.high)}</span> · 
+                Avg midpoint <span className="font-mono font-medium text-primary">{formatVal(consensus.mid)}</span>
+              </p>
+            </div>
+          </motion.div>
+        )}
+
         {ranges.map((r, idx) => {
           const isAI = r.method === "AI Adjusted";
           return (
-          <div key={r.method} className="space-y-1">
-            <div className="flex items-center gap-3">
-              <div className="w-32 shrink-0 text-xs text-muted-foreground font-medium text-right flex items-center justify-end gap-1">
-                {isAI && <span className="text-[8px] px-1 py-0.5 rounded bg-chart-3/10 text-chart-3">AI</span>}
-                {r.method}
+            <div key={r.method} className="space-y-1">
+              <div className="flex items-center gap-3">
+                <div className="w-32 shrink-0 text-xs text-muted-foreground font-medium text-right flex items-center justify-end gap-1.5">
+                  {isAI && <span className="text-[8px] px-1 py-0.5 rounded bg-chart-3/10 text-chart-3">AI</span>}
+                  <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: r.color }} />
+                  {r.method}
+                </div>
+                <div className="flex-1">
+                  <AnimatedBar range={r} index={idx} globalMin={globalMin} span={span} isAI={isAI} />
+                </div>
               </div>
-              <div className="flex-1 relative h-7 rounded bg-muted/30">
-                <div
-                  className={`absolute top-1 bottom-1 rounded-sm ${isAI ? "opacity-40 border-2 border-dashed" : "opacity-80"}`}
-                  style={{
-                    left: `${toPercent(r.low)}%`,
-                    width: `${toPercent(r.high) - toPercent(r.low)}%`,
-                    backgroundColor: isAI ? "transparent" : r.color,
-                    borderColor: isAI ? r.color : undefined,
-                  }}
-                />
-                <div
-                  className="absolute top-0 bottom-0 w-0.5"
-                  style={{ left: `${toPercent(r.mid)}%`, backgroundColor: r.color }}
-                />
-                <span
-                  className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
-                  style={{ left: `${toPercent(r.low)}%`, transform: "translateX(-50%)" }}
-                >
-                  {formatVal(r.low)}
-                </span>
-                <span
-                  className="absolute -top-4 text-[9px] font-mono font-bold"
-                  style={{ left: `${toPercent(r.mid)}%`, transform: "translateX(-50%)", color: r.color }}
-                >
-                  {formatVal(r.mid)}
-                </span>
-                <span
-                  className="absolute -top-4 text-[9px] font-mono text-muted-foreground"
-                  style={{ left: `${toPercent(r.high)}%`, transform: "translateX(-50%)" }}
-                >
-                  {formatVal(r.high)}
-                </span>
-              </div>
+              {editing && !isAI && (
+                <div className="flex items-center gap-2 ml-[calc(8rem+0.75rem)]">
+                  {(["low", "mid", "high"] as const).map(field => (
+                    <div key={field} className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      {field.charAt(0).toUpperCase() + field.slice(1)}:
+                      <Input type="number" value={r[field]} onChange={(e) => updateRange(idx, field, e.target.value)} className="h-6 w-16 text-xs font-mono px-1.5 bg-background" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            {editing && !isAI && (
-              <div className="flex items-center gap-2 ml-[calc(8rem+0.75rem)]">
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  Low:
-                  <Input type="number" value={r.low} onChange={(e) => updateRange(idx, "low", e.target.value)} className="h-6 w-16 text-xs font-mono px-1.5 bg-background" />
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  Mid:
-                  <Input type="number" value={r.mid} onChange={(e) => updateRange(idx, "mid", e.target.value)} className="h-6 w-16 text-xs font-mono px-1.5 bg-background" />
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  High:
-                  <Input type="number" value={r.high} onChange={(e) => updateRange(idx, "high", e.target.value)} className="h-6 w-16 text-xs font-mono px-1.5 bg-background" />
-                </div>
-              </div>
-            )}
-          </div>
           );
         })}
         <div className="flex items-center gap-3 mt-4">

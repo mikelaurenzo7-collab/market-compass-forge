@@ -8,6 +8,7 @@ import { useDCFAutoPopulate } from "@/hooks/useDCFAutoPopulate";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, Zap, Database } from "lucide-react";
+import { motion } from "framer-motion";
 
 export interface DCFCompanyProps {
   initialRevenue?: number; // in $M
