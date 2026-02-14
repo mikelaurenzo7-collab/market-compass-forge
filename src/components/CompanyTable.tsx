@@ -54,12 +54,12 @@ const CompanyTable = () => {
         <table className="w-full text-data">
           <thead>
             <tr className="border-b border-border bg-muted/30">
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Company</th>
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Sector</th>
-              <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valuation</th>
-              <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">ARR</th>
-              <th className="text-center px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Trend</th>
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Stage</th>
+              <th className="text-left px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Company</th>
+              <th className="text-left px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">Sector</th>
+              <th className="text-right px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valuation</th>
+              <th className="text-right px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium hidden md:table-cell">ARR</th>
+              <th className="text-center px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium hidden lg:table-cell">Trend</th>
+              <th className="text-left px-3 sm:px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium hidden sm:table-cell">Stage</th>
             </tr>
           </thead>
           <tbody>
@@ -69,7 +69,7 @@ const CompanyTable = () => {
                 onClick={() => navigate(`/companies/${c.id}`)}
                 className="border-b border-border/50 hover:bg-secondary/50 cursor-pointer transition-colors"
               >
-                <td className="px-4 py-2.5">
+                <td className="px-3 sm:px-4 py-2.5">
                   <CompanyHoverCard
                     company={{
                       id: c.id,
@@ -84,21 +84,23 @@ const CompanyTable = () => {
                   >
                     <div className="flex items-center gap-2">
                       <CompanyAvatar name={c.name} sector={c.sector} />
-                      <span className="text-foreground font-medium hover:text-primary transition-colors">{c.name}</span>
+                      <span className="text-foreground font-medium hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-none">{c.name}</span>
                     </div>
                   </CompanyHoverCard>
                 </td>
-                <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
-                <td className="px-4 py-2.5 text-right text-foreground font-medium font-mono">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>
-                <td className="px-4 py-2.5 text-right text-foreground font-mono">{formatCurrency(c.latestFinancials?.arr ?? null)}</td>
-                <td className="px-4 py-2.5 flex justify-center">
+                <td className="px-3 sm:px-4 py-2.5 text-muted-foreground hidden sm:table-cell">{c.sector ?? "—"}</td>
+                <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-medium font-mono">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>
+                <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-mono hidden md:table-cell">{formatCurrency(c.latestFinancials?.arr ?? null)}</td>
+                <td className="px-3 sm:px-4 py-2.5 hidden lg:table-cell">
+                  <div className="flex justify-center">
                   {sparklines?.[c.id]?.length ? (
                     <Sparkline data={sparklines[c.id]} width={64} height={20} />
                   ) : (
                     <span className="text-muted-foreground/40 text-[10px]">—</span>
                   )}
+                  </div>
                 </td>
-                <td className="px-4 py-2.5">
+                <td className="px-3 sm:px-4 py-2.5 hidden sm:table-cell">
                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                     {c.stage ?? "—"}
                   </span>

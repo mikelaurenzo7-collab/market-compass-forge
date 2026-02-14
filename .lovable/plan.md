@@ -70,19 +70,19 @@ Add a `?` shortcut that opens a keyboard shortcut cheat sheet overlay, showing a
 ## Recommended Implementation Order
 
 ```text
-Phase 1 (Quick Wins)
-  [1] Auto-generate briefing on first login
-  [2] Empty state redesign with contextual CTAs
-  [3] Quick-start templates on Companies page
+Phase 1 (Quick Wins) ✅
+  [1] Auto-generate briefing on first login ✅
+  [2] Empty state redesign with contextual CTAs ✅
+  [3] Quick-start templates on Companies page ✅
 
-Phase 2 (Monetization)
-  [4] Free tier limits + upgrade prompts
-  [5] What's New modal
+Phase 2 (Monetization) ✅
+  [4] Free tier limits + upgrade prompts ✅
+  [5] What's New modal ✅
 
-Phase 3 (Polish)
-  [6] Data coverage badge
-  [7] Landing page social proof
-  [8] Mobile responsiveness
+Phase 3 (Polish) ✅
+  [6] Data coverage badge ✅
+  [7] Landing page social proof ✅
+  [8] Mobile responsiveness ✅
 
 Phase 4 (Delight)
   [9] Email briefing preview
