@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { useState, useCallback } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import AppSidebar from "@/components/AppSidebar";
 import SearchBar from "@/components/SearchBar";
 import CommandPalette from "@/components/CommandPalette";
@@ -10,16 +10,18 @@ import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Bell, Menu, X, Wifi } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 
 const AppLayout = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: unreadCount } = useUnreadCount();
 
-  const openPalette = () => {
+  const openPalette = useCallback(() => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
-  };
+  }, []);
 
   useHotkeys([
     { key: "/", meta: true, handler: () => setShowShortcuts((v) => !v) },
@@ -39,24 +41,40 @@ const AppLayout = () => {
       </div>
 
       {/* Mobile sidebar overlay */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)} />
-          <div className="relative w-56 h-full animate-fade-in">
-            <AppSidebar onNavigate={() => setMobileMenuOpen(false)} />
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 md:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <motion.div
+              initial={{ x: -224 }}
+              animate={{ x: 0 }}
+              exit={{ x: -224 }}
+              transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
+              className="relative w-56 h-full"
+            >
+              <AppSidebar onNavigate={() => setMobileMenuOpen(false)} />
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       <CommandPalette />
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
-      <main className="flex-1 min-w-0">
-        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl px-3 md:px-6 py-3 flex items-center gap-3 md:gap-4">
+      <main className="flex-1 min-w-0 flex flex-col">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4">
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-md hover:bg-secondary text-muted-foreground"
+            className="md:hidden p-2 rounded-md hover:bg-secondary text-muted-foreground transition-colors"
+            aria-label="Toggle menu"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -72,29 +90,39 @@ const AppLayout = () => {
             <button
               onClick={() => navigate("/alerts")}
               className="relative p-2 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+              aria-label="View alerts"
             >
               <Bell className="h-4 w-4" />
               {(unreadCount ?? 0) > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
               )}
             </button>
           </div>
         </header>
 
-        {/* Status strip */}
-        <div className="border-b border-border/30 bg-muted/20 px-4 md:px-6 py-1 flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
+        {/* Compact status strip */}
+        <div className="border-b border-border/30 bg-muted/10 px-4 md:px-6 py-1 flex items-center gap-4 text-[10px] font-mono text-muted-foreground/70">
           <span className="flex items-center gap-1.5">
-            <Wifi className="h-2.5 w-2.5 text-primary" />
-            <span className="text-primary">LIVE</span>
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+            </span>
+            <span className="text-primary/80">LIVE</span>
           </span>
           <span className="hidden sm:inline">Data refreshed continuously</span>
-          <span className="ml-auto hidden sm:inline opacity-60">⌘K to search · ⌘/ for shortcuts</span>
+          <span className="ml-auto hidden sm:inline opacity-50">⌘K search · ⌘/ shortcuts</span>
         </div>
 
         <ErrorBoundary>
-          <div className="animate-fade-in">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex-1"
+          >
             <Outlet />
-          </div>
+          </motion.div>
         </ErrorBoundary>
         <DisclaimerFooter />
       </main>
