@@ -122,6 +122,16 @@ export default function OnboardingFlow() {
         .update({ onboarding_completed: true })
         .eq("user_id", user.id);
       queryClient.invalidateQueries({ queryKey: ["onboarding-status"] });
+
+      // Auto-generate morning briefing on first completion
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) {
+          supabase.functions.invoke("morning-briefing", {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          }).catch(() => {}); // fire-and-forget
+        }
+      } catch {}
     }
   };
 

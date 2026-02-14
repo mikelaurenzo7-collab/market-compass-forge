@@ -175,13 +175,25 @@ const Portfolio = () => {
 
       {/* Empty state */}
       {!portfolios?.length && !loadingPortfolios && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <Briefcase className="h-12 w-12 text-muted-foreground/30 mb-4" />
-          <h2 className="text-lg font-medium text-foreground">No portfolios yet</h2>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">Create your first portfolio to start tracking positions</p>
-          <button onClick={handleCreatePortfolio} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
-            <Plus className="h-4 w-4" /> Create Portfolio
-          </button>
+        <div className="rounded-lg border border-border bg-card">
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 ring-1 ring-primary/20">
+              <Briefcase className="h-7 w-7 text-primary" />
+            </div>
+            <h2 className="text-sm font-semibold text-foreground">No portfolios yet</h2>
+            <p className="text-xs text-muted-foreground mt-1 mb-4 max-w-xs leading-relaxed">
+              Track positions across public & private markets. Monitor P&L, sector allocation, and benchmark against indices.
+            </p>
+            <div className="flex items-center gap-2">
+              <button onClick={handleCreatePortfolio} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Create Portfolio
+              </button>
+              <button onClick={() => navigate("/companies")} className="h-9 px-4 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                Browse Companies
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground/60 mt-3">Supports public equities + private market positions</p>
+          </div>
         </div>
       )}
 

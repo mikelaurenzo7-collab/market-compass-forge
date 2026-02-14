@@ -188,6 +188,44 @@ const Companies = () => {
         </div>
       </div>
 
+      {/* Quick-start filter templates */}
+      <div className="flex flex-wrap gap-1.5">
+        {[
+          { label: "🔥 Top AI/ML", sector: "AI/ML", stage: "All" },
+          { label: "📈 Series B+ Growth", sector: "All", stage: "Series B" },
+          { label: "💰 Fintech", sector: "Fintech", stage: "All" },
+          { label: "🛡️ Cybersecurity", sector: "Cybersecurity", stage: "All" },
+          { label: "🏗️ Late Stage", sector: "All", stage: "Late Stage" },
+        ].map((t) => {
+          const isActive = (t.sector !== "All" && sectorFilter === t.sector) || (t.stage !== "All" && stageFilter === t.stage);
+          return (
+            <button
+              key={t.label}
+              onClick={() => {
+                handleFilterChange(setSectorFilter, t.sector);
+                handleFilterChange(setStageFilter, t.stage);
+                setSearch("");
+              }}
+              className={`h-7 px-2.5 rounded-full text-[11px] font-medium border transition-colors ${
+                isActive
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-primary/30"
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+        {(sectorFilter !== "All" || stageFilter !== "All" || search) && (
+          <button
+            onClick={() => { handleFilterChange(setSectorFilter, "All"); handleFilterChange(setStageFilter, "All"); setSearch(""); }}
+            className="h-7 px-2.5 rounded-full text-[11px] font-medium border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            ✕ Clear
+          </button>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-3">
         <input type="text" placeholder="Search companies..." value={search} onChange={(e) => handleFilterChange(setSearch, e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring w-64" />
         <select value={sectorFilter} onChange={(e) => handleFilterChange(setSectorFilter, e.target.value)} className="h-9 px-3 rounded-md bg-secondary border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring">
