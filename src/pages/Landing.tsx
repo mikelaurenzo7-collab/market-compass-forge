@@ -125,9 +125,7 @@ const Landing = () => {
           variants={fadeUp}
           className="text-lg sm:text-xl text-muted-foreground max-w-md leading-relaxed"
         >
-          The unfair advantage for private markets.
-          <br />
-          <span className="text-foreground font-medium">AI-powered intelligence</span> for investors who move first.
+          Private & <span className="text-foreground font-medium">AI-Powered Intelligence</span> for investors who move first.
         </motion.p>
 
         {/* Coming soon badge */}
