@@ -1795,6 +1795,45 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_screens: {
+        Row: {
+          created_at: string
+          description: string | null
+          filters: Json
+          id: string
+          is_default: boolean | null
+          name: string
+          sort_asc: boolean | null
+          sort_key: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          is_default?: boolean | null
+          name: string
+          sort_asc?: boolean | null
+          sort_key?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          filters?: Json
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          sort_asc?: boolean | null
+          sort_key?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       sec_filings: {
         Row: {
           accession_number: string

@@ -18,6 +18,7 @@ import {
   Star,
   Settings,
   ShieldCheck,
+  Code,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -100,6 +101,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
     { id: "watchlists", label: "Watchlists", icon: Star, path: "/watchlists" },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+    { id: "developers", label: "API Docs", icon: Code, path: "/developers" },
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
   ];
 

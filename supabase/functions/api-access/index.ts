@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 async function hashKey(key: string): Promise<string> {
@@ -14,7 +14,6 @@ async function hashKey(key: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-// Rate limiting: check usage_tracking count for today
 async function checkRateLimit(supabase: any, userId: string, tier: string): Promise<{ allowed: boolean; remaining: number }> {
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
@@ -181,7 +180,6 @@ serve(async (req) => {
         const min_arr = url.searchParams.get("min_arr");
         const stage = url.searchParams.get("stage");
 
-        // Join companies with latest financials
         let query = supabase
           .from("companies")
           .select("id, name, sector, sub_sector, stage, market_type, hq_country, employee_count, founded_year, financials(revenue, arr, gross_margin, ebitda, period), public_market_data(price, market_cap, pe_ratio, ticker)", { count: "exact" });
@@ -193,7 +191,6 @@ serve(async (req) => {
         const result = await query.order("name").range(offset, offset + limit - 1);
         if (result.error) throw result.error;
 
-        // Post-filter by financial metrics
         let filtered = (result.data ?? []).map((c: any) => {
           const latestFin = c.financials?.sort((a: any, b: any) => b.period.localeCompare(a.period))?.[0];
           const mkt = Array.isArray(c.public_market_data) ? c.public_market_data[0] : c.public_market_data;
@@ -201,14 +198,10 @@ serve(async (req) => {
             id: c.id, name: c.name, sector: c.sector, sub_sector: c.sub_sector,
             stage: c.stage, market_type: c.market_type, hq_country: c.hq_country,
             employee_count: c.employee_count, founded_year: c.founded_year,
-            revenue: latestFin?.revenue ?? null,
-            arr: latestFin?.arr ?? null,
-            gross_margin: latestFin?.gross_margin ?? null,
-            ebitda: latestFin?.ebitda ?? null,
-            price: mkt?.price ?? null,
-            market_cap: mkt?.market_cap ?? null,
-            pe_ratio: mkt?.pe_ratio ?? null,
-            ticker: mkt?.ticker ?? null,
+            revenue: latestFin?.revenue ?? null, arr: latestFin?.arr ?? null,
+            gross_margin: latestFin?.gross_margin ?? null, ebitda: latestFin?.ebitda ?? null,
+            price: mkt?.price ?? null, market_cap: mkt?.market_cap ?? null,
+            pe_ratio: mkt?.pe_ratio ?? null, ticker: mkt?.ticker ?? null,
           };
         });
 
@@ -285,10 +278,165 @@ serve(async (req) => {
         break;
       }
 
+      // --- NEW ENDPOINTS ---
+
+      case "distressed": {
+        const sector = url.searchParams.get("sector");
+        const distress_type = url.searchParams.get("distress_type");
+        const asset_type = url.searchParams.get("asset_type");
+        const status = url.searchParams.get("status");
+        const min_discount = url.searchParams.get("min_discount");
+
+        let query = supabase
+          .from("distressed_assets")
+          .select("id, name, sector, asset_type, distress_type, status, asking_price, estimated_value, discount_pct, location_city, location_state, listed_date, description, key_metrics, source", { count: "exact" });
+
+        if (sector) query = query.eq("sector", sector);
+        if (distress_type) query = query.eq("distress_type", distress_type);
+        if (asset_type) query = query.eq("asset_type", asset_type);
+        if (status) query = query.eq("status", status);
+        if (min_discount) query = query.gte("discount_pct", Number(min_discount));
+
+        const result = await query.order("listed_date", { ascending: false }).range(offset, offset + limit - 1);
+        if (result.error) throw result.error;
+        data = result.data;
+        count = result.count;
+        break;
+      }
+
+      case "deals": {
+        const deal_type = url.searchParams.get("deal_type");
+        const industry = url.searchParams.get("industry");
+        const status = url.searchParams.get("status");
+        const min_value = url.searchParams.get("min_value");
+
+        let query = supabase
+          .from("deal_transactions")
+          .select("id, target_company, acquirer_investor, deal_type, deal_value, ev_revenue, ev_ebitda, target_industry, status, announced_date, closed_date", { count: "exact" });
+
+        if (deal_type) query = query.eq("deal_type", deal_type);
+        if (industry) query = query.eq("target_industry", industry);
+        if (status) query = query.eq("status", status);
+        if (min_value) query = query.gte("deal_value", Number(min_value));
+
+        const result = await query.order("announced_date", { ascending: false }).range(offset, offset + limit - 1);
+        if (result.error) throw result.error;
+        data = result.data;
+        count = result.count;
+        break;
+      }
+
+      case "funds": {
+        const strategy = url.searchParams.get("strategy");
+        const min_irr = url.searchParams.get("min_irr");
+        const vintage_year = url.searchParams.get("vintage_year");
+
+        let query = supabase
+          .from("funds")
+          .select("id, name, gp_name, strategy, vintage_year, fund_size, net_irr, tvpi, dpi, quartile", { count: "exact" });
+
+        if (strategy) query = query.eq("strategy", strategy);
+        if (min_irr) query = query.gte("net_irr", Number(min_irr));
+        if (vintage_year) query = query.eq("vintage_year", Number(vintage_year));
+
+        const result = await query.order("vintage_year", { ascending: false }).range(offset, offset + limit - 1);
+        if (result.error) throw result.error;
+        data = result.data;
+        count = result.count;
+        break;
+      }
+
+      case "global-opportunities": {
+        const region = url.searchParams.get("region");
+        const country = url.searchParams.get("country");
+        const opportunity_type = url.searchParams.get("opportunity_type");
+        const sector = url.searchParams.get("sector");
+        const min_value = url.searchParams.get("min_value");
+
+        let query = supabase
+          .from("global_opportunities")
+          .select("id, name, country, region, opportunity_type, sector, deal_value_usd, deal_value_local, local_currency, risk_rating, stage, status, listed_date, description, sovereign_fund_interest", { count: "exact" });
+
+        if (region) query = query.eq("region", region);
+        if (country) query = query.eq("country", country);
+        if (opportunity_type) query = query.eq("opportunity_type", opportunity_type);
+        if (sector) query = query.eq("sector", sector);
+        if (min_value) query = query.gte("deal_value_usd", Number(min_value));
+
+        const result = await query.order("listed_date", { ascending: false }).range(offset, offset + limit - 1);
+        if (result.error) throw result.error;
+        data = result.data;
+        count = result.count;
+        break;
+      }
+
+      case "real-estate": {
+        const property_type = url.searchParams.get("property_type");
+        const state = url.searchParams.get("state");
+        const city = url.searchParams.get("city");
+        const listing_type = url.searchParams.get("listing_type");
+
+        let query = supabase
+          .from("private_listings")
+          .select("id, property_type, listing_type, city, state, address, asking_price, estimated_cap_rate, noi, size_sf, units, year_built, status, listed_date, description, source_network", { count: "exact" });
+
+        if (property_type) query = query.eq("property_type", property_type);
+        if (state) query = query.eq("state", state);
+        if (city) query = query.eq("city", city);
+        if (listing_type) query = query.eq("listing_type", listing_type);
+
+        const result = await query.order("listed_date", { ascending: false }).range(offset, offset + limit - 1);
+        if (result.error) throw result.error;
+        data = result.data;
+        count = result.count;
+        break;
+      }
+
+      case "signals": {
+        const category = url.searchParams.get("category");
+        const sentiment = url.searchParams.get("sentiment");
+
+        let query = supabase
+          .from("intelligence_signals")
+          .select("id, headline, ai_summary, category, sentiment, source, tags, url, created_at", { count: "exact" });
+
+        if (category) query = query.eq("category", category);
+        if (sentiment) query = query.eq("sentiment", sentiment);
+
+        const result = await query.order("created_at", { ascending: false }).range(offset, offset + limit - 1);
+        if (result.error) throw result.error;
+        data = result.data;
+        count = result.count;
+        break;
+      }
+
+      case "precedent-transactions": {
+        const sector = url.searchParams.get("sector");
+        const deal_type = url.searchParams.get("deal_type");
+
+        let query = supabase
+          .from("precedent_transactions")
+          .select("id, target_company_name, acquirer_company_name, deal_value, ev_revenue, ev_ebitda, sector, deal_type, deal_date, target_revenue, target_ebitda", { count: "exact" });
+
+        if (sector) query = query.eq("sector", sector);
+        if (deal_type) query = query.eq("deal_type", deal_type);
+
+        const result = await query.order("deal_date", { ascending: false }).range(offset, offset + limit - 1);
+        if (result.error) throw result.error;
+        data = result.data;
+        count = result.count;
+        break;
+      }
+
       default:
         return new Response(JSON.stringify({
           error: `Unknown action: ${action}`,
-          available_actions: ["companies", "market-data", "screening", "financials", "funding", "investors", "news"],
+          available_actions: [
+            "companies", "financials", "funding", "investors", "news",
+            "market-data", "screening",
+            "distressed", "deals", "funds", "global-opportunities",
+            "real-estate", "signals", "precedent-transactions"
+          ],
         }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

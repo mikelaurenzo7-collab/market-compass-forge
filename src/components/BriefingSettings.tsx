@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Mail, Loader2, Save, Clock } from "lucide-react";
+import { Mail, Loader2, Save, Clock, Send } from "lucide-react";
 
 const BriefingSettings = () => {
   const { user } = useAuth();
@@ -166,15 +166,58 @@ const BriefingSettings = () => {
         </div>
       )}
 
-      <button
-        onClick={() => saveMutation.mutate()}
-        disabled={saveMutation.isPending}
-        className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
-      >
-        {saveMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-        Save Preferences
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={() => saveMutation.mutate()}
+          disabled={saveMutation.isPending}
+          className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5"
+        >
+          {saveMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          Save Preferences
+        </button>
+        <SendTestBriefingButton />
+      </div>
     </div>
+  );
+};
+
+const SendTestBriefingButton = () => {
+  const [sending, setSending] = useState(false);
+
+  const sendTest = async () => {
+    setSending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-test-briefing`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
+      );
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error ?? "Failed to send");
+      toast({ title: "Test briefing sent!", description: `Check ${result.sent_to}` });
+    } catch (e) {
+      toast({ title: "Failed to send test", description: String(e), variant: "destructive" });
+    }
+    setSending(false);
+  };
+
+  return (
+    <button
+      onClick={sendTest}
+      disabled={sending}
+      className="h-9 px-4 rounded-md border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+    >
+      {sending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+      Send Test
+    </button>
   );
 };
 
