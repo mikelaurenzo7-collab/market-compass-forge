@@ -2,7 +2,33 @@ import { useNavigate } from "react-router-dom";
 import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
+import Sparkline from "@/components/Sparkline";
 import { TableSkeleton } from "@/components/SkeletonLoaders";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+const useCompanySparklines = (companyIds: string[]) =>
+  useQuery({
+    queryKey: ["sparklines", companyIds],
+    queryFn: async () => {
+      if (!companyIds.length) return {};
+      const { data } = await supabase
+        .from("financials")
+        .select("company_id, period, revenue")
+        .in("company_id", companyIds)
+        .order("period", { ascending: true });
+      const map: Record<string, number[]> = {};
+      (data ?? []).forEach((r: any) => {
+        if (r.revenue) {
+          if (!map[r.company_id]) map[r.company_id] = [];
+          map[r.company_id].push(r.revenue);
+        }
+      });
+      return map;
+    },
+    enabled: companyIds.length > 0,
+    staleTime: 60_000,
+  });
 
 const CompanyTable = () => {
   const { data: companies, isLoading } = useCompaniesWithFinancials();
@@ -11,6 +37,8 @@ const CompanyTable = () => {
   const top = (companies ?? [])
     .sort((a, b) => (b.latestRound?.valuation_post ?? 0) - (a.latestRound?.valuation_post ?? 0))
     .slice(0, 6);
+
+  const { data: sparklines } = useCompanySparklines(top.map((c) => c.id));
 
   if (isLoading) return <TableSkeleton rows={6} cols={5} />;
 
@@ -30,6 +58,7 @@ const CompanyTable = () => {
               <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Sector</th>
               <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Valuation</th>
               <th className="text-right px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">ARR</th>
+              <th className="text-center px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Trend</th>
               <th className="text-left px-4 py-2 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Stage</th>
             </tr>
           </thead>
@@ -62,6 +91,13 @@ const CompanyTable = () => {
                 <td className="px-4 py-2.5 text-muted-foreground">{c.sector ?? "—"}</td>
                 <td className="px-4 py-2.5 text-right text-foreground font-medium font-mono">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>
                 <td className="px-4 py-2.5 text-right text-foreground font-mono">{formatCurrency(c.latestFinancials?.arr ?? null)}</td>
+                <td className="px-4 py-2.5 flex justify-center">
+                  {sparklines?.[c.id]?.length ? (
+                    <Sparkline data={sparklines[c.id]} width={64} height={20} />
+                  ) : (
+                    <span className="text-muted-foreground/40 text-[10px]">—</span>
+                  )}
+                </td>
                 <td className="px-4 py-2.5">
                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-accent text-accent-foreground">
                     {c.stage ?? "—"}

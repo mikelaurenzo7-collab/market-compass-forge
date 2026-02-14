@@ -8,6 +8,9 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
 import WhatsNewModal from "@/components/WhatsNewModal";
 import AmbientGrid from "@/components/AmbientGrid";
+import TickerTape from "@/components/TickerTape";
+import AICopilot from "@/components/AICopilot";
+import CompareMode from "@/components/CompareMode";
 import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Bell, Menu, X, Wifi } from "lucide-react";
@@ -19,6 +22,7 @@ const AppLayout = () => {
   const location = useLocation();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const { data: unreadCount } = useUnreadCount();
 
   const openPalette = useCallback(() => {
@@ -27,7 +31,8 @@ const AppLayout = () => {
 
   useHotkeys([
     { key: "/", meta: true, handler: () => setShowShortcuts((v) => !v) },
-    { key: "Escape", handler: () => { setShowShortcuts(false); setMobileMenuOpen(false); } },
+    { key: "Escape", handler: () => { setShowShortcuts(false); setMobileMenuOpen(false); setCompareOpen(false); } },
+    { key: "c", meta: true, shift: true, handler: () => setCompareOpen((v) => !v) },
     ...SIDEBAR_ROUTES.map((route, i) => ({
       key: String(i + 1),
       meta: true,
@@ -106,15 +111,17 @@ const AppLayout = () => {
 
         {/* Compact status strip */}
         <div className="border-b border-border/30 bg-muted/10 px-4 md:px-6 py-1 flex items-center gap-4 text-[10px] font-mono text-muted-foreground/70">
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 shrink-0">
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
             </span>
             <span className="text-primary/80">LIVE</span>
           </span>
-          <span className="hidden sm:inline">Data refreshed continuously</span>
-          <span className="ml-auto hidden sm:inline opacity-50">⌘K search · ⌘/ shortcuts</span>
+          <div className="flex-1 min-w-0">
+            <TickerTape />
+          </div>
+          <span className="ml-auto hidden sm:inline opacity-50 shrink-0">⌘K search · ⌘/ shortcuts · ⌘⇧C compare</span>
         </div>
 
         <ErrorBoundary>
@@ -129,6 +136,8 @@ const AppLayout = () => {
           </motion.div>
         </ErrorBoundary>
         <DisclaimerFooter />
+        <AICopilot />
+        <CompareMode open={compareOpen} onClose={() => setCompareOpen(false)} />
       </main>
     </div>
   );
