@@ -118,6 +118,10 @@
     box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
   }
 
+  .glow-primary-intense {
+    box-shadow: 0 0 30px -5px hsl(var(--primary) / 0.4), 0 0 60px -15px hsl(var(--primary) / 0.2);
+  }
+
   .border-glow {
     border-color: hsl(var(--primary) / 0.3);
   }
@@ -135,6 +139,17 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid hsl(var(--border) / 0.5);
+  }
+
+  .glass-premium {
+    background: linear-gradient(135deg, hsl(var(--card) / 0.7) 0%, hsl(var(--card) / 0.4) 100%);
+    backdrop-filter: blur(24px) saturate(1.8);
+    -webkit-backdrop-filter: blur(24px) saturate(1.8);
+    border: 1px solid hsl(var(--primary) / 0.08);
+    box-shadow: 
+      0 0 0 1px hsl(var(--border) / 0.3),
+      0 8px 32px -8px hsl(0 0% 0% / 0.4),
+      inset 0 1px 0 hsl(var(--foreground) / 0.03);
   }
 
   /* Futuristic scan-line overlay (very subtle) */
@@ -171,9 +186,76 @@
     50% { background-position: 100% 50%; }
   }
 
+  /* Aurora gradient background */
+  .aurora-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--primary) / 0.06) 0%,
+      hsl(var(--chart-2) / 0.04) 25%,
+      hsl(var(--chart-4) / 0.04) 50%,
+      hsl(var(--primary) / 0.06) 75%,
+      hsl(var(--chart-2) / 0.04) 100%
+    );
+    background-size: 400% 400%;
+    animation: auroraFlow 15s ease-in-out infinite;
+  }
+
+  @keyframes auroraFlow {
+    0%, 100% { background-position: 0% 50%; }
+    25% { background-position: 100% 25%; }
+    50% { background-position: 50% 100%; }
+    75% { background-position: 25% 0%; }
+  }
+
+  /* Shimmer skeleton effect */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.04) 20%,
+      hsl(var(--primary) / 0.08) 50%,
+      hsl(var(--primary) / 0.04) 80%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmerSlide 1.8s ease-in-out infinite;
+  }
+
+  @keyframes shimmerSlide {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
   /* Neon text glow */
   .text-glow {
     text-shadow: 0 0 10px hsl(var(--primary) / 0.4), 0 0 30px hsl(var(--primary) / 0.15);
+  }
+
+  .text-glow-intense {
+    text-shadow: 0 0 8px hsl(var(--primary) / 0.6), 0 0 24px hsl(var(--primary) / 0.3), 0 0 48px hsl(var(--primary) / 0.1);
+  }
+
+  /* Breathing border glow */
+  .border-breathe {
+    animation: borderBreathe 4s ease-in-out infinite;
+  }
+
+  @keyframes borderBreathe {
+    0%, 100% { border-color: hsl(var(--border)); box-shadow: none; }
+    50% { border-color: hsl(var(--primary) / 0.3); box-shadow: 0 0 16px -4px hsl(var(--primary) / 0.15); }
+  }
+
+  /* Counter number animation utility */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Focus indicators for accessibility */
