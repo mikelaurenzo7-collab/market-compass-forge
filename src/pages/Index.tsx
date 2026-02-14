@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import OnboardingFlow, { useOnboardingStatus } from "@/components/OnboardingFlow";
 import EmptyState from "@/components/EmptyState";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LiveIndicator } from "@/components/LiveIndicator";
 import FeatureTooltip from "@/components/FeatureTooltip";
@@ -433,32 +433,61 @@ const Index = () => {
 
    return (
      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-       <div className="flex items-center justify-between">
-         <div>
-           <h1 className="text-xl font-semibold text-foreground">Market Intelligence</h1>
-           <p className="text-sm text-muted-foreground mt-0.5">{freshnessLabel}</p>
+       {/* Cinematic Hero Header */}
+       <motion.div
+         initial={{ opacity: 0, y: -8 }}
+         animate={{ opacity: 1, y: 0 }}
+         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+         className="relative overflow-hidden rounded-xl glass-premium p-5 sm:p-6"
+       >
+         {/* Aurora accent */}
+         <div className="absolute inset-0 aurora-gradient opacity-50 pointer-events-none" />
+         <div className="relative flex items-center justify-between">
+           <div>
+             <motion.h1
+               initial={{ opacity: 0, x: -12 }}
+               animate={{ opacity: 1, x: 0 }}
+               transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+               className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
+             >
+               Market Intelligence
+             </motion.h1>
+             <motion.p
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               transition={{ delay: 0.3 }}
+               className="text-sm text-muted-foreground mt-0.5"
+             >
+               {freshnessLabel}
+             </motion.p>
+           </div>
+           <div className="flex items-center gap-3">
+             <LiveIndicator />
+             <Button variant="outline" size="sm" onClick={() => setCustomizingDashboard(!customizingDashboard)} className="gap-1 border-border/50 hover:border-primary/30">
+               <Settings2 className="h-4 w-4" />
+             <span className="hidden sm:inline">{customizingDashboard ? "Done" : "Customize"}</span>
+           </Button>
          </div>
-         <div className="flex items-center gap-3">
-           <LiveIndicator />
-           <Button variant="outline" size="sm" onClick={() => setCustomizingDashboard(!customizingDashboard)} className="gap-1">
-             <Settings2 className="h-4 w-4" />
-           <span className="hidden sm:inline">{customizingDashboard ? "Done" : "Customize"}</span>
-         </Button>
-       </div>
-       </div>
+         </div>
+       </motion.div>
 
       {customizingDashboard && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3 animate-fadeIn">
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          className="rounded-lg border border-border glass-premium p-4 space-y-3 overflow-hidden"
+        >
           <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Dashboard Widgets</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {allWidgets.map(widget => (
               <button key={widget.id} onClick={() => toggleWidget(widget.id)}
-                className={`text-left px-3 py-2 rounded-md border transition-colors ${visibleWidgets.includes(widget.id) ? "border-primary bg-primary/10 text-foreground" : "border-border bg-muted/30 text-muted-foreground"}`}>
+                className={`text-left px-3 py-2 rounded-md border transition-all duration-300 ${visibleWidgets.includes(widget.id) ? "border-primary/40 bg-primary/10 text-foreground glow-primary" : "border-border bg-muted/30 text-muted-foreground hover:border-primary/20"}`}>
                 <span className="text-sm font-medium">{widget.label}</span>
               </button>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
@@ -496,12 +525,17 @@ const Index = () => {
           {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:gap-4">
-          <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} />
-          <MetricCard label="Private Companies" value={String(batch?.companyCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Tracked</span>} />
-          <MetricCard label="Distressed Alerts" value={String(batch?.distressedCount ?? 0)} subtitle={<span className="flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Active</span>} />
-          <MetricCard label="Off-Market Listings" value={String(batch?.listingsCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Building className="h-2.5 w-2.5" /> Available</span>} />
-        </div>
+        <motion.div
+          className="grid grid-cols-2 gap-2 sm:gap-4"
+          initial="initial"
+          animate="animate"
+          variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
+        >
+          <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} index={0} />
+          <MetricCard label="Private Companies" value={String(batch?.companyCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Tracked</span>} index={1} />
+          <MetricCard label="Distressed Alerts" value={String(batch?.distressedCount ?? 0)} subtitle={<span className="flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Active</span>} index={2} />
+          <MetricCard label="Off-Market Listings" value={String(batch?.listingsCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Building className="h-2.5 w-2.5" /> Available</span>} index={3} />
+        </motion.div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">

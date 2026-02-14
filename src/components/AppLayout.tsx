@@ -79,7 +79,7 @@ const AppLayout = () => {
       <WhatsNewModal />
 
       <main className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 border-b border-border/40 bg-background/60 backdrop-blur-xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4">
+        <header className="sticky top-0 z-30 border-b border-border/30 bg-background/40 backdrop-blur-2xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4">
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -94,7 +94,7 @@ const AppLayout = () => {
           </div>
           <div className="flex items-center gap-2 md:gap-3">
             {/* BETA badge */}
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-primary/30 text-primary bg-primary/5">
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-primary/20 text-primary bg-primary/5 holo-shimmer">
               Beta
             </span>
             <button
@@ -104,7 +104,7 @@ const AppLayout = () => {
             >
               <Bell className="h-4 w-4" />
               {(unreadCount ?? 0) > 0 && (
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-glow-pulse" />
               )}
             </button>
           </div>
