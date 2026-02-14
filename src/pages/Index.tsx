@@ -18,6 +18,7 @@ import EmptyState from "@/components/EmptyState";
 import { AnimatePresence } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LiveIndicator } from "@/components/LiveIndicator";
+import FeatureTooltip from "@/components/FeatureTooltip";
 
 // Lazy load heavy chart components
 const DealFlowChart = lazy(() => import("@/components/Charts").then(m => ({ default: m.DealFlowChart })));
@@ -463,9 +464,13 @@ const Index = () => {
 
       {/* Morning Briefing */}
       {visibleWidgets.includes("morning-briefing") && (
-        <Suspense fallback={<ChartSkeleton />}>
-          <MorningBriefing />
-        </Suspense>
+        <FeatureTooltip featureId="morning-briefing" tip="Pro tip: Customize your daily briefing content and frequency in Settings → Briefing." side="bottom">
+          <div>
+            <Suspense fallback={<ChartSkeleton />}>
+              <MorningBriefing />
+            </Suspense>
+          </div>
+        </FeatureTooltip>
       )}
 
       {/* Alpha Signals */}

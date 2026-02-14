@@ -6,6 +6,7 @@ import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
+import WhatsNewModal from "@/components/WhatsNewModal";
 import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Bell, Menu, X, Wifi } from "lucide-react";
@@ -67,6 +68,7 @@ const AppLayout = () => {
 
       <CommandPalette />
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      <WhatsNewModal />
 
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4">
