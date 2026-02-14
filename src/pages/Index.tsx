@@ -6,6 +6,8 @@ import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
 import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
 import UsageMeters from "@/components/UsageMeters";
+import UpgradePrompt from "@/components/UpgradePrompt";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
 import { Search, TrendingUp, FileText, ArrowRight, List, Lock, Settings2, AlertTriangle, Building, Briefcase, Bell, Zap, Globe } from "lucide-react";
@@ -364,6 +366,7 @@ const Index = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: batch } = useDashboardBatch();
+  const { showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
 
   // Realtime: refresh dashboard when activity events or signals change
   useEffect(() => {
@@ -458,9 +461,13 @@ const Index = () => {
         </div>
       )}
 
+      <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
+
       <AnimatePresence>
         {showOnboarding && <OnboardingFlow />}
       </AnimatePresence>
+
+      <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
 
       {/* Morning Briefing */}
       {visibleWidgets.includes("morning-briefing") && (
