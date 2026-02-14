@@ -16,22 +16,19 @@ import Valuations from "./pages/Valuations";
 import FundIntelligence from "./pages/FundIntelligence";
 import RealEstateIntel from "./pages/RealEstateIntel";
 import Research from "./pages/Research";
-import Screening from "./pages/Screening";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
-import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import IntelligenceFeed from "./pages/IntelligenceFeed";
 import DistressedAssets from "./pages/DistressedAssets";
 import AdminDashboard from "./pages/AdminDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import Discover from "./pages/Discover";
 import PublicMarkets from "./pages/PublicMarkets";
 import GlobalMarkets from "./pages/GlobalMarkets";
-import SectorMomentum from "./pages/SectorMomentum";
-import CompetitiveIntel from "./pages/CompetitiveIntel";
+import SectorPulse from "./pages/SectorPulse";
 import DealMatcher from "./pages/DealMatcher";
+import Screening from "./pages/Screening";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -70,20 +67,21 @@ const App = () => (
               <Route path="/fund-intelligence" element={<FundIntelligence />} />
               <Route path="/real-estate" element={<RealEstateIntel />} />
               <Route path="/distressed" element={<DistressedAssets />} />
-              <Route path="/discover" element={<Discover />} />
               <Route path="/public-markets" element={<PublicMarkets />} />
               <Route path="/global" element={<GlobalMarkets />} />
-              <Route path="/sector-momentum" element={<SectorMomentum />} />
-              <Route path="/competitive-intel" element={<CompetitiveIntel />} />
+              <Route path="/sector-pulse" element={<SectorPulse />} />
               <Route path="/deal-matcher" element={<DealMatcher />} />
               <Route path="/research" element={<Research />} />
-              <Route path="/documents" element={<DocumentAnalyzer />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
               <Route path="/watchlists" element={<Screening />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={<AdminDashboard />} />
               {/* Legacy redirects */}
+              <Route path="/discover" element={<Navigate to="/companies" replace />} />
+              <Route path="/competitive-intel" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/sector-momentum" element={<Navigate to="/sector-pulse" replace />} />
+              <Route path="/documents" element={<Navigate to="/research" replace />} />
               <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
               <Route path="/markets/public" element={<Navigate to="/public-markets" replace />} />
               <Route path="/screening" element={<Navigate to="/watchlists" replace />} />

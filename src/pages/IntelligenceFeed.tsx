@@ -24,7 +24,7 @@ interface IntelItem {
   url: string | null;
 }
 
-const CATEGORY_TABS: { value: CategoryType | "all"; label: string; icon: typeof Building2 }[] = [
+const CATEGORY_TABS: { value: CategoryType | "all" | "competitive"; label: string; icon: typeof Building2 }[] = [
   { value: "all", label: "All", icon: Globe },
   { value: "pe_ma", label: "PE & M&A", icon: Briefcase },
   { value: "real_estate", label: "Real Estate", icon: Building2 },
@@ -32,6 +32,7 @@ const CATEGORY_TABS: { value: CategoryType | "all"; label: string; icon: typeof 
   { value: "credit", label: "Credit", icon: CreditCard },
   { value: "macro", label: "Macro", icon: Landmark },
   { value: "personnel", label: "People Moves", icon: Users },
+  { value: "competitive", label: "Competitive", icon: BarChart3 },
 ];
 
 const SentimentDot = ({ sentiment }: { sentiment: string }) => {
@@ -63,7 +64,7 @@ const useIntelligenceSignals = () =>
   });
 
 const IntelligenceFeed = () => {
-  const [activeCategory, setActiveCategory] = useState<CategoryType | "all">("all");
+  const [activeCategory, setActiveCategory] = useState<CategoryType | "all" | "competitive">("all");
   const queryClient = useQueryClient();
   const { data: items, isLoading } = useIntelligenceSignals();
 

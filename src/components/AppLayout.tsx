@@ -8,7 +8,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
 import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
-import { Bell, Menu, X } from "lucide-react";
+import { Bell, Menu, X, Wifi } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const AppLayout = () => {
@@ -52,7 +52,7 @@ const AppLayout = () => {
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       <main className="flex-1 min-w-0">
-        <header className="sticky top-0 z-30 border-b border-border glass px-3 md:px-6 py-3 flex items-center gap-3 md:gap-4">
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl px-3 md:px-6 py-3 flex items-center gap-3 md:gap-4">
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -80,6 +80,16 @@ const AppLayout = () => {
             </button>
           </div>
         </header>
+
+        {/* Status strip */}
+        <div className="border-b border-border/30 bg-muted/20 px-4 md:px-6 py-1 flex items-center gap-4 text-[10px] font-mono text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Wifi className="h-2.5 w-2.5 text-primary" />
+            <span className="text-primary">LIVE</span>
+          </span>
+          <span className="hidden sm:inline">Data refreshed continuously</span>
+          <span className="ml-auto hidden sm:inline opacity-60">⌘K to search · ⌘/ for shortcuts</span>
+        </div>
 
         <ErrorBoundary>
           <div className="animate-fade-in">

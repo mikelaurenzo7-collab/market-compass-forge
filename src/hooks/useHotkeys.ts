@@ -92,13 +92,13 @@ export const useTableNavigation = (
 export const SIDEBAR_ROUTES = [
   "/dashboard",
   "/companies",
-  "/valuations",
+  "/public-markets",
+  "/global",
   "/deals",
-  "/fund-intelligence",
-  "/real-estate",
+  "/deal-matcher",
+  "/valuations",
   "/research",
   "/intelligence",
-  "/watchlists",
 ];
 
 export const GLOBAL_HOTKEYS_HELP = [

@@ -267,14 +267,7 @@ const DocumentAnalyzer = () => {
   const analysisData = analysis && (analysis as any).status === "complete" ? analysis : null;
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground">AI Document Analyzer</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Upload CIMs, PPMs, 10-Ks, or any financial document for instant AI extraction
-        </p>
-      </div>
-
+    <div className="space-y-6">
       {/* Upload Area */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
