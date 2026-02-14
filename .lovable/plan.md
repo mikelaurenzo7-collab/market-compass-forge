@@ -1,135 +1,130 @@
 
-# Operation Domination: The Next Offensive
 
-## Situation Report
+# Platform Reorganization: Clean, Futuristic, Professional
 
-**Current Force Strength:**
-| Asset | Count | Status |
-|-------|-------|--------|
-| Total Companies | 7,841 | 841 private, 7,000 public |
-| Global Opportunities | 139 | Good but needs 500+ for credibility |
-| Distressed Assets | 326 | Solid, diversify geography |
-| Real Estate Listings | 244 | Strong, expand property types |
-| Precedent Transactions | 87 | Needs 200+ for reliable comps |
-| Deal Transactions | 70 | Thin -- needs expansion |
-| Alpha Signals | 10 | Engine works, needs deeper integration |
-| Macro Indicators | 18 | Good baseline |
-| Intelligence Signals | 385 | Strong sentiment coverage |
+## The Problem
 
-**Gaps the Enemy (PitchBook/Bloomberg) Exploits:**
-1. DCF Calculator uses hardcoded WACC (10%) -- not wired to live Treasury yield data
-2. Valuation Football Field has no "AI-Adjusted" bar showing predicted valuation shift
-3. Company Detail page doesn't show sector alpha signals
-4. No company-level AI health assessment (only sector-level signals exist)
-5. Data density is thin in precedent transactions and deal flow -- undermines comps credibility
-6. No cross-asset correlation view (macro shifts affecting RE, distressed, and PE simultaneously)
+The sidebar currently has **17 navigation items** spread across two sections ("Platform" with 13 items and "Insights" with 4 items). This creates cognitive overload and makes the platform feel sprawling rather than premium. Several modules overlap in purpose (e.g., Discover vs Companies, Sector Momentum vs Competitive Intel), and the grouping doesn't tell a clear story.
 
-## Battle Plan: 5 Fronts
+## The Vision
 
-### Front 1: Wire AI Into Valuations (High Impact, Low Effort)
+Reorganize into **5 clear groups** with a maximum of 3-4 items each. The sidebar should feel like a Bloomberg terminal's left rail -- tight, purposeful, no wasted space. Every item earns its spot.
 
-**DCF Calculator** -- Auto-populate the risk-free rate from `macro_indicators`:
-- Query `macro_indicators` for `DGS10` (10-Year Treasury) on component mount
-- Pre-fill the WACC field: `risk_free_rate + equity_risk_premium`
-- Show a small label: "Risk-free rate: 4.28% (10Y Treasury, delayed)"
-- User can still override manually
+## New Sidebar Architecture
 
-**Valuation Football Field** -- Add a 5th "AI Projected" bar:
-- Query `alpha_signals` for the company's sector
-- Apply the `magnitude_pct` shift to the Comp Companies range
-- Display as a dashed-outline bar labeled "AI Adjusted" with the signal's confidence badge
-- Example: If SaaS comps show $320M-$580M and alpha signal says +5.2%, the AI bar shows $337M-$610M
+```text
+COMMAND CENTER
+  Dashboard             (home base -- metrics, signals, pipeline)
 
-### Front 2: Company-Level AI Intelligence
+MARKETS
+  Private Markets       (was "Private Companies" + "Discover" merged)
+  Public Markets        (stays)
+  Global Markets        (stays -- cross-border & international)
 
-Add an **AI Health Assessment** to `CompanyDetail.tsx`:
-- New component `CompanyAIAssessment` shown in the overview tab sidebar
-- Pulls the sector's alpha signal and overlays it on the company's specific metrics
-- Displays a 3-line summary: "Based on macro conditions (10Y at 4.28%, Fed holding), public comps in Enterprise SaaS rising 5.2%, and this company's 25% growth rate, we project valuation stability with upside bias."
-- Shows the sector signal direction + magnitude inline with the Investment Score
-- No new edge function needed -- pure client-side composition of existing data
+DEAL ENGINE
+  Deal Flow             (pipeline kanban + transactions)
+  AI Deal Matcher       (AI-powered matching)
+  Valuations            (DCF, comps, football field)
 
-### Front 3: Data Arsenal Expansion
+INTELLIGENCE
+  Research & AI         (chat + memos)
+  Intelligence Feed     (news, signals, competitive intel merged)
+  Sector Pulse          (sector momentum + macro matrix combined)
 
-Seed additional data to reach institutional-grade density:
+ALTERNATIVES
+  Real Estate           (off-market listings)
+  Distressed Assets     (distressed opportunities)
+  Fund Intelligence     (LP/GP data)
+```
 
-**Precedent Transactions** (target: 200+, currently 87):
-- Add 120+ major M&A/PE transactions across Technology, Healthcare, Financial Services, Industrials, Consumer, and Energy
-- Include recent 2024-2025 megadeals (Synopsys/Ansys, Juniper/HPE, Discover/Capital One)
-- Ensures the Comp Analysis and Football Field have real benchmark multiples
+Plus the bottom rail: Alerts, Watchlists, Settings, Admin (role-gated).
 
-**Deal Transactions** (target: 150+, currently 70):
-- Add 80+ PE/VC deals with EV/Revenue and EV/EBITDA multiples
-- Focus on mid-market ($50M-$2B) where our users operate
+## Key Decisions
 
-**Global Opportunities** (target: 300+, currently 139):
-- Expand Sub-Saharan Africa (Nigeria, Kenya, South Africa fintech boom)
-- Add Eastern Europe (Poland, Czech Republic PE activity)
-- Add Southeast Asia depth (Vietnam, Philippines infrastructure plays)
+1. **Merge "Discover" into "Private Markets"** -- Discover is just a filtered view of companies. The Companies page will absorb Discover's preset filters as tabs/chips at the top.
 
-**Distressed Assets** (target: 400+, currently 326):
-- Add international distressed (UK retail, German industrial, Chinese property)
-- Add specialty categories (shipping vessels, mineral rights, franchise portfolios)
+2. **Merge "Competitive Intel" into "Intelligence Feed"** -- Competitive signals are intelligence. The Intelligence Feed page will get a new "Competitive" tab alongside PE/M&A, Real Estate, Venture, etc.
 
-### Front 4: Cross-Asset Macro Dashboard
+3. **Merge "Sector Momentum" + "Macro Matrix" into "Sector Pulse"** -- One page with two tabs: Momentum (capital flows, rotation map) and Macro (impact matrix, cross-asset grid). Eliminates a standalone page.
 
-Create a new **Macro Impact Matrix** component for the Analytics page:
-- A grid showing how the current macro regime affects each asset class
-- Rows: PE/VC, Distressed, Real Estate, Public Markets, Global
-- Columns: Direction, Magnitude, Key Driver, AI Confidence
-- Powered entirely by existing `alpha_signals` + `macro_indicators` data
-- Shows correlations: "Rising rates compress PE multiples but create distressed opportunities"
+4. **Promote "Watchlists" to bottom rail** -- It's a utility/workflow tool, not a content module. Sits alongside Alerts and Settings.
 
-### Front 5: Pattern Recognition Alerts
+5. **Remove "Document Analyzer" from sidebar** -- It's a tool, not a destination. Access it from Research & AI page as a tab, or from the Command Palette (Cmd+K).
 
-Add a **Smart Alerts** edge function that runs after alpha signals are generated:
-- Detects sentiment-fundamental divergences (bullish sentiment + declining revenue = warning)
-- Detects sector rotation patterns (capital flowing from one sector to another)
-- Stores alerts in `alert_notifications` table (already exists)
-- Surfaces on the dashboard with a new "AI Alerts" badge count
+## Visual & UX Improvements
 
-## Implementation Sequence
+### Sidebar Refresh
+- **Section dividers**: Thin 1px lines with subtle primary glow between groups instead of text labels (cleaner, more futuristic)
+- **Active state**: Left accent bar (2px primary) + subtle bg glow instead of just bg-accent
+- **Hover micro-animation**: Slight scale(1.01) + glow on hover for premium feel
+- **Group icons**: Each section header gets a tiny decorative dot in primary color
+- **Collapsed state**: Show group separator dots for orientation
 
-1. **Data seeding** (SQL migrations) -- expand precedent_transactions, deal_transactions, global_opportunities, distressed_assets
-2. **DCF + Football Field wiring** -- connect macro_indicators and alpha_signals to valuation components
-3. **CompanyAIAssessment component** -- new component for CompanyDetail sidebar
-4. **Macro Impact Matrix** -- new Analytics page component
-5. **Smart Alerts edge function** -- pattern detection + alert generation
+### AppLayout Header
+- Replace plain search bar with a frosted-glass search pill with a subtle pulse ring on the border
+- Add a slim "status strip" below the header showing connection status and data freshness in a futuristic mono font
 
-## Technical Details
+### Dashboard Polish
+- Metric cards get a subtle gradient border that pulses on data refresh
+- Section transitions use staggered fade-up animations (already partially implemented)
 
-### New Files
-- `src/components/CompanyAIAssessment.tsx` -- Company-level AI health overlay
-- `src/components/MacroImpactMatrix.tsx` -- Cross-asset macro correlation grid
-- `supabase/functions/smart-alerts/index.ts` -- Pattern detection engine
+### Global Page Transitions
+- Ensure all pages use consistent PageTransition wrapper with the same animation curve
 
-### Modified Files
-- `src/components/DCFCalculator.tsx` -- Wire `useMacroIndicators` for risk-free rate auto-fill
-- `src/components/ValuationFootballField.tsx` -- Add AI-Adjusted bar using `useAlphaSignals`
-- `src/pages/CompanyDetail.tsx` -- Add CompanyAIAssessment to overview sidebar
-- `src/pages/Analytics.tsx` -- Add MacroImpactMatrix section
-- `src/components/AlphaSignalWidget.tsx` -- Add alert count badge
-- `supabase/config.toml` -- Register smart-alerts function
+## Technical Plan
 
-### Data Seeding
-- ~120 precedent transactions (SQL INSERT)
-- ~80 deal transactions (SQL INSERT)  
-- ~160 global opportunities (SQL INSERT)
-- ~75 distressed assets (SQL INSERT)
+### Files Modified
 
-### Cost Impact
-- All data seeding: $0
-- Smart Alerts: Uses existing Lovable AI credits (triggered only after alpha-signals runs)
-- No new API keys or external dependencies
+1. **`src/components/AppSidebar.tsx`** -- Complete restructure of navigation groups:
+   - New groups: Command Center, Markets, Deal Engine, Intelligence, Alternatives
+   - Subtle separator styling between groups
+   - Active state with left accent bar
+   - Hover micro-animations via Tailwind
 
-## What This Achieves
+2. **`src/App.tsx`** -- Route cleanup:
+   - Remove `/discover` route (redirect to `/companies`)
+   - Remove `/competitive-intel` route (redirect to `/intelligence`)
+   - Remove `/sector-momentum` route (new route `/sector-pulse`)
+   - Remove `/documents` standalone route (embed in `/research`)
+   - Add `/sector-pulse` route
+   - Add legacy redirects for removed paths
 
-After this offensive, Grapevine will have:
-- **Live macro-adjusted valuations** that no competitor offers at our price point
-- **Company-level AI assessments** that synthesize sector + macro + company data
-- **500+ precedent transactions** for institutional-grade comps
-- **300+ global opportunities** across 6 regions
-- **400+ distressed assets** including international
-- **Pattern recognition alerts** that proactively surface opportunities
+3. **`src/pages/Companies.tsx`** -- Absorb Discover:
+   - Add preset filter chips from Discover (Growth Stage, Unicorn Hunters, Quick Bets) as a top bar
+   - Keep existing table view as default, add card grid toggle from Discover
 
-The enemy charges $30K/year for static data. We charge $399/month for predictive intelligence. That is how we win.
+4. **`src/pages/IntelligenceFeed.tsx`** -- Absorb Competitive Intel:
+   - Add "Competitive" as a new category tab
+   - Pull in the competitive signals logic from CompetitiveIntel
+
+5. **`src/pages/SectorPulse.tsx`** (new) -- Merge Sector Momentum + Macro Matrix:
+   - Two main tabs: "Momentum" and "Macro Impact"
+   - Momentum tab contains the existing sector momentum charts
+   - Macro tab contains the MacroImpactMatrix component
+
+6. **`src/pages/Research.tsx`** -- Add Document Analyzer tab:
+   - Three tabs: "AI Chat", "Investment Memo", "Document Analyzer"
+
+7. **`src/components/AppLayout.tsx`** -- Header visual upgrade:
+   - Frosted glass search pill styling
+   - Slim data freshness indicator
+
+8. **`src/index.css`** -- New utility classes:
+   - `.sidebar-active` with left border accent + glow
+   - `.sidebar-glow-separator` for group dividers
+   - Refined hover transitions
+
+9. **`src/hooks/useHotkeys.ts`** -- Update SIDEBAR_ROUTES array to match new navigation order
+
+### Files Removed (content absorbed elsewhere)
+- `src/pages/Discover.tsx` -- Logic merged into Companies
+- `src/pages/CompetitiveIntel.tsx` -- Logic merged into IntelligenceFeed
+- `src/pages/SectorMomentum.tsx` -- Logic moved to SectorPulse
+
+### Estimated Scope
+- 8-10 files modified
+- 1 new file created (SectorPulse.tsx)
+- 3 files deprecated (content merged, files kept with redirect exports)
+- No database changes required
+- No edge function changes required
+
