@@ -7,6 +7,7 @@ import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
 import WhatsNewModal from "@/components/WhatsNewModal";
+import AmbientGrid from "@/components/AmbientGrid";
 import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Bell, Menu, X, Wifi } from "lucide-react";
@@ -35,7 +36,8 @@ const AppLayout = () => {
   ]);
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background relative">
+      <AmbientGrid />
       {/* Desktop sidebar */}
       <div className="hidden md:block">
         <AppSidebar />
@@ -71,7 +73,7 @@ const AppLayout = () => {
       <WhatsNewModal />
 
       <main className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4">
+        <header className="sticky top-0 z-30 border-b border-border/40 bg-background/60 backdrop-blur-xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4">
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
