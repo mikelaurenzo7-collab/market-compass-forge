@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePublicCompanies, useSeedPublicCompanies } from "@/hooks/usePublicCompanies";
 import { formatCurrency } from "@/hooks/useData";
@@ -198,6 +198,19 @@ const PublicMarkets = () => {
     };
   }, [companies]);
 
+  const isEmpty = !companies?.length;
+
+  // Auto-seed on first visit if empty
+  useEffect(() => {
+    if (isEmpty && !isLoading && !seedMutation.isPending) {
+      toast.info("Auto-importing public companies from SEC...");
+      seedMutation.mutateAsync().then((result) => {
+        toast.success(`Imported ${result.newly_inserted} companies from SEC`);
+      }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEmpty, isLoading]);
+
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 space-y-4">
@@ -211,8 +224,6 @@ const PublicMarkets = () => {
       </div>
     );
   }
-
-  const isEmpty = !companies?.length;
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
