@@ -13,6 +13,7 @@ const CATEGORIES = [
   { key: "credit", query: "credit markets leveraged loans high yield bonds distressed debt 2026" },
   { key: "macro", query: "macroeconomic outlook interest rates inflation GDP 2026" },
   { key: "personnel", query: "executive moves PE venture capital partner hires departures 2026" },
+  { key: "competitive", query: "competitive landscape market share shifts product launches executive moves technology disruption 2026" },
 ];
 
 Deno.serve(async (req) => {

@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Landmark, Users, Building2, Download } from "lucide-react";
+import { Landmark, Users, Building2, Download, BarChart3 } from "lucide-react";
+import PortfolioBenchmark from "@/components/PortfolioBenchmark";
+import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,9 +30,29 @@ const quartileColors: Record<number, string> = {
 };
 
 const FundIntelligence = () => {
+  const { user } = useAuth();
   const [fundSearch, setFundSearch] = useState("");
   const [strategyFilter, setStrategyFilter] = useState("all");
   const [lpSearch, setLpSearch] = useState("");
+
+  // Portfolio positions for benchmarking
+  const { data: portfolioPositions } = useQuery({
+    queryKey: ["portfolio-positions-benchmark", user?.id],
+    queryFn: async () => {
+      const { data: portfolios } = await supabase
+        .from("portfolios")
+        .select("id")
+        .eq("user_id", user!.id)
+        .limit(1);
+      if (!portfolios?.length) return [];
+      const { data: positions } = await supabase
+        .from("portfolio_positions")
+        .select("*, companies(name, sector, market_type), public_market_data(price, price_change_pct), funding_rounds(valuation_post, round_type)")
+        .eq("portfolio_id", portfolios[0].id);
+      return positions ?? [];
+    },
+    enabled: !!user,
+  });
 
   const { data: funds, isLoading: fundsLoading } = useQuery({
     queryKey: ["funds"],
@@ -108,6 +130,7 @@ const FundIntelligence = () => {
           <TabsTrigger value="funds" className="gap-1.5 text-xs"><Landmark className="h-3.5 w-3.5" /> Fund Performance</TabsTrigger>
           <TabsTrigger value="lps" className="gap-1.5 text-xs"><Users className="h-3.5 w-3.5" /> LP Directory</TabsTrigger>
           <TabsTrigger value="gps" className="gap-1.5 text-xs"><Building2 className="h-3.5 w-3.5" /> GP Profiles</TabsTrigger>
+          <TabsTrigger value="benchmark" className="gap-1.5 text-xs"><BarChart3 className="h-3.5 w-3.5" /> Portfolio Benchmark</TabsTrigger>
         </TabsList>
 
         <TabsContent value="funds">
@@ -245,6 +268,20 @@ const FundIntelligence = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="benchmark">
+          {portfolioPositions && portfolioPositions.length > 0 ? (
+            <PortfolioBenchmark positions={portfolioPositions as any} />
+          ) : (
+            <Card className="border-border bg-card">
+              <CardContent className="py-12 text-center">
+                <BarChart3 className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-1">No portfolio positions yet</p>
+                <p className="text-xs text-muted-foreground/70">Add companies to your portfolio to see MOIC, IRR, and PME benchmarks.</p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
