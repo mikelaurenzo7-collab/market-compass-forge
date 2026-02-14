@@ -13,21 +13,29 @@ import UpgradePrompt from "@/components/UpgradePrompt";
 type Memo = {
   company_name: string;
   date: string;
+  executive_summary: string;
   thesis: string;
   market: string;
   traction: string;
+  management: string;
+  competitive_landscape: string;
   risks: string;
   valuation: string;
+  terms_structure: string;
   recommendation: string;
 };
 
-const SECTIONS: { key: keyof Omit<Memo, "company_name" | "date">; label: string }[] = [
-  { key: "thesis", label: "Investment Thesis" },
-  { key: "market", label: "Market Analysis" },
-  { key: "traction", label: "Traction & Metrics" },
-  { key: "risks", label: "Key Risks" },
-  { key: "valuation", label: "Valuation" },
-  { key: "recommendation", label: "Recommendation" },
+const SECTIONS: { key: keyof Omit<Memo, "company_name" | "date">; label: string; icon: string }[] = [
+  { key: "executive_summary", label: "Executive Summary", icon: "📋" },
+  { key: "thesis", label: "Investment Thesis", icon: "💡" },
+  { key: "market", label: "Market Analysis", icon: "📊" },
+  { key: "traction", label: "Traction & Metrics", icon: "📈" },
+  { key: "management", label: "Management Team", icon: "👥" },
+  { key: "competitive_landscape", label: "Competitive Landscape", icon: "⚔️" },
+  { key: "risks", label: "Key Risks", icon: "⚠️" },
+  { key: "valuation", label: "Valuation Analysis", icon: "💰" },
+  { key: "terms_structure", label: "Terms & Structure", icon: "📜" },
+  { key: "recommendation", label: "Recommendation", icon: "✅" },
 ];
 
 const InvestmentMemo = ({ companyId, companyName }: { companyId: string; companyName: string }) => {
@@ -108,9 +116,9 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
 
   const toMarkdown = () => {
     if (!memo) return "";
-    return `# Investment Memo: ${memo.company_name}\n_${memo.date}_\n\n${SECTIONS.map(
-      ({ key, label }) => `## ${label}\n\n${memo[key]}`
-    ).join("\n\n---\n\n")}`;
+    return `# Investment Memo: ${memo.company_name}\n_${memo.date} · Confidential_\n\n${SECTIONS.map(
+      ({ key, label, icon }) => `## ${icon} ${label}\n\n${memo[key]}`
+    ).join("\n\n---\n\n")}\n\n---\n\n_Disclaimer: This memo is for informational purposes only and does not constitute investment advice. Always conduct independent due diligence._`;
   };
 
   const copyMarkdown = () => {
@@ -140,6 +148,19 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
       return;
     }
 
+    const sectionColors: Record<string, string> = {
+      executive_summary: "#0ea5e9",
+      thesis: "#8b5cf6",
+      market: "#06b6d4",
+      traction: "#10b981",
+      management: "#f59e0b",
+      competitive_landscape: "#ef4444",
+      risks: "#f97316",
+      valuation: "#6366f1",
+      terms_structure: "#64748b",
+      recommendation: "#22c55e",
+    };
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -150,87 +171,179 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
           body { 
             font-family: 'Georgia', 'Times New Roman', serif; 
             color: #1a1a1a; 
-            line-height: 1.6; 
-            padding: 60px; 
-            max-width: 800px; 
+            line-height: 1.65; 
+            padding: 48px 56px; 
+            max-width: 820px; 
             margin: 0 auto; 
           }
-          .header { 
-            border-bottom: 3px solid #0ea5e9; 
-            padding-bottom: 20px; 
-            margin-bottom: 30px; 
+          .cover { 
+            text-align: center;
+            padding: 40px 0 32px;
+            border-bottom: 4px solid #0ea5e9;
+            margin-bottom: 32px;
           }
-          .header h1 { 
-            font-size: 28px; 
+          .cover .brand { 
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: #0ea5e9;
+            margin-bottom: 16px;
+          }
+          .cover h1 { 
+            font-size: 32px; 
             font-weight: 700; 
             color: #0c4a6e; 
-            margin-bottom: 4px; 
+            margin-bottom: 6px; 
           }
-          .header .date { 
+          .cover .date { 
             font-size: 13px; 
             color: #64748b; 
             font-family: 'Courier New', monospace;
           }
-          .header .badge {
+          .cover .badges {
+            margin-top: 12px;
+          }
+          .cover .badge {
             display: inline-block;
             background: #0ea5e9;
             color: white;
-            padding: 2px 10px;
+            padding: 3px 12px;
             border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin: 0 4px;
+          }
+          .cover .badge.draft {
+            background: #94a3b8;
+          }
+          .toc {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px 24px;
+            margin-bottom: 28px;
+          }
+          .toc h3 {
             font-size: 11px;
             font-weight: 600;
-            letter-spacing: 0.5px;
             text-transform: uppercase;
-            margin-top: 8px;
+            letter-spacing: 1.5px;
+            color: #64748b;
+            margin-bottom: 10px;
           }
-          .section { margin-bottom: 28px; }
+          .toc ol {
+            padding-left: 18px;
+            columns: 2;
+            column-gap: 24px;
+          }
+          .toc li {
+            font-size: 12px;
+            color: #334155;
+            padding: 2px 0;
+            break-inside: avoid;
+          }
+          .section { 
+            margin-bottom: 24px;
+            page-break-inside: avoid;
+          }
           .section h2 { 
-            font-size: 14px; 
-            font-weight: 600; 
+            font-size: 13px; 
+            font-weight: 700; 
             text-transform: uppercase; 
-            letter-spacing: 1px; 
-            color: #0ea5e9; 
+            letter-spacing: 1.2px; 
             margin-bottom: 10px;
             padding-bottom: 6px;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
           }
           .section p, .section li { 
-            font-size: 14px; 
+            font-size: 13px; 
             color: #334155; 
             margin-bottom: 8px; 
           }
           .section ul { padding-left: 20px; }
           .section strong { color: #1a1a1a; }
+          .executive-summary {
+            background: linear-gradient(135deg, #f0f9ff, #eff6ff);
+            border-left: 4px solid #0ea5e9;
+            border-radius: 0 8px 8px 0;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+          }
+          .executive-summary h2 {
+            border-bottom: none;
+            padding-bottom: 0;
+            color: #0c4a6e;
+          }
+          .executive-summary p {
+            font-size: 14px;
+            color: #0c4a6e;
+            line-height: 1.7;
+            font-weight: 500;
+          }
           .footer { 
-            margin-top: 40px; 
+            margin-top: 36px; 
             padding-top: 16px; 
-            border-top: 1px solid #e2e8f0; 
-            font-size: 11px; 
+            border-top: 2px solid #e2e8f0; 
+            font-size: 10px; 
             color: #94a3b8; 
             text-align: center;
+            line-height: 1.6;
           }
           @media print {
-            body { padding: 40px; }
+            body { padding: 36px; }
             @page { margin: 1.5cm; size: A4; }
+            .section { page-break-inside: avoid; }
           }
         </style>
       </head>
       <body>
-        <div class="header">
-          <h1>Investment Memo: ${memo.company_name}</h1>
+        <div class="cover">
+          <div class="brand">Grapevine Intelligence</div>
+          <h1>${memo.company_name}</h1>
           <div class="date">${memo.date}</div>
-          <div class="badge">Confidential</div>
-        </div>
-        ${SECTIONS.map(({ key, label }) => `
-          <div class="section">
-            <h2>${label}</h2>
-            <div>${memo[key].replace(/\n/g, "<br/>")}</div>
+          <div class="badges">
+            <span class="badge">Confidential</span>
+            <span class="badge draft">Investment Memo</span>
           </div>
-        `).join("")}
+        </div>
+
+        <div class="toc">
+          <h3>Table of Contents</h3>
+          <ol>
+            ${SECTIONS.map(({ label }) => `<li>${label}</li>`).join("")}
+          </ol>
+        </div>
+
+        ${SECTIONS.map(({ key, label, icon }) => {
+          const color = sectionColors[key] || "#0ea5e9";
+          if (key === "executive_summary") {
+            return `
+              <div class="executive-summary">
+                <h2>${icon} ${label}</h2>
+                <div>${memo[key].replace(/\n/g, "<br/>")}</div>
+              </div>
+            `;
+          }
+          return `
+            <div class="section">
+              <h2 style="color: ${color}; border-bottom-color: ${color}30;">${icon} ${label}</h2>
+              <div>${memo[key].replace(/\n/g, "<br/>")}</div>
+            </div>
+          `;
+        }).join("")}
+
         <div class="footer">
-          Generated by Grapevine · ${memo.date}<br/>
+          Generated by Grapevine Intelligence Platform · ${memo.date}<br/>
           <strong>DISCLAIMER:</strong> This memo is for informational purposes only and does not constitute investment advice.
           All data and analysis are provided "as-is" without warranty. Always conduct independent due diligence before making investment decisions.
+          <br/><br/>
+          <em>Proprietary & Confidential — Do not distribute without authorization.</em>
         </div>
       </body>
       </html>
@@ -303,10 +416,10 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
         </div>
       </div>
 
-      <div ref={memoRef} className="p-6 space-y-6 max-h-[600px] overflow-y-auto">
-        {SECTIONS.map(({ key, label }) => (
-          <div key={key}>
-            <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">{label}</h4>
+      <div ref={memoRef} className="p-6 space-y-6 max-h-[700px] overflow-y-auto">
+        {SECTIONS.map(({ key, label, icon }) => (
+          <div key={key} className={key === "executive_summary" ? "bg-primary/5 border-l-2 border-primary rounded-r-md p-4 -ml-2" : ""}>
+            <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">{icon} {label}</h4>
             <div className="text-sm text-foreground leading-relaxed prose prose-sm prose-invert max-w-none">
               <ReactMarkdown>{memo[key]}</ReactMarkdown>
             </div>

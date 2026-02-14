@@ -24,6 +24,7 @@ const DealFlowChart = lazy(() => import("@/components/Charts").then(m => ({ defa
 const SectorHeatmap = lazy(() => import("@/components/Charts").then(m => ({ default: m.SectorHeatmap })));
 const NewsFeed = lazy(() => import("@/components/NewsFeed"));
 const AlphaSignalWidget = lazy(() => import("@/components/AlphaSignalWidget"));
+const MorningBriefing = lazy(() => import("@/components/MorningBriefing"));
 
 const ChartSkeleton = () => (
   <div className="rounded-lg border border-border bg-card p-4 space-y-4">
@@ -376,7 +377,7 @@ const Index = () => {
 
   const [customizingDashboard, setCustomizingDashboard] = useState(false);
   const [visibleWidgets, setVisibleWidgets] = useState<string[]>([
-    "alpha-signals", "watchlist", "deal-flow", "sector-heatmap", "pipeline", "distressed", "off-market", "intelligence-feed"
+    "morning-briefing", "alpha-signals", "watchlist", "deal-flow", "sector-heatmap", "pipeline", "distressed", "off-market", "intelligence-feed"
   ]);
 
   useEffect(() => {
@@ -410,6 +411,7 @@ const Index = () => {
   }]);
 
   const allWidgets = [
+    { id: "morning-briefing", label: "Morning Briefing" },
     { id: "alpha-signals", label: "Alpha Signals" },
     { id: "watchlist", label: "Watchlists" },
     { id: "deal-flow", label: "Deal Flow Chart" },
@@ -454,6 +456,13 @@ const Index = () => {
       <AnimatePresence>
         {showOnboarding && <OnboardingFlow />}
       </AnimatePresence>
+
+      {/* Morning Briefing */}
+      {visibleWidgets.includes("morning-briefing") && (
+        <Suspense fallback={<ChartSkeleton />}>
+          <MorningBriefing />
+        </Suspense>
+      )}
 
       {/* Alpha Signals */}
       {visibleWidgets.includes("alpha-signals") && (

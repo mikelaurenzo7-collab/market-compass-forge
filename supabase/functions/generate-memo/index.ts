@@ -62,12 +62,16 @@ serve(async (req) => {
     // Track usage server-side
     await supabase.from("usage_tracking").insert({ user_id: user.id, action: "memo_generation" });
 
-    const [companyRes, fundingRes, financialsRes, eventsRes, investorsRes] = await Promise.all([
+    const [companyRes, fundingRes, financialsRes, eventsRes, investorsRes, personnelRes, capTableRes, newsRes, kpiRes] = await Promise.all([
       supabase.from("companies").select("*").eq("id", company_id).maybeSingle(),
       supabase.from("funding_rounds").select("*").eq("company_id", company_id).order("date", { ascending: false }),
       supabase.from("financials").select("*").eq("company_id", company_id).order("period", { ascending: false }),
       supabase.from("activity_events").select("*").eq("company_id", company_id).order("published_at", { ascending: false }).limit(10),
       supabase.from("investor_company").select("*, investors(name, type, aum)").eq("company_id", company_id),
+      supabase.from("key_personnel").select("*").eq("company_id", company_id).limit(10),
+      supabase.from("cap_table_snapshots").select("*").eq("company_id", company_id).order("snapshot_date", { ascending: false }).limit(10),
+      supabase.from("news_articles").select("title, sentiment_label, ai_summary").eq("company_id", company_id).order("published_at", { ascending: false }).limit(5),
+      supabase.from("kpi_metrics").select("*").eq("company_id", company_id).order("period", { ascending: false }).limit(10),
     ]);
 
     const company = companyRes.data;
@@ -95,8 +99,20 @@ ${(fundingRes.data ?? []).map(r => `${r.round_type} (${r.date}): Raised $${r.amo
 FINANCIALS:
 ${(financialsRes.data ?? []).map(f => `${f.period}: Rev $${f.revenue ? (f.revenue / 1e6).toFixed(0) + 'M' : 'N/A'}, ARR $${f.arr ? (f.arr / 1e6).toFixed(0) + 'M' : 'N/A'}, Margin ${f.gross_margin ? (f.gross_margin * 100).toFixed(0) + '%' : 'N/A'}, Burn $${f.burn_rate ? (f.burn_rate / 1e6).toFixed(0) + 'M/mo' : 'N/A'}, EBITDA $${f.ebitda ? (f.ebitda / 1e6).toFixed(0) + 'M' : 'N/A'}`).join('\n')}
 
+KPI METRICS:
+${(kpiRes.data ?? []).map((k: any) => `${k.metric_name} (${k.period}): ${k.value}`).join('\n')}
+
+MANAGEMENT TEAM:
+${(personnelRes.data ?? []).map((p: any) => `${p.name} — ${p.title}${p.background ? ': ' + p.background : ''}`).join('\n') || 'Not available'}
+
+CAP TABLE:
+${(capTableRes.data ?? []).map((c: any) => `${c.shareholder_name}: ${c.shares} shares (${c.share_class}), ${c.ownership_pct ? (c.ownership_pct * 100).toFixed(1) + '%' : 'N/A'}`).join('\n') || 'Not available'}
+
 INVESTORS:
 ${(investorsRes.data ?? []).map(i => `${(i as any).investors?.name} (${(i as any).investors?.type}), est. ownership: ${i.ownership_pct_est ? (i.ownership_pct_est * 100).toFixed(1) + '%' : 'N/A'}`).join('\n')}
+
+RECENT NEWS:
+${(newsRes.data ?? []).map((n: any) => `[${n.sentiment_label}] ${n.title} — ${n.ai_summary || ''}`).join('\n') || 'None'}
 
 RECENT EVENTS:
 ${(eventsRes.data ?? []).map(e => `[${e.event_type}] ${e.headline}`).join('\n')}
@@ -121,7 +137,7 @@ ${(comps ?? []).map(c => `${c.name} (${c.stage}, ${c.employee_count} emp, founde
         messages: [
           {
             role: "system",
-            content: `You are a senior investment analyst at a top-tier VC firm. Generate a comprehensive investment memo based on the company data provided. Be data-driven and specific with numbers. Use the tool to return structured output.
+            content: `You are a senior investment analyst at a top-tier PE/VC firm preparing an institutional-grade investment memo. Be data-driven, specific with numbers, and thorough. Use the tool to return structured output.
 
 IMPORTANT DISCLAIMER: This memo is generated for informational purposes only and does not constitute investment advice. Include a brief disclaimer at the end of the recommendation section noting that independent due diligence should be conducted.
 
@@ -129,7 +145,7 @@ ${contextBlock}`,
           },
           {
             role: "user",
-            content: `Generate a full investment memo for ${company.name}.`,
+            content: `Generate a comprehensive institutional-grade investment memo for ${company.name}.`,
           },
         ],
         tools: [
@@ -143,14 +159,18 @@ ${contextBlock}`,
                 properties: {
                   company_name: { type: "string" },
                   date: { type: "string", description: "Today's date" },
+                  executive_summary: { type: "string", description: "3-4 sentence executive summary covering the opportunity, key metrics, and recommendation. This is the most important section — a busy partner reads only this." },
                   thesis: { type: "string", description: "2-3 paragraph investment thesis explaining why this is compelling (200+ words)" },
-                  market: { type: "string", description: "Market size, dynamics, tailwinds, and competitive landscape analysis (200+ words)" },
-                  traction: { type: "string", description: "Revenue metrics, growth trajectory, customer momentum, product-market fit indicators (150+ words)" },
-                  risks: { type: "string", description: "Key investment risks and mitigants, 4-6 bullet points" },
-                  valuation: { type: "string", description: "Valuation analysis including multiples, comparables, and whether current pricing is attractive (150+ words)" },
-                  recommendation: { type: "string", description: "Final recommendation: Invest / Pass / Monitor, with conviction level and key conditions" },
+                  market: { type: "string", description: "Market size (TAM/SAM/SOM), dynamics, tailwinds, and competitive landscape analysis (200+ words)" },
+                  traction: { type: "string", description: "Revenue metrics, growth trajectory, customer momentum, product-market fit indicators with specific numbers (150+ words)" },
+                  management: { type: "string", description: "Assessment of management team quality, track record, domain expertise, and any gaps. Reference specific team members if data available." },
+                  competitive_landscape: { type: "string", description: "Key competitors, competitive positioning, sustainable advantages (moats), and differentiation strategy" },
+                  risks: { type: "string", description: "Key investment risks and mitigants, 4-6 bullet points with severity assessment" },
+                  valuation: { type: "string", description: "Valuation analysis including multiples, comparables, scenario analysis (bull/base/bear), and whether current pricing is attractive (200+ words)" },
+                  terms_structure: { type: "string", description: "Analysis of deal terms, cap table implications, governance rights, and key structural considerations" },
+                  recommendation: { type: "string", description: "Final recommendation: Invest / Pass / Monitor, with conviction level (High/Medium/Low), key conditions, and next steps" },
                 },
-                required: ["company_name", "date", "thesis", "market", "traction", "risks", "valuation", "recommendation"],
+                required: ["company_name", "date", "executive_summary", "thesis", "market", "traction", "management", "competitive_landscape", "risks", "valuation", "terms_structure", "recommendation"],
                 additionalProperties: false,
               },
             },
