@@ -4,12 +4,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMacroIndicators } from "@/hooks/useMacroIndicators";
+import { useDCFAutoPopulate } from "@/hooks/useDCFAutoPopulate";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Search, Zap, Database } from "lucide-react";
 
 export interface DCFCompanyProps {
   initialRevenue?: number; // in $M
   initialGrowth?: number; // as percentage e.g. 25
   initialMargin?: number; // as percentage e.g. 30
   companyName?: string;
+  companyId?: string;
 }
 
 const formatVal = (v: number) => {
@@ -20,12 +25,28 @@ const formatVal = (v: number) => {
 
 // ─── DCF TAB ────────────────────────────────────────────────────────────────
 
-const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName }: DCFCompanyProps) => {
+const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName, companyId }: DCFCompanyProps) => {
   const { data: macroIndicators } = useMacroIndicators();
   const treasuryYield = macroIndicators?.find(m => m.series_id === "DGS10");
   const riskFreeRate = treasuryYield?.value ?? 4.28;
-  const equityRiskPremium = 5.5; // standard ERP
-  const macroWacc = Math.round((riskFreeRate + equityRiskPremium) * 10) / 10;
+  
+  // Company search for auto-populate
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(companyId ?? null);
+  const { data: searchResults } = useQuery({
+    queryKey: ["dcf-company-search", searchTerm],
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("id, name, sector, market_type").ilike("name", `%${searchTerm}%`).limit(6);
+      return data ?? [];
+    },
+    enabled: searchTerm.length >= 2,
+  });
+  const { data: autoData } = useDCFAutoPopulate(selectedCompanyId);
+
+  // Build WACC from macro data + company beta
+  const companyBeta = autoData?.beta ?? 1.0;
+  const equityRiskPremium = 5.5;
+  const macroWacc = Math.round((riskFreeRate + companyBeta * equityRiskPremium) * 10) / 10;
 
   const [inputs, setInputs] = useState({
     revenue: initialRevenue ?? 100,
@@ -38,6 +59,19 @@ const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName }: D
     terminalGrowth: 3,
     projectionYears: 5,
   });
+
+  // Auto-populate when company data loads
+  useEffect(() => {
+    if (autoData) {
+      setInputs(prev => ({
+        ...prev,
+        ...(autoData.revenue !== null && { revenue: Math.round(autoData.revenue) }),
+        ...(autoData.revenueGrowth !== null && { revenueGrowth: autoData.revenueGrowth }),
+        ...(autoData.ebitdaMargin !== null && { ebitdaMargin: autoData.ebitdaMargin }),
+        wacc: macroWacc,
+      }));
+    }
+  }, [autoData, macroWacc]);
 
   // Update WACC when macro data loads
   useEffect(() => {
@@ -124,24 +158,70 @@ const DCFTab = ({ initialRevenue, initialGrowth, initialMargin, companyName }: D
 
   return (
     <div className="space-y-6">
+      {/* Company Search for Auto-Populate */}
+      {!companyId && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="h-4 w-4 text-primary" />
+              <span className="text-xs font-semibold text-foreground">Auto-Populate from Real Data</span>
+              {autoData && (
+                <span className="ml-auto inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
+                  <Database className="h-3 w-3" />
+                  Source: {autoData.source}
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search a company to auto-fill revenue, growth, margin, beta..."
+                value={selectedCompanyId && autoData ? autoData.companyName : searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setSelectedCompanyId(null); }}
+                className="w-full h-8 pl-9 pr-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground"
+              />
+              {searchResults && searchResults.length > 0 && !selectedCompanyId && (
+                <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-lg max-h-48 overflow-y-auto">
+                  {searchResults.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => { setSelectedCompanyId(c.id); setSearchTerm(c.name); }}
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-accent transition-colors flex items-center justify-between"
+                    >
+                      <span className="text-foreground">{c.name}</span>
+                      <span className="text-[10px] text-muted-foreground">{c.sector} · {c.market_type}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="border-border bg-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">
             DCF Assumptions
-            {companyName && (
+            {(companyName || autoData?.companyName) && (
               <span className="ml-2 text-xs font-normal text-muted-foreground">
-                Pre-populated from {companyName} financials
+                Pre-populated from {companyName || autoData?.companyName} financials
               </span>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {treasuryYield && (
-            <div className="mb-3 px-3 py-2 rounded-md bg-primary/5 border border-primary/10 flex items-center gap-2">
+            <div className="mb-3 px-3 py-2 rounded-md bg-primary/5 border border-primary/10 flex items-center gap-2 flex-wrap">
               <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
               <span className="text-[11px] text-muted-foreground">
-                Risk-free rate: <span className="font-mono font-medium text-foreground">{riskFreeRate.toFixed(2)}%</span> (10Y Treasury, {treasuryYield.observation_date})
-                — WACC auto-set to <span className="font-mono font-medium text-foreground">{macroWacc}%</span>
+                Rf: <span className="font-mono font-medium text-foreground">{riskFreeRate.toFixed(2)}%</span> (10Y Treasury)
+                {autoData?.beta && (
+                  <> · β: <span className="font-mono font-medium text-foreground">{companyBeta.toFixed(2)}</span></>
+                )}
+                {" "}→ WACC: <span className="font-mono font-medium text-foreground">{macroWacc}%</span>
+                <span className="text-muted-foreground/60 ml-1">(Rf + β×ERP)</span>
               </span>
             </div>
           )}

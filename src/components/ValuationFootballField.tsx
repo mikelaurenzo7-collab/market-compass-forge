@@ -116,6 +116,8 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
     return defaultRanges;
   }, [propRanges, companyData]);
 
+  const dataSource = companyData?.sectorMultiples ? "live" : "default";
+
   // Compute AI-Adjusted bar from alpha signals
   const aiAdjustedRange = useMemo(() => {
     if (!alphaSignals?.length || !companyData?.sector) return null;
@@ -176,9 +178,14 @@ const ValuationFootballField = ({ ranges: propRanges, companyData }: { ranges?: 
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-sm font-semibold">Valuation Football Field</CardTitle>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {isCompanyDriven && (
               <p className="text-[10px] text-muted-foreground">Computed from company financials & sector multiples</p>
+            )}
+            {dataSource === "live" && isCompanyDriven && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-success/10 text-success border border-success/20">
+                Live Data
+              </span>
             )}
             {aiAdjustedRange && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-chart-3/10 text-chart-3 border border-chart-3/20">
