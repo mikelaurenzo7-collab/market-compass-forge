@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.deal-matcher]
 verify_jwt = false
+
+[functions.compute-health-score]
+verify_jwt = false
