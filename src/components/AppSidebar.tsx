@@ -8,14 +8,14 @@ import {
   Handshake,
   Sparkles,
   DollarSign,
-  Search,
+  SlidersHorizontal,
   Rss,
   Activity,
   Building,
   AlertTriangle,
   Landmark,
   Bell,
-  Star,
+  Briefcase,
   Settings,
   ShieldCheck,
   Code,
@@ -23,6 +23,7 @@ import {
   ChevronRight,
   LogOut,
   FileText,
+  Search,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -57,8 +58,8 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
       { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
       { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
-      { id: "screening", label: "Screening", icon: Search, path: "/screening" },
-      { id: "portfolio", label: "Portfolio", icon: TrendingUp, path: "/portfolio" },
+      { id: "screening", label: "Screening", icon: SlidersHorizontal, path: "/screening" },
+      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
     ],
   },
   {
@@ -103,7 +104,6 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
   const bottomItems = [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
-    { id: "watchlists", label: "Watchlists", icon: Star, path: "/watchlists" },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
     { id: "developers", label: "API Docs", icon: Code, path: "/developers" },
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
