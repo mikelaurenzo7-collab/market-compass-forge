@@ -31,6 +31,7 @@ const AppLayout = () => {
 
   useHotkeys([
     { key: "/", meta: true, handler: () => setShowShortcuts((v) => !v) },
+    { key: "?", handler: () => setShowShortcuts((v) => !v) },
     { key: "Escape", handler: () => { setShowShortcuts(false); setMobileMenuOpen(false); setCompareOpen(false); } },
     { key: "c", meta: true, shift: true, handler: () => setCompareOpen((v) => !v) },
     ...SIDEBAR_ROUTES.map((route, i) => ({

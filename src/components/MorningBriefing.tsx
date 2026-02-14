@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Sun, Loader2, TrendingUp, AlertTriangle, Target, CheckCircle2, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Sun, Loader2, TrendingUp, AlertTriangle, Target, CheckCircle2, Sparkles, ChevronDown, ChevronUp, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -24,6 +24,37 @@ const PRIORITY_STYLES = {
   high: "bg-destructive/10 text-destructive border-destructive/20",
   medium: "bg-warning/10 text-warning border-warning/20",
   low: "bg-primary/10 text-primary border-primary/20",
+};
+
+const SendTestEmailButton = () => {
+  const [sending, setSending] = useState(false);
+
+  const sendTest = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSending(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Please sign in first"); return; }
+      const resp = await supabase.functions.invoke("send-test-briefing", {});
+      if (resp.error) throw resp.error;
+      toast.success(`Test briefing sent to ${resp.data?.sent_to ?? "your email"}`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send test email");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={sendTest}
+      disabled={sending}
+      className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground uppercase tracking-wider hover:text-primary hover:underline disabled:opacity-50 transition-colors"
+    >
+      <Mail className="h-3 w-3" />
+      {sending ? "Sending..." : "Send Test"}
+    </button>
+  );
 };
 
 const MorningBriefing = () => {
@@ -120,6 +151,7 @@ const MorningBriefing = () => {
           <h3 className="text-sm font-semibold text-foreground">Morning Briefing</h3>
         </div>
         <div className="flex items-center gap-2">
+          <SendTestEmailButton />
           <button
             onClick={(e) => { e.stopPropagation(); generate(); }}
             disabled={loading}
