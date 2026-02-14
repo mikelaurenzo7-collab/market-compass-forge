@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from "framer-motion";
+import { TrendingUp, BarChart3 } from "lucide-react";
 
 const formatCurrency = (v: number | null) => {
   if (!v) return "—";
@@ -21,6 +23,22 @@ const percentile = (sorted: number[], p: number): number => {
   if (lower === upper) return sorted[lower];
   return sorted[lower] + (sorted[upper] - sorted[lower]) * (idx - lower);
 };
+
+const AnimatedStatCard = ({ label, value, sub, index, highlight }: { label: string; value: string; sub?: string; index: number; highlight?: boolean }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 12 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: index * 0.06, ease: [0.22, 1, 0.36, 1] }}
+  >
+    <Card className={`border-border bg-card ${highlight ? "border-primary/20" : ""}`}>
+      <CardContent className="pt-3 text-center">
+        <p className="text-[10px] text-muted-foreground">{label}</p>
+        <p className={`text-lg font-bold font-mono ${highlight ? "text-primary" : "text-foreground"}`}>{value}</p>
+        {sub && <p className="text-[9px] text-muted-foreground">{sub}</p>}
+      </CardContent>
+    </Card>
+  </motion.div>
+);
 
 const PrecedentTransactions = () => {
   const [sectorFilter, setSectorFilter] = useState("all");
@@ -61,12 +79,10 @@ const PrecedentTransactions = () => {
       };
     };
 
-    // Outlier detection: beyond 2x IQR
     const evRevStats = compute(evRevValues);
     const evRevIQR = evRevStats.p75 - evRevStats.p25;
     const evRevOutlierHigh = evRevStats.p75 + evRevIQR * 2;
 
-    // Deal count by year
     const byYear: Record<string, number> = {};
     filtered.forEach(t => {
       if (t.deal_date) {
@@ -98,47 +114,37 @@ const PrecedentTransactions = () => {
         </Select>
       </div>
 
-      {/* Summary stats with percentiles */}
+      {/* Animated stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="border-border bg-card"><CardContent className="pt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">Transactions</p>
-          <p className="text-lg font-bold font-mono">{filtered.length}</p>
-        </CardContent></Card>
-        <Card className="border-border bg-card"><CardContent className="pt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">Median EV/Rev</p>
-          <p className="text-lg font-bold font-mono text-primary">{stats.evRev.median ? `${stats.evRev.median.toFixed(1)}x` : "—"}</p>
-          <p className="text-[9px] text-muted-foreground">Mean: {stats.evRev.mean ? `${stats.evRev.mean.toFixed(1)}x` : "—"}</p>
-        </CardContent></Card>
-        <Card className="border-border bg-card"><CardContent className="pt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">EV/Rev P25–P75</p>
-          <p className="text-sm font-bold font-mono">{stats.evRev.p25 ? `${stats.evRev.p25.toFixed(1)}x` : "—"} – {stats.evRev.p75 ? `${stats.evRev.p75.toFixed(1)}x` : "—"}</p>
-        </CardContent></Card>
-        <Card className="border-border bg-card"><CardContent className="pt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">Median EV/EBITDA</p>
-          <p className="text-lg font-bold font-mono text-primary">{stats.evEbitda.median ? `${stats.evEbitda.median.toFixed(1)}x` : "—"}</p>
-          <p className="text-[9px] text-muted-foreground">Mean: {stats.evEbitda.mean ? `${stats.evEbitda.mean.toFixed(1)}x` : "—"}</p>
-        </CardContent></Card>
-        <Card className="border-border bg-card"><CardContent className="pt-3 text-center">
-          <p className="text-[10px] text-muted-foreground">EV/EBITDA P25–P75</p>
-          <p className="text-sm font-bold font-mono">{stats.evEbitda.p25 ? `${stats.evEbitda.p25.toFixed(1)}x` : "—"} – {stats.evEbitda.p75 ? `${stats.evEbitda.p75.toFixed(1)}x` : "—"}</p>
-        </CardContent></Card>
+        <AnimatedStatCard label="Transactions" value={String(filtered.length)} index={0} />
+        <AnimatedStatCard label="Median EV/Rev" value={stats.evRev.median ? `${stats.evRev.median.toFixed(1)}x` : "—"} sub={`Mean: ${stats.evRev.mean ? `${stats.evRev.mean.toFixed(1)}x` : "—"}`} index={1} highlight />
+        <AnimatedStatCard label="EV/Rev P25–P75" value={`${stats.evRev.p25 ? stats.evRev.p25.toFixed(1) : "—"}–${stats.evRev.p75 ? stats.evRev.p75.toFixed(1) : "—"}x`} index={2} />
+        <AnimatedStatCard label="Median EV/EBITDA" value={stats.evEbitda.median ? `${stats.evEbitda.median.toFixed(1)}x` : "—"} sub={`Mean: ${stats.evEbitda.mean ? `${stats.evEbitda.mean.toFixed(1)}x` : "—"}`} index={3} highlight />
+        <AnimatedStatCard label="EV/EBITDA P25–P75" value={`${stats.evEbitda.p25 ? stats.evEbitda.p25.toFixed(1) : "—"}–${stats.evEbitda.p75 ? stats.evEbitda.p75.toFixed(1) : "—"}x`} index={4} />
       </div>
 
-      {/* Deal count by year */}
+      {/* Animated deal volume chart */}
       {stats.byYear.length > 0 && (
         <div className="flex items-end gap-1 px-2">
-          {stats.byYear.map(([year, count]) => {
+          {stats.byYear.map(([year, count], i) => {
             const maxCount = Math.max(...stats.byYear.map(([, c]) => c));
-            const height = Math.max(8, (count / maxCount) * 40);
+            const height = Math.max(8, (count / maxCount) * 48);
             return (
-              <div key={year} className="flex flex-col items-center gap-0.5">
+              <motion.div
+                key={year}
+                className="flex flex-col items-center gap-0.5"
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                transition={{ delay: i * 0.05, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                style={{ transformOrigin: "bottom" }}
+              >
                 <span className="text-[9px] font-mono text-muted-foreground">{count}</span>
                 <div
-                  className="w-8 rounded-t bg-primary/60"
+                  className="w-9 rounded-t bg-gradient-to-t from-primary/80 to-primary/40"
                   style={{ height: `${height}px` }}
                 />
                 <span className="text-[9px] font-mono text-muted-foreground">{year.slice(2)}</span>
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -152,15 +158,21 @@ const PrecedentTransactions = () => {
               <thead>
                 <tr className="border-b border-border">
                   {["Date", "Target", "Acquirer", "Sector", "Deal Value", "EV/Rev", "EV/EBITDA"].map((h) => (
-                    <th key={h} className="text-left py-2 px-3 text-xs text-muted-foreground font-medium">{h}</th>
+                    <th key={h} className="text-left py-2.5 px-3 text-xs text-muted-foreground font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((t) => {
+                {filtered.map((t, i) => {
                   const isOutlier = t.ev_revenue !== null && t.ev_revenue > stats.evRevOutlierHigh;
                   return (
-                    <tr key={t.id} className={`border-b border-border/50 hover:bg-muted/20 ${isOutlier ? 'bg-warning/5' : ''}`}>
+                    <motion.tr
+                      key={t.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: Math.min(i * 0.02, 0.5) }}
+                      className={`border-b border-border/50 hover:bg-muted/20 transition-colors ${isOutlier ? 'bg-warning/5' : ''}`}
+                    >
                       <td className="py-2 px-3 font-mono text-xs">{t.deal_date ?? "—"}</td>
                       <td className="py-2 px-3 text-xs font-medium">{t.target_company_name}</td>
                       <td className="py-2 px-3 text-xs">{t.acquirer_company_name}</td>
@@ -171,7 +183,7 @@ const PrecedentTransactions = () => {
                         {isOutlier && <span className="ml-1 text-[9px]">⚠</span>}
                       </td>
                       <td className="py-2 px-3 font-mono text-xs">{t.ev_ebitda ? `${t.ev_ebitda.toFixed(1)}x` : "—"}</td>
-                    </tr>
+                    </motion.tr>
                   );
                 })}
               </tbody>
