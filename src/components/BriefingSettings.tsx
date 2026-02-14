@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
-import { Mail, Loader2, Save, Clock, Send } from "lucide-react";
+import { Mail, Loader2, Save, Clock, Send, Eye } from "lucide-react";
 
 const BriefingSettings = () => {
   const { user } = useAuth();
@@ -166,7 +166,7 @@ const BriefingSettings = () => {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending}
@@ -175,9 +175,63 @@ const BriefingSettings = () => {
           {saveMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           Save Preferences
         </button>
+        <BriefingPreviewButton />
         <SendTestBriefingButton />
       </div>
     </div>
+  );
+};
+
+const BriefingPreviewButton = () => {
+  const [previewing, setPreviewing] = useState(false);
+  const [html, setHtml] = useState<string | null>(null);
+
+  const preview = async () => {
+    setPreviewing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Not authenticated");
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/morning-briefing`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ preview: true }),
+        }
+      );
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error ?? "Failed to generate preview");
+      setHtml(result.html ?? result.briefing ?? "<p>Briefing content would appear here. Configure your preferences and save to generate a full preview.</p>");
+    } catch (e) {
+      toast({ title: "Preview failed", description: String(e), variant: "destructive" });
+    }
+    setPreviewing(false);
+  };
+
+  return (
+    <>
+      <button
+        onClick={preview}
+        disabled={previewing}
+        className="h-9 px-4 rounded-md border border-border bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+      >
+        {previewing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Eye className="h-3 w-3" />}
+        Preview
+      </button>
+      {html && (
+        <div className="w-full mt-3 rounded-lg border border-border bg-background p-4 max-h-64 overflow-y-auto">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold text-foreground">Briefing Preview</span>
+            <button onClick={() => setHtml(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
+          </div>
+          <div className="prose prose-sm dark:prose-invert max-w-none text-xs" dangerouslySetInnerHTML={{ __html: html }} />
+        </div>
+      )}
+    </>
   );
 };
 

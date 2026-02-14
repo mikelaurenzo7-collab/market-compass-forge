@@ -1,16 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, FileText, Sparkles, TrendingUp } from "lucide-react";
+import { Zap, FileText, Sparkles, TrendingUp, ArrowUpRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const USAGE_CONFIG = [
-  { action: "ai_research", label: "AI Queries", icon: Sparkles, limit: 100 },
-  { action: "memo_generation", label: "Memos", icon: FileText, limit: 50 },
-  { action: "enrichment", label: "Enrichments", icon: TrendingUp, limit: 50 },
+  { action: "ai_research", label: "AI Queries", icon: Sparkles, limit: 200 },
+  { action: "memo_generation", label: "Memos", icon: FileText, limit: 100 },
+  { action: "enrichment", label: "Enrichments", icon: TrendingUp, limit: 100 },
 ];
 
 const UsageMeters = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
@@ -70,6 +72,14 @@ const UsageMeters = () => {
                   style={{ width: `${pct}%` }}
                 />
               </div>
+              {pct >= 90 && (
+                <button
+                  onClick={() => navigate("/settings")}
+                  className="flex items-center gap-1 text-[10px] font-medium text-primary hover:underline mt-1"
+                >
+                  <ArrowUpRight className="h-3 w-3" /> View usage details
+                </button>
+              )}
             </div>
           );
         })}
