@@ -98,8 +98,8 @@ export default function DealWorkspace({ dealId, companyId, companyName, onClose 
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="w-full max-w-2xl max-h-[85vh] rounded-lg border border-border bg-card shadow-2xl flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[85vh] rounded-t-lg sm:rounded-lg border border-border bg-card shadow-2xl flex flex-col">
         {/* Header */}
         <div className="px-4 py-3 border-b border-border flex items-center justify-between shrink-0">
           <div>
