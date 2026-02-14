@@ -30,6 +30,8 @@ import SectorPulse from "./pages/SectorPulse";
 import DealMatcher from "./pages/DealMatcher";
 import Screening from "./pages/Screening";
 import Developers from "./pages/Developers";
+import Portfolio from "./pages/Portfolio";
+import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -74,7 +76,9 @@ const App = () => (
               <Route path="/deal-matcher" element={<DealMatcher />} />
               <Route path="/research" element={<Research />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
-              <Route path="/watchlists" element={<Screening />} />
+              <Route path="/screening" element={<Screening />} />
+              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/document-analyzer" element={<DocumentAnalyzer />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/developers" element={<Developers />} />
@@ -83,14 +87,13 @@ const App = () => (
               <Route path="/discover" element={<Navigate to="/companies" replace />} />
               <Route path="/competitive-intel" element={<Navigate to="/intelligence" replace />} />
               <Route path="/sector-momentum" element={<Navigate to="/sector-pulse" replace />} />
-              <Route path="/documents" element={<Navigate to="/research" replace />} />
+              <Route path="/documents" element={<Navigate to="/document-analyzer" replace />} />
               <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
               <Route path="/markets/public" element={<Navigate to="/public-markets" replace />} />
-              <Route path="/screening" element={<Navigate to="/watchlists" replace />} />
+              <Route path="/watchlists" element={<Navigate to="/screening" replace />} />
               <Route path="/comps" element={<Navigate to="/valuations" replace />} />
               <Route path="/analytics" element={<Navigate to="/fund-intelligence" replace />} />
               <Route path="/people" element={<Navigate to="/fund-intelligence" replace />} />
-              <Route path="/portfolio" element={<Navigate to="/real-estate" replace />} />
               <Route path="/compare" element={<Navigate to="/valuations" replace />} />
               <Route path="/network" element={<Navigate to="/dashboard" replace />} />
             </Route>
