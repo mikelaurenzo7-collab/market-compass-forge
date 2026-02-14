@@ -75,14 +75,13 @@ const PasswordStrengthMeter = ({ password }: { password: string }) => {
 };
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -134,27 +133,14 @@ const Auth = () => {
 
     setLoading(true);
 
-    if (isLogin) {
-      const { error } = await signIn(email, password);
-      if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          setError("Invalid email or password. Please try again.");
-        } else if (error.message.includes("Email not confirmed")) {
-          setError("Please verify your email address before signing in.");
-        } else {
-          setError(error.message);
-        }
-      }
-    } else {
-      const { error } = await signUp(email, password);
-      if (error) {
-        if (error.message.includes("already registered")) {
-          setError("An account with this email already exists. Try logging in.");
-        } else {
-          setError(error.message);
-        }
+    const { error } = await signIn(email, password);
+    if (error) {
+      if (error.message.includes("Invalid login credentials")) {
+        setError("Invalid email or password. Please try again.");
+      } else if (error.message.includes("Email not confirmed")) {
+        setError("Please verify your email address before signing in.");
       } else {
-        setSuccess("Check your email for a verification link to complete signup.");
+        setError(error.message);
       }
     }
 
@@ -236,7 +222,7 @@ const Auth = () => {
           </div>
           <h1 className="text-xl font-semibold text-foreground">Grapevine</h1>
           <p className="text-sm text-muted-foreground">
-            {isLogin ? "Sign in to your account" : "Create your account"}
+            Sign in to your beta account
           </p>
         </div>
 
@@ -273,15 +259,13 @@ const Auth = () => {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label htmlFor="password" className="text-sm text-muted-foreground">Password</label>
-              {isLogin && (
-                <button
-                  type="button"
-                  onClick={() => { setIsForgotPassword(true); setError(""); setSuccess(""); }}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Forgot password?
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => { setIsForgotPassword(true); setError(""); setSuccess(""); }}
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot password?
+              </button>
             </div>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -295,9 +279,6 @@ const Auth = () => {
                 required
               />
             </div>
-            <AnimatePresence>
-              {!isLogin && <PasswordStrengthMeter password={password} />}
-            </AnimatePresence>
           </div>
 
           <button
@@ -306,19 +287,18 @@ const Auth = () => {
             className="w-full h-10 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {isLogin ? "Sign In" : "Create Account"}
+            Sign In
           </button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-          <button
-            onClick={() => { setIsLogin(!isLogin); setError(""); setSuccess(""); }}
-            className="text-primary hover:underline font-medium"
-          >
-            {isLogin ? "Sign up" : "Sign in"}
-          </button>
-        </p>
+        <div className="text-center space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Don't have an account? <Link to="/" className="text-primary hover:underline font-medium">Join the waitlist</Link>
+          </p>
+          <p className="text-[10px] text-muted-foreground/50">
+            Beta access is by invitation only
+          </p>
+        </div>
       </div>
     </div>
   );

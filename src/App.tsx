@@ -84,7 +84,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/developers" element={<Developers />} />
               <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/metrics" element={<InvestorMetrics />} />
+              {/* metrics route removed from public access */}
               {/* Legacy redirects */}
               <Route path="/discover" element={<Navigate to="/companies" replace />} />
               <Route path="/competitive-intel" element={<Navigate to="/intelligence" replace />} />
