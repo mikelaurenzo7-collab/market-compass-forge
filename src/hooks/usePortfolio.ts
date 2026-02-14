@@ -28,6 +28,10 @@ export type PortfolioPosition = {
     price: number | null;
     price_change_pct: number | null;
     ticker: string;
+    beta: number | null;
+    market_cap: number | null;
+    ev_ebitda: number | null;
+    ev_revenue: number | null;
   }[] | null;
   funding_rounds: {
     valuation_post: number | null;
@@ -72,7 +76,7 @@ export const usePortfolioPositions = (portfolioId: string | null) => {
       const companyIds = data.map((p: any) => p.company_id);
       
       const [marketRes, fundingRes] = await Promise.all([
-        supabase.from("public_market_data").select("company_id, price, price_change_pct, ticker").in("company_id", companyIds),
+        supabase.from("public_market_data").select("company_id, price, price_change_pct, ticker, beta, market_cap, ev_ebitda, ev_revenue").in("company_id", companyIds),
         supabase.from("funding_rounds").select("company_id, valuation_post, round_type, date").in("company_id", companyIds).order("date", { ascending: false }),
       ]);
 

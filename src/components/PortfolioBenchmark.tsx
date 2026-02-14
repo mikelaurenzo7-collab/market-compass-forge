@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Legend } from "recharts";
-import { TrendingUp, Shield, Target, AlertTriangle, BarChart3 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { TrendingUp, Shield, Target, AlertTriangle, BarChart3, Database } from "lucide-react";
+import { useMacroIndicators } from "@/hooks/useMacroIndicators";
 
 type Position = {
   id: string;
@@ -49,6 +50,7 @@ function calcXIRR(cashflows: { date: Date; amount: number }[]): number {
 }
 
 export default function PortfolioBenchmark({ positions }: { positions: Position[] }) {
+  const { data: macroIndicators } = useMacroIndicators();
   const analysis = useMemo(() => {
     if (!positions?.length) return null;
 
@@ -96,8 +98,13 @@ export default function PortfolioBenchmark({ positions }: { positions: Position[
     }).sort((a, b) => a.date.getTime() - b.date.getTime());
     const portfolioIRR = calcXIRR(allCashflows);
 
-    // PME (Public Market Equivalent) — estimate using ~10% S&P annual return
-    const spReturn = 0.10;
+    // PME (Public Market Equivalent) — use real S&P return from FRED if available
+    const sp500Indicator = macroIndicators?.find(m => m.series_id === "SP500");
+    // Use 10-year Treasury as risk-free proxy for expected market return when S&P data unavailable
+    const treasuryRate = macroIndicators?.find(m => m.series_id === "DGS10");
+    // Estimate S&P annual return: historically ~10%, or use treasury + ~5.5% ERP
+    const spReturn = treasuryRate ? (treasuryRate.value / 100 + 0.055) : 0.10;
+    
     const pme = positions.reduce((acc, pos) => {
       const cost = Number(pos.shares) * Number(pos.entry_price);
       const years = (Date.now() - new Date(pos.entry_date).getTime()) / (365.25 * 86400000);
@@ -135,8 +142,9 @@ export default function PortfolioBenchmark({ positions }: { positions: Position[
       hhi,
       moicChartData,
       concentrated: topSectorPct > 0.4,
+      spReturn,
     };
-  }, [positions]);
+  }, [positions, macroIndicators]);
 
   if (!analysis) return null;
 
@@ -146,7 +154,7 @@ export default function PortfolioBenchmark({ positions }: { positions: Position[
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KPI label="Portfolio MOIC" value={`${analysis.portfolioMOIC.toFixed(2)}x`} icon={<TrendingUp className="h-4 w-4" />} positive={analysis.portfolioMOIC >= 1} />
         <KPI label="Portfolio IRR" value={`${(analysis.portfolioIRR * 100).toFixed(1)}%`} icon={<Target className="h-4 w-4" />} positive={analysis.portfolioIRR >= 0} />
-        <KPI label="PME (vs S&P)" value={`${analysis.pmeRatio.toFixed(2)}x`} icon={<BarChart3 className="h-4 w-4" />} positive={analysis.pmeRatio >= 1} sub={analysis.pmeRatio >= 1 ? "Outperforming" : "Underperforming"} />
+        <KPI label="PME (vs S&P)" value={`${analysis.pmeRatio.toFixed(2)}x`} icon={<BarChart3 className="h-4 w-4" />} positive={analysis.pmeRatio >= 1} sub={`${analysis.pmeRatio >= 1 ? "Outperforming" : "Underperforming"} · ${(analysis.spReturn * 100).toFixed(1)}% benchmark`} />
         <KPI label="Total Cost" value={formatCurrency(analysis.totalCost)} icon={<Shield className="h-4 w-4" />} />
         <KPI label="Current Value" value={formatCurrency(analysis.totalValue)} icon={<TrendingUp className="h-4 w-4" />} positive={analysis.totalValue >= analysis.totalCost} />
       </div>
