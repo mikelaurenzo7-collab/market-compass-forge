@@ -94,7 +94,7 @@ const AppLayout = () => {
           </div>
           <div className="flex items-center gap-2 md:gap-3">
             {/* BETA badge */}
-            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-primary/20 text-primary bg-primary/5 holo-shimmer">
+            <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border border-[hsl(var(--brand-purple)/0.3)] text-[hsl(var(--brand-purple))] bg-[hsl(var(--brand-purple)/0.06)] holo-shimmer">
               Beta
             </span>
             <button
