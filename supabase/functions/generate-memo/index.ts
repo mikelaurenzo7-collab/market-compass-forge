@@ -59,7 +59,6 @@ serve(async (req) => {
       }
     }
 
-    // Track usage server-side
     await supabase.from("usage_tracking").insert({ user_id: user.id, action: "memo_generation" });
 
     const [companyRes, fundingRes, financialsRes, eventsRes, investorsRes, personnelRes, capTableRes, newsRes, kpiRes] = await Promise.all([
@@ -79,6 +78,79 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Company not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    const financials = financialsRes.data ?? [];
+    const fundingRounds = fundingRes.data ?? [];
+    const kpis = kpiRes.data ?? [];
+    const capTable = capTableRes.data ?? [];
+
+    // ── Build machine-readable citations ──
+    const fmtCurrency = (v: number) => {
+      if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
+      if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
+      return `$${v.toLocaleString()}`;
+    };
+
+    interface Citation {
+      id: string;
+      metric: string;
+      value: number | string;
+      formattedValue: string;
+      source: string;
+      sourceField: string;
+      period?: string;
+      confidence: string;
+      verifiedAt: string;
+      sourceType?: string;
+    }
+
+    let citeIdx = 0;
+    const citations: Citation[] = [];
+    const lowConfidenceMetrics: string[] = [];
+
+    const addCite = (metric: string, value: number | string, formatted: string, source: string, field: string, conf: string, verified: string, period?: string, srcType?: string) => {
+      const id = `cite_${++citeIdx}`;
+      const c: Citation = { id, metric, value, formattedValue: formatted, source, sourceField: field, period, confidence: conf || "medium", verifiedAt: verified, sourceType: srcType };
+      citations.push(c);
+      if (conf === "low" || conf === "unverified") lowConfidenceMetrics.push(`${metric} (${conf})`);
+      return id;
+    };
+
+    // Company-level
+    if (company.employee_count) addCite("Employee Count", company.employee_count, company.employee_count.toLocaleString(), "companies", "employee_count", "medium", company.updated_at);
+
+    // Financials
+    for (const f of financials) {
+      const conf = f.confidence_score ?? "medium";
+      const ver = f.fetched_at ?? f.created_at;
+      if (f.revenue) addCite(`Revenue (${f.period})`, f.revenue, fmtCurrency(f.revenue), "financials", "revenue", conf, ver, f.period, f.source_type);
+      if (f.arr) addCite(`ARR (${f.period})`, f.arr, fmtCurrency(f.arr), "financials", "arr", conf, ver, f.period, f.source_type);
+      if (f.ebitda) addCite(`EBITDA (${f.period})`, f.ebitda, fmtCurrency(f.ebitda), "financials", "ebitda", conf, ver, f.period, f.source_type);
+      if (f.gross_margin) addCite(`Gross Margin (${f.period})`, f.gross_margin, `${(f.gross_margin * 100).toFixed(0)}%`, "financials", "gross_margin", conf, ver, f.period, f.source_type);
+      if (f.burn_rate) addCite(`Burn Rate (${f.period})`, f.burn_rate, fmtCurrency(Math.abs(f.burn_rate)) + "/mo", "financials", "burn_rate", conf, ver, f.period, f.source_type);
+    }
+
+    // Funding
+    for (const r of fundingRounds) {
+      const conf = r.confidence_score ?? "medium";
+      const ver = r.fetched_at ?? r.created_at;
+      if (r.amount) addCite(`${r.round_type} Raise`, r.amount, fmtCurrency(r.amount), "funding_rounds", "amount", conf, ver, r.date, r.source_type);
+      if (r.valuation_post) addCite(`${r.round_type} Post-Money`, r.valuation_post, fmtCurrency(r.valuation_post), "funding_rounds", "valuation_post", conf, ver, r.date, r.source_type);
+    }
+
+    // KPIs
+    for (const k of kpis) {
+      addCite(`${k.metric_name} (${k.period})`, k.value, String(k.value), "kpi_metrics", k.metric_name, k.confidence_score ?? "medium", k.created_at, k.period, k.definition_source);
+    }
+
+    // Build citation reference block for AI prompt
+    const citationBlock = citations.map(c =>
+      `[${c.id}] ${c.metric}: ${c.formattedValue} (source: ${c.source}.${c.sourceField}, confidence: ${c.confidence}, verified: ${c.verifiedAt?.split("T")[0] ?? "unknown"})`
+    ).join("\n");
+
+    const lowConfBlock = lowConfidenceMetrics.length > 0
+      ? `\n\nLOW-CONFIDENCE METRICS — MUST be labeled as "⚠️ Estimate" or excluded:\n${lowConfidenceMetrics.map(m => `⚠️ ${m}`).join("\n")}`
+      : "";
+
     // Get sector comps
     const { data: comps } = await supabase
       .from("companies")
@@ -94,19 +166,19 @@ Stage: ${company.stage} | HQ: ${company.hq_city}, ${company.hq_country} | Employ
 Description: ${company.description}
 
 FUNDING HISTORY:
-${(fundingRes.data ?? []).map(r => `${r.round_type} (${r.date}): Raised $${r.amount ? (r.amount / 1e6).toFixed(0) + 'M' : 'N/A'}, Pre: $${r.valuation_pre ? (r.valuation_pre / 1e9).toFixed(1) + 'B' : 'N/A'}, Post: $${r.valuation_post ? (r.valuation_post / 1e9).toFixed(1) + 'B' : 'N/A'}, Lead: ${(r.lead_investors ?? []).join(', ')}`).join('\n')}
+${fundingRounds.map(r => `${r.round_type} (${r.date}): Raised ${fmtCurrency(r.amount ?? 0)}, Post: ${r.valuation_post ? fmtCurrency(r.valuation_post) : 'N/A'}, Lead: ${(r.lead_investors ?? []).join(', ')}`).join('\n')}
 
 FINANCIALS:
-${(financialsRes.data ?? []).map(f => `${f.period}: Rev $${f.revenue ? (f.revenue / 1e6).toFixed(0) + 'M' : 'N/A'}, ARR $${f.arr ? (f.arr / 1e6).toFixed(0) + 'M' : 'N/A'}, Margin ${f.gross_margin ? (f.gross_margin * 100).toFixed(0) + '%' : 'N/A'}, Burn $${f.burn_rate ? (f.burn_rate / 1e6).toFixed(0) + 'M/mo' : 'N/A'}, EBITDA $${f.ebitda ? (f.ebitda / 1e6).toFixed(0) + 'M' : 'N/A'}`).join('\n')}
+${financials.map(f => `${f.period}: Rev ${f.revenue ? fmtCurrency(f.revenue) : 'N/A'}, ARR ${f.arr ? fmtCurrency(f.arr) : 'N/A'}, Margin ${f.gross_margin ? (f.gross_margin * 100).toFixed(0) + '%' : 'N/A'}, Burn ${f.burn_rate ? fmtCurrency(Math.abs(f.burn_rate)) + '/mo' : 'N/A'}, EBITDA ${f.ebitda ? fmtCurrency(f.ebitda) : 'N/A'}`).join('\n')}
 
 KPI METRICS:
-${(kpiRes.data ?? []).map((k: any) => `${k.metric_name} (${k.period}): ${k.value}`).join('\n')}
+${kpis.map((k: any) => `${k.metric_name} (${k.period}): ${k.value}`).join('\n')}
 
 MANAGEMENT TEAM:
 ${(personnelRes.data ?? []).map((p: any) => `${p.name} — ${p.title}${p.background ? ': ' + p.background : ''}`).join('\n') || 'Not available'}
 
 CAP TABLE:
-${(capTableRes.data ?? []).map((c: any) => `${c.shareholder_name}: ${c.shares} shares (${c.share_class}), ${c.ownership_pct ? (c.ownership_pct * 100).toFixed(1) + '%' : 'N/A'}`).join('\n') || 'Not available'}
+${capTable.map((c: any) => `${c.shareholder_name}: ${c.shares} shares (${c.share_class}), ${c.ownership_pct ? (c.ownership_pct * 100).toFixed(1) + '%' : 'N/A'}`).join('\n') || 'Not available'}
 
 INVESTORS:
 ${(investorsRes.data ?? []).map(i => `${(i as any).investors?.name} (${(i as any).investors?.type}), est. ownership: ${i.ownership_pct_est ? (i.ownership_pct_est * 100).toFixed(1) + '%' : 'N/A'}`).join('\n')}
@@ -119,6 +191,10 @@ ${(eventsRes.data ?? []).map(e => `[${e.event_type}] ${e.headline}`).join('\n')}
 
 SECTOR COMPARABLES:
 ${(comps ?? []).map(c => `${c.name} (${c.stage}, ${c.employee_count} emp, founded ${c.founded_year})`).join('\n')}
+
+CITATION REFERENCE TABLE:
+${citationBlock}
+${lowConfBlock}
 `.trim();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -137,15 +213,21 @@ ${(comps ?? []).map(c => `${c.name} (${c.stage}, ${c.employee_count} emp, founde
         messages: [
           {
             role: "system",
-            content: `You are a senior investment analyst at a top-tier PE/VC firm preparing an institutional-grade investment memo. Be data-driven, specific with numbers, and thorough. Use the tool to return structured output.
+            content: `You are a senior investment analyst preparing an institutional-grade investment memo.
 
-IMPORTANT DISCLAIMER: This memo is generated for informational purposes only and does not constitute investment advice. Include a brief disclaimer at the end of the recommendation section noting that independent due diligence should be conducted.
+CRITICAL CITATION RULES:
+1. Every numeric claim MUST reference a citation ID from the CITATION REFERENCE TABLE using format [cite_N].
+2. Low-confidence metrics MUST be prefixed with "⚠️ Estimate:" and clearly labeled.
+3. Do NOT invent or hallucinate any numbers not in the citation table. If data is missing, state "Data not available" instead.
+4. Include citation IDs inline, e.g.: "Revenue reached $50M [cite_3] with ARR of $60M [cite_4]."
+
+DISCLAIMER: Include a brief note that this is for informational purposes only.
 
 ${contextBlock}`,
           },
           {
             role: "user",
-            content: `Generate a comprehensive institutional-grade investment memo for ${company.name}.`,
+            content: `Generate a comprehensive institutional-grade investment memo for ${company.name}. Reference citation IDs for every numeric claim.`,
           },
         ],
         tools: [
@@ -153,22 +235,22 @@ ${contextBlock}`,
             type: "function",
             function: {
               name: "investment_memo",
-              description: "Return a structured investment memo with all sections",
+              description: "Return a structured investment memo. All numeric claims must include [cite_N] references.",
               parameters: {
                 type: "object",
                 properties: {
                   company_name: { type: "string" },
                   date: { type: "string", description: "Today's date" },
-                  executive_summary: { type: "string", description: "3-4 sentence executive summary covering the opportunity, key metrics, and recommendation. This is the most important section — a busy partner reads only this." },
-                  thesis: { type: "string", description: "2-3 paragraph investment thesis explaining why this is compelling (200+ words)" },
-                  market: { type: "string", description: "Market size (TAM/SAM/SOM), dynamics, tailwinds, and competitive landscape analysis (200+ words)" },
-                  traction: { type: "string", description: "Revenue metrics, growth trajectory, customer momentum, product-market fit indicators with specific numbers (150+ words)" },
-                  management: { type: "string", description: "Assessment of management team quality, track record, domain expertise, and any gaps. Reference specific team members if data available." },
-                  competitive_landscape: { type: "string", description: "Key competitors, competitive positioning, sustainable advantages (moats), and differentiation strategy" },
-                  risks: { type: "string", description: "Key investment risks and mitigants, 4-6 bullet points with severity assessment" },
-                  valuation: { type: "string", description: "Valuation analysis including multiples, comparables, scenario analysis (bull/base/bear), and whether current pricing is attractive (200+ words)" },
-                  terms_structure: { type: "string", description: "Analysis of deal terms, cap table implications, governance rights, and key structural considerations" },
-                  recommendation: { type: "string", description: "Final recommendation: Invest / Pass / Monitor, with conviction level (High/Medium/Low), key conditions, and next steps" },
+                  executive_summary: { type: "string", description: "3-4 sentence executive summary with citation references for key metrics." },
+                  thesis: { type: "string", description: "Investment thesis with cited evidence (200+ words)" },
+                  market: { type: "string", description: "Market analysis with cited TAM/SAM figures where available" },
+                  traction: { type: "string", description: "Revenue metrics and growth with inline citations [cite_N] for every number" },
+                  management: { type: "string", description: "Management team assessment" },
+                  competitive_landscape: { type: "string", description: "Competitive analysis with cited positioning data" },
+                  risks: { type: "string", description: "Key risks with severity. Label low-confidence data with ⚠️" },
+                  valuation: { type: "string", description: "Valuation analysis with cited multiples and comparables" },
+                  terms_structure: { type: "string", description: "Deal terms with cited cap table data" },
+                  recommendation: { type: "string", description: "Final recommendation with confidence level" },
                 },
                 required: ["company_name", "date", "executive_summary", "thesis", "market", "traction", "management", "competitive_landscape", "risks", "valuation", "terms_structure", "recommendation"],
                 additionalProperties: false,
@@ -193,9 +275,6 @@ ${contextBlock}`,
     }
 
     const result = await aiResponse.json();
-    console.log("AI memo result:", JSON.stringify(result).slice(0, 500));
-
-    // Extract tool call result
     const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall?.function?.arguments) {
       return new Response(JSON.stringify({ error: "Failed to generate memo" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -203,7 +282,22 @@ ${contextBlock}`,
 
     const memo = JSON.parse(toolCall.function.arguments);
 
-    return new Response(JSON.stringify({ memo }), {
+    // Save memo snapshot with citations
+    await supabase.from("memo_snapshots").insert({
+      company_id,
+      user_id: user.id,
+      memo_content: memo,
+      citations,
+      model_version: "v1.0.0",
+      review_state: "draft",
+    });
+
+    return new Response(JSON.stringify({
+      memo,
+      citations,
+      lowConfidenceMetrics,
+      reviewState: "draft",
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

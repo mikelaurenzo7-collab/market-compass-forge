@@ -1682,6 +1682,88 @@ export type Database = {
         }
         Relationships: []
       }
+      memo_reviews: {
+        Row: {
+          comment: string | null
+          created_at: string
+          from_state: string
+          id: string
+          memo_id: string
+          reviewer_id: string
+          to_state: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          from_state: string
+          id?: string
+          memo_id: string
+          reviewer_id: string
+          to_state: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          from_state?: string
+          id?: string
+          memo_id?: string
+          reviewer_id?: string
+          to_state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memo_reviews_memo_id_fkey"
+            columns: ["memo_id"]
+            isOneToOne: false
+            referencedRelation: "memo_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memo_snapshots: {
+        Row: {
+          citations: Json
+          company_id: string
+          created_at: string
+          id: string
+          memo_content: Json
+          model_version: string
+          review_state: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          citations?: Json
+          company_id: string
+          created_at?: string
+          id?: string
+          memo_content?: Json
+          model_version?: string
+          review_state?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          citations?: Json
+          company_id?: string
+          created_at?: string
+          id?: string
+          memo_content?: Json
+          model_version?: string
+          review_state?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memo_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_articles: {
         Row: {
           ai_summary: string | null
