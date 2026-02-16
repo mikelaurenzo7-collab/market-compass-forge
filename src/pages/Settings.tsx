@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity } from "lucide-react";
+import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity, Receipt } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import ApiKeyManager from "@/components/ApiKeyManager";
@@ -11,6 +11,7 @@ import BriefingSettings from "@/components/BriefingSettings";
 import TeamManager from "@/components/TeamManager";
 import DataSourcesPanel from "@/components/DataSourcesPanel";
 import UsageAnalytics from "@/components/UsageAnalytics";
+import BillingDashboard from "@/components/BillingDashboard";
 import PageTransition from "@/components/PageTransition";
 import { AnimatedTabContent } from "@/components/AnimatedTabs";
 
@@ -32,7 +33,10 @@ const Settings = () => {
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
-  const [activeTab, setActiveTab] = useState<"profile" | "usage" | "briefing" | "api" | "data" | "sources" | "team">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "billing" | "usage" | "briefing" | "api" | "data" | "sources" | "team">(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("tab") as any) || "profile";
+  });
 
   useEffect(() => {
     localStorage.setItem("ui-density", density);
@@ -98,6 +102,7 @@ const Settings = () => {
 
   const tabs = [
     { id: "profile" as const, label: "Profile", icon: User },
+    { id: "billing" as const, label: "Billing", icon: Receipt },
     { id: "usage" as const, label: "Usage", icon: Activity },
     { id: "briefing" as const, label: "Briefing", icon: Mail },
     { id: "api" as const, label: "API Access", icon: Key },
@@ -249,6 +254,8 @@ const Settings = () => {
           </div>
         </div>
       )}
+
+      {activeTab === "billing" && <BillingDashboard />}
 
       {activeTab === "usage" && <UsageAnalytics />}
 

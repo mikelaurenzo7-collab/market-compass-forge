@@ -263,6 +263,36 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_seats: {
+        Row: {
+          created_at: string
+          id: string
+          removed_at: string | null
+          seat_type: string
+          stripe_subscription_item_id: string | null
+          team_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          removed_at?: string | null
+          seat_type?: string
+          stripe_subscription_item_id?: string | null
+          team_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          removed_at?: string | null
+          seat_type?: string
+          stripe_subscription_item_id?: string | null
+          team_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       briefing_preferences: {
         Row: {
           created_at: string
@@ -544,6 +574,30 @@ export type Database = {
             referencedColumns: ["company_id"]
           },
         ]
+      }
+      conversion_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
       }
       cre_market_data: {
         Row: {
@@ -2277,6 +2331,36 @@ export type Database = {
           },
         ]
       }
+      plan_entitlements: {
+        Row: {
+          created_at: string
+          daily_limit: number | null
+          enabled: boolean
+          feature_key: string
+          id: string
+          monthly_limit: number | null
+          plan_name: string
+        }
+        Insert: {
+          created_at?: string
+          daily_limit?: number | null
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          monthly_limit?: number | null
+          plan_name: string
+        }
+        Update: {
+          created_at?: string
+          daily_limit?: number | null
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          monthly_limit?: number | null
+          plan_name?: string
+        }
+        Relationships: []
+      }
       portfolio_positions: {
         Row: {
           company_id: string
@@ -3416,6 +3500,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_entitlement: {
+        Args: { _feature_key: string; _user_id: string }
+        Returns: Json
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

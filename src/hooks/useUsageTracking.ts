@@ -2,12 +2,6 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-const FREE_LIMITS: Record<string, number> = {
-  ai_research: 200,
-  memo_generation: 100,
-  enrichment: 100,
-};
-
 export function useUsageTracking() {
   const { user } = useAuth();
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -17,44 +11,25 @@ export function useUsageTracking() {
     async (action: string): Promise<boolean> => {
       if (!user) return false;
 
-      const limit = FREE_LIMITS[action];
-      if (!limit) {
-        // No limit for this action, just track
-        await supabase.from("usage_tracking").insert({ user_id: user.id, action });
+      try {
+        // Server-side entitlement check
+        const { data, error } = await supabase.functions.invoke("check-entitlement", {
+          body: { feature_key: action, track: true },
+        });
+
+        if (error || !data?.allowed) {
+          if (data?.upgrade_required || data?.reason?.includes("limit")) {
+            setBlockedAction(action);
+            setShowUpgrade(true);
+          }
+          return false;
+        }
+
+        return true;
+      } catch {
+        // Fallback: allow but don't track
         return true;
       }
-
-      // Check subscription tier
-      const { data: tier } = await supabase
-        .from("subscription_tiers")
-        .select("tier")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (tier?.tier === "professional" || tier?.tier === "pro" || tier?.tier === "enterprise") {
-        await supabase.from("usage_tracking").insert({ user_id: user.id, action });
-        return true;
-      }
-
-      // Count today's usage
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
-
-      const { count } = await supabase
-        .from("usage_tracking")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("action", action)
-        .gte("created_at", startOfDay.toISOString());
-
-      if ((count ?? 0) >= limit) {
-        setBlockedAction(action);
-        setShowUpgrade(true);
-        return false;
-      }
-
-      await supabase.from("usage_tracking").insert({ user_id: user.id, action });
-      return true;
     },
     [user]
   );

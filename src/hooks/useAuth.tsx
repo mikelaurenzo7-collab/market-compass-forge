@@ -107,6 +107,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             supabase.functions.invoke("accept-invite").catch(() => {});
             // Seed demo content for new users
             seedDemoContent(session.user.id);
+            // Track trial start conversion event
+            supabase.from("conversion_events").insert({
+              user_id: session.user.id,
+              event_type: "trial_start",
+              metadata: { source: "signup" },
+            }).then(() => {});
+            // Track activation after first login
+            supabase.from("conversion_events").insert({
+              user_id: session.user.id,
+              event_type: "activation",
+              metadata: { source: "first_login" },
+            }).then(() => {});
           }, 0);
         }
       }
