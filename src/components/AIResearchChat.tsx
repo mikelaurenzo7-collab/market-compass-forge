@@ -1,10 +1,26 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Bot, Send, Loader2, Sparkles, Copy, Check } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Bot, Send, Loader2, Sparkles, Copy, Check, History, Plus, Link2, Building2, Briefcase } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "@/hooks/use-toast";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import UpgradePrompt from "@/components/UpgradePrompt";
+import {
+  useResearchThreads,
+  useResearchMessages,
+  useCreateThread,
+  useSaveMessage,
+  useUpdateThread,
+  type ResearchThread,
+} from "@/hooks/useResearchThreads";
+import { useQuery } from "@tanstack/react-query";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -53,28 +69,158 @@ const CopyButton = ({ text }: { text: string }) => {
   );
 };
 
-const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string; companyName: string; sector?: string | null }) => {
+interface AttachMenuProps {
+  threadId: string | null;
+  currentCompanyId?: string;
+}
+
+const AttachMenu = ({ threadId, currentCompanyId }: AttachMenuProps) => {
+  const { user } = useAuth();
+  const updateThread = useUpdateThread();
+
+  // Fetch user's deals for attach-to-deal
+  const { data: deals } = useQuery({
+    queryKey: ["user-deals-for-attach", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_pipeline")
+        .select("id, company_id, companies(name)")
+        .eq("user_id", user!.id)
+        .limit(20);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!threadId,
+  });
+
+  if (!threadId) return null;
+
+  const attachToDeal = (dealId: string, companyName: string) => {
+    updateThread.mutate(
+      { id: threadId, deal_id: dealId },
+      {
+        onSuccess: () => toast({ title: `Attached to deal: ${companyName}` }),
+      }
+    );
+  };
+
+  const attachToCompany = () => {
+    if (!currentCompanyId) return;
+    updateThread.mutate(
+      { id: threadId, company_id: currentCompanyId },
+      {
+        onSuccess: () => toast({ title: "Attached to company" }),
+      }
+    );
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors" title="Attach thread">
+          <Link2 className="h-3 w-3" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        {currentCompanyId && (
+          <DropdownMenuItem onClick={attachToCompany} className="text-xs gap-2">
+            <Building2 className="h-3 w-3" /> Attach to this Company
+          </DropdownMenuItem>
+        )}
+        {(deals ?? []).length > 0 && (
+          <>
+            <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase">Attach to Deal</div>
+            {(deals ?? []).map((d: any) => (
+              <DropdownMenuItem key={d.id} onClick={() => attachToDeal(d.id, d.companies?.name ?? "Deal")} className="text-xs gap-2">
+                <Briefcase className="h-3 w-3" /> {d.companies?.name ?? "Unknown"}
+              </DropdownMenuItem>
+            ))}
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
+interface AIResearchChatProps {
+  companyId: string;
+  companyName: string;
+  sector?: string | null;
+  initialThreadId?: string | null;
+  onThreadChange?: (threadId: string | null) => void;
+}
+
+const AIResearchChat = ({ companyId, companyName, sector, initialThreadId, onThreadChange }: AIResearchChatProps) => {
+  const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(initialThreadId ?? null);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { checkAndTrack, showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
 
+  const createThread = useCreateThread();
+  const saveMessage = useSaveMessage();
+  const { data: threads } = useResearchThreads(companyId);
+  const { data: savedMessages } = useResearchMessages(activeThreadId);
+
   const playbook = sector ? PLAYBOOK_PROMPTS[sector] : undefined;
+
+  // Load saved messages when thread changes
+  useEffect(() => {
+    if (savedMessages && activeThreadId) {
+      setMessages(savedMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })));
+    }
+  }, [savedMessages, activeThreadId]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const send = async (question: string) => {
-    if (!question.trim() || isLoading) return;
+  const switchThread = (thread: ResearchThread) => {
+    setActiveThreadId(thread.id);
+    onThreadChange?.(thread.id);
+    setShowHistory(false);
+  };
+
+  const startNewThread = () => {
+    setActiveThreadId(null);
+    setMessages([]);
+    onThreadChange?.(null);
+    setShowHistory(false);
+  };
+
+  const send = useCallback(async (question: string) => {
+    if (!question.trim() || isLoading || !user) return;
     const allowed = await checkAndTrack("ai_research");
     if (!allowed) return;
+
+    // Create thread on first message if none active
+    let threadId = activeThreadId;
+    if (!threadId) {
+      try {
+        const thread = await createThread.mutateAsync({
+          title: question.slice(0, 100),
+          company_id: companyId,
+        });
+        threadId = thread.id;
+        setActiveThreadId(thread.id);
+        onThreadChange?.(thread.id);
+      } catch (e) {
+        console.error("Failed to create thread:", e);
+      }
+    }
 
     const userMsg: Message = { role: "user", content: question };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsLoading(true);
+
+    // Save user message
+    if (threadId) {
+      saveMessage.mutate({ thread_id: threadId, role: "user", content: question });
+    }
 
     let assistantSoFar = "";
 
@@ -139,15 +285,18 @@ const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string;
           }
         }
       }
+
+      // Save final assistant message
+      if (threadId && assistantSoFar) {
+        saveMessage.mutate({ thread_id: threadId, role: "assistant", content: assistantSoFar });
+      }
     } catch (e: any) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `⚠️ ${e.message || "Something went wrong. Please try again."}` },
-      ]);
+      const errMsg = `⚠️ ${e.message || "Something went wrong. Please try again."}`;
+      setMessages((prev) => [...prev, { role: "assistant", content: errMsg }]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isLoading, user, activeThreadId, companyId, messages, checkAndTrack, createThread, saveMessage, onThreadChange]);
 
   const suggestions = messages.length === 0
     ? [...SUGGESTED_QUESTIONS, ...(playbook ?? [])]
@@ -161,72 +310,117 @@ const AIResearchChat = ({ companyId, companyName, sector }: { companyId: string;
         {sector && playbook && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-accent-foreground font-mono ml-1">{sector} playbook</span>
         )}
-        <span className="text-[10px] font-mono text-muted-foreground ml-auto">Gemini 3 Flash</span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <AttachMenu threadId={activeThreadId} currentCompanyId={companyId} />
+          <button
+            onClick={startNewThread}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            title="New thread"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => setShowHistory(!showHistory)}
+            className={`p-1 rounded transition-colors ${showHistory ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+            title="Thread history"
+          >
+            <History className="h-3.5 w-3.5" />
+          </button>
+          <span className="text-[10px] font-mono text-muted-foreground">Gemini 3 Flash</span>
+        </div>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {suggestions.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Ask anything about <span className="text-primary font-medium">{companyName}</span>:</p>
-            <div className="flex flex-wrap gap-2">
-              {suggestions.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => send(q)}
-                  className="px-3 py-1.5 rounded-full border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
-            {msg.role === "assistant" && (
-              <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                <Bot className="h-3.5 w-3.5 text-primary" />
-              </div>
-            )}
-            <div
-              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-foreground"
+      {showHistory ? (
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Previous Threads</p>
+          {(threads ?? []).length === 0 && (
+            <p className="text-xs text-muted-foreground py-4 text-center">No saved threads yet</p>
+          )}
+          {(threads ?? []).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => switchThread(t)}
+              className={`w-full text-left px-3 py-2 rounded-md text-xs transition-colors border ${
+                activeThreadId === t.id
+                  ? "bg-primary/10 border-primary/30 text-primary"
+                  : "border-border hover:bg-secondary text-foreground"
               }`}
             >
-              {msg.role === "assistant" ? (
-                <div>
-                  <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-2 [&_ul]:mb-2 [&_li]:mb-0.5">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                  <div className="flex justify-end mt-1 border-t border-border/30 pt-1">
-                    <CopyButton text={msg.content} />
-                  </div>
+              <p className="font-medium truncate">{t.title}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {new Date(t.updated_at).toLocaleDateString()}
+                {t.deal_id && <span className="ml-1.5">· 📎 Deal</span>}
+              </p>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+            {suggestions.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">Ask anything about <span className="text-primary font-medium">{companyName}</span>:</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => send(q)}
+                      className="px-3 py-1.5 rounded-full border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <p>{msg.content}</p>
-              )}
-            </div>
-          </div>
-        ))}
+              </div>
+            )}
 
-        {isLoading && messages[messages.length - 1]?.role === "user" && (
-          <div className="flex gap-3">
-            <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center shrink-0">
-              <Bot className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing...
-            </div>
-          </div>
-        )}
-      </div>
+            {messages.map((msg, i) => (
+              <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+                {msg.role === "assistant" && (
+                  <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary text-foreground"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    <div>
+                      <div className="prose prose-sm prose-invert max-w-none [&_p]:mb-2 [&_ul]:mb-2 [&_li]:mb-0.5">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                      <div className="flex justify-end mt-1 border-t border-border/30 pt-1">
+                        <CopyButton text={msg.content} />
+                      </div>
+                    </div>
+                  ) : (
+                    <p>{msg.content}</p>
+                  )}
+                </div>
+              </div>
+            ))}
 
-      <div className="px-3 py-1.5 border-t border-border/50 bg-muted/20 text-center">
-        <p className="text-[9px] text-muted-foreground/60">For informational purposes only — not investment advice.</p>
-      </div>
+            {isLoading && messages[messages.length - 1]?.role === "user" && (
+              <div className="flex gap-3">
+                <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                  <Bot className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Analyzing...
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="px-3 py-1.5 border-t border-border/50 bg-muted/20 text-center">
+            <p className="text-[9px] text-muted-foreground/60">For informational purposes only — not investment advice.</p>
+          </div>
+        </>
+      )}
 
       <form
         onSubmit={(e) => { e.preventDefault(); send(input); }}
