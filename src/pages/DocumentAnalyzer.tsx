@@ -1,59 +1,19 @@
 import { useState, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Upload, FileText, AlertTriangle, TrendingUp, Shield, Sparkles,
   CheckCircle, XCircle, MinusCircle, BarChart3, FileSearch, Zap,
-  Loader2,
+  Loader2, Clock, Trash2,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
 
 type SeverityLevel = "high" | "medium" | "low";
 
 interface ExtractedMetric { label: string; value: string; note?: string; }
 interface RiskFactor { text: string; severity: SeverityLevel; }
-
-// Demo fallback data
-const DEMO_ANALYSIS = {
-  company_name: "Apex Industrial Solutions, Inc.",
-  document_type: "Confidential Information Memorandum (CIM)",
-  page_count: 87,
-  extracted_metrics: [
-    { label: "LTM Revenue", value: "$187.4M", note: "Period ending Q3 2025" },
-    { label: "LTM EBITDA", value: "$34.2M", note: "18.3% margin" },
-    { label: "Revenue Growth (3yr CAGR)", value: "14.7%", note: "Organic growth ~11%" },
-    { label: "Gross Margin", value: "42.1%", note: "Expanding from 38.6% in 2022" },
-    { label: "Net Debt", value: "$48.6M", note: "1.4x Net Debt/EBITDA" },
-    { label: "Customer Count", value: "2,400+", note: "Top 10 = 31% of revenue" },
-    { label: "Employee Count", value: "1,150", note: "Revenue/employee: $163K" },
-    { label: "Capex (% Revenue)", value: "3.2%", note: "Asset-light model" },
-  ],
-  risk_factors: [
-    { text: "Top 10 customers represent 31% of revenue — moderate concentration risk", severity: "high" as SeverityLevel },
-    { text: "Pending OSHA regulatory changes could increase compliance costs by $2-4M annually", severity: "high" as SeverityLevel },
-    { text: "Key-man dependency: CEO and CTO founded the business, limited succession planning documented", severity: "medium" as SeverityLevel },
-    { text: "Acquisition integration — 3 bolt-on acquisitions in last 18 months, integration still in progress", severity: "medium" as SeverityLevel },
-    { text: "Working capital seasonality creates Q1 cash flow trough", severity: "low" as SeverityLevel },
-    { text: "Single ERP system migration underway (SAP to NetSuite), expected completion Q2 2026", severity: "low" as SeverityLevel },
-  ],
-  valuation_indicators: [
-    "Management-implied EV/EBITDA range of 9.0x–11.0x based on comparable transactions cited",
-    "Precedent transactions referenced: Danaher/Pall Corp (12.1x), Roper/CIVCO (10.8x), ITT/Wolverine (9.4x)",
-    "Revenue multiple implied at 1.6x–2.0x based on projected 2026E revenue of $215M",
-    "DCF terminal value assumes 3.0% perpetual growth rate and 9.5% WACC",
-  ],
-  key_terms: [
-    { label: "Management Rollover", value: "25-30% of equity" },
-    { label: "Earnout Structure", value: "$12M over 2 years tied to EBITDA targets" },
-    { label: "Non-Compete", value: "3-year, nationwide for CEO/CTO/CFO" },
-    { label: "Working Capital Target", value: "$22.5M (NWC peg)" },
-    { label: "Rep & Warranty Insurance", value: "Required, buyer to procure" },
-    { label: "Exclusivity Period", value: "45 days from LOI execution" },
-  ],
-  ai_summary: "Apex Industrial Solutions is a well-positioned specialty industrial distributor with an attractive margin profile (18.3% EBITDA margin) and strong organic growth trajectory (~11% CAGR). The company has executed a successful buy-and-build strategy with three bolt-on acquisitions since 2023, though integration risk remains. Customer concentration is the primary concern, with the top 10 customers accounting for 31% of revenue. At the implied 9-11x EV/EBITDA valuation range, the deal appears fairly priced relative to comparable transactions in the industrial distribution space. The asset-light model (3.2% capex intensity) supports strong free cash flow conversion, making this an attractive LBO candidate with potential for 2.5-3.0x MOIC at a 5-year hold assuming continued bolt-on activity and margin expansion.",
-  status: "complete" as const,
-};
 
 const SeverityBadge = ({ severity }: { severity: SeverityLevel }) => {
   const config = {
@@ -70,7 +30,7 @@ const SeverityBadge = ({ severity }: { severity: SeverityLevel }) => {
   );
 };
 
-const AnalysisResults = ({ data }: { data: typeof DEMO_ANALYSIS }) => (
+const AnalysisResults = ({ data }: { data: any }) => (
   <div className="space-y-6 animate-fade-in">
     <div className="rounded-lg border border-primary/30 bg-card p-4 flex items-center justify-between">
       <div className="flex items-center gap-3">
@@ -96,37 +56,41 @@ const AnalysisResults = ({ data }: { data: typeof DEMO_ANALYSIS }) => (
       <p className="text-sm text-secondary-foreground leading-relaxed">{data.ai_summary}</p>
     </div>
 
-    <div className="rounded-lg border border-border bg-card">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-        <BarChart3 className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Extracted Key Metrics</h3>
+    {data.extracted_metrics && (data.extracted_metrics as ExtractedMetric[]).length > 0 && (
+      <div className="rounded-lg border border-border bg-card">
+        <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-foreground">Extracted Key Metrics</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
+          {(data.extracted_metrics as ExtractedMetric[]).map((m) => (
+            <div key={m.label} className="p-4">
+              <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
+              <p className="text-lg font-mono font-semibold text-foreground">{m.value}</p>
+              {m.note && <p className="text-[11px] text-muted-foreground mt-0.5">{m.note}</p>}
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
-        {(data.extracted_metrics as ExtractedMetric[]).map((m) => (
-          <div key={m.label} className="p-4">
-            <p className="text-[11px] text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
-            <p className="text-lg font-mono font-semibold text-foreground">{m.value}</p>
-            {m.note && <p className="text-[11px] text-muted-foreground mt-0.5">{m.note}</p>}
-          </div>
-        ))}
-      </div>
-    </div>
+    )}
 
-    <div className="rounded-lg border border-border bg-card">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-        <AlertTriangle className="h-4 w-4 text-warning" />
-        <h3 className="text-sm font-semibold text-foreground">Risk Factors Identified</h3>
-        <span className="text-[10px] font-mono text-muted-foreground ml-auto">{(data.risk_factors as RiskFactor[]).length} identified</span>
+    {data.risk_factors && (data.risk_factors as RiskFactor[]).length > 0 && (
+      <div className="rounded-lg border border-border bg-card">
+        <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <h3 className="text-sm font-semibold text-foreground">Risk Factors Identified</h3>
+          <span className="text-[10px] font-mono text-muted-foreground ml-auto">{(data.risk_factors as RiskFactor[]).length} identified</span>
+        </div>
+        <div className="divide-y divide-border/50">
+          {(data.risk_factors as RiskFactor[]).map((r, i) => (
+            <div key={i} className="px-4 py-3 flex items-start gap-3">
+              <SeverityBadge severity={r.severity} />
+              <p className="text-sm text-secondary-foreground">{r.text}</p>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="divide-y divide-border/50">
-        {(data.risk_factors as RiskFactor[]).map((r, i) => (
-          <div key={i} className="px-4 py-3 flex items-start gap-3">
-            <SeverityBadge severity={r.severity} />
-            <p className="text-sm text-secondary-foreground">{r.text}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+    )}
 
     {data.valuation_indicators && (data.valuation_indicators as string[]).length > 0 && (
       <div className="rounded-lg border border-border bg-card">
@@ -166,13 +130,15 @@ const AnalysisResults = ({ data }: { data: typeof DEMO_ANALYSIS }) => (
 
 const DocumentAnalyzer = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [activeAnalysisId, setActiveAnalysisId] = useState<string | null>(null);
-  const [showDemo, setShowDemo] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: analysis, isLoading: isPolling } = useQuery({
+  // Poll active analysis
+  const { data: analysis } = useQuery({
     queryKey: ["document-analysis", activeAnalysisId],
     queryFn: async () => {
       if (!activeAnalysisId) return null;
@@ -193,37 +159,76 @@ const DocumentAnalyzer = () => {
     },
   });
 
+  // History of analyses
+  const { data: history } = useQuery({
+    queryKey: ["document-analyses-history", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("document_analyses")
+        .select("*")
+        .eq("user_id", user!.id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
   const handleFileUpload = async (file: File) => {
     if (!user) {
       toast({ title: "Please sign in to analyze documents", variant: "destructive" });
       return;
     }
 
-    setIsUploading(true);
-    setShowDemo(false);
-    try {
-      // Read file content as text (for PDFs this won't work perfectly, but covers txt/csv/docx-text)
-      let fileContent = "";
-      try {
-        fileContent = await file.text();
-      } catch { /* binary file */ }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 20MB", variant: "destructive" });
+      return;
+    }
 
-      // Create the analysis record
+    setIsUploading(true);
+    setUploadProgress(0);
+    try {
+      // 1. Upload file to storage
+      const storagePath = `${user.id}/${Date.now()}-${file.name}`;
+      setUploadProgress(20);
+
+      const { error: uploadError } = await supabase.storage
+        .from("document-uploads")
+        .upload(storagePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+      setUploadProgress(50);
+
+      // 2. Create analysis record
       const { data: record, error: insertError } = await supabase
         .from("document_analyses")
         .insert({
           user_id: user.id,
           file_name: file.name,
+          file_url: storagePath,
           status: "processing",
         })
         .select()
         .single();
 
       if (insertError) throw insertError;
-
+      setUploadProgress(70);
       setActiveAnalysisId(record.id);
 
-      // Trigger the edge function
+      // 3. Try to read text content for text-based files
+      let fileContent = "";
+      const textTypes = [".txt", ".csv", ".md", ".json", ".xml"];
+      if (textTypes.some((ext) => file.name.toLowerCase().endsWith(ext))) {
+        try {
+          fileContent = await file.text();
+        } catch { /* binary file */ }
+      }
+
+      // 4. Trigger analysis edge function
       const { data: { session } } = await supabase.auth.getSession();
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-document`, {
         method: "POST",
@@ -234,20 +239,25 @@ const DocumentAnalyzer = () => {
         body: JSON.stringify({
           analysis_id: record.id,
           file_name: file.name,
-          file_content: fileContent.substring(0, 30000),
+          file_content: fileContent ? fileContent.substring(0, 30000) : undefined,
+          storage_path: storagePath,
         }),
       });
+
+      setUploadProgress(100);
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Analysis failed" }));
         throw new Error(err.error || "Analysis failed");
       }
 
+      queryClient.invalidateQueries({ queryKey: ["document-analyses-history"] });
       toast({ title: "Analysis complete", description: `${file.name} has been analyzed.` });
     } catch (e: any) {
       toast({ title: "Analysis failed", description: e.message, variant: "destructive" });
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -280,25 +290,28 @@ const DocumentAnalyzer = () => {
         {isProcessing ? (
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm font-medium text-foreground">Analyzing document...</p>
-            <p className="text-xs text-muted-foreground">AI is extracting metrics, risks, and deal terms</p>
+            <p className="text-sm font-medium text-foreground">
+              {isUploading ? "Uploading & analyzing..." : "AI is analyzing your document..."}
+            </p>
+            <p className="text-xs text-muted-foreground">Extracting metrics, risks, and deal terms</p>
+            {uploadProgress > 0 && (
+              <div className="w-48 h-1.5 rounded-full bg-secondary overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <>
             <Upload className={`h-10 w-10 mx-auto mb-4 ${dragActive ? "text-primary" : "text-muted-foreground"}`} />
             <p className="text-sm font-medium text-foreground mb-1">Drag & drop a financial document here</p>
-            <p className="text-xs text-muted-foreground mb-4">Supports PDF, DOCX, XLSX, TXT — CIM, PPM, 10-K, pitch decks, and more</p>
+            <p className="text-xs text-muted-foreground mb-4">Supports PDF, DOCX, XLSX, TXT — CIM, PPM, 10-K, pitch decks (max 20MB)</p>
             <div className="flex items-center justify-center gap-3">
               <button
-                onClick={() => { setShowDemo(true); setActiveAnalysisId(null); }}
-                className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
-              >
-                <FileSearch className="h-4 w-4" />
-                View Demo Analysis
-              </button>
-              <button
                 onClick={() => fileInputRef.current?.click()}
-                className="h-9 px-4 rounded-md border border-border text-sm font-medium text-foreground hover:bg-secondary transition-colors inline-flex items-center gap-2"
+                className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2"
               >
                 <Upload className="h-4 w-4" />
                 Browse Files
@@ -310,7 +323,7 @@ const DocumentAnalyzer = () => {
       </div>
 
       {/* Supported document types */}
-      {!showDemo && !analysisData && !isProcessing && (
+      {!analysisData && !isProcessing && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { icon: FileText, label: "CIM / Offering Memo", desc: "Extract key deal terms and financials" },
@@ -327,21 +340,55 @@ const DocumentAnalyzer = () => {
         </div>
       )}
 
-      {/* Real Analysis Results */}
-      {analysisData && <AnalysisResults data={analysisData as any} />}
-
-      {/* Demo Results */}
-      {showDemo && !analysisData && <AnalysisResults data={DEMO_ANALYSIS} />}
+      {/* Analysis Results */}
+      {analysisData && <AnalysisResults data={analysisData} />}
 
       {/* Actions */}
-      {(showDemo || analysisData) && (
+      {analysisData && (
         <div className="flex items-center gap-3">
           <button
-            onClick={() => { setShowDemo(false); setActiveAnalysisId(null); }}
+            onClick={() => setActiveAnalysisId(null)}
             className="h-9 px-4 rounded-md text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Analyze Another Document
           </button>
+        </div>
+      )}
+
+      {/* ── Analysis History ── */}
+      {history && history.length > 0 && !analysisData && (
+        <div className="rounded-lg border border-border bg-card">
+          <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Recent Analyses</h3>
+            <span className="text-[10px] font-mono text-muted-foreground ml-auto">{history.length} total</span>
+          </div>
+          <div className="divide-y divide-border/50">
+            {history.map((item: any) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveAnalysisId(item.id)}
+                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-secondary/30 transition-colors text-left"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{item.file_name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.company_name && `${item.company_name} · `}
+                    {item.document_type && `${item.document_type} · `}
+                    {formatDistanceToNow(new Date(item.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+                <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                  item.status === "complete" ? "bg-primary/10 text-primary border-primary/20" :
+                  item.status === "error" ? "bg-destructive/10 text-destructive border-destructive/20" :
+                  "bg-warning/10 text-warning border-warning/20"
+                }`}>
+                  {item.status}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

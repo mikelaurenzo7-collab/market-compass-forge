@@ -7,6 +7,10 @@ export interface SubscriptionState {
   plan: string;
   subscription_end: string | null;
   subscription_id: string | null;
+  stripe_customer_id: string | null;
+  subscription_status: string;
+  billing_interval: string;
+  last_webhook_event_at: string | null;
   upcoming_amount: number | null;
   upcoming_date: string | null;
   isLoading: boolean;
@@ -26,12 +30,16 @@ export function useSubscription(): SubscriptionState {
         plan: string;
         subscription_end: string | null;
         subscription_id: string | null;
+        stripe_customer_id: string | null;
+        subscription_status: string;
+        billing_interval: string;
+        last_webhook_event_at: string | null;
         upcoming_amount: number | null;
         upcoming_date: string | null;
       };
     },
     enabled: !!user,
-    staleTime: 60 * 1000, // 1 min
+    staleTime: 60 * 1000,
     refetchInterval: 60 * 1000,
   });
 
@@ -40,6 +48,10 @@ export function useSubscription(): SubscriptionState {
     plan: data?.plan ?? "essential",
     subscription_end: data?.subscription_end ?? null,
     subscription_id: data?.subscription_id ?? null,
+    stripe_customer_id: data?.stripe_customer_id ?? null,
+    subscription_status: data?.subscription_status ?? "none",
+    billing_interval: data?.billing_interval ?? "month",
+    last_webhook_event_at: data?.last_webhook_event_at ?? null,
     upcoming_amount: data?.upcoming_amount ?? null,
     upcoming_date: data?.upcoming_date ?? null,
     isLoading,
