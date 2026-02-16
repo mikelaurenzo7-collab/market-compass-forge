@@ -4,14 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, Mail, Sparkles, ArrowRight, FlaskConical } from "lucide-react";
+import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock } from "lucide-react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { delay: i * 0.15, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
+    transition: { delay: i * 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
   }),
 };
 
@@ -32,6 +32,39 @@ const INTERESTS = [
   "Deal Flow Tracking",
   "Company Screening",
   "Other",
+];
+
+const CAPABILITIES = [
+  {
+    icon: Brain,
+    title: "AI Deal Intelligence",
+    description: "AI-synthesized company profiles, investment memos, and deal matching across 800+ private companies.",
+  },
+  {
+    icon: BarChart3,
+    title: "Valuation Toolkit",
+    description: "DCF, comps, and football field analysis with sector-adjusted benchmarks and forward multiples.",
+  },
+  {
+    icon: Shield,
+    title: "Data Provenance",
+    description: "Every data point tracked to source — SEC EDGAR, web intelligence, or manual entry. Full audit trail.",
+  },
+  {
+    icon: FileText,
+    title: "Document Analyzer",
+    description: "Upload CIMs, PPMs, and financial statements. Extract key metrics, risk factors, and valuation indicators.",
+  },
+  {
+    icon: Globe,
+    title: "Multi-Asset Coverage",
+    description: "Private equity, distressed debt, off-market real estate, and global opportunities in one platform.",
+  },
+  {
+    icon: Zap,
+    title: "REST API & Webhooks",
+    description: "Programmatic access to deal flow, company intelligence, and fund data. Build your own integrations.",
+  },
 ];
 
 const Landing = () => {
@@ -59,17 +92,16 @@ const Landing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-hidden flex flex-col items-center justify-center relative">
+    <div className="min-h-screen bg-background text-foreground overflow-hidden relative">
       {/* Layered ambient background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,hsl(var(--brand-purple)/0.14),transparent)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_80%,hsl(var(--primary)/0.08),transparent)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_20%_70%,hsl(var(--brand-purple)/0.06),transparent)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_30%_30%,hsl(var(--primary)/0.05),transparent)]" />
         <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
       </div>
 
-      {/* Floating orbs — purple and green */}
+      {/* Floating orbs */}
       <motion.div
         variants={pulseGlow}
         initial="initial"
@@ -95,152 +127,284 @@ const Landing = () => {
             BETA
           </span>
         </div>
-        <button
-          onClick={() => navigate("/auth")}
-          className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.5s]"
-        >
-          Beta Login <ArrowRight className="h-3 w-3" />
-        </button>
+        <div className="flex items-center gap-4 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.5s]">
+          <button
+            onClick={() => navigate("/data-coverage")}
+            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex"
+          >
+            Data Coverage
+          </button>
+          <button
+            onClick={() => navigate("/auth")}
+            className="text-xs font-medium text-foreground bg-primary/10 hover:bg-primary/20 border border-primary/20 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1"
+          >
+            <Lock className="h-3 w-3" />
+            Beta Login
+          </button>
+        </div>
       </nav>
 
-      {/* Hero */}
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        className="relative z-10 flex flex-col items-center px-6 max-w-2xl text-center space-y-8"
-      >
-        {/* Logo mark */}
-        <motion.div custom={0} variants={fadeUp}>
-          <div className="relative">
-            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-2xl shadow-[hsl(var(--brand-purple)/0.4)] mx-auto">
-              <span className="text-4xl sm:text-5xl font-black text-white tracking-tight">GV</span>
+      {/* HERO SECTION */}
+      <section className="relative z-10 flex flex-col items-center px-6 pt-28 pb-16 max-w-3xl mx-auto text-center">
+        <motion.div initial="hidden" animate="visible" className="space-y-8 flex flex-col items-center">
+          {/* Logo mark */}
+          <motion.div custom={0} variants={fadeUp}>
+            <div className="relative">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-2xl shadow-[hsl(var(--brand-purple)/0.4)]">
+                <span className="text-3xl sm:text-4xl font-black text-white tracking-tight">GV</span>
+              </div>
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-[hsl(var(--brand-purple)/0.25)] blur-xl absolute top-4 left-0 -z-10" />
             </div>
-            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-[hsl(var(--brand-purple)/0.25)] blur-xl absolute top-4 left-1/2 -translate-x-1/2 -z-10" />
-            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-primary/15 blur-2xl absolute top-6 left-1/2 -translate-x-1/2 -z-20" />
+          </motion.div>
+
+          {/* Headline */}
+          <motion.div custom={1} variants={fadeUp} className="space-y-4">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter leading-[0.9]">
+              See the deal<br />
+              <span className="text-glow text-primary">before the market.</span>
+            </h1>
+            <p className="text-base sm:text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
+              AI-powered private market intelligence for PE firms and family offices. Source deals, generate memos, and track your pipeline — all from one command center.
+            </p>
+          </motion.div>
+
+          {/* Social proof stats */}
+          <motion.div custom={2} variants={fadeUp} className="w-full max-w-md">
+            <div className="grid grid-cols-4 gap-3 text-center">
+              {[
+                { value: "800+", label: "Private Companies" },
+                { value: "350+", label: "Distressed Assets" },
+                { value: "260+", label: "Off-Market Listings" },
+                { value: "REST", label: "API Access" },
+              ].map((s) => (
+                <div key={s.label} className="space-y-0.5">
+                  <p className="text-lg sm:text-xl font-black text-primary font-mono tracking-tight">{s.value}</p>
+                  <p className="text-[9px] text-muted-foreground/70 leading-tight">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* CTA Badge */}
+          <motion.div custom={3} variants={fadeUp}>
+            <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-[hsl(var(--brand-purple)/0.3)] text-[hsl(var(--brand-purple))] bg-[hsl(var(--brand-purple)/0.06)] backdrop-blur-sm shadow-lg shadow-[hsl(var(--brand-purple)/0.1)]">
+              <FlaskConical className="h-4 w-4" />
+              Your Unfair Advantage — Now in Private Beta
+            </span>
+          </motion.div>
+
+          {/* Waitlist form */}
+          <motion.div custom={4} variants={fadeUp} className="w-full max-w-sm">
+            {submitted ? (
+              <div className="rounded-2xl border border-primary/30 bg-card/80 backdrop-blur-sm p-8 text-center space-y-3 shadow-xl shadow-primary/5">
+                <CheckCircle className="h-10 w-10 text-primary mx-auto" />
+                <p className="text-sm font-semibold text-foreground">You're on the list!</p>
+                <p className="text-xs text-muted-foreground">
+                  We'll reach out to <span className="text-foreground">{form.email}</span> when your invite is ready.
+                </p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-6 space-y-3 text-left shadow-xl">
+                <p className="text-sm font-semibold text-foreground text-center mb-2">Request Early Access</p>
+                <Input
+                  placeholder="Your name *"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                  className="bg-background/60 border-border/60"
+                />
+                <Input
+                  type="email"
+                  placeholder="you@firm.com *"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  className="bg-background/60 border-border/60"
+                />
+                <Input
+                  placeholder="Firm (optional)"
+                  value={form.firm}
+                  onChange={(e) => setForm({ ...form, firm: e.target.value })}
+                  className="bg-background/60 border-border/60"
+                />
+                <Select value={form.interest} onValueChange={(v) => setForm({ ...form, interest: v })}>
+                  <SelectTrigger className="bg-background/60 border-border/60">
+                    <SelectValue placeholder="Primary interest (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INTERESTS.map((i) => (
+                      <SelectItem key={i} value={i}>{i}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <button
+                  type="submit"
+                  className="w-full h-11 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[hsl(var(--brand-purple)/0.25)] hover:shadow-xl hover:shadow-[hsl(var(--brand-purple)/0.35)]"
+                  disabled={loading || !form.name || !form.email}
+                >
+                  <Mail className="h-4 w-4" />
+                  {loading ? "Joining..." : "Join the Waitlist"}
+                </button>
+              </form>
+            )}
+          </motion.div>
+        </motion.div>
+      </section>
+
+      {/* CAPABILITIES SECTION */}
+      <section className="relative z-10 px-6 py-20 max-w-5xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-semibold mb-2">Platform Capabilities</p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Everything you need to move faster
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+            Replace your fragmented stack of Excel, email, and legacy databases with one AI-native command center.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {CAPABILITIES.map((cap, i) => (
+            <motion.div
+              key={cap.title}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ delay: i * 0.08, duration: 0.5 }}
+              className="group rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5 space-y-3 hover:border-primary/30 hover:bg-card/80 transition-all duration-300"
+            >
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                <cap.icon className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">{cap.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{cap.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* DATA SOURCES SECTION */}
+      <section className="relative z-10 px-6 py-16 max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-8 text-center space-y-6"
+        >
+          <div className="space-y-2">
+            <Shield className="h-6 w-6 text-primary mx-auto" />
+            <h3 className="text-lg font-bold text-foreground">Institutional-Grade Data Provenance</h3>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              Every data point is traced to its source with confidence scoring, verification status, and freshness tracking. No black boxes.
+            </p>
           </div>
-        </motion.div>
 
-        {/* Brand name */}
-        <motion.h1
-          custom={1}
-          variants={fadeUp}
-          className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tighter leading-none"
-        >
-          Grapevine
-        </motion.h1>
+          <div className="flex items-center justify-center gap-4 flex-wrap">
+            {["SEC EDGAR", "FRED", "FMP", "Firecrawl", "User Uploads"].map((src) => (
+              <span key={src} className="text-[11px] font-mono text-primary/60 border border-primary/20 rounded-md px-3 py-1.5 bg-primary/5">{src}</span>
+            ))}
+          </div>
 
-        {/* Tagline */}
-        <motion.p
-          custom={2}
-          variants={fadeUp}
-          className="text-lg sm:text-xl text-muted-foreground max-w-md leading-relaxed"
-        >
-          <span className="text-primary font-medium">See the deal before the market does.</span> AI-powered intelligence for PE firms and family offices who refuse to wait.
-        </motion.p>
-
-        {/* Beta badge */}
-        <motion.div custom={3} variants={fadeUp}>
-          <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-[hsl(var(--brand-purple)/0.3)] text-[hsl(var(--brand-purple))] bg-[hsl(var(--brand-purple)/0.06)] backdrop-blur-sm shadow-lg shadow-[hsl(var(--brand-purple)/0.1)]">
-            <FlaskConical className="h-4 w-4" />
-            Your Unfair Advantage — Now in Beta
-          </span>
-        </motion.div>
-
-        {/* Waitlist form */}
-        <motion.div custom={4} variants={fadeUp} className="w-full max-w-sm">
-          {submitted ? (
-            <div className="rounded-2xl border border-primary/30 bg-card/80 backdrop-blur-sm p-8 text-center space-y-3 shadow-xl shadow-primary/5">
-              <CheckCircle className="h-10 w-10 text-primary mx-auto" />
-              <p className="text-sm font-semibold text-foreground">You're on the list!</p>
-              <p className="text-xs text-muted-foreground">
-                We'll reach out to <span className="text-foreground">{form.email}</span> when your invite is ready.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-6 space-y-3 text-left shadow-xl">
-              <p className="text-sm font-semibold text-foreground text-center mb-2">Request Early Access</p>
-              <Input
-                placeholder="Your name *"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-                className="bg-background/60 border-border/60"
-              />
-              <Input
-                type="email"
-                placeholder="you@firm.com *"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                required
-                className="bg-background/60 border-border/60"
-              />
-              <Input
-                placeholder="Firm (optional)"
-                value={form.firm}
-                onChange={(e) => setForm({ ...form, firm: e.target.value })}
-                className="bg-background/60 border-border/60"
-              />
-              <Select value={form.interest} onValueChange={(v) => setForm({ ...form, interest: v })}>
-                <SelectTrigger className="bg-background/60 border-border/60">
-                  <SelectValue placeholder="Primary interest (optional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {INTERESTS.map((i) => (
-                    <SelectItem key={i} value={i}>{i}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <button
-                type="submit"
-                className="w-full h-11 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[hsl(var(--brand-purple)/0.25)] hover:shadow-xl hover:shadow-[hsl(var(--brand-purple)/0.35)]"
-                disabled={loading || !form.name || !form.email}
-              >
-                <Mail className="h-4 w-4" />
-                {loading ? "Joining..." : "Join the Waitlist"}
-              </button>
-            </form>
-          )}
-        </motion.div>
-
-        {/* Platform stats — honest, labeled as beta */}
-        <motion.div custom={5} variants={fadeUp} className="w-full max-w-md">
-          <p className="text-[10px] text-muted-foreground/50 text-center mb-2 uppercase tracking-widest">Beta Platform Metrics</p>
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto text-center">
             {[
-              { value: "AI", label: "Research & Screening" },
-              { value: "45+", label: "Distressed Assets" },
-              { value: "REST", label: "API Access" },
+              { label: "Source Types", value: "5" },
+              { label: "Confidence Tiers", value: "3" },
+              { label: "Audit Trail", value: "Full" },
             ].map((s) => (
-              <div key={s.label} className="space-y-0.5">
-                <p className="text-lg sm:text-xl font-black text-primary font-mono tracking-tight">{s.value}</p>
-                <p className="text-[10px] text-muted-foreground/70">{s.label}</p>
+              <div key={s.label}>
+                <p className="text-lg font-black font-mono text-foreground">{s.value}</p>
+                <p className="text-[9px] text-muted-foreground">{s.label}</p>
               </div>
             ))}
           </div>
         </motion.div>
+      </section>
 
-        {/* Data sources */}
-        <motion.div custom={6} variants={fadeUp} className="flex flex-col items-center gap-2">
-          <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-medium">Powered by</p>
-          <div className="flex items-center gap-4">
-            {["SEC EDGAR", "FRED", "FMP", "Firecrawl"].map((src) => (
-              <span key={src} className="text-[11px] font-mono text-primary/50 border border-primary/20 rounded px-2 py-0.5">{src}</span>
-            ))}
-          </div>
+      {/* WHO IT'S FOR */}
+      <section className="relative z-10 px-6 py-16 max-w-5xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-10"
+        >
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Built for dealmakers</h2>
+          <p className="text-sm text-muted-foreground mt-1">PE partners, family office analysts, and growth equity VPs</p>
         </motion.div>
 
-        {/* Transparent beta note — replaces unverifiable testimonial */}
-        <motion.div custom={7} variants={fadeUp}>
-          <p className="text-xs text-muted-foreground/50 italic">
-            Currently in private beta · <button onClick={() => navigate("/data-coverage")} className="underline hover:text-muted-foreground transition-colors">View data coverage →</button>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              persona: "PE Partner",
+              pain: "Spending 40% of time on deal sourcing instead of portfolio value creation",
+              solution: "AI Deal Matcher surfaces 50+ relevant opportunities weekly, pre-scored and benchmarked",
+            },
+            {
+              persona: "Family Office Analyst",
+              pain: "Juggling 6 separate tools for screening, research, and due diligence",
+              solution: "One command center: screen → research → memo → pipeline in a single workflow",
+            },
+            {
+              persona: "Growth Equity VP",
+              pain: "Missing off-market deals because intelligence is trapped in email threads",
+              solution: "Real-time alerts, morning briefings, and collaborative deal workspaces for the team",
+            },
+          ].map((p, i) => (
+            <motion.div
+              key={p.persona}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="rounded-xl border border-border/60 bg-card/60 p-5 space-y-3"
+            >
+              <p className="text-xs font-semibold text-primary uppercase tracking-wider">{p.persona}</p>
+              <p className="text-sm text-foreground font-medium leading-relaxed">"{p.pain}"</p>
+              <div className="flex items-start gap-2">
+                <ChevronRight className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">{p.solution}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="relative z-10 px-6 py-20 text-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="max-w-md mx-auto space-y-4"
+        >
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Stop chasing deals.<br />
+            <span className="text-primary">Start catching them.</span>
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Join the private beta. Limited spots for Q1 2026.
           </p>
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-[hsl(var(--brand-purple)/0.25)]"
+          >
+            <Mail className="h-4 w-4" />
+            Request Access
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </motion.div>
-      </motion.div>
+      </section>
 
       {/* Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 z-10 px-6 py-4">
+      <footer className="relative z-10 px-6 py-8 border-t border-border/30">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-[10px] text-muted-foreground/40">
-          <span>© {new Date().getFullYear()} Grapevine</span>
+          <span>© {new Date().getFullYear()} Grapevine · Private Market Intelligence</span>
           <div className="flex items-center gap-4">
             <button onClick={() => navigate("/data-coverage")} className="hover:text-muted-foreground transition-colors">Data Coverage</button>
             <button onClick={() => navigate("/terms")} className="hover:text-muted-foreground transition-colors">Terms</button>
