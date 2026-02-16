@@ -61,7 +61,7 @@ serve(async (req) => {
 
     await supabase.from("usage_tracking").insert({ user_id: user.id, action: "memo_generation" });
 
-    const [companyRes, fundingRes, financialsRes, eventsRes, investorsRes, personnelRes, capTableRes, newsRes, kpiRes] = await Promise.all([
+    const [companyRes, fundingRes, financialsRes, eventsRes, investorsRes, personnelRes, capTableRes, newsRes, kpiRes, enrichRes, docsRes] = await Promise.all([
       supabase.from("companies").select("*").eq("id", company_id).maybeSingle(),
       supabase.from("funding_rounds").select("*").eq("company_id", company_id).order("date", { ascending: false }),
       supabase.from("financials").select("*").eq("company_id", company_id).order("period", { ascending: false }),
@@ -71,6 +71,8 @@ serve(async (req) => {
       supabase.from("cap_table_snapshots").select("*").eq("company_id", company_id).order("snapshot_date", { ascending: false }).limit(10),
       supabase.from("news_articles").select("title, sentiment_label, ai_summary").eq("company_id", company_id).order("published_at", { ascending: false }).limit(5),
       supabase.from("kpi_metrics").select("*").eq("company_id", company_id).order("period", { ascending: false }).limit(10),
+      supabase.from("company_enrichments").select("id, title, source_url, source_name, data_type, confidence_score, scraped_at, summary").eq("company_id", company_id).order("scraped_at", { ascending: false }).limit(20),
+      supabase.from("company_documents").select("id, file_name, document_type, ai_summary, extracted_metrics").eq("company_id", company_id).order("created_at", { ascending: false }).limit(10),
     ]);
 
     const company = companyRes.data;
@@ -82,6 +84,8 @@ serve(async (req) => {
     const fundingRounds = fundingRes.data ?? [];
     const kpis = kpiRes.data ?? [];
     const capTable = capTableRes.data ?? [];
+    const enrichments = enrichRes.data ?? [];
+    const documents = docsRes.data ?? [];
 
     // ── Build machine-readable citations ──
     const fmtCurrency = (v: number) => {
@@ -142,6 +146,16 @@ serve(async (req) => {
       addCite(`${k.metric_name} (${k.period})`, k.value, String(k.value), "kpi_metrics", k.metric_name, k.confidence_score ?? "medium", k.created_at, k.period, k.definition_source);
     }
 
+    // Enrichments
+    for (const e of enrichments) {
+      addCite(`Enrichment: ${e.title ?? e.source_name}`, e.source_url, e.source_url, "company_enrichments", "summary", e.confidence_score ?? "medium", e.scraped_at, undefined, e.data_type);
+    }
+
+    // Documents
+    for (const d of documents) {
+      addCite(`Document: ${d.file_name}`, d.document_type, d.file_name, "company_documents", "ai_summary", "high", d.created_at ?? new Date().toISOString(), undefined, d.document_type);
+    }
+
     // Build citation reference block for AI prompt
     const citationBlock = citations.map(c =>
       `[${c.id}] ${c.metric}: ${c.formattedValue} (source: ${c.source}.${c.sourceField}, confidence: ${c.confidence}, verified: ${c.verifiedAt?.split("T")[0] ?? "unknown"})`
@@ -192,6 +206,15 @@ ${(eventsRes.data ?? []).map(e => `[${e.event_type}] ${e.headline}`).join('\n')}
 SECTOR COMPARABLES:
 ${(comps ?? []).map(c => `${c.name} (${c.stage}, ${c.employee_count} emp, founded ${c.founded_year})`).join('\n')}
 
+ENRICHMENT SOURCES (${enrichments.length} scraped records):
+${enrichments.map(e => `[${e.confidence_score}] ${e.title ?? e.source_name} (${e.data_type}) — ${e.summary?.slice(0, 200) ?? 'No summary'} | Source: ${e.source_url}`).join('\n') || 'None'}
+
+UPLOADED DOCUMENTS (${documents.length}):
+${documents.map(d => `${d.file_name} (${d.document_type}) — ${d.ai_summary?.slice(0, 200) ?? 'Not analyzed'}`).join('\n') || 'None'}
+
+DATA SOURCE CLASSIFICATION:
+${financials.map(f => `${f.period}: source_type=${f.source_type ?? 'unknown'}, confidence=${f.confidence_score ?? 'medium'} → ${(f.source_type === 'seeded' || f.source_type === 'estimated') ? '⚠️ ESTIMATED' : '✓ SOURCED'}`).join('\n')}
+
 CITATION REFERENCE TABLE:
 ${citationBlock}
 ${lowConfBlock}
@@ -220,6 +243,9 @@ CRITICAL CITATION RULES:
 2. Low-confidence metrics MUST be prefixed with "⚠️ Estimate:" and clearly labeled.
 3. Do NOT invent or hallucinate any numbers not in the citation table. If data is missing, state "Data not available" instead.
 4. Include citation IDs inline, e.g.: "Revenue reached $50M [cite_3] with ARR of $60M [cite_4]."
+5. For financial metrics from source_type='seeded' or 'estimated', ALWAYS prefix with "⚠️ Estimate:" to distinguish from verified data.
+6. For metrics backed by enrichment sources or uploaded documents, note the source explicitly to show provenance.
+7. Clearly separate SOURCED FACTS (from enrichments, documents, verified data) from ESTIMATES (seeded/estimated data).
 
 DISCLAIMER: Include a brief note that this is for informational purposes only.
 
