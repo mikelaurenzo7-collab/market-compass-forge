@@ -69,12 +69,18 @@ const Landing = () => {
         <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
       </div>
 
-      {/* Floating orb */}
+      {/* Floating orbs — purple and green */}
       <motion.div
         variants={pulseGlow}
         initial="initial"
         animate="animate"
-        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-primary/8 blur-[120px] pointer-events-none"
+        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[hsl(var(--brand-purple)/0.08)] blur-[120px] pointer-events-none"
+      />
+      <motion.div
+        variants={pulseGlow}
+        initial="initial"
+        animate="animate"
+        className="absolute top-1/3 left-[60%] -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-[hsl(var(--primary)/0.06)] blur-[100px] pointer-events-none"
       />
 
       {/* Nav */}
@@ -84,7 +90,7 @@ const Landing = () => {
             <span className="text-sm font-bold text-white">GV</span>
           </div>
           <span className="text-lg font-semibold tracking-tight">Grapevine</span>
-          <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-warning/30 text-warning bg-warning/5">
+          <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-primary/30 text-primary bg-primary/5">
             <FlaskConical className="h-3 w-3" />
             BETA
           </span>
@@ -129,7 +135,7 @@ const Landing = () => {
           variants={fadeUp}
           className="text-lg sm:text-xl text-muted-foreground max-w-md leading-relaxed"
         >
-          Private & <span className="text-foreground font-medium">AI-Powered Intelligence</span> for investors who move first.
+          Private & <span className="text-primary font-medium">AI-Powered Intelligence</span> for investors who move first.
         </motion.p>
 
         {/* Beta badge */}
@@ -143,7 +149,7 @@ const Landing = () => {
         {/* Waitlist form */}
         <motion.div custom={4} variants={fadeUp} className="w-full max-w-sm">
           {submitted ? (
-            <div className="rounded-2xl border border-primary/20 bg-card/80 backdrop-blur-sm p-8 text-center space-y-3 shadow-xl">
+            <div className="rounded-2xl border border-primary/30 bg-card/80 backdrop-blur-sm p-8 text-center space-y-3 shadow-xl shadow-primary/5">
               <CheckCircle className="h-10 w-10 text-primary mx-auto" />
               <p className="text-sm font-semibold text-foreground">You're on the list!</p>
               <p className="text-xs text-muted-foreground">
@@ -207,7 +213,7 @@ const Landing = () => {
               { value: "REST", label: "API Access" },
             ].map((s) => (
               <div key={s.label} className="space-y-0.5">
-                <p className="text-lg sm:text-xl font-black text-foreground font-mono tracking-tight">{s.value}</p>
+                <p className="text-lg sm:text-xl font-black text-primary font-mono tracking-tight">{s.value}</p>
                 <p className="text-[10px] text-muted-foreground/70">{s.label}</p>
               </div>
             ))}
@@ -219,7 +225,7 @@ const Landing = () => {
           <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest font-medium">Powered by</p>
           <div className="flex items-center gap-4">
             {["SEC EDGAR", "FRED", "FMP", "Firecrawl"].map((src) => (
-              <span key={src} className="text-[11px] font-mono text-muted-foreground/40 border border-border/40 rounded px-2 py-0.5">{src}</span>
+              <span key={src} className="text-[11px] font-mono text-primary/50 border border-primary/20 rounded px-2 py-0.5">{src}</span>
             ))}
           </div>
         </motion.div>
