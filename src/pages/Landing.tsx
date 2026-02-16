@@ -205,11 +205,10 @@ const Landing = () => {
         {/* Platform stats — honest, labeled as beta */}
         <motion.div custom={5} variants={fadeUp} className="w-full max-w-md">
           <p className="text-[10px] text-muted-foreground/50 text-center mb-2 uppercase tracking-widest">Beta Platform Metrics</p>
-          <div className="grid grid-cols-4 gap-3 text-center">
+          <div className="grid grid-cols-3 gap-3 text-center">
             {[
-              { value: "7,800+", label: "Companies Tracked" },
+              { value: "AI", label: "Research & Screening" },
               { value: "45+", label: "Distressed Assets" },
-              { value: "AI", label: "Screening (Beta)" },
               { value: "REST", label: "API Access" },
             ].map((s) => (
               <div key={s.label} className="space-y-0.5">
