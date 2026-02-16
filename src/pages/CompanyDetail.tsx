@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAutoEnrich } from "@/hooks/useAutoEnrich";
-import { ArrowLeft, MapPin, Users, Calendar, Globe, Loader2, Plus, Send, Clock, TrendingUp, Printer, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Users, Calendar, Globe, Loader2, Send, Clock, TrendingUp, Printer, AlertCircle } from "lucide-react";
 import { AnimatedTabContent } from "@/components/AnimatedTabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import CompanyAvatar from "@/components/CompanyAvatar";
@@ -32,6 +32,8 @@ import { AddToWatchlistButton } from "@/components/WatchlistManager";
 import { printElement } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
 import { toast } from "sonner";
+import EvidencePanel from "@/components/EvidencePanel";
+import CreateDealButton from "@/components/CreateDealButton";
 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +51,7 @@ const CompanyDetail = () => {
   const [noteContent, setNoteContent] = useState("");
   const searchParams = new URLSearchParams(window.location.search);
   const initialTab = (searchParams.get("tab") as any) || "overview";
-  const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "network" | "analysis" | "news" | "research" | "memo" | "filings">(initialTab);
+  const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "network" | "analysis" | "news" | "research" | "memo" | "filings" | "evidence">(initialTab);
 
   const handleTabChange = (tab: typeof activeTab) => {
     setActiveTab(tab);
@@ -199,32 +201,7 @@ const CompanyDetail = () => {
     },
   });
 
-  const addToPipeline = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("deal_pipeline").insert({
-        company_id: id!,
-        user_id: user!.id,
-        stage: "sourced",
-      });
-      if (error) {
-        if (error.code === "23505") {
-          toast.info("Already in your pipeline");
-          return;
-        }
-        throw error;
-      }
-      logActivity({
-        userId: user!.id,
-        action: "added to pipeline",
-        entityType: "deal",
-        entityId: id,
-        entityName: company?.name,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
-    },
-  });
+  // addToPipeline replaced by CreateDealButton component
 
   if (isLoading) {
     return (
@@ -350,13 +327,7 @@ const CompanyDetail = () => {
           >
             <Printer className="h-4 w-4" /> Print
           </button>
-          <button
-            onClick={() => addToPipeline.mutate()}
-            disabled={addToPipeline.isPending}
-            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" /> Add to Pipeline
-          </button>
+          <CreateDealButton companyId={id!} companyName={company.name} compact />
         </div>
       </div>
 
@@ -406,7 +377,7 @@ const CompanyDetail = () => {
 
       {/* Tab navigation */}
       <div className="flex gap-1 border-b border-border no-print overflow-x-auto">
-        {(["overview", "financials", "valuation", "filings", "deals", "network", "analysis", "news", "research", "memo"] as const).map((tab) => (
+        {(["overview", "financials", "valuation", "evidence", "filings", "deals", "network", "analysis", "news", "research", "memo"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
@@ -416,7 +387,7 @@ const CompanyDetail = () => {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {tab === "overview" ? "Overview" : tab === "financials" ? "Financials" : tab === "valuation" ? "Valuation" : tab === "filings" ? "SEC Filings" : tab === "deals" ? "Deal History" : tab === "network" ? "Network" : tab === "analysis" ? "AI Analysis" : tab === "news" ? "News & Sentiment" : tab === "research" ? "AI Research" : "Investment Memo"}
+            {tab === "overview" ? "Overview" : tab === "financials" ? "Financials" : tab === "valuation" ? "Valuation" : tab === "evidence" ? "Evidence" : tab === "filings" ? "SEC Filings" : tab === "deals" ? "Deal History" : tab === "network" ? "Network" : tab === "analysis" ? "AI Analysis" : tab === "news" ? "News & Sentiment" : tab === "research" ? "AI Research" : "Investment Memo"}
           </button>
         ))}
       </div>
@@ -843,6 +814,10 @@ const CompanyDetail = () => {
 
       {activeTab === "memo" && (
         <InvestmentMemo companyId={id!} companyName={company.name} />
+      )}
+
+      {activeTab === "evidence" && (
+        <EvidencePanel companyId={id!} />
       )}
       </AnimatedTabContent>
     </div>
