@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useSubscription } from "@/hooks/useSubscription";
 import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity, Receipt } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
@@ -30,6 +31,7 @@ const DENSITY_OPTIONS = [
 
 const Settings = () => {
   const { user, signOut } = useAuth();
+  const subscription = useSubscription();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
@@ -193,28 +195,40 @@ const Settings = () => {
             </div>
           </div>
 
-          {/* Current Plan */}
-          <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Current Plan</h3>
-            </div>
-            <div>
-              <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
-                Professional — $599/mo
-              </span>
-              <p className="text-xs text-muted-foreground mt-2">
-                Full access to all platform features. 200 AI queries, 100 memos, 100 enrichments per day. REST API included.
-              </p>
-              <a
-                href="mailto:sales@grapevine.io?subject=Enterprise%20Inquiry"
-                className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
-              >
-                <Mail className="h-3 w-3" />
-                Enterprise? Contact Us
-              </a>
-            </div>
-          </div>
+          {/* Current Plan — dynamic */}
+          {(() => {
+            const plan = subscription.plan === "pro" ? "professional" : (subscription.plan || "essential");
+            const PLAN_LABELS: Record<string, string> = {
+              essential: "Essential — $299/mo",
+              professional: "Professional — $599/mo",
+              institutional: "Institutional — $1,999/mo",
+            };
+            return (
+              <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Current Plan</h3>
+                </div>
+                <div>
+                  <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                    {PLAN_LABELS[plan] ?? `${plan} plan`}
+                  </span>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {subscription.subscribed
+                      ? "Manage your subscription in the Billing tab."
+                      : "Upgrade in the Billing tab to unlock higher limits."}
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("billing")}
+                    className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    <Receipt className="h-3 w-3" />
+                    {subscription.subscribed ? "Manage Billing" : "View Plans"}
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Display Density */}
           <div className="rounded-lg border border-border bg-card p-4 space-y-4">

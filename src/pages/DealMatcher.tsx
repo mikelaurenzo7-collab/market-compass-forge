@@ -8,6 +8,8 @@ import { formatCurrency } from "@/hooks/useData";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useUsageTracking } from "@/hooks/useUsageTracking";
+import UpgradePrompt from "@/components/UpgradePrompt";
 
 type DealMatch = {
   type: "distressed" | "global" | "deal_comp";
@@ -163,9 +165,13 @@ const DealMatcher = () => {
   const navigate = useNavigate();
   const [matches, setMatches] = useState<DealMatch[]>([]);
   const [meta, setMeta] = useState<{ pipelineCount?: number; sectorsAnalyzed?: string[] }>({});
+  const { checkAndTrack, showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
 
   const runMatcher = useMutation({
     mutationFn: async () => {
+      const allowed = await checkAndTrack("deal_matcher");
+      if (!allowed) throw new Error("__LIMIT__");
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Please sign in to use deal matching");
 
@@ -195,7 +201,7 @@ const DealMatcher = () => {
       }
     },
     onError: (err: any) => {
-      toast.error(err.message);
+      if (err.message !== "__LIMIT__") toast.error(err.message);
     },
   });
 
@@ -215,6 +221,7 @@ const DealMatcher = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
