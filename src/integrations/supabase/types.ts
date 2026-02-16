@@ -594,6 +594,65 @@ export type Database = {
         }
         Relationships: []
       }
+      dead_letter_queue: {
+        Row: {
+          created_at: string
+          error_message: string
+          error_type: string | null
+          id: string
+          max_retries: number | null
+          next_retry_at: string | null
+          pipeline: string
+          raw_payload: Json
+          resolved_at: string | null
+          resolved_by: string | null
+          retry_count: number | null
+          run_id: string | null
+          source_identifier: string | null
+          stage: string
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          error_type?: string | null
+          id?: string
+          max_retries?: number | null
+          next_retry_at?: string | null
+          pipeline: string
+          raw_payload: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          run_id?: string | null
+          source_identifier?: string | null
+          stage: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          error_type?: string | null
+          id?: string
+          max_retries?: number | null
+          next_retry_at?: string | null
+          pipeline?: string
+          raw_payload?: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          run_id?: string | null
+          source_identifier?: string | null
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dead_letter_queue_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ingestion_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_pipeline: {
         Row: {
           company_id: string
@@ -1190,6 +1249,122 @@ export type Database = {
         }
         Relationships: []
       }
+      ingestion_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          max_retries: number | null
+          pipeline: string
+          records_deduped: number | null
+          records_failed: number | null
+          records_ingested: number | null
+          records_normalized: number | null
+          records_published: number | null
+          records_validated: number | null
+          retry_count: number | null
+          run_metadata: Json | null
+          started_at: string | null
+          status: string
+          triggered_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          pipeline: string
+          records_deduped?: number | null
+          records_failed?: number | null
+          records_ingested?: number | null
+          records_normalized?: number | null
+          records_published?: number | null
+          records_validated?: number | null
+          retry_count?: number | null
+          run_metadata?: Json | null
+          started_at?: string | null
+          status?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          pipeline?: string
+          records_deduped?: number | null
+          records_failed?: number | null
+          records_ingested?: number | null
+          records_normalized?: number | null
+          records_published?: number | null
+          records_validated?: number | null
+          retry_count?: number | null
+          run_metadata?: Json | null
+          started_at?: string | null
+          status?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
+      ingestion_stage_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          drop_reasons: Json | null
+          error_message: string | null
+          id: string
+          records_dropped: number | null
+          records_in: number | null
+          records_out: number | null
+          run_id: string
+          stage: string
+          stage_metadata: Json | null
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          drop_reasons?: Json | null
+          error_message?: string | null
+          id?: string
+          records_dropped?: number | null
+          records_in?: number | null
+          records_out?: number | null
+          run_id: string
+          stage: string
+          stage_metadata?: Json | null
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          drop_reasons?: Json | null
+          error_message?: string | null
+          id?: string
+          records_dropped?: number | null
+          records_in?: number | null
+          records_out?: number | null
+          run_id?: string
+          stage?: string
+          stage_metadata?: Json | null
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingestion_stage_logs_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ingestion_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       intelligence_signals: {
         Row: {
           ai_summary: string | null
@@ -1545,6 +1720,54 @@ export type Database = {
           },
         ]
       }
+      pipeline_schedules: {
+        Row: {
+          alert_on_failure: boolean | null
+          alert_on_stale: boolean | null
+          created_at: string
+          cron_expression: string
+          enabled: boolean | null
+          id: string
+          last_run_at: string | null
+          max_retries: number | null
+          next_run_at: string | null
+          pipeline: string
+          retry_backoff_minutes: number | null
+          staleness_threshold_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          alert_on_failure?: boolean | null
+          alert_on_stale?: boolean | null
+          created_at?: string
+          cron_expression?: string
+          enabled?: boolean | null
+          id?: string
+          last_run_at?: string | null
+          max_retries?: number | null
+          next_run_at?: string | null
+          pipeline: string
+          retry_backoff_minutes?: number | null
+          staleness_threshold_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          alert_on_failure?: boolean | null
+          alert_on_stale?: boolean | null
+          created_at?: string
+          cron_expression?: string
+          enabled?: boolean | null
+          id?: string
+          last_run_at?: string | null
+          max_retries?: number | null
+          next_run_at?: string | null
+          pipeline?: string
+          retry_backoff_minutes?: number | null
+          staleness_threshold_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pipeline_tasks: {
         Row: {
           assignee_id: string
@@ -1887,6 +2110,50 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: true
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      raw_source_snapshots: {
+        Row: {
+          checksum: string | null
+          created_at: string
+          fetched_at: string | null
+          id: string
+          pipeline: string
+          raw_payload: Json
+          run_id: string
+          source_identifier: string
+          source_url: string | null
+        }
+        Insert: {
+          checksum?: string | null
+          created_at?: string
+          fetched_at?: string | null
+          id?: string
+          pipeline: string
+          raw_payload: Json
+          run_id: string
+          source_identifier: string
+          source_url?: string | null
+        }
+        Update: {
+          checksum?: string | null
+          created_at?: string
+          fetched_at?: string | null
+          id?: string
+          pipeline?: string
+          raw_payload?: Json
+          run_id?: string
+          source_identifier?: string
+          source_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "raw_source_snapshots_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "ingestion_runs"
             referencedColumns: ["id"]
           },
         ]

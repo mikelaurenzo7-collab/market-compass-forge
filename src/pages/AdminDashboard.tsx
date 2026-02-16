@@ -6,8 +6,9 @@ import { Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Mail, TrendingUp, Clock, Search, ChevronLeft, ChevronRight,
-  Handshake, CheckCircle, XCircle, MessageSquare, Building2,
+  Handshake, CheckCircle, XCircle, MessageSquare, Building2, Database,
 } from "lucide-react";
+import IngestionDashboard from "@/components/IngestionDashboard";
 import { formatDistanceToNow, format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -152,9 +153,13 @@ const AdminDashboard = () => {
               <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-[10px]">{introStats?.pending}</Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="waitlist" className="gap-2">
+           <TabsTrigger value="waitlist" className="gap-2">
             <Users className="h-3.5 w-3.5" />
             Waitlist
+          </TabsTrigger>
+          <TabsTrigger value="ingestion" className="gap-2">
+            <Database className="h-3.5 w-3.5" />
+            Data Pipelines
           </TabsTrigger>
         </TabsList>
 
@@ -425,6 +430,11 @@ const AdminDashboard = () => {
               </div>
             )}
           </div>
+        </TabsContent>
+
+        {/* ─── INGESTION PIPELINES TAB ─── */}
+        <TabsContent value="ingestion" className="space-y-4">
+          <IngestionDashboard />
         </TabsContent>
       </Tabs>
     </div>
