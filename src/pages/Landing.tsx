@@ -135,14 +135,14 @@ const Landing = () => {
           variants={fadeUp}
           className="text-lg sm:text-xl text-muted-foreground max-w-md leading-relaxed"
         >
-          Private & <span className="text-primary font-medium">AI-Powered Intelligence</span> for investors who move first.
+          <span className="text-primary font-medium">See the deal before the market does.</span> AI-powered intelligence for PE firms and family offices who refuse to wait.
         </motion.p>
 
         {/* Beta badge */}
         <motion.div custom={3} variants={fadeUp}>
           <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-[hsl(var(--brand-purple)/0.3)] text-[hsl(var(--brand-purple))] bg-[hsl(var(--brand-purple)/0.06)] backdrop-blur-sm shadow-lg shadow-[hsl(var(--brand-purple)/0.1)]">
             <FlaskConical className="h-4 w-4" />
-            Beta — Building in Public
+            Your Unfair Advantage — Now in Beta
           </span>
         </motion.div>
 
