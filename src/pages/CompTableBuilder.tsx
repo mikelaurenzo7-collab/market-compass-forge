@@ -371,8 +371,7 @@ const CompTableBuilder = ({ embedded }: { embedded?: boolean } = {}) => {
           <Table className="h-12 w-12 text-muted-foreground/30 mb-4" />
           <h2 className="text-lg font-medium text-foreground">Build a Comp Table</h2>
           <p className="text-sm text-muted-foreground mt-1 mb-4 max-w-md">
-            Select 2-10 companies to auto-populate financials, valuations, and multiples.
-            Mix private and public companies for cross-market analysis.
+            Select 2–10 companies to auto-populate financials, valuations and multiples. Mix private and public peers for cross-market analysis.
           </p>
           <button
             onClick={() => setShowSearch(true)}

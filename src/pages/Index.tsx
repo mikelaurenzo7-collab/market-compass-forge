@@ -113,7 +113,7 @@ const RecentPipelineDeals = () => {
       <EmptyState
         icon={Briefcase}
         title="No deals in pipeline"
-        description="Browse private companies or use AI Deal Matcher to find opportunities that fit your thesis."
+        description="Browse 7,800+ private companies. Filter by sector, stage and revenue, then save the opportunities that interest you."
         actionLabel="Browse Companies"
         onAction={() => navigate("/companies")}
         secondaryLabel="AI Match"

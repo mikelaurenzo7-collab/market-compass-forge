@@ -232,7 +232,7 @@ const DealMatcher = () => {
           <p className="text-sm text-muted-foreground mt-0.5">
             {hasResults
               ? `${matches.length} matches across ${meta.sectorsAnalyzed?.length ?? 0} sectors · avg score ${avgScore} · ${meta.pipelineCount ?? 0} pipeline companies`
-              : "Smart matching across distressed assets, global opportunities, and comparable deals"}
+              : "Our AI analyses your pipeline's sector, stage and geography to match your companies with distressed assets, global opportunities and comparable transactions."}
           </p>
         </div>
         <Button
@@ -248,6 +248,7 @@ const DealMatcher = () => {
             <Zap className="h-4 w-4" />
           )}
           {runMatcher.isPending ? "Analyzing…" : hasResults ? "Re-scan" : "Run AI Matcher"}
+
         </Button>
       </div>
 
@@ -281,7 +282,7 @@ const DealMatcher = () => {
           <div>
             <h3 className="text-lg font-semibold text-foreground">Find Your Next Deal</h3>
             <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-              The AI analyzes your pipeline companies — sectors, stages, geographies — and matches them with distressed assets, global opportunities, and comparable transactions.
+              Our AI analyses your pipeline's sector, stage and geography to match your companies with distressed assets, global opportunities and comparable transactions.
             </p>
           </div>
           <Button onClick={() => runMatcher.mutate()} className="gap-2">

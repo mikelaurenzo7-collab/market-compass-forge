@@ -130,8 +130,7 @@ const Alerts = () => {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Alerts</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Monitor companies, sectors, and investor activity ·{" "}
-            <span className="font-mono text-primary">{unreadCount}</span> unread
+            Monitor companies, sectors and investor activity. Create alert rules to receive notifications when metrics change or new opportunities emerge. <span className="font-mono text-primary">{unreadCount}</span> unread
           </p>
         </div>
         <button
