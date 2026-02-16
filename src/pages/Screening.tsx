@@ -364,7 +364,7 @@ const Screening = () => {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Screening</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="font-mono text-primary">{filtered.length}</span> companies match your criteria
+            Use advanced filters to screen thousands of private companies by revenue, EBITDA, sector, stage, geography and more. <span className="font-mono text-primary">{filtered.length}</span> companies match your criteria.
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">

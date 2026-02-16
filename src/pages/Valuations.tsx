@@ -15,9 +15,9 @@ const Valuations = () => {
         className="flex items-start justify-between"
       >
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Valuation Tools</h1>
+          <h1 className="text-xl font-semibold text-foreground">Valuation Toolkit</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Comparable analysis, precedent transactions, and DCF modeling
+            Build a consensus range across DCF, comparable companies, precedent transactions and LBO analysis.
           </p>
         </div>
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/5 border border-primary/15">

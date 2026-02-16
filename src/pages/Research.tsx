@@ -235,7 +235,7 @@ const Research = () => {
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-foreground mb-1">AI-Powered Company Research</h2>
-                  <p className="text-sm text-muted-foreground">Search for any company to unlock deep analysis, generate investment memos, and chat with AI about financials and strategy.</p>
+                  <p className="text-sm text-muted-foreground">Search any private company to unlock deep analysis, generate institutional-quality memos and chat with AI about strategy, risks and competitive position.</p>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="rounded-lg border border-border p-3 text-left">

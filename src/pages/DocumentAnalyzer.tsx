@@ -306,8 +306,8 @@ const DocumentAnalyzer = () => {
         ) : (
           <>
             <Upload className={`h-10 w-10 mx-auto mb-4 ${dragActive ? "text-primary" : "text-muted-foreground"}`} />
-            <p className="text-sm font-medium text-foreground mb-1">Drag & drop a financial document here</p>
-            <p className="text-xs text-muted-foreground mb-4">Supports PDF, DOCX, XLSX, TXT — CIM, PPM, 10-K, pitch decks (max 20MB)</p>
+            <p className="text-sm font-medium text-foreground mb-1">Drag & drop CIMs, PPMs, 10-Ks or pitch decks</p>
+            <p className="text-xs text-muted-foreground mb-4">Our AI extracts key terms, financials and actionable insights. Supports PDF, DOCX, XLSX, TXT (max 20MB)</p>
             <div className="flex items-center justify-center gap-3">
               <button
                 onClick={() => fileInputRef.current?.click()}
