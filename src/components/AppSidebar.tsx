@@ -49,6 +49,9 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: "companies", label: "Private Markets", icon: Building2, path: "/companies" },
       { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
+      { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
+      { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
+      { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
     ],
   },
   {
@@ -67,14 +70,6 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
       { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
       { id: "documents", label: "Document Analyzer", icon: FileText, path: "/document-analyzer" },
-    ],
-  },
-  {
-    label: "Alternatives",
-    items: [
-      { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
-      { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
-      { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
     ],
   },
 ];

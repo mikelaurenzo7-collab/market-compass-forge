@@ -68,10 +68,9 @@ const useDashboardBatch = () => {
   return useQuery({
     queryKey: ["dashboard-batch", user?.id],
     queryFn: async () => {
-      const [pipelineRes, privateRes, publicRes, distressedRes, listingsRes, sectorRes, latestEventRes] = await Promise.all([
+      const [pipelineRes, privateRes, distressedRes, listingsRes, sectorRes, latestEventRes] = await Promise.all([
         user ? supabase.from("deal_pipeline").select("*", { count: "exact", head: true }).eq("user_id", user.id) : Promise.resolve({ count: 0 }),
         supabase.from("companies").select("id", { count: "exact", head: true }).or("market_type.eq.private,market_type.is.null"),
-        supabase.from("companies").select("id", { count: "exact", head: true }).eq("market_type", "public"),
         supabase.from("distressed_assets").select("id", { count: "exact", head: true }).eq("status", "active"),
         supabase.from("private_listings").select("id", { count: "exact", head: true }).eq("status", "available"),
         supabase.from("companies").select("sector").not("sector", "is", null),
@@ -81,8 +80,7 @@ const useDashboardBatch = () => {
       return {
         pipelineCount: (pipelineRes as any).count ?? 0,
         privateCount: privateRes.count ?? 0,
-        publicCount: publicRes.count ?? 0,
-        companyCount: (privateRes.count ?? 0) + (publicRes.count ?? 0),
+        companyCount: privateRes.count ?? 0,
         distressedCount: distressedRes.count ?? 0,
         listingsCount: listingsRes.count ?? 0,
         sectorCount: sectorSet.size,
@@ -115,7 +113,7 @@ const RecentPipelineDeals = () => {
       <EmptyState
         icon={Briefcase}
         title="No deals in pipeline"
-        description="Browse 7,800+ companies or use AI Deal Matcher to find opportunities that fit your thesis."
+        description="Browse private companies or use AI Deal Matcher to find opportunities that fit your thesis."
         actionLabel="Browse Companies"
         onAction={() => navigate("/companies")}
         secondaryLabel="AI Match"
@@ -535,7 +533,7 @@ const Index = () => {
           variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
         >
           <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} index={0} />
-          <MetricCard label="Private Companies" value={String(batch?.privateCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Private · {batch?.publicCount ?? 0} Public</span>} index={1} />
+          <MetricCard label="Companies Tracked" value={String(batch?.privateCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Private Markets</span>} index={1} />
           <MetricCard label="Distressed Alerts" value={String(batch?.distressedCount ?? 0)} subtitle={<span className="flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Active</span>} index={2} />
           <MetricCard label="Off-Market Listings" value={String(batch?.listingsCount ?? 0)} subtitle={<span className="flex items-center gap-1"><Building className="h-2.5 w-2.5" /> Available</span>} index={3} />
         </motion.div>
