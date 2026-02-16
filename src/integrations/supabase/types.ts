@@ -653,6 +653,86 @@ export type Database = {
           },
         ]
       }
+      deal_assignments: {
+        Row: {
+          assigned_by: string
+          created_at: string
+          deal_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_assignments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_comments: {
+        Row: {
+          content: string
+          created_at: string
+          deal_id: string
+          id: string
+          parent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "deal_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_pipeline: {
         Row: {
           company_id: string
@@ -788,6 +868,119 @@ export type Database = {
             columns: ["pipeline_deal_id"]
             isOneToOne: false
             referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_log: {
+        Row: {
+          created_at: string
+          deal_id: string
+          decision_type: string
+          from_state: string | null
+          id: string
+          metadata: Json | null
+          rationale: string | null
+          to_state: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          decision_type: string
+          from_state?: string | null
+          id?: string
+          metadata?: Json | null
+          rationale?: string | null
+          to_state?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          decision_type?: string
+          from_state?: string | null
+          id?: string
+          metadata?: Json | null
+          rationale?: string | null
+          to_state?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      decision_outcomes: {
+        Row: {
+          actual_irr: number | null
+          actual_return_multiple: number | null
+          created_at: string
+          created_by: string
+          deal_id: string
+          decision_log_id: string | null
+          id: string
+          lessons_learned: string | null
+          model_accuracy_score: number | null
+          notes: string | null
+          outcome_date: string | null
+          outcome_type: string
+          predicted_irr: number | null
+          predicted_return_multiple: number | null
+          updated_at: string
+        }
+        Insert: {
+          actual_irr?: number | null
+          actual_return_multiple?: number | null
+          created_at?: string
+          created_by: string
+          deal_id: string
+          decision_log_id?: string | null
+          id?: string
+          lessons_learned?: string | null
+          model_accuracy_score?: number | null
+          notes?: string | null
+          outcome_date?: string | null
+          outcome_type: string
+          predicted_irr?: number | null
+          predicted_return_multiple?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actual_irr?: number | null
+          actual_return_multiple?: number | null
+          created_at?: string
+          created_by?: string
+          deal_id?: string
+          decision_log_id?: string | null
+          id?: string
+          lessons_learned?: string | null
+          model_accuracy_score?: number | null
+          notes?: string | null
+          outcome_date?: string | null
+          outcome_type?: string
+          predicted_irr?: number | null
+          predicted_return_multiple?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_outcomes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "decision_outcomes_decision_log_id_fkey"
+            columns: ["decision_log_id"]
+            isOneToOne: false
+            referencedRelation: "decision_log"
             referencedColumns: ["id"]
           },
         ]
@@ -1264,6 +1457,48 @@ export type Database = {
           stage?: string | null
           status?: string | null
           verification_status?: string | null
+        }
+        Relationships: []
+      }
+      ic_templates: {
+        Row: {
+          checklist: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          required_approvals: number
+          sections: Json
+          strategy: string
+          updated_at: string
+        }
+        Insert: {
+          checklist?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          required_approvals?: number
+          sections?: Json
+          strategy: string
+          updated_at?: string
+        }
+        Update: {
+          checklist?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          required_approvals?: number
+          sections?: Json
+          strategy?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2318,6 +2553,51 @@ export type Database = {
           source_url?: string | null
           target_id?: string
           target_type?: string
+        }
+        Relationships: []
+      }
+      review_cadences: {
+        Row: {
+          attendees: string[] | null
+          auto_include_alerts: boolean
+          auto_include_open_decisions: boolean
+          auto_include_watchlists: boolean
+          created_at: string
+          created_by: string
+          frequency: string
+          id: string
+          last_reviewed_at: string | null
+          name: string
+          next_review_at: string
+          updated_at: string
+        }
+        Insert: {
+          attendees?: string[] | null
+          auto_include_alerts?: boolean
+          auto_include_open_decisions?: boolean
+          auto_include_watchlists?: boolean
+          created_at?: string
+          created_by: string
+          frequency?: string
+          id?: string
+          last_reviewed_at?: string | null
+          name: string
+          next_review_at?: string
+          updated_at?: string
+        }
+        Update: {
+          attendees?: string[] | null
+          auto_include_alerts?: boolean
+          auto_include_open_decisions?: boolean
+          auto_include_watchlists?: boolean
+          created_at?: string
+          created_by?: string
+          frequency?: string
+          id?: string
+          last_reviewed_at?: string | null
+          name?: string
+          next_review_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
