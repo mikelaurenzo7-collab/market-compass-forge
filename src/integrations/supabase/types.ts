@@ -796,6 +796,7 @@ export type Database = {
         Row: {
           asking_price: number | null
           asset_type: string
+          claim_stack: Json | null
           confidence_score: string | null
           contact_info: string | null
           created_at: string
@@ -806,10 +807,15 @@ export type Database = {
           fetched_at: string | null
           id: string
           key_metrics: Json | null
+          legal_stage: string | null
+          legal_timeline: Json | null
           listed_date: string | null
           location_city: string | null
           location_state: string | null
           name: string
+          process_milestones: Json | null
+          recovery_high_pct: number | null
+          recovery_low_pct: number | null
           search_vector: unknown
           sector: string | null
           source: string | null
@@ -821,6 +827,7 @@ export type Database = {
         Insert: {
           asking_price?: number | null
           asset_type?: string
+          claim_stack?: Json | null
           confidence_score?: string | null
           contact_info?: string | null
           created_at?: string
@@ -831,10 +838,15 @@ export type Database = {
           fetched_at?: string | null
           id?: string
           key_metrics?: Json | null
+          legal_stage?: string | null
+          legal_timeline?: Json | null
           listed_date?: string | null
           location_city?: string | null
           location_state?: string | null
           name: string
+          process_milestones?: Json | null
+          recovery_high_pct?: number | null
+          recovery_low_pct?: number | null
           search_vector?: unknown
           sector?: string | null
           source?: string | null
@@ -846,6 +858,7 @@ export type Database = {
         Update: {
           asking_price?: number | null
           asset_type?: string
+          claim_stack?: Json | null
           confidence_score?: string | null
           contact_info?: string | null
           created_at?: string
@@ -856,10 +869,15 @@ export type Database = {
           fetched_at?: string | null
           id?: string
           key_metrics?: Json | null
+          legal_stage?: string | null
+          legal_timeline?: Json | null
           listed_date?: string | null
           location_city?: string | null
           location_state?: string | null
           name?: string
+          process_milestones?: Json | null
+          recovery_high_pct?: number | null
+          recovery_low_pct?: number | null
           search_vector?: unknown
           sector?: string | null
           source?: string | null
@@ -1932,16 +1950,25 @@ export type Database = {
       private_listings: {
         Row: {
           address: string | null
+          amortization_years: number | null
           asking_price: number | null
           city: string
           created_at: string
           description: string | null
           estimated_cap_rate: number | null
+          exit_cap_rate: number | null
+          hold_years: number | null
           id: string
+          interest_rate: number | null
           listed_date: string | null
           listing_type: string
+          loan_amount: number | null
+          loan_term_years: number | null
           noi: number | null
+          occupancy_pct: number | null
+          opex_ratio: number | null
           property_type: string
+          rent_growth_pct: number | null
           size_sf: number | null
           source_network: string | null
           state: string
@@ -1951,16 +1978,25 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          amortization_years?: number | null
           asking_price?: number | null
           city: string
           created_at?: string
           description?: string | null
           estimated_cap_rate?: number | null
+          exit_cap_rate?: number | null
+          hold_years?: number | null
           id?: string
+          interest_rate?: number | null
           listed_date?: string | null
           listing_type?: string
+          loan_amount?: number | null
+          loan_term_years?: number | null
           noi?: number | null
+          occupancy_pct?: number | null
+          opex_ratio?: number | null
           property_type: string
+          rent_growth_pct?: number | null
           size_sf?: number | null
           source_network?: string | null
           state: string
@@ -1970,16 +2006,25 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          amortization_years?: number | null
           asking_price?: number | null
           city?: string
           created_at?: string
           description?: string | null
           estimated_cap_rate?: number | null
+          exit_cap_rate?: number | null
+          hold_years?: number | null
           id?: string
+          interest_rate?: number | null
           listed_date?: string | null
           listing_type?: string
+          loan_amount?: number | null
+          loan_term_years?: number | null
           noi?: number | null
+          occupancy_pct?: number | null
+          opex_ratio?: number | null
           property_type?: string
+          rent_growth_pct?: number | null
           size_sf?: number | null
           source_network?: string | null
           state?: string
@@ -2562,6 +2607,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          module: string | null
           name: string
           updated_at: string
           user_id: string
@@ -2572,6 +2618,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          module?: string | null
           name: string
           updated_at?: string
           user_id: string
@@ -2582,6 +2629,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          module?: string | null
           name?: string
           updated_at?: string
           user_id?: string

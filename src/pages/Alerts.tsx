@@ -9,11 +9,17 @@ import { toast } from "@/hooks/use-toast";
 
 const SECTOR_OPTIONS = ["AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce"];
 const ROUND_OPTIONS = ["Seed", "Series A", "Series B", "Series C", "Series D", "Late Stage", "IPO"];
+import { Building, ShieldAlert, BarChart3 } from "lucide-react";
+
 const ALERT_TYPES = [
-  { value: "custom", label: "Custom", icon: <Zap className="h-3.5 w-3.5" />, description: "Funding rounds & events" },
-  { value: "sec_filing", label: "SEC Filing", icon: <FileText className="h-3.5 w-3.5" />, description: "10-K, 10-Q, 8-K filings" },
-  { value: "distressed_new", label: "Distressed", icon: <AlertTriangle className="h-3.5 w-3.5" />, description: "New distressed assets" },
-  { value: "price_move", label: "Price Move", icon: <TrendingDown className="h-3.5 w-3.5" />, description: "Significant price changes" },
+  { value: "custom", label: "Custom", icon: <Zap className="h-3.5 w-3.5" />, description: "Funding rounds & events", module: "general" },
+  { value: "sec_filing", label: "SEC Filing", icon: <FileText className="h-3.5 w-3.5" />, description: "10-K, 10-Q, 8-K filings", module: "general" },
+  { value: "distressed_new", label: "Distressed", icon: <AlertTriangle className="h-3.5 w-3.5" />, description: "New distressed assets", module: "distressed" },
+  { value: "auction_event", label: "Auction", icon: <AlertTriangle className="h-3.5 w-3.5" />, description: "Auction dates & bid deadlines", module: "distressed" },
+  { value: "covenant_breach", label: "Covenant Breach", icon: <ShieldAlert className="h-3.5 w-3.5" />, description: "DSCR or LTV covenant violations", module: "distressed" },
+  { value: "price_move", label: "Price Move", icon: <TrendingDown className="h-3.5 w-3.5" />, description: "Significant price changes", module: "general" },
+  { value: "occupancy_drop", label: "Occupancy Drop", icon: <Building className="h-3.5 w-3.5" />, description: "Occupancy falls below threshold", module: "real_estate" },
+  { value: "caprate_shift", label: "Cap Rate Shift", icon: <BarChart3 className="h-3.5 w-3.5" />, description: "Cap rate spread widens/narrows", module: "real_estate" },
 ];
 
 const Alerts = () => {
@@ -62,10 +68,12 @@ const Alerts = () => {
       if (minAmount) conditions.min_amount = Number(minAmount) * 1e6;
       if (keywords) conditions.keywords = keywords.split(",").map((k: string) => k.trim());
 
+      const selectedType = ALERT_TYPES.find(t => t.value === alertType);
       const { error } = await supabase.from("user_alerts").insert({
         user_id: user!.id,
         name,
         alert_type: alertType,
+        module: selectedType?.module ?? "general",
         conditions,
       });
       if (error) throw error;

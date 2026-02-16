@@ -1,8 +1,11 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Home, DollarSign, Maximize2, Building, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { formatCurrency } from "@/hooks/useData";
 import RequestIntroButton from "@/components/RequestIntroButton";
+import REUnderwritingTools from "@/components/REUnderwritingTools";
+import { exportREUnderwritingPack } from "@/lib/moduleExports";
 
 interface PrivateListing {
   id: string;
@@ -21,6 +24,15 @@ interface PrivateListing {
   source_network?: string | null;
   listed_date?: string | null;
   noi?: number | null;
+  loan_amount?: number | null;
+  interest_rate?: number | null;
+  loan_term_years?: number | null;
+  amortization_years?: number | null;
+  occupancy_pct?: number | null;
+  opex_ratio?: number | null;
+  rent_growth_pct?: number | null;
+  exit_cap_rate?: number | null;
+  hold_years?: number | null;
 }
 
 interface ListingDetailPanelProps {
@@ -38,9 +50,11 @@ const statusColor: Record<string, string> = {
 export const ListingDetailPanel = ({ listing, open, onOpenChange }: ListingDetailPanelProps) => {
   if (!listing) return null;
 
+  const hasUnderwritingData = listing.asking_price && listing.noi && listing.estimated_cap_rate;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[500px] overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:w-[560px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{listing.property_name}</SheetTitle>
           <SheetDescription>{listing.city}, {listing.state}</SheetDescription>
@@ -48,11 +62,19 @@ export const ListingDetailPanel = ({ listing, open, onOpenChange }: ListingDetai
 
         <div className="space-y-6 mt-6">
           {/* Type & Status */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Badge variant="outline">{listing.property_type || "Unknown"}</Badge>
             <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium border capitalize ${statusColor[listing.status] || ""}`}>
               {listing.status?.replace("_", " ")}
             </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto gap-1.5 h-7 text-xs"
+              onClick={() => exportREUnderwritingPack(listing as any)}
+            >
+              <Download className="h-3 w-3" /> Export Pack
+            </Button>
           </div>
 
           {/* Address */}
@@ -98,6 +120,24 @@ export const ListingDetailPanel = ({ listing, open, onOpenChange }: ListingDetai
               </div>
             )}
           </div>
+
+          {/* Underwriting Tools */}
+          {hasUnderwritingData && (
+            <REUnderwritingTools
+              askingPrice={listing.asking_price!}
+              noi={listing.noi!}
+              capRate={listing.estimated_cap_rate!}
+              loanAmount={listing.loan_amount ?? undefined}
+              interestRate={listing.interest_rate ?? undefined}
+              loanTermYears={listing.loan_term_years ?? undefined}
+              amortizationYears={listing.amortization_years ?? undefined}
+              occupancyPct={listing.occupancy_pct ?? undefined}
+              opexRatio={listing.opex_ratio ?? undefined}
+              rentGrowthPct={listing.rent_growth_pct ?? undefined}
+              exitCapRate={listing.exit_cap_rate ?? undefined}
+              holdYears={listing.hold_years ?? undefined}
+            />
+          )}
 
           {/* Description */}
           {listing.description && (
