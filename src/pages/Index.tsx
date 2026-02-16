@@ -445,22 +445,22 @@ const Index = () => {
          <div className="absolute inset-0 aurora-gradient opacity-50 pointer-events-none" />
          <div className="relative flex items-center justify-between">
            <div>
-             <motion.h1
-               initial={{ opacity: 0, x: -12 }}
-               animate={{ opacity: 1, x: 0 }}
-               transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-               className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
-             >
-               Market Intelligence
-             </motion.h1>
-             <motion.p
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               transition={{ delay: 0.3 }}
-               className="text-sm text-muted-foreground mt-0.5"
-             >
-               {freshnessLabel}
-             </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+                className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
+              >
+                Command Center
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-sm text-muted-foreground mt-0.5"
+              >
+                {freshnessLabel || "See the deal before the market does"}
+              </motion.p>
            </div>
            <div className="flex items-center gap-3">
              <LiveIndicator />
