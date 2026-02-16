@@ -92,7 +92,6 @@ export const useTableNavigation = (
 export const SIDEBAR_ROUTES = [
   "/dashboard",
   "/companies",
-  "/public-markets",
   "/global",
   "/deals",
   "/deal-matcher",

@@ -3,7 +3,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   LayoutDashboard,
   Building2,
-  TrendingUp,
   Globe,
   Handshake,
   Sparkles,
@@ -49,7 +48,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Markets",
     items: [
       { id: "companies", label: "Private Markets", icon: Building2, path: "/companies" },
-      { id: "public-markets", label: "Public Markets", icon: TrendingUp, path: "/public-markets" },
       { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
     ],
   },

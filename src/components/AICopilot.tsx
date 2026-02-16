@@ -8,7 +8,6 @@ import ReactMarkdown from "react-markdown";
 const PAGE_CONTEXT: Record<string, string> = {
   "/dashboard": "the main dashboard showing market intelligence, deal flow, and portfolio metrics",
   "/companies": "the private companies database with valuations, funding rounds, and sector analysis",
-  "/public-markets": "public market equities with P/E ratios, market caps, and sector multiples",
   "/deals": "the deal pipeline showing sourced, screening, and due diligence stage deals",
   "/valuations": "the valuation tools including DCF calculator, comp tables, and football field charts",
   "/portfolio": "portfolio positions with MOIC, IRR tracking, and benchmark comparisons",
