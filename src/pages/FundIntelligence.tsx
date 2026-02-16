@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Landmark, Users, Building2, Download, BarChart3 } from "lucide-react";
+import DataQualityBanner from "@/components/DataQualityBanner";
 import PortfolioBenchmark from "@/components/PortfolioBenchmark";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
@@ -107,6 +108,8 @@ const FundIntelligence = () => {
           <span className="font-mono text-primary">{funds?.length ?? 0}</span> funds tracked · {formatCurrency(totalAum)} aggregate AUM
         </p>
       </div>
+
+      {funds && <DataQualityBanner records={funds} category="fund" label="fund" />}
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

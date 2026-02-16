@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { exportToCSV } from "@/lib/export";
 import { LiveIndicator } from "@/components/LiveIndicator";
+import DataQualityBanner from "@/components/DataQualityBanner";
+import { extractProvenance } from "@/lib/dataQuality";
 
 const RISK_STYLES: Record<string, string> = {
   low: "bg-green-500/10 text-green-500 border-green-500/20",
@@ -157,6 +159,8 @@ const GlobalMarkets = () => {
           </CardContent>
         </Card>
       </div>
+
+      <DataQualityBanner records={filtered} category="alternative" label="global opportunity" />
 
       {/* Region mini-bar */}
       <div className="flex gap-2 flex-wrap">

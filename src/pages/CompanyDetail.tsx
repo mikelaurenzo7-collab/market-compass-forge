@@ -16,6 +16,9 @@ import SharedNotes from "@/components/SharedNotes";
 import EnrichmentPanel from "@/components/EnrichmentPanel";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
 import DataProvenance from "@/components/DataProvenance";
+import TrustBadge from "@/components/TrustBadge";
+import DataQualityBanner from "@/components/DataQualityBanner";
+import { extractProvenance } from "@/lib/dataQuality";
 import CompanyScore from "@/components/CompanyScore";
 import FinancialsChart from "@/components/FinancialsChart";
 import DCFCalculator from "@/components/DCFCalculator";
@@ -424,9 +427,13 @@ const CompanyDetail = () => {
           <div className="lg:col-span-2 space-y-4">
             {/* Funding table */}
             <div className="rounded-lg border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-card">
+              <div className="px-4 py-3 border-b border-border bg-card flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">Funding History</h3>
+                {funding && funding.length > 0 && (
+                  <TrustBadge provenance={extractProvenance(funding[funding.length - 1])} category="financials" compact />
+                )}
               </div>
+              {funding && <DataQualityBanner records={funding} category="financials" label="funding" className="mx-4 mt-2" />}
               {funding && funding.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-data">
