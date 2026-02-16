@@ -11,6 +11,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, L
 import { Building, TrendingUp, MapPin, BarChart3, Home, DollarSign, Download } from "lucide-react";
 import { ListingDetailPanel } from "@/components/ListingDetailPanel";
 import { exportOffMarketListingsCSV } from "@/lib/export";
+import TrustBadge from "@/components/TrustBadge";
+import DataQualityBanner from "@/components/DataQualityBanner";
+import { extractProvenance } from "@/lib/dataQuality";
 
 const formatCurrency = (v: number | null) => {
   if (!v) return "—";
@@ -167,7 +170,8 @@ const RealEstateIntel = () => {
           </div>
         </TabsContent>
 
-         <TabsContent value="transactions">
+        <TabsContent value="transactions">
+           {filteredTxns.length > 0 && <DataQualityBanner records={filteredTxns} category="alternative" label="CRE transaction" className="mb-3" />}
            <div className="mb-4 flex gap-3">
              <Select value={propTypeFilter} onValueChange={setPropTypeFilter}>
                <SelectTrigger className="w-48 h-8 text-sm"><SelectValue placeholder="All Types" /></SelectTrigger>

@@ -13,6 +13,9 @@ import { Button } from "@/components/ui/button";
 import { DistressedDetailPanel } from "@/components/DistressedDetailPanel";
 import { exportDistressedAssetsCSV } from "@/lib/export";
 import { LiveIndicator } from "@/components/LiveIndicator";
+import TrustBadge from "@/components/TrustBadge";
+import DataQualityBanner from "@/components/DataQualityBanner";
+import { extractProvenance } from "@/lib/dataQuality";
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-success/10 text-success border-success/20",
@@ -210,6 +213,8 @@ const DistressedAssets = () => {
          </Button>
        </div>
 
+      <DataQualityBanner records={filtered} category="alternative" label="distressed asset" />
+
       {/* Table */}
       <div className="rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto">
@@ -224,7 +229,7 @@ const DistressedAssets = () => {
                 <th className="text-right py-2 px-3 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Est. Value</th>
                 <th className="text-right py-2 px-3 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Discount</th>
                 <th className="text-center py-2 px-3 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Status</th>
-                <th className="text-left py-2 px-3 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Source</th>
+                <th className="text-left py-2 px-3 text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Trust</th>
               </tr>
             </thead>
             <tbody>
@@ -260,7 +265,9 @@ const DistressedAssets = () => {
                       {a.status?.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 text-xs text-muted-foreground">{a.source ?? "—"}</td>
+                   <td className="py-2.5 px-3">
+                     <TrustBadge provenance={extractProvenance(a)} category="alternative" compact />
+                   </td>
                 </tr>
               ))}
             </tbody>

@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import TrustBadge from "@/components/TrustBadge";
+import DataQualityBanner from "@/components/DataQualityBanner";
+import { extractProvenance } from "@/lib/dataQuality";
 
 const formatCurrency = (v: number | null) => {
   if (!v) return "—";
@@ -58,6 +61,7 @@ const DealTransactionsTable = () => {
 
   return (
     <div className="space-y-4">
+      <DataQualityBanner records={filtered} category="fund" label="deal transaction" />
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[

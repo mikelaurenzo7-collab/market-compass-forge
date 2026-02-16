@@ -473,37 +473,55 @@ export type Database = {
           asking_rent: number | null
           cap_rate: number | null
           city: string
+          confidence_score: string | null
           created_at: string
+          fetched_at: string | null
           id: string
           period: string
           property_type: string
+          source: string | null
+          source_type: string | null
+          source_url: string | null
           state: string
           submarket: string
           vacancy_rate: number | null
+          verification_status: string | null
         }
         Insert: {
           asking_rent?: number | null
           cap_rate?: number | null
           city?: string
+          confidence_score?: string | null
           created_at?: string
+          fetched_at?: string | null
           id?: string
           period: string
           property_type: string
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           state?: string
           submarket: string
           vacancy_rate?: number | null
+          verification_status?: string | null
         }
         Update: {
           asking_rent?: number | null
           cap_rate?: number | null
           city?: string
+          confidence_score?: string | null
           created_at?: string
+          fetched_at?: string | null
           id?: string
           period?: string
           property_type?: string
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           state?: string
           submarket?: string
           vacancy_rate?: number | null
+          verification_status?: string | null
         }
         Relationships: []
       }
@@ -512,7 +530,9 @@ export type Database = {
           buyer: string | null
           cap_rate: number | null
           city: string
+          confidence_score: string | null
           created_at: string
+          fetched_at: string | null
           id: string
           price_per_sf: number | null
           property_name: string
@@ -520,15 +540,21 @@ export type Database = {
           sale_price: number | null
           seller: string | null
           size_sf: number | null
+          source: string | null
+          source_type: string | null
+          source_url: string | null
           state: string
           submarket: string | null
           transaction_date: string | null
+          verification_status: string | null
         }
         Insert: {
           buyer?: string | null
           cap_rate?: number | null
           city?: string
+          confidence_score?: string | null
           created_at?: string
+          fetched_at?: string | null
           id?: string
           price_per_sf?: number | null
           property_name: string
@@ -536,15 +562,21 @@ export type Database = {
           sale_price?: number | null
           seller?: string | null
           size_sf?: number | null
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           state?: string
           submarket?: string | null
           transaction_date?: string | null
+          verification_status?: string | null
         }
         Update: {
           buyer?: string | null
           cap_rate?: number | null
           city?: string
+          confidence_score?: string | null
           created_at?: string
+          fetched_at?: string | null
           id?: string
           price_per_sf?: number | null
           property_name?: string
@@ -552,9 +584,13 @@ export type Database = {
           sale_price?: number | null
           seller?: string | null
           size_sf?: number | null
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           state?: string
           submarket?: string | null
           transaction_date?: string | null
+          verification_status?: string | null
         }
         Relationships: []
       }
@@ -604,43 +640,61 @@ export type Database = {
           acquirer_investor: string | null
           announced_date: string | null
           closed_date: string | null
+          confidence_score: string | null
           created_at: string
           deal_type: string
           deal_value: number | null
           ev_ebitda: number | null
           ev_revenue: number | null
+          fetched_at: string | null
           id: string
+          source: string | null
+          source_type: string | null
+          source_url: string | null
           status: string
           target_company: string
           target_industry: string | null
+          verification_status: string | null
         }
         Insert: {
           acquirer_investor?: string | null
           announced_date?: string | null
           closed_date?: string | null
+          confidence_score?: string | null
           created_at?: string
           deal_type: string
           deal_value?: number | null
           ev_ebitda?: number | null
           ev_revenue?: number | null
+          fetched_at?: string | null
           id?: string
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           status?: string
           target_company: string
           target_industry?: string | null
+          verification_status?: string | null
         }
         Update: {
           acquirer_investor?: string | null
           announced_date?: string | null
           closed_date?: string | null
+          confidence_score?: string | null
           created_at?: string
           deal_type?: string
           deal_value?: number | null
           ev_ebitda?: number | null
           ev_revenue?: number | null
+          fetched_at?: string | null
           id?: string
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           status?: string
           target_company?: string
           target_industry?: string | null
+          verification_status?: string | null
         }
         Relationships: []
       }
@@ -683,12 +737,14 @@ export type Database = {
         Row: {
           asking_price: number | null
           asset_type: string
+          confidence_score: string | null
           contact_info: string | null
           created_at: string
           description: string | null
           discount_pct: number | null
           distress_type: string
           estimated_value: number | null
+          fetched_at: string | null
           id: string
           key_metrics: Json | null
           listed_date: string | null
@@ -698,17 +754,22 @@ export type Database = {
           search_vector: unknown
           sector: string | null
           source: string | null
+          source_type: string | null
+          source_url: string | null
           status: string
+          verification_status: string | null
         }
         Insert: {
           asking_price?: number | null
           asset_type?: string
+          confidence_score?: string | null
           contact_info?: string | null
           created_at?: string
           description?: string | null
           discount_pct?: number | null
           distress_type?: string
           estimated_value?: number | null
+          fetched_at?: string | null
           id?: string
           key_metrics?: Json | null
           listed_date?: string | null
@@ -718,17 +779,22 @@ export type Database = {
           search_vector?: unknown
           sector?: string | null
           source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           status?: string
+          verification_status?: string | null
         }
         Update: {
           asking_price?: number | null
           asset_type?: string
+          confidence_score?: string | null
           contact_info?: string | null
           created_at?: string
           description?: string | null
           discount_pct?: number | null
           distress_type?: string
           estimated_value?: number | null
+          fetched_at?: string | null
           id?: string
           key_metrics?: Json | null
           listed_date?: string | null
@@ -738,7 +804,10 @@ export type Database = {
           search_vector?: unknown
           sector?: string | null
           source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           status?: string
+          verification_status?: string | null
         }
         Relationships: []
       }
@@ -804,6 +873,7 @@ export type Database = {
           confidence_score: string | null
           created_at: string
           ebitda: number | null
+          fetched_at: string | null
           gross_margin: number | null
           id: string
           mrr: number | null
@@ -812,6 +882,8 @@ export type Database = {
           revenue: number | null
           runway_months: number | null
           source: string | null
+          source_type: string | null
+          verification_status: string | null
         }
         Insert: {
           arr?: number | null
@@ -820,6 +892,7 @@ export type Database = {
           confidence_score?: string | null
           created_at?: string
           ebitda?: number | null
+          fetched_at?: string | null
           gross_margin?: number | null
           id?: string
           mrr?: number | null
@@ -828,6 +901,8 @@ export type Database = {
           revenue?: number | null
           runway_months?: number | null
           source?: string | null
+          source_type?: string | null
+          verification_status?: string | null
         }
         Update: {
           arr?: number | null
@@ -836,6 +911,7 @@ export type Database = {
           confidence_score?: string | null
           created_at?: string
           ebitda?: number | null
+          fetched_at?: string | null
           gross_margin?: number | null
           id?: string
           mrr?: number | null
@@ -844,6 +920,8 @@ export type Database = {
           revenue?: number | null
           runway_months?: number | null
           source?: string | null
+          source_type?: string | null
+          verification_status?: string | null
         }
         Relationships: [
           {
@@ -906,6 +984,7 @@ export type Database = {
           confidence_score: string | null
           created_at: string
           date: string | null
+          fetched_at: string | null
           id: string
           instrument_type: string | null
           lead_investors: string[] | null
@@ -914,9 +993,11 @@ export type Database = {
           participation_cap: number | null
           pro_rata_rights: boolean | null
           round_type: string
+          source_type: string | null
           source_url: string | null
           valuation_post: number | null
           valuation_pre: number | null
+          verification_status: string | null
         }
         Insert: {
           amount?: number | null
@@ -926,6 +1007,7 @@ export type Database = {
           confidence_score?: string | null
           created_at?: string
           date?: string | null
+          fetched_at?: string | null
           id?: string
           instrument_type?: string | null
           lead_investors?: string[] | null
@@ -934,9 +1016,11 @@ export type Database = {
           participation_cap?: number | null
           pro_rata_rights?: boolean | null
           round_type: string
+          source_type?: string | null
           source_url?: string | null
           valuation_post?: number | null
           valuation_pre?: number | null
+          verification_status?: string | null
         }
         Update: {
           amount?: number | null
@@ -946,6 +1030,7 @@ export type Database = {
           confidence_score?: string | null
           created_at?: string
           date?: string | null
+          fetched_at?: string | null
           id?: string
           instrument_type?: string | null
           lead_investors?: string[] | null
@@ -954,9 +1039,11 @@ export type Database = {
           participation_cap?: number | null
           pro_rata_rights?: boolean | null
           round_type?: string
+          source_type?: string | null
           source_url?: string | null
           valuation_post?: number | null
           valuation_pre?: number | null
+          verification_status?: string | null
         }
         Relationships: [
           {
@@ -970,53 +1057,73 @@ export type Database = {
       }
       funds: {
         Row: {
+          confidence_score: string | null
           created_at: string
           dpi: number | null
+          fetched_at: string | null
           fund_size: number | null
           gp_name: string
           id: string
           name: string
           net_irr: number | null
           quartile: number | null
+          source: string | null
+          source_type: string | null
+          source_url: string | null
           strategy: string
           tvpi: number | null
+          verification_status: string | null
           vintage_year: number
         }
         Insert: {
+          confidence_score?: string | null
           created_at?: string
           dpi?: number | null
+          fetched_at?: string | null
           fund_size?: number | null
           gp_name: string
           id?: string
           name: string
           net_irr?: number | null
           quartile?: number | null
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           strategy: string
           tvpi?: number | null
+          verification_status?: string | null
           vintage_year: number
         }
         Update: {
+          confidence_score?: string | null
           created_at?: string
           dpi?: number | null
+          fetched_at?: string | null
           fund_size?: number | null
           gp_name?: string
           id?: string
           name?: string
           net_irr?: number | null
           quartile?: number | null
+          source?: string | null
+          source_type?: string | null
+          source_url?: string | null
           strategy?: string
           tvpi?: number | null
+          verification_status?: string | null
           vintage_year?: number
         }
         Relationships: []
       }
       global_opportunities: {
         Row: {
+          confidence_score: string | null
           country: string
           created_at: string | null
           deal_value_local: number | null
           deal_value_usd: number | null
           description: string | null
+          fetched_at: string | null
           id: string
           key_metrics: Json | null
           listed_date: string | null
@@ -1026,17 +1133,21 @@ export type Database = {
           region: string
           risk_rating: string | null
           sector: string | null
+          source_type: string | null
           source_url: string | null
           sovereign_fund_interest: string[] | null
           stage: string | null
           status: string | null
+          verification_status: string | null
         }
         Insert: {
+          confidence_score?: string | null
           country: string
           created_at?: string | null
           deal_value_local?: number | null
           deal_value_usd?: number | null
           description?: string | null
+          fetched_at?: string | null
           id?: string
           key_metrics?: Json | null
           listed_date?: string | null
@@ -1046,17 +1157,21 @@ export type Database = {
           region: string
           risk_rating?: string | null
           sector?: string | null
+          source_type?: string | null
           source_url?: string | null
           sovereign_fund_interest?: string[] | null
           stage?: string | null
           status?: string | null
+          verification_status?: string | null
         }
         Update: {
+          confidence_score?: string | null
           country?: string
           created_at?: string | null
           deal_value_local?: number | null
           deal_value_usd?: number | null
           description?: string | null
+          fetched_at?: string | null
           id?: string
           key_metrics?: Json | null
           listed_date?: string | null
@@ -1066,10 +1181,12 @@ export type Database = {
           region?: string
           risk_rating?: string | null
           sector?: string | null
+          source_type?: string | null
           source_url?: string | null
           sovereign_fund_interest?: string[] | null
           stage?: string | null
           status?: string | null
+          verification_status?: string | null
         }
         Relationships: []
       }
@@ -1683,6 +1800,7 @@ export type Database = {
         Row: {
           beta: number | null
           company_id: string
+          confidence_score: string | null
           created_at: string | null
           dividend_yield: number | null
           ebitda: number | null
@@ -1691,6 +1809,7 @@ export type Database = {
           ev_ebitda: number | null
           ev_revenue: number | null
           exchange: string | null
+          fetched_at: string | null
           fifty_two_week_high: number | null
           fifty_two_week_low: number | null
           id: string
@@ -1699,13 +1818,17 @@ export type Database = {
           price: number | null
           price_change_pct: number | null
           revenue: number | null
+          source_type: string | null
+          source_url: string | null
           ticker: string
           updated_at: string | null
+          verification_status: string | null
           volume_avg: number | null
         }
         Insert: {
           beta?: number | null
           company_id: string
+          confidence_score?: string | null
           created_at?: string | null
           dividend_yield?: number | null
           ebitda?: number | null
@@ -1714,6 +1837,7 @@ export type Database = {
           ev_ebitda?: number | null
           ev_revenue?: number | null
           exchange?: string | null
+          fetched_at?: string | null
           fifty_two_week_high?: number | null
           fifty_two_week_low?: number | null
           id?: string
@@ -1722,13 +1846,17 @@ export type Database = {
           price?: number | null
           price_change_pct?: number | null
           revenue?: number | null
+          source_type?: string | null
+          source_url?: string | null
           ticker: string
           updated_at?: string | null
+          verification_status?: string | null
           volume_avg?: number | null
         }
         Update: {
           beta?: number | null
           company_id?: string
+          confidence_score?: string | null
           created_at?: string | null
           dividend_yield?: number | null
           ebitda?: number | null
@@ -1737,6 +1865,7 @@ export type Database = {
           ev_ebitda?: number | null
           ev_revenue?: number | null
           exchange?: string | null
+          fetched_at?: string | null
           fifty_two_week_high?: number | null
           fifty_two_week_low?: number | null
           id?: string
@@ -1745,8 +1874,11 @@ export type Database = {
           price?: number | null
           price_change_pct?: number | null
           revenue?: number | null
+          source_type?: string | null
+          source_url?: string | null
           ticker?: string
           updated_at?: string | null
+          verification_status?: string | null
           volume_avg?: number | null
         }
         Relationships: [
