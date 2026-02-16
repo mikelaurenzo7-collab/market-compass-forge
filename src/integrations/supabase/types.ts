@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "activity_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       alert_notifications: {
@@ -100,6 +107,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alert_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -207,6 +221,48 @@ export type Database = {
         }
         Relationships: []
       }
+      api_telemetry: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          function_name: string
+          id: string
+          latency_ms: number
+          metadata: Json | null
+          method: string
+          request_size_bytes: number | null
+          response_size_bytes: number | null
+          status_code: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          function_name: string
+          id?: string
+          latency_ms?: number
+          metadata?: Json | null
+          method?: string
+          request_size_bytes?: number | null
+          response_size_bytes?: number | null
+          status_code?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          latency_ms?: number
+          metadata?: Json | null
+          method?: string
+          request_size_bytes?: number | null
+          response_size_bytes?: number | null
+          status_code?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       briefing_preferences: {
         Row: {
           created_at: string
@@ -290,6 +346,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cap_table_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -416,6 +479,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "company_documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       company_enrichments: {
@@ -465,6 +535,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_enrichments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -771,6 +848,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_pipeline_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -1201,6 +1285,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financials_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       fund_commitments: {
@@ -1322,6 +1413,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funding_rounds_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -1727,6 +1825,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "investor_company_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
+          {
             foreignKeyName: "investor_company_investor_id_fkey"
             columns: ["investor_id"]
             isOneToOne: false
@@ -1808,6 +1913,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "key_personnel_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       kpi_metrics: {
@@ -1851,6 +1963,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kpi_metrics_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -1997,6 +2116,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "memo_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       news_articles: {
@@ -2052,6 +2178,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_articles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -2185,6 +2318,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_positions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
           {
             foreignKeyName: "portfolio_positions_portfolio_id_fkey"
@@ -2474,7 +2614,38 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "public_market_data_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
+      }
+      rate_limits: {
+        Row: {
+          endpoint: string
+          id: string
+          identifier: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          endpoint: string
+          id?: string
+          identifier: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          endpoint?: string
+          id?: string
+          identifier?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
       }
       raw_source_snapshots: {
         Row: {
@@ -2685,6 +2856,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "score_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       sec_filings: {
@@ -2728,6 +2906,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sec_filings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -2781,6 +2966,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sec_financial_facts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -2848,6 +3040,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "companies"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
           },
         ]
       }
@@ -3031,6 +3230,13 @@ export type Database = {
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "user_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
         ]
       }
       user_roles: {
@@ -3140,6 +3346,29 @@ export type Database = {
       }
     }
     Views: {
+      mv_company_scores: {
+        Row: {
+          burn_rate: number | null
+          company_id: string | null
+          domain: string | null
+          employee_count: number | null
+          founded_year: number | null
+          gross_margin: number | null
+          hq_country: string | null
+          latest_arr: number | null
+          latest_ebitda: number | null
+          latest_revenue: number | null
+          latest_round_amount: number | null
+          latest_round_type: string | null
+          latest_valuation: number | null
+          market_type: string | null
+          name: string | null
+          runway_months: number | null
+          sector: string | null
+          stage: string | null
+        }
+        Relationships: []
+      }
       mv_dashboard_summary: {
         Row: {
           active_distressed: number | null
@@ -3171,6 +3400,20 @@ export type Database = {
         }
         Relationships: []
       }
+      v_api_slos: {
+        Row: {
+          avg_latency_ms: number | null
+          error_count: number | null
+          error_rate_pct: number | null
+          function_name: string | null
+          hour: string | null
+          p95_latency_ms: number | null
+          p99_latency_ms: number | null
+          slo_compliance_pct: number | null
+          total_requests: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_role: {
@@ -3183,6 +3426,42 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      hybrid_search: {
+        Args: {
+          filter_country?: string
+          filter_market_type?: string
+          filter_sectors?: string[]
+          filter_stages?: string[]
+          max_revenue?: number
+          max_valuation?: number
+          min_revenue?: number
+          min_valuation?: number
+          page_num?: number
+          page_size?: number
+          result_limit?: number
+          search_query?: string
+          sort_by?: string
+          sort_direction?: string
+        }
+        Returns: {
+          domain: string
+          employee_count: number
+          founded_year: number
+          hq_country: string
+          id: string
+          latest_arr: number
+          latest_ebitda: number
+          latest_revenue: number
+          latest_round_type: string
+          latest_valuation: number
+          market_type: string
+          name: string
+          relevance_score: number
+          sector: string
+          stage: string
+          total_count: number
+        }[]
       }
       refresh_materialized_views: { Args: never; Returns: undefined }
       search_all: {
