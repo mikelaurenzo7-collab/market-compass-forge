@@ -1,4 +1,4 @@
-import { ShieldCheck, ShieldAlert, ShieldQuestion, Clock, ExternalLink } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldQuestion, Clock, ExternalLink, Sparkles } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type SourceType = "api" | "sec_edgar" | "firecrawl" | "perplexity" | "manual" | "ai_generated" | "user_input" | "seeded" | string | null;
@@ -24,19 +24,30 @@ interface ProvenanceBadgeProps {
 const SOURCE_LABELS: Record<string, string> = {
   api: "API Feed",
   sec_edgar: "SEC EDGAR",
-  firecrawl: "Web Scrape",
-  perplexity: "Web Search",
+  firecrawl: "Web Intelligence",
+  perplexity: "AI Search",
   manual: "Manual Entry",
   ai_generated: "AI Generated",
   user_input: "User Input",
   seeded: "Sample Data",
 };
 
-const CONFIDENCE_CONFIG: Record<string, { label: string; color: string; icon: typeof ShieldCheck }> = {
-  high: { label: "High", color: "text-success bg-success/10 border-success/30", icon: ShieldCheck },
-  medium: { label: "Med", color: "text-warning bg-warning/10 border-warning/30", icon: ShieldAlert },
-  low: { label: "Low", color: "text-destructive bg-destructive/10 border-destructive/30", icon: ShieldQuestion },
-  estimated: { label: "Est.", color: "text-muted-foreground bg-muted/50 border-border", icon: ShieldQuestion },
+const SOURCE_ICONS: Record<string, string> = {
+  api: "🔌",
+  sec_edgar: "📄",
+  firecrawl: "🕷️",
+  perplexity: "🤖",
+  manual: "✍️",
+  ai_generated: "✨",
+  user_input: "👤",
+  seeded: "🧪",
+};
+
+const CONFIDENCE_CONFIG: Record<string, { label: string; color: string; icon: typeof ShieldCheck; ringColor: string }> = {
+  high: { label: "High Confidence", color: "text-success bg-success/10 border-success/30", icon: ShieldCheck, ringColor: "ring-success/20" },
+  medium: { label: "Medium Confidence", color: "text-warning bg-warning/10 border-warning/30", icon: ShieldAlert, ringColor: "ring-warning/20" },
+  low: { label: "Low Confidence", color: "text-destructive bg-destructive/10 border-destructive/30", icon: ShieldQuestion, ringColor: "ring-destructive/20" },
+  estimated: { label: "Estimated", color: "text-muted-foreground bg-muted/50 border-border", icon: ShieldQuestion, ringColor: "ring-border" },
 };
 
 function getTimeAgo(timestamp: string | null | undefined): string | null {
@@ -63,6 +74,7 @@ const ProvenanceBadge = ({ data, compact = false, className = "" }: ProvenanceBa
   const conf = CONFIDENCE_CONFIG[key] || CONFIDENCE_CONFIG.medium;
   const Icon = conf.icon;
   const sourceLabel = SOURCE_LABELS[data.source_type ?? ""] ?? data.source ?? data.source_type ?? "Unknown";
+  const sourceIcon = SOURCE_ICONS[data.source_type ?? ""] ?? "📊";
   const timeAgo = getTimeAgo(data.fetched_at);
   const fresh = isFresh(data.fetched_at, 7);
   const isSeeded = data.source_type === "seeded" || data.is_synthetic === true;
@@ -71,35 +83,55 @@ const ProvenanceBadge = ({ data, compact = false, className = "" }: ProvenanceBa
     <TooltipProvider delayDuration={200}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium cursor-default ${conf.color} ${className}`}>
+          <span className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-medium cursor-default transition-all hover:ring-1 ${conf.ringColor} ${conf.color} ${className}`}>
             <Icon className="h-2.5 w-2.5" />
-            {!compact && conf.label}
-            {!compact && isSeeded && (
-              <span className="opacity-60">· Sample</span>
-            )}
-            {!compact && !isSeeded && !fresh && timeAgo && (
-              <Clock className="h-2.5 w-2.5 ml-0.5 opacity-60" />
+            {!compact && (
+              <>
+                <span>{key === "high" ? "High" : key === "medium" ? "Med" : key === "low" ? "Low" : "Est."}</span>
+                {isSeeded && <span className="opacity-60">· Sample</span>}
+                {!isSeeded && !fresh && timeAgo && (
+                  <Clock className="h-2.5 w-2.5 ml-0.5 opacity-60" />
+                )}
+              </>
             )}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-xs">
-          <div className="space-y-1.5 py-0.5">
-            <p className="text-xs font-semibold">Data Provenance</p>
-            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[11px]">
+        <TooltipContent side="top" className="max-w-xs p-3">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">{sourceIcon}</span>
+              <p className="text-xs font-bold text-foreground">Data Provenance</p>
+            </div>
+            <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px]">
               <span className="text-muted-foreground">Source:</span>
               <span className="font-medium">{sourceLabel}</span>
               <span className="text-muted-foreground">Confidence:</span>
-              <span className="font-medium capitalize">{data.confidence_score ?? "medium"}</span>
+              <span className={`font-medium ${conf.color.split(" ")[0]}`}>{conf.label}</span>
               <span className="text-muted-foreground">Verification:</span>
               <span className={`font-medium capitalize ${
                 data.verification_status === "verified" ? "text-success" :
                 data.verification_status === "disputed" ? "text-destructive" :
                 "text-muted-foreground"
-              }`}>{data.verification_status ?? "unverified"}</span>
+              }`}>
+                {data.verification_status === "verified" ? "✓ Verified" : 
+                 data.verification_status === "disputed" ? "⚠ Disputed" : 
+                 "○ Unverified"}
+              </span>
               {timeAgo && (
                 <>
                   <span className="text-muted-foreground">Freshness:</span>
-                  <span className={`font-medium ${fresh ? "text-success" : "text-warning"}`}>{timeAgo}</span>
+                  <span className={`font-medium flex items-center gap-1 ${fresh ? "text-success" : "text-warning"}`}>
+                    {fresh ? "🟢" : "🟡"} {timeAgo}
+                  </span>
+                </>
+              )}
+              {isSeeded && (
+                <>
+                  <span className="text-muted-foreground">Note:</span>
+                  <span className="font-medium text-warning flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Sample/demo data
+                  </span>
                 </>
               )}
             </div>
@@ -108,11 +140,11 @@ const ProvenanceBadge = ({ data, compact = false, className = "" }: ProvenanceBa
                 href={data.source_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline mt-1"
+                className="inline-flex items-center gap-1 text-[11px] text-primary hover:underline mt-1 font-medium"
                 onClick={(e) => e.stopPropagation()}
               >
                 <ExternalLink className="h-3 w-3" />
-                View source
+                View original source →
               </a>
             )}
           </div>

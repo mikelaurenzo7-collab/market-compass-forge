@@ -1,5 +1,6 @@
-import { AlertTriangle, Info, ShieldQuestion, X } from "lucide-react";
+import { AlertTriangle, Info, ShieldQuestion, X, Shield, CheckCircle } from "lucide-react";
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   type ProvenanceMetadata,
   type DataCategory,
@@ -20,6 +21,7 @@ interface DataQualityBannerProps {
  */
 const DataQualityBanner = ({ records, category, label = "dataset", className = "" }: DataQualityBannerProps) => {
   const [dismissed, setDismissed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   if (dismissed || records.length === 0) return null;
 
@@ -27,6 +29,8 @@ const DataQualityBanner = ({ records, category, label = "dataset", className = "
   let lowConfCount = 0;
   let unverifiedCount = 0;
   let disputedCount = 0;
+  let syntheticCount = 0;
+  let highConfCount = 0;
 
   records.forEach((r) => {
     const provenance: ProvenanceMetadata = {
@@ -42,10 +46,13 @@ const DataQualityBanner = ({ records, category, label = "dataset", className = "
     if (!a.meetsMinConfidence) lowConfCount++;
     if (a.verificationStatus === "unverified") unverifiedCount++;
     if (a.verificationStatus === "disputed") disputedCount++;
+    if (r.is_synthetic) syntheticCount++;
+    if (r.confidence_score === "high") highConfCount++;
   });
 
   const total = records.length;
   const stalePct = Math.round((staleCount / total) * 100);
+  const highConfPct = Math.round((highConfCount / total) * 100);
   const warnings: { icon: typeof AlertTriangle; text: string; severity: "warn" | "error" | "info" }[] = [];
 
   if (disputedCount > 0) {
@@ -56,10 +63,18 @@ const DataQualityBanner = ({ records, category, label = "dataset", className = "
     });
   }
 
+  if (syntheticCount > total * 0.5) {
+    warnings.push({
+      icon: Info,
+      text: `${Math.round((syntheticCount / total) * 100)}% of ${label} is sample/demo data`,
+      severity: "warn",
+    });
+  }
+
   if (stalePct > 30) {
     warnings.push({
       icon: AlertTriangle,
-      text: `${stalePct}% of ${label} data may be stale`,
+      text: `${stalePct}% of ${label} data may be stale (>30 days old)`,
       severity: "warn",
     });
   }
@@ -72,32 +87,79 @@ const DataQualityBanner = ({ records, category, label = "dataset", className = "
     });
   }
 
-  if (warnings.length === 0) return null;
+  // Show positive signal if data quality is good
+  if (warnings.length === 0 && total > 0) {
+    if (highConfPct > 50) {
+      return (
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className={`flex items-center gap-2 rounded-lg border border-success/20 bg-success/5 px-3 py-2 text-xs ${className}`}
+          >
+            <CheckCircle className="h-3.5 w-3.5 text-success shrink-0" />
+            <p className="text-success/80 font-medium flex-1">
+              {highConfPct}% high-confidence data · {total} records verified
+            </p>
+          </motion.div>
+        </AnimatePresence>
+      );
+    }
+    return null;
+  }
 
   const topSeverity = warnings.some(w => w.severity === "error") ? "error" : "warn";
 
   return (
-    <div
-      className={`flex items-start gap-2 rounded-lg border px-3 py-2.5 text-xs ${
-        topSeverity === "error"
-          ? "bg-destructive/10 border-destructive/30 text-destructive"
-          : "bg-warning/10 border-warning/30 text-warning"
-      } ${className}`}
-    >
-      <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-      <div className="flex-1 space-y-1">
-        <p className="font-medium">Data Quality Notice</p>
-        {warnings.map((w, i) => (
-          <p key={i} className="text-[11px] opacity-80">{w.text}</p>
-        ))}
-      </div>
-      <button
-        onClick={() => setDismissed(true)}
-        className="flex-shrink-0 hover:opacity-70 transition-opacity"
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -4 }}
+        className={`rounded-lg border px-3 py-2.5 text-xs ${
+          topSeverity === "error"
+            ? "bg-destructive/10 border-destructive/30 text-destructive"
+            : "bg-warning/10 border-warning/30 text-warning"
+        } ${className}`}
       >
-        <X className="h-3.5 w-3.5" />
-      </button>
-    </div>
+        <div className="flex items-start gap-2">
+          <Shield className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold">Data Quality Notice</p>
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="text-[10px] opacity-60 hover:opacity-100 transition-opacity underline"
+              >
+                {expanded ? "Less" : "Details"}
+              </button>
+            </div>
+            <p className="text-[11px] opacity-80">{warnings[0]?.text}</p>
+            {expanded && warnings.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="space-y-0.5 pt-1"
+              >
+                {warnings.slice(1).map((w, i) => (
+                  <p key={i} className="text-[11px] opacity-70 flex items-center gap-1">
+                    <w.icon className="h-3 w-3" />
+                    {w.text}
+                  </p>
+                ))}
+              </motion.div>
+            )}
+          </div>
+          <button
+            onClick={() => setDismissed(true)}
+            className="flex-shrink-0 hover:opacity-70 transition-opacity"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
