@@ -2841,6 +2841,99 @@ export type Database = {
         }
         Relationships: []
       }
+      research_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          search_vector: unknown
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          search_vector?: unknown
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          search_vector?: unknown
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "research_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_threads: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string | null
+          id: string
+          search_vector: unknown
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          search_vector?: unknown
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          search_vector?: unknown
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_threads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_threads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "research_threads_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       review_cadences: {
         Row: {
           attendees: string[] | null
