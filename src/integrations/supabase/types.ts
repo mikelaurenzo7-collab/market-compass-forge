@@ -2895,6 +2895,113 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduler_jobs: {
+        Row: {
+          created_at: string
+          cron_expression: string
+          enabled: boolean
+          function_name: string
+          id: string
+          last_duration_ms: number | null
+          last_error: string | null
+          last_run_at: string | null
+          last_status: string | null
+          max_retries: number | null
+          name: string
+          next_run_at: string | null
+          retry_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cron_expression: string
+          enabled?: boolean
+          function_name: string
+          id?: string
+          last_duration_ms?: number | null
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          max_retries?: number | null
+          name: string
+          next_run_at?: string | null
+          retry_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cron_expression?: string
+          enabled?: boolean
+          function_name?: string
+          id?: string
+          last_duration_ms?: number | null
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          max_retries?: number | null
+          name?: string
+          next_run_at?: string | null
+          retry_count?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      scheduler_runs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          function_name: string
+          id: string
+          idempotency_key: string | null
+          job_id: string | null
+          job_name: string
+          response_body: string | null
+          response_status: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          function_name: string
+          id?: string
+          idempotency_key?: string | null
+          job_id?: string | null
+          job_name: string
+          response_body?: string | null
+          response_status?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          idempotency_key?: string | null
+          job_id?: string | null
+          job_name?: string
+          response_body?: string | null
+          response_status?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduler_runs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "scheduler_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       score_snapshots: {
         Row: {
           company_id: string
@@ -3136,22 +3243,43 @@ export type Database = {
       }
       subscription_tiers: {
         Row: {
+          billing_interval: string | null
           created_at: string
+          current_period_end: string | null
           id: string
+          last_webhook_event_at: string | null
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
           tier: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          billing_interval?: string | null
           created_at?: string
+          current_period_end?: string | null
           id?: string
+          last_webhook_event_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           tier?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          billing_interval?: string | null
           created_at?: string
+          current_period_end?: string | null
           id?: string
+          last_webhook_event_at?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           tier?: string
           updated_at?: string
           user_id?: string

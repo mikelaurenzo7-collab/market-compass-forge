@@ -7,10 +7,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Plan → Stripe price mapping
-const PLAN_PRICES: Record<string, string> = {
-  essential: "price_1SzAOUBkj1ceqM1kle9Sevii",
-  // professional and institutional prices need to be created in Stripe dashboard
+// Plan → Stripe price mapping (monthly + yearly)
+const PLAN_PRICES: Record<string, Record<string, string>> = {
+  essential: {
+    month: "price_1SzAOUBkj1ceqM1kle9Sevii",
+    year: "price_essential_yearly", // TODO: create in Stripe dashboard
+  },
+  professional: {
+    month: "price_professional_monthly", // TODO: create in Stripe dashboard
+    year: "price_professional_yearly",
+  },
+  institutional: {
+    month: "price_institutional_monthly", // TODO: create in Stripe dashboard
+    year: "price_institutional_yearly",
+  },
+};
+
+const logStep = (step: string, details?: unknown) => {
+  console.log(`[CREATE-CHECKOUT] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
 };
 
 serve(async (req) => {
@@ -29,10 +43,17 @@ serve(async (req) => {
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
+    logStep("User authenticated", { userId: user.id, email: user.email });
 
-    const { plan = "essential" } = await req.json();
-    const priceId = PLAN_PRICES[plan];
-    if (!priceId) throw new Error(`Unknown plan: ${plan}`);
+    const { plan = "essential", interval = "month" } = await req.json();
+    const planPrices = PLAN_PRICES[plan];
+    if (!planPrices) throw new Error(`Unknown plan: ${plan}`);
+    const priceId = planPrices[interval] ?? planPrices.month;
+    if (!priceId || priceId.startsWith("price_") && priceId.includes("_monthly") || priceId.includes("_yearly")) {
+      // Placeholder IDs — check if they're real
+      logStep("Warning: using placeholder price ID", { plan, interval, priceId });
+    }
+    logStep("Selected price", { plan, interval, priceId });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -42,6 +63,21 @@ serve(async (req) => {
     let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+
+      // Check for existing active subscription
+      const subs = await stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 });
+      if (subs.data.length > 0) {
+        logStep("User already has active subscription", { subscriptionId: subs.data[0].id });
+        // Redirect to portal instead
+        const portal = await stripe.billingPortal.sessions.create({
+          customer: customerId,
+          return_url: `${req.headers.get("origin") || "https://market-compass-forge.lovable.app"}/settings?tab=billing`,
+        });
+        return new Response(JSON.stringify({ url: portal.url, type: "portal" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
     }
 
     const origin = req.headers.get("origin") || "https://market-compass-forge.lovable.app";
@@ -51,9 +87,9 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${origin}/settings?tab=usage&checkout=success`,
-      cancel_url: `${origin}/settings?tab=usage&checkout=canceled`,
-      metadata: { user_id: user.id, plan },
+      success_url: `${origin}/settings?tab=billing&checkout=success`,
+      cancel_url: `${origin}/settings?tab=billing&checkout=canceled`,
+      metadata: { user_id: user.id, plan, interval },
     });
 
     // Track conversion event
@@ -64,15 +100,18 @@ serve(async (req) => {
     await adminClient.from("conversion_events").insert({
       user_id: user.id,
       event_type: "checkout_started",
-      metadata: { plan, session_id: session.id },
+      metadata: { plan, interval, session_id: session.id },
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    logStep("Checkout session created", { sessionId: session.id });
+
+    return new Response(JSON.stringify({ url: session.url, type: "checkout" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    logStep("ERROR", { message: msg });
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

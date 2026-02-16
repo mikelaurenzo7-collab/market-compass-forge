@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { CreditCard, ExternalLink, Loader2, RefreshCw, Users, Receipt, TrendingUp, Crown, Zap, Building2, ArrowUpRight } from "lucide-react";
+import { CreditCard, ExternalLink, Loader2, RefreshCw, Users, Receipt, TrendingUp, Crown, Zap, Building2, ArrowUpRight, CheckCircle, AlertTriangle, Clock, Webhook } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -11,16 +11,16 @@ const PLANS = [
   {
     id: "essential",
     name: "Essential",
-    price: "$299",
-    period: "/mo",
+    priceMonthly: "$299",
+    priceYearly: "$2,990",
     features: ["10 AI queries/day", "5 memos/day", "5 enrichments/day", "Basic search & charts", "1 watchlist"],
     icon: Zap,
   },
   {
     id: "professional",
     name: "Professional",
-    price: "$599",
-    period: "/mo",
+    priceMonthly: "$599",
+    priceYearly: "$5,990",
     features: ["200 AI queries/day", "100 memos/day", "100 enrichments/day", "REST API access", "Email briefings", "Premium datasets"],
     icon: Crown,
     popular: true,
@@ -28,18 +28,27 @@ const PLANS = [
   {
     id: "institutional",
     name: "Institutional",
-    price: "$1,999",
-    period: "/mo",
+    priceMonthly: "$1,999",
+    priceYearly: "$19,990",
     features: ["Unlimited AI queries", "Unlimited memos", "Unlimited enrichments", "Priority API", "Custom integrations", "Dedicated support"],
     icon: Building2,
   },
 ];
+
+const STATUS_BADGES: Record<string, { label: string; className: string; icon: typeof CheckCircle }> = {
+  active: { label: "Active", className: "bg-primary/10 text-primary border-primary/20", icon: CheckCircle },
+  past_due: { label: "Past Due", className: "bg-warning/10 text-warning border-warning/20", icon: AlertTriangle },
+  canceled: { label: "Canceled", className: "bg-destructive/10 text-destructive border-destructive/20", icon: AlertTriangle },
+  none: { label: "No Subscription", className: "bg-muted text-muted-foreground border-border", icon: Clock },
+  inactive: { label: "Inactive", className: "bg-muted text-muted-foreground border-border", icon: Clock },
+};
 
 const BillingDashboard = () => {
   const { user } = useAuth();
   const subscription = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<"month" | "year">("month");
 
   // Usage data
   const { data: usageData } = useQuery({
@@ -64,7 +73,6 @@ const BillingDashboard = () => {
           .gte("created_at", startOfMonth.toISOString()),
       ]);
 
-      // Group monthly by action
       const monthlyByAction: Record<string, number> = {};
       (monthly.data ?? []).forEach((r: any) => {
         monthlyByAction[r.action] = (monthlyByAction[r.action] ?? 0) + 1;
@@ -75,7 +83,6 @@ const BillingDashboard = () => {
     enabled: !!user,
   });
 
-  // Entitlements for current plan
   const { data: entitlements } = useQuery({
     queryKey: ["plan-entitlements", subscription.plan],
     queryFn: async () => {
@@ -89,30 +96,24 @@ const BillingDashboard = () => {
     enabled: !!subscription.plan,
   });
 
-  // Conversion funnel for admin view
-  const { data: funnelData } = useQuery({
-    queryKey: ["conversion-funnel"],
+  // Seat count
+  const { data: seatCount } = useQuery({
+    queryKey: ["billing-seats", user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("conversion_events")
-        .select("event_type, created_at")
-        .order("created_at", { ascending: false })
-        .limit(500);
-      if (error) throw error;
-
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach((e: any) => {
-        counts[e.event_type] = (counts[e.event_type] ?? 0) + 1;
-      });
-      return counts;
+      const { count } = await supabase
+        .from("billing_seats")
+        .select("*", { count: "exact", head: true })
+        .is("removed_at", null);
+      return count ?? 0;
     },
+    enabled: !!user,
   });
 
   const handleCheckout = async (plan: string) => {
     setCheckoutLoading(plan);
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { plan },
+        body: { plan, interval: billingInterval },
       });
       if (error) throw error;
       if (data?.url) {
@@ -141,15 +142,16 @@ const BillingDashboard = () => {
   };
 
   const currentPlan = subscription.plan === "pro" ? "professional" : (subscription.plan || "essential");
+  const statusBadge = STATUS_BADGES[subscription.subscription_status] ?? STATUS_BADGES.none;
 
   return (
     <div className="space-y-6">
-      {/* Current Plan Status */}
+      {/* ── Billing Verification Panel ── */}
       <div className="rounded-lg border border-border bg-card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CreditCard className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Current Plan</h3>
+            <h3 className="text-sm font-semibold text-foreground">Subscription Status</h3>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -172,27 +174,78 @@ const BillingDashboard = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 capitalize">
-            {currentPlan}
-          </span>
-          {subscription.subscription_end && (
-            <span className="text-xs text-muted-foreground">
-              Renews {formatDistanceToNow(new Date(subscription.subscription_end), { addSuffix: true })}
+        {/* Verification grid */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Tier</p>
+            <span className="inline-block px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 capitalize">
+              {currentPlan}
             </span>
-          )}
-          {subscription.upcoming_amount != null && (
-            <span className="text-xs text-muted-foreground">
-              · Next invoice: ${(subscription.upcoming_amount / 100).toFixed(2)}
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Status</p>
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium border ${statusBadge.className}`}>
+              <statusBadge.icon className="h-3 w-3" />
+              {statusBadge.label}
             </span>
-          )}
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Renewal</p>
+            <p className="text-xs text-foreground font-mono">
+              {subscription.subscription_end
+                ? format(new Date(subscription.subscription_end), "MMM d, yyyy")
+                : "—"}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Seats</p>
+            <p className="text-xs text-foreground font-mono">{seatCount ?? 0}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Last Webhook</p>
+            <p className="text-xs text-foreground font-mono flex items-center gap-1">
+              <Webhook className="h-3 w-3 text-muted-foreground" />
+              {subscription.last_webhook_event_at
+                ? formatDistanceToNow(new Date(subscription.last_webhook_event_at), { addSuffix: true })
+                : "Never"}
+            </p>
+          </div>
         </div>
+
+        {subscription.upcoming_amount != null && (
+          <p className="text-xs text-muted-foreground">
+            Next invoice: ${(subscription.upcoming_amount / 100).toFixed(2)}
+            {subscription.upcoming_date && ` on ${format(new Date(subscription.upcoming_date), "MMM d, yyyy")}`}
+          </p>
+        )}
       </div>
 
-      {/* Plans Grid */}
+      {/* ── Billing Interval Toggle ── */}
+      <div className="flex items-center justify-center gap-2">
+        <button
+          onClick={() => setBillingInterval("month")}
+          className={`px-4 py-1.5 rounded-l-md text-xs font-medium border transition-colors ${
+            billingInterval === "month" ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:bg-secondary"
+          }`}
+        >
+          Monthly
+        </button>
+        <button
+          onClick={() => setBillingInterval("year")}
+          className={`px-4 py-1.5 rounded-r-md text-xs font-medium border transition-colors ${
+            billingInterval === "year" ? "bg-primary text-primary-foreground border-primary" : "bg-card text-muted-foreground border-border hover:bg-secondary"
+          }`}
+        >
+          Yearly <span className="text-[10px] opacity-70">(Save ~17%)</span>
+        </button>
+      </div>
+
+      {/* ── Plans Grid ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {PLANS.map((plan) => {
           const isCurrentPlan = currentPlan === plan.id;
+          const price = billingInterval === "year" ? plan.priceYearly : plan.priceMonthly;
+          const period = billingInterval === "year" ? "/yr" : "/mo";
           return (
             <div
               key={plan.id}
@@ -222,8 +275,8 @@ const BillingDashboard = () => {
               </div>
 
               <div className="flex items-baseline gap-0.5">
-                <span className="text-2xl font-bold text-foreground">{plan.price}</span>
-                <span className="text-xs text-muted-foreground">{plan.period}</span>
+                <span className="text-2xl font-bold text-foreground">{price}</span>
+                <span className="text-xs text-muted-foreground">{period}</span>
               </div>
 
               <ul className="space-y-1.5">
@@ -254,7 +307,7 @@ const BillingDashboard = () => {
         })}
       </div>
 
-      {/* Usage & Entitlements */}
+      {/* ── Usage & Entitlements ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -293,55 +346,26 @@ const BillingDashboard = () => {
           </div>
         </div>
 
-        {/* Conversion Funnel */}
+        {/* Seat Management */}
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Conversion Funnel</h3>
+            <Users className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">Seat Management</h3>
           </div>
-          <div className="space-y-2">
-            {["trial_start", "activation", "checkout_started", "paid_conversion", "expansion", "churn"].map((stage) => {
-              const count = funnelData?.[stage] ?? 0;
-              const maxCount = Math.max(...Object.values(funnelData ?? { x: 1 }), 1);
-              const pct = (count / maxCount) * 100;
-              return (
-                <div key={stage} className="space-y-0.5">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-foreground capitalize">{stage.replace(/_/g, " ")}</span>
-                    <span className="text-muted-foreground font-mono">{count}</span>
-                  </div>
-                  <div className="h-1 rounded-full bg-secondary overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${stage === "churn" ? "bg-destructive/60" : "bg-primary/70"}`}
-                      style={{ width: `${Math.max(pct, 2)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {seatCount ?? 0} active seat{(seatCount ?? 0) !== 1 ? "s" : ""}. Manage through the billing portal.
+          </p>
+          {subscription.subscribed && (
+            <button
+              onClick={handleManageSubscription}
+              disabled={portalLoading}
+              className="px-3 py-1.5 rounded-md bg-secondary text-sm text-foreground hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
+            >
+              {portalLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
+              Manage Seats & Invoices
+            </button>
+          )}
         </div>
-      </div>
-
-      {/* Seat Management */}
-      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Seat Management</h3>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Manage team seats through your subscription portal. Each additional seat is billed at your current plan rate.
-        </p>
-        {subscription.subscribed && (
-          <button
-            onClick={handleManageSubscription}
-            disabled={portalLoading}
-            className="px-3 py-1.5 rounded-md bg-secondary text-sm text-foreground hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
-          >
-            {portalLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
-            Manage Seats & Invoices
-          </button>
-        )}
       </div>
     </div>
   );
