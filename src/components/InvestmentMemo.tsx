@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { FileText, Loader2, Download, Sparkles, Copy, Check, Plus, Printer, ShieldCheck, AlertTriangle, ChevronRight } from "lucide-react";
+import { FileText, Loader2, Download, Sparkles, Copy, Check, Plus, Printer, ShieldCheck, AlertTriangle, ChevronRight, Package } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activityLogger";
@@ -59,17 +59,59 @@ const ReviewStateBadge = ({ state }: { state: ReviewState }) => {
 
 const CitationTooltip = ({ citation }: { citation: Citation }) => {
   const { text, className } = confidenceLabel(citation.confidence);
+  const isUrl = typeof citation.value === "string" && citation.value.startsWith("http");
   return (
     <span className="group relative inline cursor-help">
-      <span className={`text-[9px] font-mono px-1 rounded ${className}`}>[{citation.id}]</span>
-      <span className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-64 p-2 rounded border border-border bg-popover text-popover-foreground shadow-lg text-[10px]">
+      {isUrl ? (
+        <a href={citation.value as string} target="_blank" rel="noopener noreferrer" className={`text-[9px] font-mono px-1 rounded ${className} underline decoration-dotted`}>[{citation.id}]</a>
+      ) : (
+        <span className={`text-[9px] font-mono px-1 rounded ${className}`}>[{citation.id}]</span>
+      )}
+      <span className="absolute bottom-full left-0 mb-1 hidden group-hover:block z-50 w-72 p-2 rounded border border-border bg-popover text-popover-foreground shadow-lg text-[10px]">
         <strong>{citation.metric}</strong>: {citation.formattedValue}<br />
         Source: {citation.source}.{citation.sourceField}<br />
         Confidence: <span className={className}>{text}</span><br />
         Verified: {citation.verifiedAt?.split("T")[0] ?? "Unknown"}
+        {isUrl && (
+          <>
+            <br />
+            <a href={citation.value as string} target="_blank" rel="noopener noreferrer" className="text-primary underline mt-1 inline-block">
+              View Source →
+            </a>
+          </>
+        )}
       </span>
     </span>
   );
+};
+
+const buildMemoHTML = (memo: Memo, citations: Citation[], reviewState: ReviewState, includeDiligencePack: boolean) => {
+  const citationRows = citations.map(c => {
+    const isUrl = typeof c.value === "string" && (c.value as string).startsWith("http");
+    return `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:4px;font-family:monospace">${c.id}</td><td style="padding:4px">${c.metric}</td><td style="padding:4px">${c.formattedValue}</td><td style="padding:4px">${isUrl ? `<a href="${c.value}" style="color:#0ea5e9">${c.source} ↗</a>` : c.source}</td><td style="padding:4px">${c.confidence === "low" || c.confidence === "unverified" ? `<span style="background:#fef3c7;padding:1px 4px;border-radius:2px;font-size:11px">⚠️ ${c.confidence}</span>` : c.confidence}</td><td style="padding:4px">${c.verifiedAt?.split("T")[0] ?? "N/A"}</td></tr>`;
+  }).join("");
+
+  const evidenceSection = includeDiligencePack ? `
+    <div class="section" style="page-break-before:always">
+      <h2>📦 Diligence Pack — Evidence Index</h2>
+      <p style="font-size:11px;color:#64748b;margin-bottom:12px">All data sources referenced in this memo, with provenance links and confidence ratings.</p>
+      <table style="width:100%;font-size:10px;border-collapse:collapse">
+        <tr style="border-bottom:2px solid #e2e8f0;background:#f8fafc"><th style="text-align:left;padding:6px">ID</th><th style="text-align:left;padding:6px">Metric / Source</th><th style="text-align:left;padding:6px">Value</th><th style="text-align:left;padding:6px">Data Source</th><th style="text-align:center;padding:6px">Confidence</th><th style="text-align:left;padding:6px">Verified</th></tr>
+        ${citationRows}
+      </table>
+    </div>
+    <div class="section">
+      <h2>⚠️ Data Quality Summary</h2>
+      <ul style="font-size:12px">
+        <li><strong>High confidence:</strong> ${citations.filter(c => c.confidence === "high").length} metrics</li>
+        <li><strong>Medium confidence:</strong> ${citations.filter(c => c.confidence === "medium").length} metrics</li>
+        <li style="color:#d97706"><strong>Low / Unverified:</strong> ${citations.filter(c => c.confidence === "low" || c.confidence === "unverified").length} metrics — marked with ⚠️ in memo</li>
+        <li><strong>Enrichment sources (web-scraped):</strong> ${citations.filter(c => c.source === "company_enrichments").length}</li>
+        <li><strong>Uploaded documents:</strong> ${citations.filter(c => c.source === "company_documents").length}</li>
+      </ul>
+    </div>` : "";
+
+  return `<!DOCTYPE html><html><head><title>${includeDiligencePack ? "Diligence Pack" : "Investment Memo"} — ${memo.company_name}</title><style>body{font-family:Georgia,serif;color:#1a1a1a;line-height:1.65;padding:48px 56px;max-width:820px;margin:0 auto}.cover{text-align:center;padding:40px 0 32px;border-bottom:4px solid #0ea5e9;margin-bottom:32px}.cover h1{font-size:32px;font-weight:700;color:#0c4a6e;margin-bottom:6px}.cover .sub{font-size:14px;color:#94a3b8;margin-top:4px}.cover .date{font-size:13px;color:#64748b;font-family:'Courier New',monospace}.section{margin-bottom:24px;page-break-inside:avoid}.section h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}.section p,.section li{font-size:13px;color:#334155;margin-bottom:8px}.footer{margin-top:36px;padding-top:16px;border-top:2px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}a{color:#0ea5e9}@media print{body{padding:36px}@page{margin:1.5cm;size:A4}}</style></head><body><div class="cover"><h1>${memo.company_name}</h1>${includeDiligencePack ? '<div class="sub">Diligence Pack — Memo + Evidence + Risks</div>' : ""}<div class="date">${memo.date} · ${REVIEW_STATES.find(s => s.key === reviewState)?.label ?? "Draft"}</div></div>${SECTIONS.map(({ key, label, icon }) => `<div class="section"><h2>${icon} ${label}</h2><div>${memo[key].replace(/\n/g, "<br/>")}</div></div>`).join("")}<div class="section"><h2>📎 Citation Appendix</h2><table style="width:100%;font-size:10px;border-collapse:collapse"><tr style="border-bottom:1px solid #e2e8f0"><th style="text-align:left;padding:4px">ID</th><th style="text-align:left;padding:4px">Metric</th><th style="text-align:left;padding:4px">Value</th><th style="text-align:left;padding:4px">Source</th><th style="text-align:left;padding:4px">Confidence</th><th style="text-align:left;padding:4px">Verified</th></tr>${citationRows}</table></div>${evidenceSection}<div class="footer">Generated by Grapevine Intelligence · ${memo.date}<br/><strong>DISCLAIMER:</strong> For informational purposes only — not investment advice.</div></body></html>`;
 };
 
 const InvestmentMemo = ({ companyId, companyName }: { companyId: string; companyName: string }) => {
@@ -210,7 +252,18 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
     if (!memo || !memoRef.current) return;
     const printWindow = window.open("", "_blank");
     if (!printWindow) { toast({ title: "Please allow popups to export PDF", variant: "destructive" }); return; }
-    const html = `<!DOCTYPE html><html><head><title>Investment Memo — ${memo.company_name}</title><style>body{font-family:Georgia,serif;color:#1a1a1a;line-height:1.65;padding:48px 56px;max-width:820px;margin:0 auto}.cover{text-align:center;padding:40px 0 32px;border-bottom:4px solid #0ea5e9;margin-bottom:32px}.cover h1{font-size:32px;font-weight:700;color:#0c4a6e;margin-bottom:6px}.cover .date{font-size:13px;color:#64748b;font-family:'Courier New',monospace}.section{margin-bottom:24px;page-break-inside:avoid}.section h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e2e8f0}.section p,.section li{font-size:13px;color:#334155;margin-bottom:8px}.footer{margin-top:36px;padding-top:16px;border-top:2px solid #e2e8f0;font-size:10px;color:#94a3b8;text-align:center}.cite{font-size:9px;color:#0ea5e9;font-family:monospace}.low-conf{background:#fef3c7;padding:1px 4px;border-radius:2px;font-size:11px}@media print{body{padding:36px}@page{margin:1.5cm;size:A4}}</style></head><body><div class="cover"><h1>${memo.company_name}</h1><div class="date">${memo.date} · ${REVIEW_STATES.find(s => s.key === reviewState)?.label ?? "Draft"}</div></div>${SECTIONS.map(({ key, label, icon }) => `<div class="section"><h2>${icon} ${label}</h2><div>${memo[key].replace(/\n/g, "<br/>")}</div></div>`).join("")}<div class="section"><h2>📎 Citation Appendix</h2><table style="width:100%;font-size:10px;border-collapse:collapse"><tr style="border-bottom:1px solid #e2e8f0"><th style="text-align:left;padding:4px">ID</th><th style="text-align:left;padding:4px">Metric</th><th style="text-align:left;padding:4px">Value</th><th style="text-align:left;padding:4px">Source</th><th style="text-align:left;padding:4px">Confidence</th><th style="text-align:left;padding:4px">Verified</th></tr>${citations.map(c => `<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:4px;font-family:monospace">${c.id}</td><td style="padding:4px">${c.metric}</td><td style="padding:4px">${c.formattedValue}</td><td style="padding:4px">${c.source}</td><td style="padding:4px">${c.confidence === "low" || c.confidence === "unverified" ? `<span class="low-conf">⚠️ ${c.confidence}</span>` : c.confidence}</td><td style="padding:4px">${c.verifiedAt?.split("T")[0] ?? "N/A"}</td></tr>`).join("")}</table></div><div class="footer">Generated by Grapevine Intelligence · ${memo.date}<br/><strong>DISCLAIMER:</strong> For informational purposes only — not investment advice.</div></body></html>`;
+    const html = buildMemoHTML(memo, citations, reviewState, false);
+    const blob = new Blob([html], { type: "text/html" });
+    const blobUrl = URL.createObjectURL(blob);
+    printWindow.location.href = blobUrl;
+    printWindow.onload = () => { printWindow.print(); printWindow.onafterprint = () => URL.revokeObjectURL(blobUrl); };
+  };
+
+  const exportDiligencePack = () => {
+    if (!memo) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) { toast({ title: "Please allow popups to export", variant: "destructive" }); return; }
+    const html = buildMemoHTML(memo, citations, reviewState, true);
     const blob = new Blob([html], { type: "text/html" });
     const blobUrl = URL.createObjectURL(blob);
     printWindow.location.href = blobUrl;
@@ -257,6 +310,9 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
           <button onClick={exportPDF} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:text-foreground hover:bg-primary/10 transition-colors font-medium">
             <Printer className="h-3 w-3" /> PDF
           </button>
+          <button onClick={exportDiligencePack} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-success hover:text-foreground hover:bg-success/10 transition-colors font-medium">
+            <Package className="h-3 w-3" /> Diligence Pack
+          </button>
           <button onClick={generate} disabled={isLoading} className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
             {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Regenerate
           </button>
@@ -283,10 +339,16 @@ const InvestmentMemo = ({ companyId, companyName }: { companyId: string; company
           <div className="space-y-1">
             {citations.map(c => {
               const { text, className } = confidenceLabel(c.confidence);
+              const isUrl = typeof c.value === "string" && (c.value as string).startsWith("http");
               return (
                 <div key={c.id} className="flex items-center gap-2 text-[10px]">
                   <span className="font-mono text-primary w-12 shrink-0">{c.id}</span>
-                  <span className="text-foreground flex-1">{c.metric}: <strong>{c.formattedValue}</strong></span>
+                  <span className="text-foreground flex-1">
+                    {c.metric}: <strong>{c.formattedValue}</strong>
+                    {isUrl && (
+                      <a href={c.value as string} target="_blank" rel="noopener noreferrer" className="ml-1 text-primary underline text-[9px]">↗</a>
+                    )}
+                  </span>
                   <span className={`px-1.5 py-0.5 rounded ${className} text-[9px] font-medium`}>{text}</span>
                   <span className="text-muted-foreground">{c.verifiedAt?.split("T")[0]}</span>
                 </div>
