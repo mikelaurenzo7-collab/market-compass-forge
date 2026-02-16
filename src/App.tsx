@@ -24,7 +24,6 @@ import DistressedAssets from "./pages/DistressedAssets";
 import AdminDashboard from "./pages/AdminDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import PublicMarkets from "./pages/PublicMarkets";
 import GlobalMarkets from "./pages/GlobalMarkets";
 import SectorPulse from "./pages/SectorPulse";
 import DealMatcher from "./pages/DealMatcher";
@@ -73,7 +72,6 @@ const App = () => (
               <Route path="/fund-intelligence" element={<FundIntelligence />} />
               <Route path="/real-estate" element={<RealEstateIntel />} />
               <Route path="/distressed" element={<DistressedAssets />} />
-              <Route path="/public-markets" element={<PublicMarkets />} />
               <Route path="/global" element={<GlobalMarkets />} />
               <Route path="/sector-pulse" element={<SectorPulse />} />
               <Route path="/deal-matcher" element={<DealMatcher />} />
@@ -93,7 +91,7 @@ const App = () => (
               <Route path="/sector-momentum" element={<Navigate to="/sector-pulse" replace />} />
               <Route path="/documents" element={<Navigate to="/document-analyzer" replace />} />
               <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
-              <Route path="/markets/public" element={<Navigate to="/public-markets" replace />} />
+              <Route path="/markets/public" element={<Navigate to="/companies" replace />} />
               <Route path="/watchlists" element={<Navigate to="/screening" replace />} />
               <Route path="/comps" element={<Navigate to="/valuations" replace />} />
               <Route path="/analytics" element={<Navigate to="/fund-intelligence" replace />} />
