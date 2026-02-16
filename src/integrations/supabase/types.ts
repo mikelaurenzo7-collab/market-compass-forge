@@ -17,33 +17,45 @@ export type Database = {
       activity_events: {
         Row: {
           company_id: string | null
+          confidence_score: string | null
           created_at: string
           detail: string | null
           event_type: string
+          fetched_at: string | null
           headline: string
           id: string
           published_at: string | null
+          source_type: string | null
           source_url: string | null
+          verification_status: string | null
         }
         Insert: {
           company_id?: string | null
+          confidence_score?: string | null
           created_at?: string
           detail?: string | null
           event_type: string
+          fetched_at?: string | null
           headline: string
           id?: string
           published_at?: string | null
+          source_type?: string | null
           source_url?: string | null
+          verification_status?: string | null
         }
         Update: {
           company_id?: string | null
+          confidence_score?: string | null
           created_at?: string
           detail?: string | null
           event_type?: string
+          fetched_at?: string | null
           headline?: string
           id?: string
           published_at?: string | null
+          source_type?: string | null
           source_url?: string | null
+          verification_status?: string | null
         }
         Relationships: [
           {
@@ -389,10 +401,12 @@ export type Database = {
       companies: {
         Row: {
           cik_number: string | null
+          confidence_score: string | null
           created_at: string
           description: string | null
           domain: string | null
           employee_count: number | null
+          fetched_at: string | null
           founded_year: number | null
           hq_city: string | null
           hq_country: string | null
@@ -404,17 +418,22 @@ export type Database = {
           name: string
           search_vector: unknown
           sector: string | null
+          source_type: string | null
+          source_url: string | null
           stage: string | null
           status: string | null
           sub_sector: string | null
           updated_at: string
+          verification_status: string | null
         }
         Insert: {
           cik_number?: string | null
+          confidence_score?: string | null
           created_at?: string
           description?: string | null
           domain?: string | null
           employee_count?: number | null
+          fetched_at?: string | null
           founded_year?: number | null
           hq_city?: string | null
           hq_country?: string | null
@@ -426,17 +445,22 @@ export type Database = {
           name: string
           search_vector?: unknown
           sector?: string | null
+          source_type?: string | null
+          source_url?: string | null
           stage?: string | null
           status?: string | null
           sub_sector?: string | null
           updated_at?: string
+          verification_status?: string | null
         }
         Update: {
           cik_number?: string | null
+          confidence_score?: string | null
           created_at?: string
           description?: string | null
           domain?: string | null
           employee_count?: number | null
+          fetched_at?: string | null
           founded_year?: number | null
           hq_city?: string | null
           hq_country?: string | null
@@ -448,10 +472,13 @@ export type Database = {
           name?: string
           search_vector?: unknown
           sector?: string | null
+          source_type?: string | null
+          source_url?: string | null
           stage?: string | null
           status?: string | null
           sub_sector?: string | null
           updated_at?: string
+          verification_status?: string | null
         }
         Relationships: []
       }
@@ -1291,6 +1318,7 @@ export type Database = {
           runway_months: number | null
           source: string | null
           source_type: string | null
+          source_url: string | null
           verification_status: string | null
         }
         Insert: {
@@ -1310,6 +1338,7 @@ export type Database = {
           runway_months?: number | null
           source?: string | null
           source_type?: string | null
+          source_url?: string | null
           verification_status?: string | null
         }
         Update: {
@@ -1329,6 +1358,7 @@ export type Database = {
           runway_months?: number | null
           source?: string | null
           source_type?: string | null
+          source_url?: string | null
           verification_status?: string | null
         }
         Relationships: [
