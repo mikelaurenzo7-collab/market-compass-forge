@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Shield } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,6 +10,7 @@ import {
   Handshake, CheckCircle, XCircle, MessageSquare, Building2, Database,
 } from "lucide-react";
 import IngestionDashboard from "@/components/IngestionDashboard";
+import AdminDataCoverage from "@/components/AdminDataCoverage";
 import { formatDistanceToNow, format } from "date-fns";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -160,6 +162,10 @@ const AdminDashboard = () => {
           <TabsTrigger value="ingestion" className="gap-2">
             <Database className="h-3.5 w-3.5" />
             Data Pipelines
+          </TabsTrigger>
+          <TabsTrigger value="coverage" className="gap-2">
+            <Shield className="h-3.5 w-3.5" />
+            Data Coverage
           </TabsTrigger>
         </TabsList>
 
@@ -435,6 +441,11 @@ const AdminDashboard = () => {
         {/* ─── INGESTION PIPELINES TAB ─── */}
         <TabsContent value="ingestion" className="space-y-4">
           <IngestionDashboard />
+        </TabsContent>
+
+        {/* ─── DATA COVERAGE TAB ─── */}
+        <TabsContent value="coverage" className="space-y-4">
+          <AdminDataCoverage />
         </TabsContent>
       </Tabs>
     </div>

@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { exportToCSV } from "@/lib/export";
 import { LiveIndicator } from "@/components/LiveIndicator";
 import DataQualityBanner from "@/components/DataQualityBanner";
-import { extractProvenance } from "@/lib/dataQuality";
+import ProvenanceFilters, { type ProvenanceFilterState, getDefaultProvenanceFilters, applyProvenanceFilter } from "@/components/ProvenanceFilters";
+import ProvenanceBadge from "@/components/ProvenanceBadge";
 
 const RISK_STYLES: Record<string, string> = {
   low: "bg-green-500/10 text-green-500 border-green-500/20",
@@ -61,6 +62,7 @@ const GlobalMarkets = () => {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<GlobalOpportunity | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [provFilters, setProvFilters] = useState<ProvenanceFilterState>(getDefaultProvenanceFilters());
 
   const filtered = useMemo(() => {
     return (opportunities ?? []).filter((o) => {
@@ -68,9 +70,10 @@ const GlobalMarkets = () => {
       if (typeFilter !== "all" && o.opportunity_type !== typeFilter) return false;
       if (riskFilter !== "all" && o.risk_rating !== riskFilter) return false;
       if (search && !o.name.toLowerCase().includes(search.toLowerCase()) && !o.country.toLowerCase().includes(search.toLowerCase())) return false;
+      if (!applyProvenanceFilter(o as any, provFilters)) return false;
       return true;
     });
-  }, [opportunities, regionFilter, typeFilter, riskFilter, search]);
+  }, [opportunities, regionFilter, typeFilter, riskFilter, search, provFilters]);
 
   const activeCount = filtered.filter((o) => o.status === "active").length;
   const avgDeal = filtered.length
@@ -160,6 +163,7 @@ const GlobalMarkets = () => {
         </Card>
       </div>
 
+      <ProvenanceFilters filters={provFilters} onChange={setProvFilters} />
       <DataQualityBanner records={filtered} category="alternative" label="global opportunity" />
 
       {/* Region mini-bar */}

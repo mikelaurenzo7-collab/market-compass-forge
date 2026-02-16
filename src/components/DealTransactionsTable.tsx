@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import TrustBadge from "@/components/TrustBadge";
 import DataQualityBanner from "@/components/DataQualityBanner";
-import { extractProvenance } from "@/lib/dataQuality";
+import ProvenanceFilters, { type ProvenanceFilterState, getDefaultProvenanceFilters, applyProvenanceFilter } from "@/components/ProvenanceFilters";
+import ProvenanceBadge from "@/components/ProvenanceBadge";
 
 const formatCurrency = (v: number | null) => {
   if (!v) return "—";
@@ -28,6 +28,7 @@ const DealTransactionsTable = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [industryFilter, setIndustryFilter] = useState("all");
+  const [provFilters, setProvFilters] = useState<ProvenanceFilterState>(getDefaultProvenanceFilters());
 
   const { data: deals, isLoading } = useQuery({
     queryKey: ["deal-transactions"],
@@ -49,9 +50,10 @@ const DealTransactionsTable = () => {
       if (typeFilter !== "all" && d.deal_type !== typeFilter) return false;
       if (industryFilter !== "all" && d.target_industry !== industryFilter) return false;
       if (search && !d.target_company.toLowerCase().includes(search.toLowerCase()) && !(d.acquirer_investor ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+      if (!applyProvenanceFilter(d, provFilters)) return false;
       return true;
     });
-  }, [deals, typeFilter, industryFilter, search]);
+  }, [deals, typeFilter, industryFilter, search, provFilters]);
 
   const totalValue = filtered.reduce((s, d) => s + (d.deal_value ?? 0), 0);
   const avgEvEbitda = filtered.filter((d) => d.ev_ebitda).reduce((s, d) => s + (d.ev_ebitda ?? 0), 0) / (filtered.filter((d) => d.ev_ebitda).length || 1);
@@ -97,6 +99,7 @@ const DealTransactionsTable = () => {
           </SelectContent>
         </Select>
       </div>
+      <ProvenanceFilters filters={provFilters} onChange={setProvFilters} />
 
       {/* Table */}
       <Card className="border-border bg-card">
@@ -105,7 +108,7 @@ const DealTransactionsTable = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  {["Date", "Target", "Industry", "Type", "Value", "Acquirer/Investor", "EV/Rev", "EV/EBITDA", "Status"].map((h) => (
+                  {["Date", "Target", "Industry", "Type", "Value", "Acquirer/Investor", "EV/Rev", "EV/EBITDA", "Status", "Provenance"].map((h) => (
                     <th key={h} className="text-left py-2 px-3 text-xs text-muted-foreground font-medium">{h}</th>
                   ))}
                 </tr>
@@ -125,6 +128,9 @@ const DealTransactionsTable = () => {
                     <td className="py-2 px-3 font-mono text-xs">{d.ev_ebitda ? `${d.ev_ebitda.toFixed(1)}x` : "—"}</td>
                     <td className="py-2 px-3">
                       <Badge variant={d.status === "closed" ? "default" : "secondary"} className="text-[10px]">{d.status}</Badge>
+                    </td>
+                    <td className="py-2 px-3">
+                      <ProvenanceBadge data={d} compact />
                     </td>
                   </tr>
                 ))}

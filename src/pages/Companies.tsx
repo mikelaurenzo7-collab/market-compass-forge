@@ -9,6 +9,8 @@ import { useTableNavigation } from "@/hooks/useHotkeys";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { TableSkeleton } from "@/components/SkeletonLoaders";
 import { SyntheticDataWarning } from "@/components/DataBadges";
+import ProvenanceFilters, { type ProvenanceFilterState, getDefaultProvenanceFilters, applyProvenanceFilter } from "@/components/ProvenanceFilters";
+import ProvenanceBadge from "@/components/ProvenanceBadge";
 
 const STAGES = ["All", "Series A", "Series B", "Series C", "Series D", "Series E", "Series F", "Series G", "Series H", "Growth", "Late Stage"];
 const SECTORS = ["All", "AI/ML", "Fintech", "Cybersecurity", "Enterprise SaaS", "Developer Tools", "Healthcare", "Defense Tech", "Consumer", "Infrastructure", "Logistics", "Crypto/Web3", "Climate Tech", "EdTech", "E-Commerce", "Services", "Construction", "Manufacturing", "Professional Services", "Financial Services", "Distribution", "Real Estate", "Hospitality", "Restaurant"];
@@ -40,6 +42,7 @@ const Companies = () => {
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(50);
+  const [provFilters, setProvFilters] = useState<ProvenanceFilterState>(getDefaultProvenanceFilters());
 
   const scoredCompanies = useMemo(() => {
     if (!companies) return [];
@@ -107,6 +110,7 @@ const Companies = () => {
         if (sectorFilter !== "All" && c.sector !== sectorFilter) return false;
         if (stageFilter !== "All" && c.stage !== stageFilter) return false;
         if (financialsOnly && !(c.latestFinancials?.revenue || c.latestFinancials?.arr)) return false;
+        if (!applyProvenanceFilter(c, provFilters)) return false;
         return true;
       })
       .sort((a: any, b: any) => {
@@ -122,7 +126,7 @@ const Companies = () => {
         if (typeof av === "string") return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
         return sortAsc ? av - bv : bv - av;
       });
-  }, [scoredCompanies, search, sectorFilter, stageFilter, sortKey, sortAsc, financialsOnly]);
+  }, [scoredCompanies, search, sectorFilter, stageFilter, sortKey, sortAsc, financialsOnly, provFilters]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
@@ -250,6 +254,8 @@ const Companies = () => {
           {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
+
+      <ProvenanceFilters filters={provFilters} onChange={(f) => { setProvFilters(f); setPage(0); }} />
 
       <div className="rounded-lg border border-border overflow-hidden">
         <div className="overflow-x-auto">

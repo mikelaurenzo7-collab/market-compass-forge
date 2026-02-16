@@ -13,9 +13,9 @@ import { Button } from "@/components/ui/button";
 import { DistressedDetailPanel } from "@/components/DistressedDetailPanel";
 import { exportDistressedAssetsCSV } from "@/lib/export";
 import { LiveIndicator } from "@/components/LiveIndicator";
-import TrustBadge from "@/components/TrustBadge";
+import ProvenanceBadge from "@/components/ProvenanceBadge";
 import DataQualityBanner from "@/components/DataQualityBanner";
-import { extractProvenance } from "@/lib/dataQuality";
+import ProvenanceFilters, { type ProvenanceFilterState, getDefaultProvenanceFilters, applyProvenanceFilter } from "@/components/ProvenanceFilters";
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-success/10 text-success border-success/20",
@@ -46,6 +46,7 @@ const DistressedAssets = () => {
    const [search, setSearch] = useState("");
    const [selectedAsset, setSelectedAsset] = useState<any>(null);
    const [detailPanelOpen, setDetailPanelOpen] = useState(false);
+   const [provFilters, setProvFilters] = useState<ProvenanceFilterState>(getDefaultProvenanceFilters());
 
   const filtered = useMemo(() => {
     return (assets ?? []).filter((a) => {
@@ -53,9 +54,10 @@ const DistressedAssets = () => {
       if (distressFilter !== "all" && a.distress_type !== distressFilter) return false;
       if (stateFilter !== "all" && a.location_state !== stateFilter) return false;
       if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (!applyProvenanceFilter(a, provFilters)) return false;
       return true;
     });
-  }, [assets, typeFilter, distressFilter, stateFilter, search]);
+  }, [assets, typeFilter, distressFilter, stateFilter, search, provFilters]);
 
   const activeCount = filtered.filter((a) => a.status === "active").length;
   const avgDiscount = filtered.length
@@ -213,6 +215,7 @@ const DistressedAssets = () => {
          </Button>
        </div>
 
+      <ProvenanceFilters filters={provFilters} onChange={setProvFilters} />
       <DataQualityBanner records={filtered} category="alternative" label="distressed asset" />
 
       {/* Table */}
@@ -266,8 +269,8 @@ const DistressedAssets = () => {
                     </span>
                   </td>
                    <td className="py-2.5 px-3">
-                     <TrustBadge provenance={extractProvenance(a)} category="alternative" compact />
-                   </td>
+                      <ProvenanceBadge data={a} compact />
+                    </td>
                 </tr>
               ))}
             </tbody>
