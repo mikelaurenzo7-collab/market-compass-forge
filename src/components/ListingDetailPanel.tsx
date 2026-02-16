@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { formatCurrency } from "@/hooks/useData";
 import RequestIntroButton from "@/components/RequestIntroButton";
+import AddToPipelineButton from "@/components/AddToPipelineButton";
+import SetAlertButton from "@/components/SetAlertButton";
+import MarketContextPanel from "@/components/MarketContextPanel";
 import REUnderwritingTools from "@/components/REUnderwritingTools";
 import { exportREUnderwritingPack } from "@/lib/moduleExports";
 
@@ -139,24 +142,34 @@ export const ListingDetailPanel = ({ listing, open, onOpenChange }: ListingDetai
             />
           )}
 
-          {/* Description */}
-          {listing.description && (
-            <div>
-              <h4 className="text-sm font-semibold text-foreground mb-2">Description</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed">{listing.description}</p>
-            </div>
-          )}
+          {/* Market Context */}
+          <MarketContextPanel
+            city={listing.city}
+            state={listing.state}
+            propertyType={listing.property_type}
+          />
 
-          {/* Request Intro */}
-          {listing.status === "available" && (
-            <div className="pt-2">
+          {/* Quick Actions */}
+          <div className="pt-2 space-y-2">
+            <div className="flex gap-2">
+              <AddToPipelineButton
+                entityName={listing.property_name || `${listing.property_type} · ${listing.city}, ${listing.state}`}
+                entityType="private_listing"
+                entityId={listing.id}
+                sector="Real Estate"
+                description={listing.description}
+                compact
+              />
+              <SetAlertButton entityName={listing.property_name || listing.property_type || "Listing"} compact />
+            </div>
+            {listing.status === "available" && (
               <RequestIntroButton
                 entityType="private_listing"
                 entityId={listing.id}
                 entityName={listing.property_name || `${listing.property_type} · ${listing.city}, ${listing.state}`}
               />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Metadata */}
           <div className="text-xs text-muted-foreground space-y-1 pt-4 border-t border-border">

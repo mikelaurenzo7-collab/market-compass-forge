@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { formatCurrency } from "@/hooks/useData";
 import RequestIntroButton from "@/components/RequestIntroButton";
+import AddToPipelineButton from "@/components/AddToPipelineButton";
+import SetAlertButton from "@/components/SetAlertButton";
 import DistressedAnalytics from "@/components/DistressedAnalytics";
 import { exportDistressedMemo } from "@/lib/moduleExports";
 import { ClaimStackEntry } from "@/lib/underwriting";
@@ -140,16 +142,27 @@ export const DistressedDetailPanel = ({ asset, open, onOpenChange }: DistressedD
             </div>
           )}
 
-          {/* Request Intro */}
-          {asset.status === "active" && (
-            <div className="pt-2">
+          {/* Quick Actions */}
+          <div className="pt-2 space-y-2">
+            <div className="flex gap-2">
+              <AddToPipelineButton
+                entityName={asset.name}
+                entityType="distressed_asset"
+                entityId={asset.id}
+                sector={asset.sector}
+                description={asset.description}
+                compact
+              />
+              <SetAlertButton entityName={asset.name} compact />
+            </div>
+            {asset.status === "active" && (
               <RequestIntroButton
                 entityType="distressed_asset"
                 entityId={asset.id}
                 entityName={asset.name}
               />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Metadata */}
           <div className="text-xs text-muted-foreground space-y-1 pt-4 border-t border-border">
