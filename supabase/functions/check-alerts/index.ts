@@ -75,6 +75,18 @@ serve(async (req) => {
       .select("*, companies:company_id(name, sector)")
       .gte("created_at", since);
 
+    // Get recent distressed asset changes (last 24 hours)
+    const { data: newDistressed } = await supabase
+      .from("distressed_assets")
+      .select("*")
+      .gte("created_at", since);
+
+    // Get recent CRE market data changes
+    const { data: recentCRE } = await supabase
+      .from("cre_market_data")
+      .select("*")
+      .gte("created_at", since);
+
     let matchCount = 0;
     const notifications: any[] = [];
 
@@ -85,7 +97,10 @@ serve(async (req) => {
         min_amount?: number;
         event_type?: string;
         keywords?: string[];
+        occupancy_threshold?: number;
+        caprate_spread?: number;
       };
+      const alertModule = (alert as any).module ?? "general";
 
       // Check funding rounds against alert conditions
       for (const round of (rounds ?? [])) {
@@ -126,6 +141,58 @@ serve(async (req) => {
             detail: `Alert "${alert.name}" triggered.`,
           });
           matchCount++;
+        }
+      }
+
+      // Module-specific: distressed alerts (auction_event, covenant_breach, distressed_new)
+      if (alertModule === "distressed") {
+        for (const asset of (newDistressed ?? [])) {
+          let match = false;
+          const aType = (alert as any).alert_type;
+
+          if (aType === "distressed_new") match = true;
+          if (aType === "auction_event" && asset.legal_stage === "chapter_7") match = true;
+          if (aType === "covenant_breach" && asset.distress_type === "covenant_breach") match = true;
+          if (conditions.sector && asset.sector?.toLowerCase() !== conditions.sector?.toLowerCase()) match = false;
+          if (conditions.min_amount && (asset.asking_price ?? 0) > conditions.min_amount) match = false;
+
+          if (match) {
+            notifications.push({
+              user_id: alert.user_id,
+              alert_id: alert.id,
+              company_id: null,
+              title: `Distressed: ${asset.name} (${asset.distress_type?.replace("_", " ")})`,
+              detail: `Alert "${alert.name}" triggered for ${asset.name} in ${asset.location_state ?? "Unknown"}.`,
+            });
+            matchCount++;
+          }
+        }
+      }
+
+      // Module-specific: real_estate alerts (occupancy_drop, caprate_shift)
+      if (alertModule === "real_estate") {
+        for (const mkt of (recentCRE ?? [])) {
+          const aType = (alert as any).alert_type;
+          let match = false;
+
+          if (aType === "occupancy_drop" && mkt.vacancy_rate != null) {
+            const occThreshold = conditions.occupancy_threshold ?? 85;
+            if ((100 - mkt.vacancy_rate) < occThreshold) match = true;
+          }
+          if (aType === "caprate_shift" && mkt.cap_rate != null) {
+            match = true; // any new cap rate data triggers
+          }
+
+          if (match) {
+            notifications.push({
+              user_id: alert.user_id,
+              alert_id: alert.id,
+              company_id: null,
+              title: `CRE Alert: ${mkt.property_type} in ${mkt.submarket} – ${aType === "occupancy_drop" ? `Vacancy ${mkt.vacancy_rate}%` : `Cap Rate ${mkt.cap_rate}%`}`,
+              detail: `Alert "${alert.name}" triggered for ${mkt.submarket}.`,
+            });
+            matchCount++;
+          }
         }
       }
     }

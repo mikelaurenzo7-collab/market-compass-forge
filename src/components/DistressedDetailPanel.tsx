@@ -1,8 +1,12 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, DollarSign, MapPin, Building2, Percent } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { formatCurrency } from "@/hooks/useData";
 import RequestIntroButton from "@/components/RequestIntroButton";
+import DistressedAnalytics from "@/components/DistressedAnalytics";
+import { exportDistressedMemo } from "@/lib/moduleExports";
+import { ClaimStackEntry } from "@/lib/underwriting";
 
 interface DistressedAsset {
   id: string;
@@ -21,6 +25,12 @@ interface DistressedAsset {
   key_metrics?: Record<string, any> | null;
   source?: string | null;
   listed_date?: string | null;
+  claim_stack?: any;
+  legal_stage?: string | null;
+  legal_timeline?: any;
+  recovery_low_pct?: number | null;
+  recovery_high_pct?: number | null;
+  process_milestones?: any;
 }
 
 interface DistressedDetailPanelProps {
@@ -38,9 +48,13 @@ const statusColor: Record<string, string> = {
 export const DistressedDetailPanel = ({ asset, open, onOpenChange }: DistressedDetailPanelProps) => {
   if (!asset) return null;
 
+  const claimStack = (Array.isArray(asset.claim_stack) ? asset.claim_stack : []) as ClaimStackEntry[];
+  const legalTimeline = (Array.isArray(asset.legal_timeline) ? asset.legal_timeline : []) as { stage: string; date: string; description?: string }[];
+  const milestones = (Array.isArray(asset.process_milestones) ? asset.process_milestones : []) as { label: string; target_date?: string; completed_date?: string; status: string }[];
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:w-[500px] overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:w-[540px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{asset.name}</SheetTitle>
           <SheetDescription>{asset.sector || "No sector"}</SheetDescription>
@@ -48,12 +62,20 @@ export const DistressedDetailPanel = ({ asset, open, onOpenChange }: DistressedD
 
         <div className="space-y-6 mt-6">
           {/* Status & Type */}
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             <Badge variant="outline">{asset.asset_type?.replace("_", " ") || "Unknown"}</Badge>
             <Badge variant="outline">{asset.distress_type?.replace("_", " ") || "Unknown"}</Badge>
             <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium border capitalize ${statusColor[asset.status] || ""}`}>
               {asset.status?.replace("_", " ")}
             </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto gap-1.5 h-7 text-xs"
+              onClick={() => exportDistressedMemo(asset as any)}
+            >
+              <Download className="h-3 w-3" /> Export Memo
+            </Button>
           </div>
 
           {/* Key Metrics */}
@@ -75,6 +97,17 @@ export const DistressedDetailPanel = ({ asset, open, onOpenChange }: DistressedD
               <p className="text-xs font-mono text-foreground mt-1">{asset.location_city}, {asset.location_state}</p>
             </div>
           </div>
+
+          {/* Analytics: claim stack, legal timeline, recovery, milestones */}
+          <DistressedAnalytics
+            claimStack={claimStack}
+            legalStage={asset.legal_stage ?? "pre_filing"}
+            legalTimeline={legalTimeline}
+            recoveryLow={asset.recovery_low_pct ?? null}
+            recoveryHigh={asset.recovery_high_pct ?? null}
+            processMilestones={milestones}
+            estimatedValue={asset.estimated_value ?? null}
+          />
 
           {/* Description */}
           {asset.description && (
