@@ -6,7 +6,7 @@ import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
-import WhatsNewModal from "@/components/WhatsNewModal";
+
 import AmbientGrid from "@/components/AmbientGrid";
 import TickerTape from "@/components/TickerTape";
 import AICopilot from "@/components/AICopilot";
@@ -76,7 +76,7 @@ const AppLayout = () => {
 
       <CommandPalette />
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
-      <WhatsNewModal />
+      
 
       <main className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 z-30 border-b border-border/30 bg-background/40 backdrop-blur-2xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4">
