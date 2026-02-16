@@ -33,6 +33,7 @@ import Developers from "./pages/Developers";
 import Portfolio from "./pages/Portfolio";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import InvestorMetrics from "./pages/InvestorMetrics";
+import DataCoverage from "./pages/DataCoverage";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -62,6 +63,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/data-coverage" element={<DataCoverage />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Index />} />
               <Route path="/companies" element={<Companies />} />

@@ -1,6 +1,7 @@
-import { AlertCircle, Check, Zap } from "lucide-react";
+import { AlertCircle, Check, Zap, ShieldCheck, Building, Brain, User } from "lucide-react";
 
 type DataSourceType = "real" | "synthetic" | "enriched" | "firecrawl" | "perplexity";
+type ProvenanceType = "verified" | "provider-estimated" | "model-estimated" | "user-input";
 
 interface DataBadgeProps {
   source: DataSourceType;
@@ -42,6 +43,48 @@ export const DataBadge = ({ source, className = "" }: DataBadgeProps) => {
   return (
     <span
       className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[10px] font-medium ${badge.color} ${className}`}
+    >
+      <Icon className="h-3 w-3" />
+      {badge.label}
+    </span>
+  );
+};
+
+interface ProvenanceBadgeProps {
+  type: ProvenanceType;
+  className?: string;
+}
+
+const provenanceBadges: Record<ProvenanceType, { label: string; color: string; icon: any }> = {
+  verified: {
+    label: "Verified",
+    color: "bg-success/10 text-success border-success/30",
+    icon: ShieldCheck,
+  },
+  "provider-estimated": {
+    label: "Provider-Est.",
+    color: "bg-primary/10 text-primary border-primary/30",
+    icon: Building,
+  },
+  "model-estimated": {
+    label: "Model-Est.",
+    color: "bg-warning/10 text-warning border-warning/30",
+    icon: Brain,
+  },
+  "user-input": {
+    label: "User-Input",
+    color: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/30",
+    icon: User,
+  },
+};
+
+export const ProvenanceBadge = ({ type, className = "" }: ProvenanceBadgeProps) => {
+  const badge = provenanceBadges[type];
+  const Icon = badge.icon;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm border text-[10px] font-medium whitespace-nowrap ${badge.color} ${className}`}
     >
       <Icon className="h-3 w-3" />
       {badge.label}
