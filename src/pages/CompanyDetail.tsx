@@ -33,6 +33,7 @@ import { logActivity } from "@/lib/activityLogger";
 import { toast } from "sonner";
 import EvidencePanel from "@/components/EvidencePanel";
 import CreateDealButton from "@/components/CreateDealButton";
+import TrustPanel from "@/components/TrustPanel";
 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -477,6 +478,7 @@ const CompanyDetail = () => {
           </div>
 
           <div className="space-y-4">
+            <TrustPanel companyId={id!} />
             <CompanyScore score={score} />
             <CompanyAIAssessment
               sector={company.sector}
