@@ -6,17 +6,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// ─── Valuation Engine (canonical copy — keep in sync with src/lib/valuationEngine.ts) ───
+// ─── Valuation Engine (canonical copy) ───
 
 const MODEL_VERSION = "v1.0.0";
 
 const WEIGHTS = {
-  scale: 0.18,
-  valuation: 0.22,
-  growth: 0.18,
-  sectorMomentum: 0.12,
-  efficiency: 0.15,
-  capitalEfficiency: 0.15,
+  scale: 0.18, valuation: 0.22, growth: 0.18,
+  sectorMomentum: 0.12, efficiency: 0.15, capitalEfficiency: 0.15,
 };
 
 const GRADE_MAP = [
@@ -45,33 +41,18 @@ const percentileRank = (sortedArr: number[], value: number): number => {
 };
 
 interface CompanyInputs {
-  sector: string | null;
-  stage: string | null;
-  employeeCount: number | null;
-  arr: number;
-  revenue: number;
-  ebitda: number;
-  valuation: number;
-  grossMargin: number;
-  burnRate: number;
-  runwayMonths: number;
-  previousArr: number;
-  historicals: { period: string; arr: number | null; revenue: number | null }[];
+  sector: string | null; stage: string | null; employeeCount: number | null;
+  arr: number; revenue: number; ebitda: number; valuation: number;
+  grossMargin: number; burnRate: number; runwayMonths: number;
+  previousArr: number; historicals: { period: string; arr: number | null; revenue: number | null }[];
 }
 
 interface SectorBenchmarks {
-  evRevenueMedian: number;
-  evEbitdaMedian: number;
-  dealCount12m: number;
-  fundingCount12m: number;
-  evRevenueCount: number;
+  evRevenueMedian: number; evEbitdaMedian: number; dealCount12m: number;
+  fundingCount12m: number; evRevenueCount: number;
 }
 
-function computeValuationScore(
-  inputs: CompanyInputs,
-  peerArrDistribution: number[],
-  sectorBenchmarks: SectorBenchmarks | null
-) {
+function computeValuationScore(inputs: CompanyInputs, peerArrDistribution: number[], sectorBenchmarks: SectorBenchmarks | null) {
   const effectiveArr = inputs.arr > 0 ? inputs.arr : inputs.revenue;
   const insights: string[] = [];
   const inputQualityFlags: string[] = [];
@@ -98,31 +79,24 @@ function computeValuationScore(
     const earlyRev = sorted[0].arr ?? sorted[0].revenue ?? 0;
     const latestRev = sorted[sorted.length - 1].arr ?? sorted[sorted.length - 1].revenue ?? 0;
     const years = parseInt(sorted[sorted.length - 1].period) - parseInt(sorted[0].period);
-    if (earlyRev > 0 && latestRev > earlyRev && years > 0) {
-      revenueCAGR = Math.pow(latestRev / earlyRev, 1 / years) - 1;
-    }
+    if (earlyRev > 0 && latestRev > earlyRev && years > 0) revenueCAGR = Math.pow(latestRev / earlyRev, 1 / years) - 1;
   }
 
   let yoyGrowthRate: number | null = null;
-  if (inputs.previousArr > 0 && inputs.arr > 0) {
-    yoyGrowthRate = (inputs.arr - inputs.previousArr) / inputs.previousArr;
-  } else if (revenueCAGR !== null) {
-    yoyGrowthRate = revenueCAGR;
-  }
+  if (inputs.previousArr > 0 && inputs.arr > 0) yoyGrowthRate = (inputs.arr - inputs.previousArr) / inputs.previousArr;
+  else if (revenueCAGR !== null) yoyGrowthRate = revenueCAGR;
 
   let ruleOf40: number | null = null;
   if (yoyGrowthRate !== null && inputs.grossMargin > 0) {
     const profitMargin = effectiveArr > 0 && inputs.burnRate !== 0
-      ? (effectiveArr - Math.abs(inputs.burnRate) * 12) / effectiveArr
-      : inputs.grossMargin - 0.3;
+      ? (effectiveArr - Math.abs(inputs.burnRate) * 12) / effectiveArr : inputs.grossMargin - 0.3;
     ruleOf40 = (yoyGrowthRate * 100) + (profitMargin * 100);
   }
 
   let forwardMultiple: number | null = null;
   const growthForProjection = revenueCAGR ?? yoyGrowthRate;
-  if (inputs.valuation > 0 && effectiveArr > 0 && growthForProjection !== null && growthForProjection > 0) {
+  if (inputs.valuation > 0 && effectiveArr > 0 && growthForProjection !== null && growthForProjection > 0)
     forwardMultiple = inputs.valuation / (effectiveArr * Math.pow(1 + growthForProjection, 2));
-  }
 
   const sectorMedianEvRevenue = sectorBenchmarks?.evRevenueMedian ?? null;
   const sectorMedianEvEbitda = sectorBenchmarks?.evEbitdaMedian ?? null;
@@ -141,12 +115,9 @@ function computeValuationScore(
     const multiple = inputs.valuation / effectiveArr;
     if (sectorMedianEvRevenue && sectorMedianEvRevenue > 0) {
       const rel = multiple / sectorMedianEvRevenue;
-      if (rel <= 0.5) valuationScore = 98;
-      else if (rel <= 0.75) valuationScore = 88;
-      else if (rel <= 1.0) valuationScore = 74;
-      else if (rel <= 1.3) valuationScore = 62;
-      else if (rel <= 1.7) valuationScore = 48;
-      else if (rel <= 2.5) valuationScore = 32;
+      if (rel <= 0.5) valuationScore = 98; else if (rel <= 0.75) valuationScore = 88;
+      else if (rel <= 1.0) valuationScore = 74; else if (rel <= 1.3) valuationScore = 62;
+      else if (rel <= 1.7) valuationScore = 48; else if (rel <= 2.5) valuationScore = 32;
       else valuationScore = 15;
     } else {
       const stageMul = inputs.stage?.toLowerCase().includes('series a') ? 1.5 :
@@ -165,9 +136,7 @@ function computeValuationScore(
       const eScore = eRel <= 0.5 ? 95 : eRel <= 0.75 ? 82 : eRel <= 1.0 ? 68 : eRel <= 1.5 ? 48 : 22;
       valuationScore = Math.round(valuationScore * 0.65 + eScore * 0.35);
     }
-    if (forwardMultiple !== null && forwardMultiple < 10) {
-      valuationScore = Math.min(100, valuationScore + 8);
-    }
+    if (forwardMultiple !== null && forwardMultiple < 10) valuationScore = Math.min(100, valuationScore + 8);
   }
 
   // 3. Growth Score
@@ -197,16 +166,12 @@ function computeValuationScore(
   // 5. Efficiency
   let efficiencyScore = 50;
   const scores: number[] = [];
-  if (inputs.grossMargin > 0) {
-    scores.push(inputs.grossMargin >= 0.85 ? 95 : inputs.grossMargin >= 0.75 ? 80 : inputs.grossMargin >= 0.65 ? 65 : inputs.grossMargin >= 0.50 ? 45 : 25);
-  }
+  if (inputs.grossMargin > 0) scores.push(inputs.grossMargin >= 0.85 ? 95 : inputs.grossMargin >= 0.75 ? 80 : inputs.grossMargin >= 0.65 ? 65 : inputs.grossMargin >= 0.50 ? 45 : 25);
   if (inputs.employeeCount && effectiveArr > 0) {
     const rpe = effectiveArr / inputs.employeeCount;
     scores.push(rpe >= 500000 ? 95 : rpe >= 300000 ? 80 : rpe >= 200000 ? 65 : rpe >= 100000 ? 45 : 15);
   }
-  if (ruleOf40 !== null) {
-    scores.push(ruleOf40 >= 80 ? 98 : ruleOf40 >= 60 ? 88 : ruleOf40 >= 40 ? 72 : ruleOf40 >= 20 ? 50 : 12);
-  }
+  if (ruleOf40 !== null) scores.push(ruleOf40 >= 80 ? 98 : ruleOf40 >= 60 ? 88 : ruleOf40 >= 40 ? 72 : ruleOf40 >= 20 ? 50 : 12);
   if (scores.length > 0) efficiencyScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
 
   // 6. Capital Efficiency
@@ -248,22 +213,46 @@ function computeValuationScore(
     forwardMultiple, evEbitda, sectorMedianEvRevenue, sectorMedianEvEbitda,
     grade, color, insights: insights.slice(0, 5),
     explainability: {
-      modelVersion: MODEL_VERSION,
-      weights: { ...WEIGHTS },
-      factors,
-      confidenceAdjustments,
-      inputQualityFlags,
-      benchmarkCohort: { peerCount: peerArrDistribution.length, sectorMedianEvRevenue, sectorMedianEvEbitda },
+      modelVersion: MODEL_VERSION, weights: { ...WEIGHTS }, factors, confidenceAdjustments,
+      inputQualityFlags, benchmarkCohort: { peerCount: peerArrDistribution.length, sectorMedianEvRevenue, sectorMedianEvEbitda },
     },
   };
 }
 
-// ─── Edge Function Handler ──────────────────────────────────────────────────
+// ─── Rate Limiting ───
+async function checkRateLimit(supabase: any, identifier: string, endpoint: string, maxReq = 30, windowMin = 1) {
+  const windowStart = new Date(Math.floor(Date.now() / (windowMin * 60000)) * (windowMin * 60000)).toISOString();
+  const { data } = await supabase
+    .from("rate_limits")
+    .select("request_count")
+    .eq("identifier", identifier)
+    .eq("endpoint", endpoint)
+    .eq("window_start", windowStart)
+    .maybeSingle();
 
+  if (data && data.request_count >= maxReq) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  await supabase.from("rate_limits").upsert({
+    identifier, endpoint, window_start: windowStart,
+    request_count: (data?.request_count ?? 0) + 1,
+  }, { onConflict: "identifier,endpoint,window_start" });
+
+  return { allowed: true, remaining: maxReq - (data?.request_count ?? 0) - 1 };
+}
+
+// ─── Edge Function Handler ───
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const start = Date.now();
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
   try {
     const { companyIds, snapshot = false, decisionContext } = await req.json();
@@ -273,28 +262,38 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Rate limit by caller
+    const authHeader = req.headers.get("authorization") ?? "";
+    const callerId = authHeader.slice(0, 20) || "anon";
+    const rateCheck = await checkRateLimit(supabase, callerId, "compute-scores", 30, 1);
+    if (!rateCheck.allowed) {
+      await supabase.from("api_telemetry").insert({
+        function_name: "compute-scores", method: "POST", status_code: 429,
+        latency_ms: Date.now() - start,
+      });
+      return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+
     const ids = companyIds.slice(0, 50);
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Use pre-computed MV for company + financials + funding in single query
+    const { data: precomputed } = await supabase
+      .from("mv_company_scores")
+      .select("*")
+      .in("company_id", ids);
 
-    const [companiesRes, financialsRes, fundingRes, sectorMultRes, allArrRes] = await Promise.all([
-      supabase.from("companies").select("id, name, sector, stage, employee_count").in("id", ids),
-      supabase.from("financials").select("company_id, period, arr, revenue, ebitda, gross_margin, burn_rate, runway_months").in("company_id", ids).order("period", { ascending: false }),
-      supabase.from("funding_rounds").select("company_id, valuation_post, amount, date").in("company_id", ids).order("date", { ascending: false }),
+    // Still need sector multiples and ARR distribution
+    const [sectorMultRes, allArrRes] = await Promise.all([
       supabase.from("mv_sector_multiples").select("*"),
-      supabase.from("financials").select("arr, revenue").not("arr", "is", null),
+      supabase.from("mv_company_scores").select("latest_arr, latest_revenue"),
     ]);
 
-    const companies = companiesRes.data ?? [];
-    const financials = financialsRes.data ?? [];
-    const funding = fundingRes.data ?? [];
     const sectorMultiples = sectorMultRes.data ?? [];
-
     const allARR = (allArrRes.data ?? [])
-      .map((f: any) => f.arr ?? f.revenue ?? 0)
+      .map((f: any) => f.latest_arr ?? f.latest_revenue ?? 0)
       .filter((a: number) => a > 0)
       .sort((a: number, b: number) => a - b);
 
@@ -309,51 +308,44 @@ Deno.serve(async (req) => {
       };
     });
 
-    const finByCompany: Record<string, typeof financials> = {};
-    financials.forEach(f => {
-      if (!finByCompany[f.company_id]) finByCompany[f.company_id] = [];
-      finByCompany[f.company_id].push(f);
-    });
+    // For historical data, batch query financials only for requested companies
+    const { data: historicalFins } = await supabase
+      .from("financials")
+      .select("company_id, period, arr, revenue")
+      .in("company_id", ids)
+      .order("period", { ascending: false })
+      .limit(ids.length * 10); // ~10 periods per company max
 
-    const fundByCompany: Record<string, typeof funding> = {};
-    funding.forEach(f => {
-      if (!fundByCompany[f.company_id]) fundByCompany[f.company_id] = [];
-      fundByCompany[f.company_id].push(f);
+    const histByCompany: Record<string, any[]> = {};
+    (historicalFins ?? []).forEach((f: any) => {
+      if (!histByCompany[f.company_id]) histByCompany[f.company_id] = [];
+      histByCompany[f.company_id].push(f);
     });
 
     const results: Record<string, any> = {};
     const snapshots: any[] = [];
 
-    for (const company of companies) {
-      const fins = finByCompany[company.id] ?? [];
-      const funs = fundByCompany[company.id] ?? [];
-      const latest = fins[0];
+    for (const row of (precomputed ?? [])) {
+      const fins = histByCompany[row.company_id] ?? [];
       const previous = fins[1];
-      const latestRound = funs[0];
 
       const companyInputs: CompanyInputs = {
-        sector: company.sector,
-        stage: company.stage,
-        employeeCount: company.employee_count,
-        arr: latest?.arr ?? 0,
-        revenue: latest?.revenue ?? 0,
-        ebitda: latest?.ebitda ?? 0,
-        valuation: latestRound?.valuation_post ?? 0,
-        grossMargin: latest?.gross_margin ?? 0,
-        burnRate: latest?.burn_rate ?? 0,
-        runwayMonths: latest?.runway_months ? Number(latest.runway_months) : 0,
+        sector: row.sector, stage: row.stage, employeeCount: row.employee_count,
+        arr: row.latest_arr ?? 0, revenue: row.latest_revenue ?? 0,
+        ebitda: row.latest_ebitda ?? 0, valuation: row.latest_valuation ?? 0,
+        grossMargin: row.gross_margin ?? 0, burnRate: row.burn_rate ?? 0,
+        runwayMonths: row.runway_months ? Number(row.runway_months) : 0,
         previousArr: previous?.arr ?? 0,
-        historicals: fins.map(f => ({ period: f.period, arr: f.arr, revenue: f.revenue })),
+        historicals: fins.map((f: any) => ({ period: f.period, arr: f.arr, revenue: f.revenue })),
       };
 
-      const benchmarks = company.sector ? sectorMultMap[company.sector] ?? null : null;
+      const benchmarks = row.sector ? sectorMultMap[row.sector] ?? null : null;
       const result = computeValuationScore(companyInputs, allARR, benchmarks);
-      results[company.id] = result;
+      results[row.company_id] = result;
 
       if (snapshot) {
         snapshots.push({
-          company_id: company.id,
-          model_version: MODEL_VERSION,
+          company_id: row.company_id, model_version: MODEL_VERSION,
           model_config: { weights: WEIGHTS, gradeMap: GRADE_MAP },
           inputs: companyInputs,
           outputs: {
@@ -369,16 +361,35 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Persist snapshots if requested
     if (snapshots.length > 0) {
       const { error: snapErr } = await supabase.from("score_snapshots").insert(snapshots);
       if (snapErr) console.error("Snapshot persistence error:", snapErr);
     }
 
+    const latencyMs = Date.now() - start;
+
+    // Record telemetry
+    await supabase.from("api_telemetry").insert({
+      function_name: "compute-scores", method: "POST", status_code: 200,
+      latency_ms: latencyMs, response_size_bytes: JSON.stringify(results).length,
+      metadata: { company_count: ids.length },
+    });
+
     return new Response(JSON.stringify(results), {
-      headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "public, max-age=300" },
+      headers: {
+        ...corsHeaders, "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=300",
+        "X-Latency-Ms": String(latencyMs),
+        "X-Rate-Remaining": String(rateCheck.remaining),
+      },
     });
   } catch (error) {
+    const latencyMs = Date.now() - start;
+    await supabase.from("api_telemetry").insert({
+      function_name: "compute-scores", method: "POST", status_code: 500,
+      latency_ms: latencyMs, error_message: error instanceof Error ? error.message : "Unknown",
+    }).catch(() => {});
+
     console.error("Compute scores error:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
