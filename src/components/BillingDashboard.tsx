@@ -346,26 +346,28 @@ const BillingDashboard = () => {
           </div>
         </div>
 
-        {/* Seat Management */}
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Seat Management</h3>
+        {/* Seat Management — only show for institutional */}
+        {currentPlan === "institutional" && (
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Seat Management</h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {seatCount ?? 0} active seat{(seatCount ?? 0) !== 1 ? "s" : ""}. Manage through the billing portal.
+            </p>
+            {subscription.subscribed && (
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="px-3 py-1.5 rounded-md bg-secondary text-sm text-foreground hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
+              >
+                {portalLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
+                Manage Seats & Invoices
+              </button>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
-            {seatCount ?? 0} active seat{(seatCount ?? 0) !== 1 ? "s" : ""}. Manage through the billing portal.
-          </p>
-          {subscription.subscribed && (
-            <button
-              onClick={handleManageSubscription}
-              disabled={portalLoading}
-              className="px-3 py-1.5 rounded-md bg-secondary text-sm text-foreground hover:bg-secondary/80 transition-colors flex items-center gap-1.5"
-            >
-              {portalLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ExternalLink className="h-3 w-3" />}
-              Manage Seats & Invoices
-            </button>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
