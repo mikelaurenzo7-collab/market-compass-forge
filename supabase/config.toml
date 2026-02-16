@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.morning-briefing]
 verify_jwt = false
+
+[functions.data-pipeline]
+verify_jwt = false
