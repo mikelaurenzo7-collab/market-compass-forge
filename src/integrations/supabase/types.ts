@@ -24,6 +24,7 @@ export type Database = {
           fetched_at: string | null
           headline: string
           id: string
+          is_synthetic: boolean
           published_at: string | null
           source_type: string | null
           source_url: string | null
@@ -38,6 +39,7 @@ export type Database = {
           fetched_at?: string | null
           headline: string
           id?: string
+          is_synthetic?: boolean
           published_at?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -52,6 +54,7 @@ export type Database = {
           fetched_at?: string | null
           headline?: string
           id?: string
+          is_synthetic?: boolean
           published_at?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -411,6 +414,7 @@ export type Database = {
           hq_city: string | null
           hq_country: string | null
           id: string
+          is_synthetic: boolean
           last_market_fetch: string | null
           last_sec_fetch: string | null
           logo_url: string | null
@@ -438,6 +442,7 @@ export type Database = {
           hq_city?: string | null
           hq_country?: string | null
           id?: string
+          is_synthetic?: boolean
           last_market_fetch?: string | null
           last_sec_fetch?: string | null
           logo_url?: string | null
@@ -465,6 +470,7 @@ export type Database = {
           hq_city?: string | null
           hq_country?: string | null
           id?: string
+          is_synthetic?: boolean
           last_market_fetch?: string | null
           last_sec_fetch?: string | null
           logo_url?: string | null
@@ -552,6 +558,7 @@ export type Database = {
           created_at: string
           data_type: string
           id: string
+          is_synthetic: boolean
           raw_content: string | null
           scraped_at: string
           source_name: string
@@ -565,6 +572,7 @@ export type Database = {
           created_at?: string
           data_type?: string
           id?: string
+          is_synthetic?: boolean
           raw_content?: string | null
           scraped_at?: string
           source_name?: string
@@ -578,6 +586,7 @@ export type Database = {
           created_at?: string
           data_type?: string
           id?: string
+          is_synthetic?: boolean
           raw_content?: string | null
           scraped_at?: string
           source_name?: string
@@ -635,6 +644,7 @@ export type Database = {
           created_at: string
           fetched_at: string | null
           id: string
+          is_synthetic: boolean
           period: string
           property_type: string
           source: string | null
@@ -653,6 +663,7 @@ export type Database = {
           created_at?: string
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           period: string
           property_type: string
           source?: string | null
@@ -671,6 +682,7 @@ export type Database = {
           created_at?: string
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           period?: string
           property_type?: string
           source?: string | null
@@ -692,6 +704,7 @@ export type Database = {
           created_at: string
           fetched_at: string | null
           id: string
+          is_synthetic: boolean
           price_per_sf: number | null
           property_name: string
           property_type: string
@@ -714,6 +727,7 @@ export type Database = {
           created_at?: string
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           price_per_sf?: number | null
           property_name: string
           property_type: string
@@ -736,6 +750,7 @@ export type Database = {
           created_at?: string
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           price_per_sf?: number | null
           property_name?: string
           property_type?: string
@@ -952,6 +967,7 @@ export type Database = {
           ev_revenue: number | null
           fetched_at: string | null
           id: string
+          is_synthetic: boolean
           source: string | null
           source_type: string | null
           source_url: string | null
@@ -972,6 +988,7 @@ export type Database = {
           ev_revenue?: number | null
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           source?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -992,6 +1009,7 @@ export type Database = {
           ev_revenue?: number | null
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           source?: string | null
           source_type?: string | null
           source_url?: string | null
@@ -1164,6 +1182,7 @@ export type Database = {
           estimated_value: number | null
           fetched_at: string | null
           id: string
+          is_synthetic: boolean
           key_metrics: Json | null
           legal_stage: string | null
           legal_timeline: Json | null
@@ -1195,6 +1214,7 @@ export type Database = {
           estimated_value?: number | null
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           key_metrics?: Json | null
           legal_stage?: string | null
           legal_timeline?: Json | null
@@ -1226,6 +1246,7 @@ export type Database = {
           estimated_value?: number | null
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           key_metrics?: Json | null
           legal_stage?: string | null
           legal_timeline?: Json | null
@@ -1311,6 +1332,7 @@ export type Database = {
           fetched_at: string | null
           gross_margin: number | null
           id: string
+          is_synthetic: boolean
           mrr: number | null
           period: string
           period_type: string | null
@@ -1331,6 +1353,7 @@ export type Database = {
           fetched_at?: string | null
           gross_margin?: number | null
           id?: string
+          is_synthetic?: boolean
           mrr?: number | null
           period: string
           period_type?: string | null
@@ -1351,6 +1374,7 @@ export type Database = {
           fetched_at?: string | null
           gross_margin?: number | null
           id?: string
+          is_synthetic?: boolean
           mrr?: number | null
           period?: string
           period_type?: string | null
@@ -1432,6 +1456,7 @@ export type Database = {
           fetched_at: string | null
           id: string
           instrument_type: string | null
+          is_synthetic: boolean
           lead_investors: string[] | null
           liquidation_preference: number | null
           option_pool_pct: number | null
@@ -1455,6 +1480,7 @@ export type Database = {
           fetched_at?: string | null
           id?: string
           instrument_type?: string | null
+          is_synthetic?: boolean
           lead_investors?: string[] | null
           liquidation_preference?: number | null
           option_pool_pct?: number | null
@@ -1478,6 +1504,7 @@ export type Database = {
           fetched_at?: string | null
           id?: string
           instrument_type?: string | null
+          is_synthetic?: boolean
           lead_investors?: string[] | null
           liquidation_preference?: number | null
           option_pool_pct?: number | null
@@ -1516,6 +1543,7 @@ export type Database = {
           fund_size: number | null
           gp_name: string
           id: string
+          is_synthetic: boolean
           name: string
           net_irr: number | null
           quartile: number | null
@@ -1535,6 +1563,7 @@ export type Database = {
           fund_size?: number | null
           gp_name: string
           id?: string
+          is_synthetic?: boolean
           name: string
           net_irr?: number | null
           quartile?: number | null
@@ -1554,6 +1583,7 @@ export type Database = {
           fund_size?: number | null
           gp_name?: string
           id?: string
+          is_synthetic?: boolean
           name?: string
           net_irr?: number | null
           quartile?: number | null
@@ -1577,6 +1607,7 @@ export type Database = {
           description: string | null
           fetched_at: string | null
           id: string
+          is_synthetic: boolean
           key_metrics: Json | null
           listed_date: string | null
           local_currency: string | null
@@ -1601,6 +1632,7 @@ export type Database = {
           description?: string | null
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           key_metrics?: Json | null
           listed_date?: string | null
           local_currency?: string | null
@@ -1625,6 +1657,7 @@ export type Database = {
           description?: string | null
           fetched_at?: string | null
           id?: string
+          is_synthetic?: boolean
           key_metrics?: Json | null
           listed_date?: string | null
           local_currency?: string | null

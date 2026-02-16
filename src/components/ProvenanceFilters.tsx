@@ -1,9 +1,12 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 
 export interface ProvenanceFilterState {
   sourceType: string;
   verificationStatus: string;
   freshness: string;
+  verifiedOnly: boolean;
+  hideSeeded: boolean;
 }
 
 interface ProvenanceFiltersProps {
@@ -15,7 +18,6 @@ interface ProvenanceFiltersProps {
 const SOURCE_TYPES = [
   { value: "all", label: "All Sources" },
   { value: "api", label: "API Feed" },
-  { value: "sec_edgar", label: "SEC EDGAR" },
   { value: "firecrawl", label: "Web Scrape" },
   { value: "perplexity", label: "Web Search" },
   { value: "manual", label: "Manual Entry" },
@@ -38,12 +40,14 @@ const FRESHNESS_OPTIONS = [
 ];
 
 export function getDefaultProvenanceFilters(): ProvenanceFilterState {
-  return { sourceType: "all", verificationStatus: "all", freshness: "all" };
+  return { sourceType: "all", verificationStatus: "all", freshness: "all", verifiedOnly: false, hideSeeded: false };
 }
 
 export function applyProvenanceFilter(record: Record<string, any>, filters: ProvenanceFilterState): boolean {
   if (filters.sourceType !== "all" && record.source_type !== filters.sourceType) return false;
   if (filters.verificationStatus !== "all" && record.verification_status !== filters.verificationStatus) return false;
+  if (filters.verifiedOnly && record.verification_status !== "verified") return false;
+  if (filters.hideSeeded && (record.source_type === "seeded" || record.is_synthetic === true)) return false;
   if (filters.freshness !== "all") {
     const fetchedAt = record.fetched_at ?? record.scraped_at ?? record.updated_at ?? record.created_at;
     if (!fetchedAt) return false;
@@ -56,12 +60,32 @@ export function applyProvenanceFilter(record: Record<string, any>, filters: Prov
 }
 
 export function hasActiveProvenanceFilters(filters: ProvenanceFilterState): boolean {
-  return filters.sourceType !== "all" || filters.verificationStatus !== "all" || filters.freshness !== "all";
+  return filters.sourceType !== "all" || filters.verificationStatus !== "all" || filters.freshness !== "all" || filters.verifiedOnly || filters.hideSeeded;
 }
 
 const ProvenanceFilters = ({ filters, onChange, className = "" }: ProvenanceFiltersProps) => {
   return (
     <div className={`flex flex-wrap gap-2 items-center ${className}`}>
+      {/* Quick toggles */}
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+        <Switch
+          checked={filters.verifiedOnly}
+          onCheckedChange={(v) => onChange({ ...filters, verifiedOnly: v })}
+          className="h-4 w-7 [&>span]:h-3 [&>span]:w-3"
+        />
+        <span className={filters.verifiedOnly ? "text-success font-medium" : ""}>Verified only</span>
+      </label>
+      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+        <Switch
+          checked={filters.hideSeeded}
+          onCheckedChange={(v) => onChange({ ...filters, hideSeeded: v })}
+          className="h-4 w-7 [&>span]:h-3 [&>span]:w-3"
+        />
+        <span className={filters.hideSeeded ? "text-warning font-medium" : ""}>Hide seeded</span>
+      </label>
+
+      <div className="h-4 w-px bg-border mx-1" />
+
       <Select value={filters.sourceType} onValueChange={(v) => onChange({ ...filters, sourceType: v })}>
         <SelectTrigger className="w-36 h-8 text-xs">
           <SelectValue placeholder="Source" />

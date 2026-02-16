@@ -12,6 +12,7 @@ export interface ProvenanceData {
   verification_status?: VerificationStatus;
   confidence_score?: ConfidenceLevel;
   source?: string | null;
+  is_synthetic?: boolean | null;
 }
 
 interface ProvenanceBadgeProps {
@@ -64,7 +65,7 @@ const ProvenanceBadge = ({ data, compact = false, className = "" }: ProvenanceBa
   const sourceLabel = SOURCE_LABELS[data.source_type ?? ""] ?? data.source ?? data.source_type ?? "Unknown";
   const timeAgo = getTimeAgo(data.fetched_at);
   const fresh = isFresh(data.fetched_at, 7);
-  const isSeeded = data.source_type === "seeded";
+  const isSeeded = data.source_type === "seeded" || data.is_synthetic === true;
 
   return (
     <TooltipProvider delayDuration={200}>
