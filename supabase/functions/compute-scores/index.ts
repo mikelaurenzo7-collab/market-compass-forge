@@ -6,7 +6,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// ---------- Scoring logic (moved from client) ----------
+// ─── Valuation Engine (canonical copy — keep in sync with src/lib/valuationEngine.ts) ───
+
+const MODEL_VERSION = "v1.0.0";
+
+const WEIGHTS = {
+  scale: 0.18,
+  valuation: 0.22,
+  growth: 0.18,
+  sectorMomentum: 0.12,
+  efficiency: 0.15,
+  capitalEfficiency: 0.15,
+};
 
 const GRADE_MAP = [
   { min: 90, grade: "A+", color: "text-success" },
@@ -33,50 +44,57 @@ const percentileRank = (sortedArr: number[], value: number): number => {
   return (rank / sortedArr.length) * 100;
 };
 
-interface CompanyFinancials {
+interface CompanyInputs {
+  sector: string | null;
+  stage: string | null;
+  employeeCount: number | null;
   arr: number;
   revenue: number;
   ebitda: number;
+  valuation: number;
   grossMargin: number;
   burnRate: number;
   runwayMonths: number;
+  previousArr: number;
+  historicals: { period: string; arr: number | null; revenue: number | null }[];
 }
 
-interface SectorMultiples {
-  ev_rev_median: number;
-  ev_ebitda_median: number;
-  deal_count_12m: number;
-  funding_count_12m: number;
-  ev_rev_count: number;
+interface SectorBenchmarks {
+  evRevenueMedian: number;
+  evEbitdaMedian: number;
+  dealCount12m: number;
+  fundingCount12m: number;
+  evRevenueCount: number;
 }
 
-function computeScore(
-  companyData: {
-    sector: string | null;
-    stage: string | null;
-    employee_count: number | null;
-    valuation: number;
-    financials: CompanyFinancials;
-    previousArr: number;
-    historicals: { period: string; arr: number | null; revenue: number | null }[];
-  },
-  allARR: number[],
-  sectorMult: SectorMultiples | null
+function computeValuationScore(
+  inputs: CompanyInputs,
+  peerArrDistribution: number[],
+  sectorBenchmarks: SectorBenchmarks | null
 ) {
-  const { financials, valuation, historicals } = companyData;
-  const effectiveArr = financials.arr > 0 ? financials.arr : financials.revenue;
+  const effectiveArr = inputs.arr > 0 ? inputs.arr : inputs.revenue;
   const insights: string[] = [];
+  const inputQualityFlags: string[] = [];
+  const confidenceAdjustments: string[] = [];
 
-  // Implied multiples
+  if (inputs.arr <= 0 && inputs.revenue <= 0) inputQualityFlags.push("No ARR or revenue data");
+  if (inputs.arr <= 0 && inputs.revenue > 0) inputQualityFlags.push("ARR missing — using revenue as proxy");
+  if (inputs.valuation <= 0) inputQualityFlags.push("No valuation data");
+  if (inputs.historicals.length < 2) inputQualityFlags.push("Insufficient historical periods for CAGR");
+  if (inputs.grossMargin <= 0) inputQualityFlags.push("Gross margin missing");
+  if (!sectorBenchmarks || sectorBenchmarks.evRevenueMedian <= 0) {
+    inputQualityFlags.push("No sector benchmark data");
+    confidenceAdjustments.push("Sector-relative scoring unavailable");
+  }
+
   let impliedMultiple: number | null = null;
   let evEbitda: number | null = null;
-  if (valuation > 0 && effectiveArr > 0) impliedMultiple = valuation / effectiveArr;
-  if (valuation > 0 && financials.ebitda > 0) evEbitda = valuation / financials.ebitda;
+  if (inputs.valuation > 0 && effectiveArr > 0) impliedMultiple = inputs.valuation / effectiveArr;
+  if (inputs.valuation > 0 && inputs.ebitda > 0) evEbitda = inputs.valuation / inputs.ebitda;
 
-  // CAGR
   let revenueCAGR: number | null = null;
-  if (historicals.length >= 2) {
-    const sorted = [...historicals].sort((a, b) => a.period.localeCompare(b.period));
+  if (inputs.historicals.length >= 2) {
+    const sorted = [...inputs.historicals].sort((a, b) => a.period.localeCompare(b.period));
     const earlyRev = sorted[0].arr ?? sorted[0].revenue ?? 0;
     const latestRev = sorted[sorted.length - 1].arr ?? sorted[sorted.length - 1].revenue ?? 0;
     const years = parseInt(sorted[sorted.length - 1].period) - parseInt(sorted[0].period);
@@ -85,58 +103,56 @@ function computeScore(
     }
   }
 
-  // YoY growth / Rule of 40
   let yoyGrowthRate: number | null = null;
-  if (companyData.previousArr > 0 && financials.arr > 0) {
-    yoyGrowthRate = (financials.arr - companyData.previousArr) / companyData.previousArr;
+  if (inputs.previousArr > 0 && inputs.arr > 0) {
+    yoyGrowthRate = (inputs.arr - inputs.previousArr) / inputs.previousArr;
   } else if (revenueCAGR !== null) {
     yoyGrowthRate = revenueCAGR;
   }
 
   let ruleOf40: number | null = null;
-  if (yoyGrowthRate !== null && financials.grossMargin > 0) {
-    const profitMargin = effectiveArr > 0 && financials.burnRate !== 0
-      ? (effectiveArr - Math.abs(financials.burnRate) * 12) / effectiveArr
-      : financials.grossMargin - 0.3;
+  if (yoyGrowthRate !== null && inputs.grossMargin > 0) {
+    const profitMargin = effectiveArr > 0 && inputs.burnRate !== 0
+      ? (effectiveArr - Math.abs(inputs.burnRate) * 12) / effectiveArr
+      : inputs.grossMargin - 0.3;
     ruleOf40 = (yoyGrowthRate * 100) + (profitMargin * 100);
   }
 
-  // Forward multiple
   let forwardMultiple: number | null = null;
   const growthForProjection = revenueCAGR ?? yoyGrowthRate;
-  if (valuation > 0 && effectiveArr > 0 && growthForProjection !== null && growthForProjection > 0) {
-    forwardMultiple = valuation / (effectiveArr * Math.pow(1 + growthForProjection, 2));
+  if (inputs.valuation > 0 && effectiveArr > 0 && growthForProjection !== null && growthForProjection > 0) {
+    forwardMultiple = inputs.valuation / (effectiveArr * Math.pow(1 + growthForProjection, 2));
   }
 
-  const sectorMedianEvRevenue = sectorMult?.ev_rev_median ?? null;
-  const sectorMedianEvEbitda = sectorMult?.ev_ebitda_median ?? null;
+  const sectorMedianEvRevenue = sectorBenchmarks?.evRevenueMedian ?? null;
+  const sectorMedianEvEbitda = sectorBenchmarks?.evEbitdaMedian ?? null;
 
   // 1. ARR Score
   let arrScore = 0;
   if (effectiveArr > 0) {
-    arrScore = Math.round(percentileRank(allARR, effectiveArr));
-    if (effectiveArr >= 1e9) { arrScore = Math.min(100, arrScore + 10); insights.push("$1B+ ARR — elite scale"); }
-    else if (effectiveArr >= 1e8) { arrScore = Math.min(100, arrScore + 5); insights.push("$100M+ ARR milestone"); }
+    arrScore = Math.round(percentileRank(peerArrDistribution, effectiveArr));
+    if (effectiveArr >= 1e9) arrScore = Math.min(100, arrScore + 10);
+    else if (effectiveArr >= 1e8) arrScore = Math.min(100, arrScore + 5);
   }
 
   // 2. Valuation Score
   let valuationScore = 50;
-  if (valuation > 0 && effectiveArr > 0) {
-    const multiple = valuation / effectiveArr;
+  if (inputs.valuation > 0 && effectiveArr > 0) {
+    const multiple = inputs.valuation / effectiveArr;
     if (sectorMedianEvRevenue && sectorMedianEvRevenue > 0) {
       const rel = multiple / sectorMedianEvRevenue;
-      if (rel <= 0.5) { valuationScore = 98; insights.push(`Trading at ${Math.round(rel * 100)}% of sector median`); }
+      if (rel <= 0.5) valuationScore = 98;
       else if (rel <= 0.75) valuationScore = 88;
       else if (rel <= 1.0) valuationScore = 74;
       else if (rel <= 1.3) valuationScore = 62;
       else if (rel <= 1.7) valuationScore = 48;
       else if (rel <= 2.5) valuationScore = 32;
-      else { valuationScore = 15; insights.push(`Premium at ${rel.toFixed(1)}x sector median`); }
+      else valuationScore = 15;
     } else {
-      const stageMul = companyData.stage?.toLowerCase().includes('series a') ? 1.5 :
-        companyData.stage?.toLowerCase().includes('series b') ? 1.3 :
-        companyData.stage?.toLowerCase().includes('series c') ? 1.15 :
-        companyData.stage?.toLowerCase().includes('growth') ? 0.9 : 1.0;
+      const stageMul = inputs.stage?.toLowerCase().includes('series a') ? 1.5 :
+        inputs.stage?.toLowerCase().includes('series b') ? 1.3 :
+        inputs.stage?.toLowerCase().includes('series c') ? 1.15 :
+        inputs.stage?.toLowerCase().includes('growth') ? 0.9 : 1.0;
       let adj = multiple / stageMul;
       if (yoyGrowthRate !== null && yoyGrowthRate > 0) adj = adj / Math.min(2.0, 1 + yoyGrowthRate);
       if (adj <= 5) valuationScore = 98; else if (adj <= 10) valuationScore = 88;
@@ -146,12 +162,11 @@ function computeScore(
     }
     if (evEbitda !== null && sectorMedianEvEbitda && sectorMedianEvEbitda > 0) {
       const eRel = evEbitda / sectorMedianEvEbitda;
-      let eScore = eRel <= 0.5 ? 95 : eRel <= 0.75 ? 82 : eRel <= 1.0 ? 68 : eRel <= 1.5 ? 48 : 22;
+      const eScore = eRel <= 0.5 ? 95 : eRel <= 0.75 ? 82 : eRel <= 1.0 ? 68 : eRel <= 1.5 ? 48 : 22;
       valuationScore = Math.round(valuationScore * 0.65 + eScore * 0.35);
     }
     if (forwardMultiple !== null && forwardMultiple < 10) {
       valuationScore = Math.min(100, valuationScore + 8);
-      insights.push(`${forwardMultiple.toFixed(1)}x forward multiple — attractive entry`);
     }
   }
 
@@ -167,22 +182,26 @@ function computeScore(
 
   // 4. Sector Momentum
   let sectorMomentum = 50;
-  if (sectorMult) {
-    const ds = Math.min(100, (sectorMult.deal_count_12m / 5) * 100);
-    const fs = Math.min(100, (sectorMult.funding_count_12m / 10) * 100);
-    const ts = Math.min(100, (sectorMult.ev_rev_count / 8) * 100);
+  if (inputs.sector && sectorBenchmarks) {
+    const ds = Math.min(100, (sectorBenchmarks.dealCount12m / 5) * 100);
+    const fs = Math.min(100, (sectorBenchmarks.fundingCount12m / 10) * 100);
+    const ts = Math.min(100, (sectorBenchmarks.evRevenueCount / 8) * 100);
     sectorMomentum = Math.round(ds * 0.4 + fs * 0.35 + ts * 0.25);
-    if (sectorMomentum >= 70) insights.push(`${companyData.sector} — strong deal activity`);
+  } else if (inputs.sector) {
+    const hot = ['AI/ML', 'Cybersecurity', 'Data Infrastructure', 'Developer Tools', 'Defense Tech', 'Cloud Infrastructure'];
+    const cool = ['Crypto/Web3', 'Consumer'];
+    if (hot.includes(inputs.sector)) sectorMomentum = 75;
+    else if (cool.includes(inputs.sector)) sectorMomentum = 30;
   }
 
-  // 5. Efficiency Score
+  // 5. Efficiency
   let efficiencyScore = 50;
   const scores: number[] = [];
-  if (financials.grossMargin > 0) {
-    scores.push(financials.grossMargin >= 0.85 ? 95 : financials.grossMargin >= 0.75 ? 80 : financials.grossMargin >= 0.65 ? 65 : financials.grossMargin >= 0.50 ? 45 : 25);
+  if (inputs.grossMargin > 0) {
+    scores.push(inputs.grossMargin >= 0.85 ? 95 : inputs.grossMargin >= 0.75 ? 80 : inputs.grossMargin >= 0.65 ? 65 : inputs.grossMargin >= 0.50 ? 45 : 25);
   }
-  if (companyData.employee_count && effectiveArr > 0) {
-    const rpe = effectiveArr / companyData.employee_count;
+  if (inputs.employeeCount && effectiveArr > 0) {
+    const rpe = effectiveArr / inputs.employeeCount;
     scores.push(rpe >= 500000 ? 95 : rpe >= 300000 ? 80 : rpe >= 200000 ? 65 : rpe >= 100000 ? 45 : 15);
   }
   if (ruleOf40 !== null) {
@@ -192,21 +211,21 @@ function computeScore(
 
   // 6. Capital Efficiency
   let capitalEfficiency = 50;
-  if (financials.burnRate !== 0 && effectiveArr > 0) {
-    const bm = Math.abs(financials.burnRate) / (effectiveArr / 12);
-    if (financials.burnRate > 0) capitalEfficiency = 98;
+  if (inputs.burnRate !== 0 && effectiveArr > 0) {
+    const bm = Math.abs(inputs.burnRate) / (effectiveArr / 12);
+    if (inputs.burnRate > 0) capitalEfficiency = 98;
     else if (bm <= 1) capitalEfficiency = 88; else if (bm <= 2) capitalEfficiency = 72;
     else if (bm <= 3) capitalEfficiency = 55; else if (bm <= 5) capitalEfficiency = 38;
     else capitalEfficiency = 18;
   }
-  if (financials.runwayMonths > 0) {
-    const rs = financials.runwayMonths >= 36 ? 90 : financials.runwayMonths >= 24 ? 75 : financials.runwayMonths >= 18 ? 55 : financials.runwayMonths >= 12 ? 35 : 15;
+  if (inputs.runwayMonths > 0) {
+    const rs = inputs.runwayMonths >= 36 ? 90 : inputs.runwayMonths >= 24 ? 75 : inputs.runwayMonths >= 18 ? 55 : inputs.runwayMonths >= 12 ? 35 : 15;
     capitalEfficiency = Math.round((capitalEfficiency + rs) / 2);
   }
 
   const overall = Math.round(
-    arrScore * 0.18 + valuationScore * 0.22 + growthScore * 0.18 +
-    sectorMomentum * 0.12 + efficiencyScore * 0.15 + capitalEfficiency * 0.15
+    arrScore * WEIGHTS.scale + valuationScore * WEIGHTS.valuation + growthScore * WEIGHTS.growth +
+    sectorMomentum * WEIGHTS.sectorMomentum + efficiencyScore * WEIGHTS.efficiency + capitalEfficiency * WEIGHTS.capitalEfficiency
   );
   const { grade, color } = getGrade(overall);
 
@@ -214,15 +233,32 @@ function computeScore(
   else if (overall >= 60) insights.unshift("Solid fundamentals with upside potential");
   else if (overall < 35) insights.unshift("Significant risk factors present");
 
+  const factors = [
+    { factor: "ARR / Revenue Scale", rawScore: arrScore, weight: WEIGHTS.scale, weightedContribution: Math.round(arrScore * WEIGHTS.scale * 100) / 100 },
+    { factor: "Valuation (Sector-Adj)", rawScore: valuationScore, weight: WEIGHTS.valuation, weightedContribution: Math.round(valuationScore * WEIGHTS.valuation * 100) / 100 },
+    { factor: "Growth Trajectory", rawScore: growthScore, weight: WEIGHTS.growth, weightedContribution: Math.round(growthScore * WEIGHTS.growth * 100) / 100 },
+    { factor: "Sector Momentum", rawScore: sectorMomentum, weight: WEIGHTS.sectorMomentum, weightedContribution: Math.round(sectorMomentum * WEIGHTS.sectorMomentum * 100) / 100 },
+    { factor: "Operational Efficiency", rawScore: efficiencyScore, weight: WEIGHTS.efficiency, weightedContribution: Math.round(efficiencyScore * WEIGHTS.efficiency * 100) / 100 },
+    { factor: "Capital Efficiency", rawScore: capitalEfficiency, weight: WEIGHTS.capitalEfficiency, weightedContribution: Math.round(capitalEfficiency * WEIGHTS.capitalEfficiency * 100) / 100 },
+  ];
+
   return {
     overall, arrScore, valuationScore, sectorMomentum, efficiencyScore,
     growthScore, capitalEfficiency, ruleOf40, revenueCAGR, impliedMultiple,
     forwardMultiple, evEbitda, sectorMedianEvRevenue, sectorMedianEvEbitda,
     grade, color, insights: insights.slice(0, 5),
+    explainability: {
+      modelVersion: MODEL_VERSION,
+      weights: { ...WEIGHTS },
+      factors,
+      confidenceAdjustments,
+      inputQualityFlags,
+      benchmarkCohort: { peerCount: peerArrDistribution.length, sectorMedianEvRevenue, sectorMedianEvEbitda },
+    },
   };
 }
 
-// ---------- Edge function handler ----------
+// ─── Edge Function Handler ──────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -230,14 +266,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { companyIds } = await req.json();
+    const { companyIds, snapshot = false, decisionContext } = await req.json();
     if (!companyIds || !Array.isArray(companyIds) || companyIds.length === 0) {
       return new Response(JSON.stringify({ error: "companyIds array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Cap at 50 companies per request
     const ids = companyIds.slice(0, 50);
 
     const supabase = createClient(
@@ -245,7 +280,6 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Batch fetch all needed data in parallel
     const [companiesRes, financialsRes, fundingRes, sectorMultRes, allArrRes] = await Promise.all([
       supabase.from("companies").select("id, name, sector, stage, employee_count").in("id", ids),
       supabase.from("financials").select("company_id, period, arr, revenue, ebitda, gross_margin, burn_rate, runway_months").in("company_id", ids).order("period", { ascending: false }),
@@ -258,33 +292,38 @@ Deno.serve(async (req) => {
     const financials = financialsRes.data ?? [];
     const funding = fundingRes.data ?? [];
     const sectorMultiples = sectorMultRes.data ?? [];
-    
-    // Build global ARR distribution for percentile ranking
+
     const allARR = (allArrRes.data ?? [])
       .map((f: any) => f.arr ?? f.revenue ?? 0)
       .filter((a: number) => a > 0)
       .sort((a: number, b: number) => a - b);
 
-    // Index sector multiples
-    const sectorMultMap: Record<string, SectorMultiples> = {};
-    sectorMultiples.forEach((sm: any) => { sectorMultMap[sm.sector] = sm; });
+    const sectorMultMap: Record<string, SectorBenchmarks> = {};
+    sectorMultiples.forEach((sm: any) => {
+      sectorMultMap[sm.sector] = {
+        evRevenueMedian: sm.ev_rev_median ?? 0,
+        evEbitdaMedian: sm.ev_ebitda_median ?? 0,
+        dealCount12m: sm.deal_count_12m ?? 0,
+        fundingCount12m: sm.funding_count_12m ?? 0,
+        evRevenueCount: sm.ev_rev_count ?? 0,
+      };
+    });
 
-    // Index financials by company (latest first)
     const finByCompany: Record<string, typeof financials> = {};
     financials.forEach(f => {
       if (!finByCompany[f.company_id]) finByCompany[f.company_id] = [];
       finByCompany[f.company_id].push(f);
     });
 
-    // Index funding by company
     const fundByCompany: Record<string, typeof funding> = {};
     funding.forEach(f => {
       if (!fundByCompany[f.company_id]) fundByCompany[f.company_id] = [];
       fundByCompany[f.company_id].push(f);
     });
 
-    // Compute scores
     const results: Record<string, any> = {};
+    const snapshots: any[] = [];
+
     for (const company of companies) {
       const fins = finByCompany[company.id] ?? [];
       const funs = fundByCompany[company.id] ?? [];
@@ -292,26 +331,48 @@ Deno.serve(async (req) => {
       const previous = fins[1];
       const latestRound = funs[0];
 
-      results[company.id] = computeScore(
-        {
-          sector: company.sector,
-          stage: company.stage,
-          employee_count: company.employee_count,
-          valuation: latestRound?.valuation_post ?? 0,
-          financials: {
-            arr: latest?.arr ?? 0,
-            revenue: latest?.revenue ?? 0,
-            ebitda: latest?.ebitda ?? 0,
-            grossMargin: latest?.gross_margin ?? 0,
-            burnRate: latest?.burn_rate ?? 0,
-            runwayMonths: latest?.runway_months ? Number(latest.runway_months) : 0,
+      const companyInputs: CompanyInputs = {
+        sector: company.sector,
+        stage: company.stage,
+        employeeCount: company.employee_count,
+        arr: latest?.arr ?? 0,
+        revenue: latest?.revenue ?? 0,
+        ebitda: latest?.ebitda ?? 0,
+        valuation: latestRound?.valuation_post ?? 0,
+        grossMargin: latest?.gross_margin ?? 0,
+        burnRate: latest?.burn_rate ?? 0,
+        runwayMonths: latest?.runway_months ? Number(latest.runway_months) : 0,
+        previousArr: previous?.arr ?? 0,
+        historicals: fins.map(f => ({ period: f.period, arr: f.arr, revenue: f.revenue })),
+      };
+
+      const benchmarks = company.sector ? sectorMultMap[company.sector] ?? null : null;
+      const result = computeValuationScore(companyInputs, allARR, benchmarks);
+      results[company.id] = result;
+
+      if (snapshot) {
+        snapshots.push({
+          company_id: company.id,
+          model_version: MODEL_VERSION,
+          model_config: { weights: WEIGHTS, gradeMap: GRADE_MAP },
+          inputs: companyInputs,
+          outputs: {
+            overall: result.overall, grade: result.grade, arrScore: result.arrScore,
+            valuationScore: result.valuationScore, growthScore: result.growthScore,
+            sectorMomentum: result.sectorMomentum, efficiencyScore: result.efficiencyScore,
+            capitalEfficiency: result.capitalEfficiency,
           },
-          previousArr: previous?.arr ?? 0,
-          historicals: fins.map(f => ({ period: f.period, arr: f.arr, revenue: f.revenue })),
-        },
-        allARR,
-        company.sector ? sectorMultMap[company.sector] ?? null : null
-      );
+          explainability: result.explainability,
+          triggered_by: decisionContext ? "ic_decision" : "api",
+          decision_context: decisionContext ?? null,
+        });
+      }
+    }
+
+    // Persist snapshots if requested
+    if (snapshots.length > 0) {
+      const { error: snapErr } = await supabase.from("score_snapshots").insert(snapshots);
+      if (snapErr) console.error("Snapshot persistence error:", snapErr);
     }
 
     return new Response(JSON.stringify(results), {

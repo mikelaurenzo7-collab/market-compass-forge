@@ -2233,6 +2233,53 @@ export type Database = {
         }
         Relationships: []
       }
+      score_snapshots: {
+        Row: {
+          company_id: string
+          created_at: string
+          decision_context: string | null
+          explainability: Json
+          id: string
+          inputs: Json
+          model_config: Json
+          model_version: string
+          outputs: Json
+          triggered_by: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          decision_context?: string | null
+          explainability?: Json
+          id?: string
+          inputs?: Json
+          model_config?: Json
+          model_version?: string
+          outputs?: Json
+          triggered_by?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          decision_context?: string | null
+          explainability?: Json
+          id?: string
+          inputs?: Json
+          model_config?: Json
+          model_version?: string
+          outputs?: Json
+          triggered_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "score_snapshots_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sec_filings: {
         Row: {
           accession_number: string
