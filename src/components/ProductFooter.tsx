@@ -8,6 +8,7 @@ const ProductFooter = () => {
     <footer className="border-t border-border bg-secondary/30 text-xs text-muted-foreground p-4 mt-8">
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-2">
+          <span className="text-[hsl(var(--brand-purple))] font-bold">🍇</span>
           <span>Grapevine • Built with data integration</span>
           <span className="text-primary">●</span>
           <span>Real sources: Web (Firecrawl), News (Perplexity)</span>

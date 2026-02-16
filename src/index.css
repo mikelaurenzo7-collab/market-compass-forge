@@ -20,6 +20,10 @@
     --primary: 145 100% 39%;
     --primary-foreground: 0 0% 0%;
 
+    /* Brand: Majestic Purple */
+    --brand-purple: 270 60% 55%;
+    --brand-purple-foreground: 0 0% 100%;
+
     /* Surfaces */
     --secondary: 240 18% 10%;
     --secondary-foreground: 240 8% 70%;
@@ -27,8 +31,8 @@
     --muted: 240 15% 8%;
     --muted-foreground: 240 8% 45%;
 
-    --accent: 240 18% 12%;
-    --accent-foreground: 145 100% 39%;
+    --accent: 270 40% 14%;
+    --accent-foreground: 270 60% 55%;
 
     /* Semantic */
     --destructive: 0 72% 55%;
@@ -53,16 +57,17 @@
     --chart-3: 45 100% 63%;
     --chart-4: 280 65% 60%;
     --chart-5: 0 72% 55%;
+    --chart-6: 270 60% 55%;
 
     /* Sidebar */
     --sidebar-background: 230 25% 3%;
     --sidebar-foreground: 240 8% 55%;
     --sidebar-primary: 145 100% 39%;
     --sidebar-primary-foreground: 0 0% 0%;
-    --sidebar-accent: 240 18% 10%;
+    --sidebar-accent: 270 30% 12%;
     --sidebar-accent-foreground: 240 10% 91%;
     --sidebar-border: 240 18% 10%;
-    --sidebar-ring: 145 100% 39%;
+    --sidebar-ring: 270 60% 55%;
 
     /* Typography */
     --font-sans: 'Inter', system-ui, sans-serif;
@@ -142,10 +147,10 @@
   }
 
   .glass-premium {
-    background: linear-gradient(135deg, hsl(var(--card) / 0.7) 0%, hsl(var(--card) / 0.4) 100%);
+    background: linear-gradient(135deg, hsl(var(--card) / 0.7) 0%, hsl(270 60% 55% / 0.04) 50%, hsl(var(--card) / 0.4) 100%);
     backdrop-filter: blur(24px) saturate(1.8);
     -webkit-backdrop-filter: blur(24px) saturate(1.8);
-    border: 1px solid hsl(var(--primary) / 0.08);
+    border: 1px solid hsl(270 60% 55% / 0.08);
     box-shadow: 
       0 0 0 1px hsl(var(--border) / 0.3),
       0 8px 32px -8px hsl(0 0% 0% / 0.4),
@@ -173,8 +178,8 @@
     background: linear-gradient(
       135deg,
       hsl(var(--primary) / 0.1) 0%,
-      hsl(var(--chart-2) / 0.08) 33%,
-      hsl(var(--chart-4) / 0.08) 66%,
+      hsl(var(--brand-purple) / 0.1) 33%,
+      hsl(var(--chart-2) / 0.08) 66%,
       hsl(var(--primary) / 0.1) 100%
     );
     background-size: 300% 300%;

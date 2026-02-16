@@ -152,8 +152,8 @@ const Auth = () => {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm space-y-8">
           <div className="text-center space-y-2">
-            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto glow-primary">
-              <Zap className="h-6 w-6 text-primary-foreground" />
+            <div className="h-12 w-12 rounded-xl bg-[hsl(var(--brand-purple))] flex items-center justify-center mx-auto shadow-[0_0_20px_-5px_hsl(var(--brand-purple)/0.4)]">
+              <span className="text-lg font-bold text-white">GV</span>
             </div>
             <h1 className="text-xl font-semibold text-foreground">Reset Password</h1>
             <p className="text-sm text-muted-foreground">Enter your email to receive a reset link</p>
@@ -217,8 +217,8 @@ const Auth = () => {
           <ArrowLeft className="h-3 w-3" /> Back to home
         </Link>
         <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto glow-primary">
-            <Zap className="h-6 w-6 text-primary-foreground" />
+          <div className="h-12 w-12 rounded-xl bg-[hsl(var(--brand-purple))] flex items-center justify-center mx-auto shadow-[0_0_20px_-5px_hsl(var(--brand-purple)/0.4)]">
+            <span className="text-lg font-bold text-white">GV</span>
           </div>
           <h1 className="text-xl font-semibold text-foreground">Grapevine</h1>
           <p className="text-sm text-muted-foreground">

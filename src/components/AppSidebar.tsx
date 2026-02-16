@@ -24,7 +24,6 @@ import {
   LogOut,
   FileText,
   Search,
-  BarChart3,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -43,7 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Command Center",
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-      { id: "metrics", label: "Platform Metrics", icon: BarChart3, path: "/metrics" },
+      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
     ],
   },
   {
@@ -60,14 +59,13 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
       { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
       { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
-      { id: "screening", label: "Screening", icon: SlidersHorizontal, path: "/screening" },
-      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
     ],
   },
   {
     label: "Intelligence",
     items: [
       { id: "research", label: "Research & AI", icon: Search, path: "/research" },
+      { id: "screening", label: "Screening", icon: SlidersHorizontal, path: "/screening" },
       { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
       { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
       { id: "documents", label: "Document Analyzer", icon: FileText, path: "/document-analyzer" },
@@ -153,8 +151,8 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     <aside className={`${collapsed ? "w-14" : "w-56"} shrink-0 border-r border-border bg-sidebar flex flex-col h-screen sticky top-0 transition-all duration-200`}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border">
-        <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center shrink-0 shadow-[0_0_12px_hsl(var(--primary)/0.3)]">
-          <span className="text-xs font-bold text-primary-foreground">GV</span>
+        <div className="h-8 w-8 rounded-md bg-grape flex items-center justify-center shrink-0 shadow-[0_0_12px_hsl(var(--brand-purple)/0.4)]">
+          <span className="text-xs font-bold text-grape-foreground">GV</span>
         </div>
         {!collapsed && (
           <span className="text-sm font-semibold text-foreground tracking-tight">Grapevine</span>
@@ -167,11 +165,11 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
           <div key={group.label}>
             {/* Glow separator between groups */}
             {gi > 0 && (
-              <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+              <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-grape/20 to-transparent" />
             )}
             {!collapsed && (
               <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-                <span className="h-1 w-1 rounded-full bg-primary/50" />
+                <span className="h-1 w-1 rounded-full bg-grape/60" />
                 <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
                   {group.label}
                 </p>
@@ -179,7 +177,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
             )}
             {collapsed && gi > 0 && (
               <div className="flex justify-center py-1">
-                <span className="h-1 w-1 rounded-full bg-primary/40" />
+                <span className="h-1 w-1 rounded-full bg-grape/50" />
               </div>
             )}
             <div className="space-y-0.5">

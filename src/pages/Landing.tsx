@@ -62,9 +62,10 @@ const Landing = () => {
     <div className="min-h-screen bg-background text-foreground overflow-hidden flex flex-col items-center justify-center relative">
       {/* Layered ambient background */}
       <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,hsl(var(--primary)/0.12),transparent)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_80%,hsl(var(--primary)/0.06),transparent)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_20%_70%,hsl(var(--primary)/0.04),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,hsl(var(--brand-purple)/0.14),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_80%,hsl(var(--primary)/0.08),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_40%_30%_at_20%_70%,hsl(var(--brand-purple)/0.06),transparent)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_30%_30%,hsl(var(--primary)/0.05),transparent)]" />
         <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
       </div>
 
@@ -79,8 +80,8 @@ const Landing = () => {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-6 md:px-12 py-5 max-w-6xl mx-auto w-full">
         <div className="flex items-center gap-3 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.3s]">
-          <div className="h-9 w-9 rounded-lg bg-primary flex items-center justify-center shadow-lg shadow-primary/25">
-            <span className="text-sm font-bold text-primary-foreground">GV</span>
+          <div className="h-9 w-9 rounded-lg bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-lg shadow-[hsl(var(--brand-purple)/0.3)]">
+            <span className="text-sm font-bold text-white">GV</span>
           </div>
           <span className="text-lg font-semibold tracking-tight">Grapevine</span>
           <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-warning/30 text-warning bg-warning/5">
@@ -105,10 +106,11 @@ const Landing = () => {
         {/* Logo mark */}
         <motion.div custom={0} variants={fadeUp}>
           <div className="relative">
-            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-primary flex items-center justify-center shadow-2xl shadow-primary/30 mx-auto">
-              <span className="text-4xl sm:text-5xl font-black text-primary-foreground tracking-tight">GV</span>
+            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-2xl shadow-[hsl(var(--brand-purple)/0.4)] mx-auto">
+              <span className="text-4xl sm:text-5xl font-black text-white tracking-tight">GV</span>
             </div>
-            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-primary/20 blur-xl absolute top-4 left-1/2 -translate-x-1/2 -z-10" />
+            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-[hsl(var(--brand-purple)/0.25)] blur-xl absolute top-4 left-1/2 -translate-x-1/2 -z-10" />
+            <div className="h-24 w-24 sm:h-32 sm:w-32 rounded-2xl bg-primary/15 blur-2xl absolute top-6 left-1/2 -translate-x-1/2 -z-20" />
           </div>
         </motion.div>
 
@@ -132,7 +134,7 @@ const Landing = () => {
 
         {/* Beta badge */}
         <motion.div custom={3} variants={fadeUp}>
-          <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-warning/30 text-warning bg-warning/5 backdrop-blur-sm shadow-lg shadow-warning/10">
+          <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-[hsl(var(--brand-purple)/0.3)] text-[hsl(var(--brand-purple))] bg-[hsl(var(--brand-purple)/0.06)] backdrop-blur-sm shadow-lg shadow-[hsl(var(--brand-purple)/0.1)]">
             <FlaskConical className="h-4 w-4" />
             Beta — Building in Public
           </span>
@@ -184,7 +186,7 @@ const Landing = () => {
               </Select>
               <button
                 type="submit"
-                className="w-full h-11 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30"
+                className="w-full h-11 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[hsl(var(--brand-purple)/0.25)] hover:shadow-xl hover:shadow-[hsl(var(--brand-purple)/0.35)]"
                 disabled={loading || !form.name || !form.email}
               >
                 <Mail className="h-4 w-4" />
@@ -199,7 +201,7 @@ const Landing = () => {
           <p className="text-[10px] text-muted-foreground/50 text-center mb-2 uppercase tracking-widest">Beta Platform Metrics</p>
           <div className="grid grid-cols-4 gap-3 text-center">
             {[
-              { value: "150+", label: "Companies Tracked" },
+              { value: "7,800+", label: "Companies Tracked" },
               { value: "45+", label: "Distressed Assets" },
               { value: "AI", label: "Screening (Beta)" },
               { value: "REST", label: "API Access" },

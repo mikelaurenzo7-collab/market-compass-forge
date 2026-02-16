@@ -282,11 +282,12 @@ export const useSearchInvestors = (query: string) =>
 
 export const useCompaniesWithFinancialsAll = () =>
   useQuery({
-    queryKey: ["companies-with-financials", "all"],
+    queryKey: ["companies-with-financials", "private"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("companies")
         .select("id, name, sector, stage, hq_country, employee_count, founded_year, domain, market_type")
+        .or("market_type.eq.private,market_type.is.null")
         .order("name");
       if (error) throw error;
 
