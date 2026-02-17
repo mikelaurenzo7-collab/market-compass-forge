@@ -25,6 +25,7 @@ import {
   GitBranch,
   Calculator,
   Scale,
+  Zap,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -54,6 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "recommended", label: "AI Matcher", icon: Sparkles, path: "/deals/recommended" },
       { id: "valuations", label: "Valuations", icon: Calculator, path: "/valuations" },
       { id: "decisions", label: "Decisions", icon: Scale, path: "/decisions" },
+      { id: "automations", label: "Automations", icon: Zap, path: "/automations" },
     ],
   },
   {
@@ -115,6 +117,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     if (path === "/network") return location.pathname === "/network";
     if (path === "/valuations") return location.pathname === "/valuations";
     if (path === "/decisions") return location.pathname === "/decisions";
+    if (path === "/automations") return location.pathname === "/automations";
     // For all others, prefix match
     return location.pathname.startsWith(path);
   };

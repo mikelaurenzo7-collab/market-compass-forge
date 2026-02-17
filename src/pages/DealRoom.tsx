@@ -48,6 +48,7 @@ import { useAlphaSignals } from "@/hooks/useAlphaSignals";
 import { useResearchThreads } from "@/hooks/useResearchThreads";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useCalendarSync } from "@/hooks/useCalendarSync";
+import { useAutomations } from "@/hooks/useAutomations";
 
 // ── Interest State Machine ──────────────────────────────────────────────
 const INTEREST_STATES = [
@@ -946,15 +947,28 @@ const DealRoom = () => {
   const queryClient = useQueryClient();
   const { data: deal, isLoading, error } = useDealRoom(id);
   const [activeTab, setActiveTab] = useState("summary");
+  const { executeRules } = useAutomations();
 
   const updateStage = useMutation({
     mutationFn: async (newStage: string) => {
       const { error } = await supabase.from("deal_pipeline").update({ stage: newStage }).eq("id", id!);
       if (error) throw error;
+      return newStage;
     },
-    onSuccess: () => {
+    onSuccess: (newStage) => {
       queryClient.invalidateQueries({ queryKey: ["deal-room", id] });
       toast.success("Deal state updated");
+
+      // Fire automation rules on stage change
+      executeRules("deal_stage_change", {
+        deal_id: id,
+        new_stage: newStage,
+        previous_stage: deal?.stage,
+        company_name: deal?.companies?.name ?? "Unknown",
+        sector: deal?.companies?.sector ?? "",
+      }).then((count) => {
+        if (count > 0) toast.info(`${count} automation${count > 1 ? "s" : ""} triggered`);
+      });
     },
     onError: () => toast.error("Failed to update state"),
   });

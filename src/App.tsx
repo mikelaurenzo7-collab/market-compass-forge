@@ -40,6 +40,7 @@ import DataRoom from "./pages/DataRoom";
 // Deal Engine (repositioned)
 import Valuations from "./pages/Valuations";
 import Decisions from "./pages/Decisions";
+import Automations from "./pages/Automations";
 
 // Utility
 import Alerts from "./pages/Alerts";
@@ -113,6 +114,7 @@ const App = () => (
               {/* ===== DEAL ENGINE (repositioned, still accessible) ===== */}
               <Route path="/valuations" element={<Valuations />} />
               <Route path="/decisions" element={<Decisions />} />
+              <Route path="/automations" element={<Automations />} />
 
               {/* ===== UTILITY ===== */}
               <Route path="/alerts" element={<Alerts />} />
