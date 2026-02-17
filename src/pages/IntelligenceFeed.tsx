@@ -135,8 +135,8 @@ const IntelligenceFeed = () => {
             <span className="text-[10px] text-muted-foreground hidden sm:block">Updated {lastUpdated}</span>
           )}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border">
-            <span className="h-2 w-2 rounded-full bg-success animate-pulse" />
-            <span className="text-[10px] font-mono text-success uppercase">Live</span>
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="text-[10px] font-mono text-primary uppercase">Latest</span>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono">
             <span className="text-success">{sentimentCounts.bullish}↑</span>

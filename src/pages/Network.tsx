@@ -5,18 +5,18 @@ import {
   ShieldCheck,
   Star,
   Handshake,
-  ArrowRight,
   Search,
   Send,
   UserPlus,
-  ChevronRight,
-  TrendingUp,
-  CheckCircle2,
   Clock,
   GitBranch,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import PageTransition from "@/components/PageTransition";
+import RelationshipGraph from "@/components/RelationshipGraph";
 
 // ── Placeholder contacts data ───────────────────────────────────────────
 const CONTACTS = [
@@ -202,7 +202,7 @@ const ContactCard = ({ contact, onRequestIntro }: { contact: typeof CONTACTS[0];
           <Send className="h-3 w-3" /> Request Intro
         </button>
         <button
-          onClick={() => {}}
+          onClick={() => toast.info("Contact profiles coming soon")}
           className="h-7 px-2 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
         >
           Profile
@@ -251,8 +251,26 @@ const NetworkStats = () => (
 // ── Main ────────────────────────────────────────────────────────────────
 const Network = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "verified" | "high-trust">("all");
+
+  const handleRequestIntro = async (contact: typeof CONTACTS[0]) => {
+    if (!user) return;
+    try {
+      const { error } = await supabase.from("intro_requests").insert({
+        user_id: user.id,
+        entity_type: "contact",
+        entity_id: contact.id,
+        entity_name: contact.name,
+        message: `Requesting introduction to ${contact.name} at ${contact.firm}`,
+      });
+      if (error) throw error;
+      toast.success("Intro request submitted", { description: `We'll facilitate an introduction to ${contact.name}.` });
+    } catch {
+      toast.error("Failed to submit intro request");
+    }
+  };
 
   const filteredContacts = CONTACTS.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -277,13 +295,21 @@ const Network = () => {
               Your trust graph. Verified connections, intro routing, and relationship signals.
             </p>
           </div>
-          <button className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
+          <button
+            onClick={() => toast.info("Contact import coming soon", { description: "You'll be able to import contacts from LinkedIn and CRM." })}
+            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+          >
             <UserPlus className="h-4 w-4" /> Add Contact
           </button>
         </div>
 
         {/* Stats */}
         <NetworkStats />
+
+        {/* Relationship Graph */}
+        <div className="rounded-lg border border-border bg-card overflow-hidden">
+          <RelationshipGraph />
+        </div>
 
         {/* Pending Intros */}
         {PENDING_INTROS.length > 0 && (
@@ -360,7 +386,7 @@ const Network = () => {
             <ContactCard
               key={contact.id}
               contact={contact}
-              onRequestIntro={() => {}}
+              onRequestIntro={() => handleRequestIntro(contact)}
             />
           ))}
         </motion.div>

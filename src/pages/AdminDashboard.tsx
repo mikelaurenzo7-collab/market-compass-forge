@@ -132,7 +132,7 @@ const AdminDashboard = () => {
   }
 
   if (role !== "admin" && role !== "partner") {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/deals" replace />;
   }
 
   const totalPages = Math.ceil((signups?.total ?? 0) / pageSize);

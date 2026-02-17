@@ -33,7 +33,7 @@ const steps = [
     title: "Generate your AI briefing",
     description: "Get an AI-synthesized daily digest of pipeline changes, news sentiment, and macro shifts — delivered to your command center.",
     cta: "View Briefing",
-    path: "/dashboard",
+    path: "/deals",
     benefit: "Save 45 min/day on market monitoring",
   },
   {

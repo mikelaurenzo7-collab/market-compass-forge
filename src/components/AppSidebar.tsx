@@ -105,8 +105,11 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const isAdminOrPartner = userRole === "admin" || userRole === "partner";
 
   const isActive = (path: string) => {
-    // Exact match for top-level sections that have sub-routes
-    if (path === "/deals") return location.pathname === "/deals";
+    if (path === "/deals") {
+      // Highlight for /deals and /deals/:id (Deal Room), but NOT /deals/flow or /deals/recommended
+      return location.pathname === "/deals" ||
+        (location.pathname.startsWith("/deals/") && location.pathname !== "/deals/flow" && location.pathname !== "/deals/recommended");
+    }
     if (path === "/deals/flow") return location.pathname === "/deals/flow";
     if (path === "/deals/recommended") return location.pathname === "/deals/recommended";
     if (path === "/network") return location.pathname === "/network";

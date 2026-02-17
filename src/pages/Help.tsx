@@ -16,7 +16,7 @@ const contactSchema = z.object({
 const FAQ_ITEMS = [
   {
     q: "What is Grapevine?",
-    a: "Grapevine is an AI-powered private market intelligence platform for PE firms, family offices, and growth equity teams. It combines company screening, AI research, valuation tools, and deal pipeline management in one command center.",
+    a: "Grapevine is the operating system for private deals — built for PE firms, family offices, and growth equity teams. It combines company screening, AI research, valuation tools, and deal pipeline management in a unified Deal Room OS.",
   },
   {
     q: "Where does the data come from?",
@@ -28,7 +28,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "How does the deal pipeline work?",
-    a: "Add any company to your pipeline from the Companies page. Track deals through stages: Sourced → Screening → Due Diligence → IC Review → Term Sheet → Closed. Add notes, collaborate with team members, and log decisions.",
+    a: "Add any company to your pipeline from the Companies page. Track deals through stages: Watching → Interested → Diligencing → Soft Commit → Committed → Passed. Add notes, collaborate with team members, and log decisions.",
   },
   {
     q: "Is my data secure?",

@@ -194,10 +194,10 @@ const Landing = () => {
           <motion.div custom={2} variants={fadeUp} className="w-full max-w-lg">
             <div className="grid grid-cols-4 gap-3">
               {[
-                { value: formatCurrency(metrics?.totalDealValue ?? 0), label: "Deal Value Tracked", icon: BarChart3 },
-                { value: String(liveCounts?.companiesCount ?? 0), label: "Private Companies", icon: Briefcase },
-                { value: String(liveCounts?.distressedCount ?? 0), label: "Distressed Alerts", icon: Target },
-                { value: String(metrics?.totalRounds ?? 0), label: "Funding Rounds", icon: Globe },
+                { value: metrics?.totalDealValue ? formatCurrency(metrics.totalDealValue) : "—", label: "Deal Value Tracked", icon: BarChart3 },
+                { value: liveCounts?.companiesCount ? String(liveCounts.companiesCount) : "—", label: "Private Companies", icon: Briefcase },
+                { value: liveCounts?.distressedCount ? String(liveCounts.distressedCount) : "—", label: "Distressed Alerts", icon: Target },
+                { value: metrics?.totalRounds ? String(metrics.totalRounds) : "—", label: "Funding Rounds", icon: Globe },
               ].map((s) => (
                 <div key={s.label} className="rounded-lg border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-center space-y-1">
                   <s.icon className="h-3.5 w-3.5 text-primary mx-auto" />
@@ -303,7 +303,7 @@ const Landing = () => {
             { step: "02", label: "Diligence", desc: "AI research, investment memos, and structured data room" },
             { step: "03", label: "Coordinate", desc: "Collaborate in verified rooms with trusted co-investors" },
             { step: "04", label: "Allocate", desc: "Soft circles, IC workflow, and close checklist" },
-            { step: "05", label: "Report", desc: "Portfolio tracking with MOIC, IRR, and benchmarking" },
+            { step: "05", label: "Report", desc: "Portfolio tracking with MOIC, allocation, and benchmarking" },
           ].map((s, i) => (
             <motion.div
               key={s.step}

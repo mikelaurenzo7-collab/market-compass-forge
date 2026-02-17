@@ -20,9 +20,10 @@ function formatCurrency(val: number) {
   return `$${val.toFixed(2)}`;
 }
 
-function getCurrentPrice(pos: PortfolioPosition): number | null {
-  if (pos.latest_valuation) return Number(pos.latest_valuation) / 1e6;
-  if (pos.funding_rounds?.[0]?.valuation_post) return Number(pos.funding_rounds[0].valuation_post) / 1e6;
+function getCurrentPrice(_pos: PortfolioPosition): number | null {
+  // Company-level valuations (latest_valuation, valuation_post) cannot be compared
+  // to per-unit entry_price without shares-outstanding data. Return null to fall
+  // back to cost basis until per-share pricing is wired.
   return null;
 }
 
@@ -49,6 +50,9 @@ const Portfolio = () => {
   const [showAddPosition, setShowAddPosition] = useState(false);
   const [showBenchmark, setShowBenchmark] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showCreateInput, setShowCreateInput] = useState(false);
+  const [newPortfolioName, setNewPortfolioName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [newPos, setNewPos] = useState({ company_id: "", shares: "", entry_price: "", entry_date: new Date().toISOString().split("T")[0], notes: "" });
 
   const selectedId = activePortfolioId ?? portfolios?.[0]?.id ?? null;
@@ -103,8 +107,13 @@ const Portfolio = () => {
   }, [positions]);
 
   const handleCreatePortfolio = () => {
-    const name = prompt("Portfolio name:");
-    if (name?.trim()) createPortfolio.mutate(name.trim());
+    if (!newPortfolioName.trim()) {
+      setShowCreateInput(true);
+      return;
+    }
+    createPortfolio.mutate(newPortfolioName.trim());
+    setNewPortfolioName("");
+    setShowCreateInput(false);
   };
 
   const handleAddPosition = () => {
@@ -157,15 +166,39 @@ const Portfolio = () => {
               <BarChart3 className="h-4 w-4" /> Benchmark
             </button>
           )}
-          <button onClick={handleCreatePortfolio} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
-            <Plus className="h-4 w-4" /> New Portfolio
-          </button>
+          {showCreateInput ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Portfolio name..."
+                value={newPortfolioName}
+                onChange={(e) => setNewPortfolioName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCreatePortfolio(); if (e.key === "Escape") { setShowCreateInput(false); setNewPortfolioName(""); } }}
+                className="h-9 w-40 px-3 rounded-md border border-border bg-card text-sm text-foreground"
+                autoFocus
+              />
+              <button onClick={handleCreatePortfolio} className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">Create</button>
+              <button onClick={() => { setShowCreateInput(false); setNewPortfolioName(""); }} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+            </div>
+          ) : (
+            <button onClick={() => setShowCreateInput(true)} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
+              <Plus className="h-4 w-4" /> New Portfolio
+            </button>
+          )}
           {selectedId && (
             <button
-              onClick={() => { if (confirm("Delete this portfolio and all positions?")) deletePortfolio.mutate(selectedId); }}
-              className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={() => {
+                if (confirmDelete) {
+                  deletePortfolio.mutate(selectedId);
+                  setConfirmDelete(false);
+                } else {
+                  setConfirmDelete(true);
+                  setTimeout(() => setConfirmDelete(false), 3000);
+                }
+              }}
+              className={`h-9 px-3 rounded-md border text-sm transition-colors ${confirmDelete ? "border-destructive bg-destructive/10 text-destructive" : "border-border text-muted-foreground hover:text-destructive hover:bg-destructive/10"}`}
             >
-              <Trash2 className="h-4 w-4" />
+              {confirmDelete ? "Confirm Delete" : <Trash2 className="h-4 w-4" />}
             </button>
           )}
         </div>

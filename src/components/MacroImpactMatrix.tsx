@@ -116,7 +116,7 @@ const MacroImpactMatrix = () => {
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
           <CardTitle className="text-sm font-semibold">Macro Impact Matrix</CardTitle>
-          <span className="text-[9px] text-muted-foreground ml-auto font-mono">AI-powered cross-asset correlation</span>
+          <span className="text-[9px] text-muted-foreground ml-auto font-mono">Macro-driven cross-asset correlation</span>
         </div>
         {macroSummary && (
           <p className="text-[11px] text-muted-foreground mt-1">{macroSummary}</p>

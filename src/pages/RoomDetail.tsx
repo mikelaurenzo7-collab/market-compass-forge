@@ -12,10 +12,10 @@ import {
   UserPlus,
   ShieldCheck,
   Star,
-  CheckCircle2,
   ExternalLink,
   TrendingUp,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PageTransition from "@/components/PageTransition";
 
@@ -119,32 +119,43 @@ const ROOMS_DATA: Record<string, any> = {
 };
 
 // ── Feed Tab ────────────────────────────────────────────────────────────
-const FeedTab = ({ feed }: { feed: any[] }) => (
-  <div className="space-y-3">
-    {feed.map((item) => (
-      <div key={item.id} className="rounded-lg border border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-medium text-foreground">{item.author}</span>
-            {item.verified && <ShieldCheck className="h-3 w-3 text-primary" />}
+const FeedTab = ({ feed }: { feed: any[] }) => {
+  const [message, setMessage] = useState("");
+  const handleSend = () => {
+    if (!message.trim()) return;
+    toast.success("Message sent", { description: "Room messaging is in preview." });
+    setMessage("");
+  };
+  return (
+    <div className="space-y-3">
+      {feed.map((item) => (
+        <div key={item.id} className="rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-foreground">{item.author}</span>
+              {item.verified && <ShieldCheck className="h-3 w-3 text-primary" />}
+            </div>
+            <span className="text-[10px] text-muted-foreground font-mono">{item.time}</span>
           </div>
-          <span className="text-[10px] text-muted-foreground font-mono">{item.time}</span>
+          <p className="text-sm text-muted-foreground leading-relaxed">{item.content}</p>
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">{item.content}</p>
+      ))}
+      <div className="flex gap-2 mt-4">
+        <input
+          type="text"
+          placeholder="Share an update with the room..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+          className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        <button onClick={handleSend} className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
+          <Send className="h-4 w-4" />
+        </button>
       </div>
-    ))}
-    <div className="flex gap-2 mt-4">
-      <input
-        type="text"
-        placeholder="Share an update with the room..."
-        className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-      />
-      <button className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
-        <Send className="h-4 w-4" />
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 // ── Active Deals Tab ────────────────────────────────────────────────────
 const STAGE_COLORS: Record<string, string> = {
@@ -223,7 +234,10 @@ const MembersTab = ({ members }: { members: any[] }) => (
         )}
       </div>
     ))}
-    <button className="w-full rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground hover:text-foreground hover:border-primary/20 transition-all flex items-center justify-center gap-2">
+    <button
+      onClick={() => toast.info("Member invitations coming soon")}
+      className="w-full rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground hover:text-foreground hover:border-primary/20 transition-all flex items-center justify-center gap-2"
+    >
       <UserPlus className="h-4 w-4" /> Invite Member
     </button>
   </div>
@@ -235,7 +249,10 @@ const EventsTab = () => (
     <Calendar className="h-8 w-8 mx-auto mb-3 text-muted-foreground/20" />
     <p className="text-sm font-medium text-foreground">No upcoming events</p>
     <p className="text-xs mt-1">Schedule IC reviews, deal presentations, and group calls.</p>
-    <button className="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+    <button
+      onClick={() => toast.info("Scheduling coming soon", { description: "IC reviews, deal presentations, and group calls." })}
+      className="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+    >
       Schedule Event
     </button>
   </div>
@@ -310,7 +327,10 @@ const RoomDetail = () => {
               <p className="text-xs text-muted-foreground mt-2 max-w-xl leading-relaxed">{room.description}</p>
             )}
           </div>
-          <button className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
+          <button
+            onClick={() => toast.info("Invitations coming soon", { description: "You'll be able to invite verified contacts to this room." })}
+            className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+          >
             <UserPlus className="h-3.5 w-3.5" /> Invite
           </button>
         </div>

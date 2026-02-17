@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 
 const PAGE_CONTEXT: Record<string, string> = {
-  "/dashboard": "the main dashboard showing market intelligence, deal flow, and portfolio metrics",
+  "/deals": "the deals overview showing pipeline status, active deals, and AI matches",
   "/companies": "the private companies database with valuations, funding rounds, and sector analysis",
   "/deals": "the deal pipeline showing sourced, screening, and due diligence stage deals",
   "/valuations": "the valuation tools including DCF calculator, comp tables, and football field charts",

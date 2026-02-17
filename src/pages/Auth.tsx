@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Zap, Mail, Lock, AlertCircle, Loader2, ArrowLeft, Check, X } from "lucide-react";
+import { Mail, Lock, AlertCircle, Loader2, ArrowLeft, Check, X } from "lucide-react";
 import { z } from "zod";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -85,12 +85,14 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as any)?.from || "/deals";
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, from]);
 
   if (user) return null;
 
@@ -237,7 +239,7 @@ const Auth = () => {
           </div>
           <h1 className="text-xl font-semibold text-foreground">Grapevine</h1>
           <p className="text-sm text-muted-foreground">
-            Private market intelligence that moves faster than your competition
+            The operating system for private deals
           </p>
         </div>
 
@@ -296,6 +298,10 @@ const Auth = () => {
             </div>
           </div>
 
+          {isSignUp && password && (
+            <PasswordStrengthMeter password={password} />
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -305,10 +311,6 @@ const Auth = () => {
             {isSignUp ? "Create Account" : "Sign In"}
           </button>
         </form>
-
-        {isSignUp && password && (
-          <PasswordStrengthMeter password={password} />
-        )}
 
         <div className="text-center space-y-2">
           <p className="text-xs text-muted-foreground">

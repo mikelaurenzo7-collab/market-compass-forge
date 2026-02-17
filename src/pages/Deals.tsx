@@ -207,6 +207,13 @@ const Deals = () => {
                             >
                               <ExternalLink className="h-3 w-3" />
                             </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setWorkspaceDeal({ id: deal.id, companyId: deal.company_id, companyName: deal.companies?.name ?? "Unknown" }); }}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-chart-4/10 text-muted-foreground hover:text-chart-4 transition-all"
+                              title="IC Workspace"
+                            >
+                              <MessageSquare className="h-3 w-3" />
+                            </button>
                           </div>
                         </div>
                       ))}

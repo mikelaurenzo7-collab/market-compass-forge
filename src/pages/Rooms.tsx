@@ -14,6 +14,7 @@ import {
   Clock,
   TrendingUp,
 } from "lucide-react";
+import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import EmptyState from "@/components/EmptyState";
 
@@ -193,7 +194,10 @@ const Rooms = () => {
               High-trust circles for deal sourcing, diligence, and coordination
             </p>
           </div>
-          <button className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
+          <button
+            onClick={() => toast.info("Room creation coming soon", { description: "Invite-only deal rooms with trust scoring and verification." })}
+            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+          >
             <Plus className="h-4 w-4" /> Create Room
           </button>
         </div>
@@ -249,7 +253,7 @@ const Rooms = () => {
             title="No rooms found"
             description={searchQuery ? "Try a different search term." : "Create your first room to start collaborating on deals."}
             actionLabel="Create Room"
-            onAction={() => {}}
+            onAction={() => toast.info("Room creation coming soon", { description: "Invite-only deal rooms with trust scoring and verification." })}
           />
         )}
       </div>

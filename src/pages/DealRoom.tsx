@@ -98,7 +98,7 @@ const useDealTimeline = (dealId: string | undefined) => {
     queryKey: ["deal-timeline", dealId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("decision_journal")
+        .from("decision_log")
         .select("*")
         .eq("deal_id", dealId!)
         .order("created_at", { ascending: false })
