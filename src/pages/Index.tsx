@@ -295,44 +295,52 @@ const DistressedWidget = () => {
 };
 
 // Widget component map
+const MorningBriefingWidget = () => (
+  <FeatureTooltip featureId="morning-briefing" tip="Pro tip: Customize your daily briefing content and frequency in Settings → Briefing." side="bottom">
+    <div>
+      <Suspense fallback={<ChartSkeleton />}>
+        <MorningBriefing />
+      </Suspense>
+    </div>
+  </FeatureTooltip>
+);
+
+const AlphaSignalsWidget = () => (
+  <Suspense fallback={<ChartSkeleton />}>
+    <AlphaSignalWidget />
+  </Suspense>
+);
+
+const CompaniesTableWidget = () => {
+  const navigate = useNavigate();
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Companies</h3>
+        <button onClick={() => navigate("/companies")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">
+          View All
+        </button>
+      </div>
+      <CompanyTable />
+    </div>
+  );
+};
+
+const NewsWireWidget = () => (
+  <Suspense fallback={<WidgetSkeleton />}>
+    <NewsFeed compact />
+  </Suspense>
+);
+
 const WIDGET_COMPONENTS: Record<string, React.ComponentType> = {
-  "morning-briefing": () => (
-    <FeatureTooltip featureId="morning-briefing" tip="Pro tip: Customize your daily briefing content and frequency in Settings → Briefing." side="bottom">
-      <div>
-        <Suspense fallback={<ChartSkeleton />}>
-          <MorningBriefing />
-        </Suspense>
-      </div>
-    </FeatureTooltip>
-  ),
+  "morning-briefing": MorningBriefingWidget,
   "quick-actions": QuickActions,
-  "alpha-signals": () => (
-    <Suspense fallback={<ChartSkeleton />}>
-      <AlphaSignalWidget />
-    </Suspense>
-  ),
-  "companies-table": () => {
-    const navigate = useNavigate();
-    return (
-      <div className="rounded-lg border border-border bg-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground">Companies</h3>
-          <button onClick={() => navigate("/companies")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">
-            View All
-          </button>
-        </div>
-        <CompanyTable />
-      </div>
-    );
-  },
+  "alpha-signals": AlphaSignalsWidget,
+  "companies-table": CompaniesTableWidget,
   "pipeline-deals": RecentPipelineDeals,
   "watchlists": WatchlistWidget,
   "distressed": DistressedWidget,
-  "news-wire": () => (
-    <Suspense fallback={<WidgetSkeleton />}>
-      <NewsFeed compact />
-    </Suspense>
-  ),
+  "news-wire": NewsWireWidget,
 };
 
 const Index = () => {
@@ -405,6 +413,14 @@ const Index = () => {
 
       {/* Full-width widgets */}
       {fullWidgets.map((w) => renderWidget(w.id))}
+
+      {/* Empty state when all widgets hidden */}
+      {fullWidgets.length === 0 && mainWidgets.length === 0 && sidebarWidgets.length === 0 && (
+        <div className="rounded-lg border border-dashed border-border bg-card/50 p-12 text-center space-y-3">
+          <p className="text-sm text-muted-foreground">Your dashboard is empty.</p>
+          <p className="text-xs text-muted-foreground">Click <strong>Customize</strong> above to add widgets.</p>
+        </div>
+      )}
 
       {/* Main content grid */}
       <div className={`grid grid-cols-1 ${hasSidebar ? "lg:grid-cols-3" : ""} gap-3 sm:gap-4`}>

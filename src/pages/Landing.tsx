@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
-import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock, AlertTriangle, Briefcase, Building } from "lucide-react";
+import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock, AlertTriangle, Briefcase, Building, Loader2 } from "lucide-react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -96,16 +96,19 @@ const Landing = () => {
     if (!form.name || !form.email) return;
     setLoading(true);
     try {
-      await supabase.from("waitlist_signups").insert({
+      const { error } = await supabase.from("waitlist_signups").insert({
         name: form.name,
         email: form.email,
         firm: form.firm || null,
         interest: form.interest || null,
       });
+      if (error) throw error;
+      setSubmitted(true);
     } catch (err) {
       console.error("Waitlist error:", err);
+      const { toast } = await import("sonner");
+      toast.error("Something went wrong. Please try again or email us at contact@grapevine.io");
     }
-    setSubmitted(true);
     setLoading(false);
   };
 
@@ -262,7 +265,12 @@ const Landing = () => {
                   disabled={loading || !form.name || !form.email}
                 >
                   <Mail className="h-4 w-4" />
-                  {loading ? "Joining..." : "Join the Waitlist"}
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Joining...
+                    </>
+                  ) : "Join the Waitlist"}
                 </button>
               </form>
             )}
@@ -428,6 +436,7 @@ const Landing = () => {
             <button onClick={() => navigate("/data-coverage")} className="hover:text-muted-foreground transition-colors">Data Coverage</button>
             <button onClick={() => navigate("/terms")} className="hover:text-muted-foreground transition-colors">Terms</button>
             <button onClick={() => navigate("/privacy")} className="hover:text-muted-foreground transition-colors">Privacy</button>
+            <button onClick={() => navigate("/help")} className="hover:text-muted-foreground transition-colors">Help</button>
             <button onClick={() => navigate("/auth")} className="hover:text-muted-foreground transition-colors">Beta Login</button>
           </div>
         </div>

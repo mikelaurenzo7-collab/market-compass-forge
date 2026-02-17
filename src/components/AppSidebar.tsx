@@ -13,8 +13,9 @@ import {
   AlertTriangle,
   Landmark,
   Bell,
-  Settings,
-  ShieldCheck,
+    Settings,
+    ShieldCheck,
+    HelpCircle,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -91,6 +92,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const bottomItems = [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+    { id: "help", label: "Help", icon: HelpCircle, path: "/help" },
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
   ];
 
