@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.send-test-briefing]
 verify_jwt = false
+
+[functions.chatgpt-openapi]
+verify_jwt = false
