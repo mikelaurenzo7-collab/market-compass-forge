@@ -32,6 +32,8 @@ import DealMatcher from "./pages/DealMatcher";
 import Screening from "./pages/Screening";
 import Portfolio from "./pages/Portfolio";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
+import DataRoom from "./pages/DataRoom";
+import Decisions from "./pages/Decisions";
 import InvestorMetrics from "./pages/InvestorMetrics";
 import DataCoverage from "./pages/DataCoverage";
 import { toast } from "sonner";
@@ -80,7 +82,9 @@ const App = () => (
               <Route path="/research" element={<Research />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
               <Route path="/screening" element={<Navigate to="/companies" replace />} />
-              <Route path="/portfolio" element={<Navigate to="/deals" replace />} />
+              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/data-room" element={<DataRoom />} />
+              <Route path="/decisions" element={<Decisions />} />
               <Route path="/document-analyzer" element={<Navigate to="/research" replace />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />

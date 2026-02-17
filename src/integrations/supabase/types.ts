@@ -1717,6 +1717,48 @@ export type Database = {
         }
         Relationships: []
       }
+      import_history: {
+        Row: {
+          created_at: string
+          entity_type: string
+          error_count: number
+          errors: Json | null
+          file_name: string
+          id: string
+          row_count: number
+          status: string
+          storage_path: string | null
+          success_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_type: string
+          error_count?: number
+          errors?: Json | null
+          file_name: string
+          id?: string
+          row_count?: number
+          status?: string
+          storage_path?: string | null
+          success_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_type?: string
+          error_count?: number
+          errors?: Json | null
+          file_name?: string
+          id?: string
+          row_count?: number
+          status?: string
+          storage_path?: string | null
+          success_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       ingestion_runs: {
         Row: {
           completed_at: string | null

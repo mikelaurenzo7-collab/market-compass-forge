@@ -13,13 +13,16 @@ import {
   AlertTriangle,
   Landmark,
   Bell,
-    Settings,
-    ShieldCheck,
-    HelpCircle,
+  Settings,
+  ShieldCheck,
+  HelpCircle,
   ChevronLeft,
   ChevronRight,
   LogOut,
   Search,
+  Upload,
+  Briefcase,
+  BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -54,8 +57,16 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Deal Engine",
     items: [
       { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
+      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
       { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
       { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
+      { id: "decisions", label: "Decisions", icon: BookOpen, path: "/decisions" },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
+      { id: "data-room", label: "Data Room", icon: Upload, path: "/data-room" },
     ],
   },
   {
