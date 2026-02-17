@@ -153,8 +153,8 @@ const DocumentAnalyzer = () => {
     enabled: !!activeAnalysisId,
     refetchInterval: (query) => {
       const d = query.state.data;
-      if (d && (d as any)?.status === "complete") return false;
-      if (d && (d as any)?.status === "error") return false;
+      if (d && d.status === "complete") return false;
+      if (d && d.status === "error") return false;
       return 2000;
     },
   });
@@ -253,8 +253,8 @@ const DocumentAnalyzer = () => {
 
       queryClient.invalidateQueries({ queryKey: ["document-analyses-history"] });
       toast({ title: "Analysis complete", description: `${file.name} has been analyzed.` });
-    } catch (e: any) {
-      toast({ title: "Analysis failed", description: e.message, variant: "destructive" });
+    } catch (e: unknown) {
+      toast({ title: "Analysis failed", description: e instanceof Error ? e.message : "Unknown error", variant: "destructive" });
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -273,8 +273,8 @@ const DocumentAnalyzer = () => {
     if (file) handleFileUpload(file);
   };
 
-  const isProcessing = isUploading || (analysis && (analysis as any).status === "processing");
-  const analysisData = analysis && (analysis as any).status === "complete" ? analysis : null;
+  const isProcessing = isUploading || (analysis && analysis.status === "processing");
+  const analysisData = analysis && analysis.status === "complete" ? analysis : null;
 
   return (
     <div className="space-y-6">

@@ -199,7 +199,7 @@ export default function DealWorkspace({ dealId, companyId, companyName, onClose 
           {activeTab === "decisions" && <DecisionLog dealId={dealId} />}
           {activeTab === "outcomes" && <DecisionOutcomes dealId={dealId} />}
           {activeTab === "templates" && (
-            <ICTemplateSelector onSelect={(t) => toast({ title: `Template: ${t.name}`, description: `${(t.sections as any[]).length} sections, ${(t.checklist as any[]).length} checklist items` })} />
+            <ICTemplateSelector onSelect={(t) => toast({ title: `Template: ${t.name}`, description: `${(Array.isArray(t.sections) ? t.sections.length : 0)} sections, ${(Array.isArray(t.checklist) ? t.checklist.length : 0)} checklist items` })} />
           )}
         </div>
       </div>

@@ -172,9 +172,9 @@ export default function RelationshipGraph({ companyId }: { companyId?: string })
       ctx.save();
 
       // Draw links
-      (links as any[]).forEach(link => {
-        const source = link.source as GraphNode;
-        const target = link.target as GraphNode;
+      (links as (GraphLink & { source: GraphNode; target: GraphNode })[]).forEach(link => {
+        const source = link.source;
+        const target = link.target;
         if (!source.x || !source.y || !target.x || !target.y) return;
 
         ctx.beginPath();

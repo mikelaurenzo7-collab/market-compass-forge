@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, Shield, Target, AlertTriangle, BarChart3, Database } from "lucide-react";
 import { useMacroIndicators } from "@/hooks/useMacroIndicators";
 
-type Position = {
+export type Position = {
   id: string;
   shares: number;
   entry_price: number;

@@ -10,7 +10,8 @@ import AmbientGrid from "@/components/AmbientGrid";
 import AICopilot from "@/components/AICopilot";
 import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
-import { Bell, Menu, X } from "lucide-react";
+import { Bell, Menu, X, Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -20,6 +21,7 @@ const AppLayout = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: unreadCount } = useUnreadCount();
+  const { theme, setTheme } = useTheme();
 
   const openPalette = useCallback(() => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
@@ -88,6 +90,13 @@ const AppLayout = () => {
             <SearchBar onOpen={openPalette} />
           </div>
           <div className="flex items-center gap-2 md:gap-3">
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-2 rounded-lg hover:bg-secondary/60 transition-all duration-300 text-muted-foreground hover:text-foreground group"
+              aria-label="Toggle theme"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4 transition-transform group-hover:scale-110" /> : <Moon className="h-4 w-4 transition-transform group-hover:scale-110" />}
+            </button>
             <button
               onClick={() => navigate("/alerts")}
               className="relative p-2 rounded-lg hover:bg-secondary/60 transition-all duration-300 text-muted-foreground hover:text-foreground group"

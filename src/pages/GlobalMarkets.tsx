@@ -50,7 +50,7 @@ const GlobalMarkets = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'global_opportunities' }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ["global-opportunities"] });
         if (payload.eventType === 'INSERT') {
-          toast.info(`New global opportunity: ${(payload.new as any)?.name ?? "Unknown"}`);
+          toast.info(`New global opportunity: ${(payload.new as Record<string, unknown>)?.name ?? "Unknown"}`);
         }
       })
       .subscribe();
@@ -70,7 +70,7 @@ const GlobalMarkets = () => {
       if (typeFilter !== "all" && o.opportunity_type !== typeFilter) return false;
       if (riskFilter !== "all" && o.risk_rating !== riskFilter) return false;
       if (search && !o.name.toLowerCase().includes(search.toLowerCase()) && !o.country.toLowerCase().includes(search.toLowerCase())) return false;
-      if (!applyProvenanceFilter(o as any, provFilters)) return false;
+      if (!applyProvenanceFilter(o as Record<string, unknown>, provFilters)) return false;
       return true;
     });
   }, [opportunities, regionFilter, typeFilter, riskFilter, search, provFilters]);

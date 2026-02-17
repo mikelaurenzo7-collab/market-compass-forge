@@ -116,7 +116,7 @@ export const useSectorMomentum = () =>
           trend,
           sentimentScore,
           sentimentVelocity: Math.abs(sentimentScore) > 0.3 ? sentimentScore * 2 : sentimentScore,
-          signalDirection: (alpha?.direction as any) ?? "neutral",
+          signalDirection: (alpha?.direction as SectorFlow["signalDirection"]) ?? "neutral",
           signalMagnitude: alpha?.magnitude ?? 0,
           confidence: alpha?.confidence ?? "medium",
         });

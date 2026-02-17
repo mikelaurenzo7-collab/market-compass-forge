@@ -49,6 +49,6 @@ export function useSlackNotify() {
 
   return {
     notify,
-    isConfigured: !!(slackConfig?.enabled && (slackConfig?.config as any)?.channel),
+    isConfigured: !!(slackConfig?.enabled && (slackConfig?.config as { channel?: string })?.channel),
   };
 }

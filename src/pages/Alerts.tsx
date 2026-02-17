@@ -254,8 +254,8 @@ const Alerts = () => {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-1 mt-2">
-                    {(alert as any).alert_type && (alert as any).alert_type !== "custom" && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-medium uppercase">{(alert as any).alert_type.replace("_", " ")}</span>
+                    {alert.alert_type && alert.alert_type !== "custom" && (
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-primary/10 text-primary font-medium uppercase">{alert.alert_type.replace("_", " ")}</span>
                     )}
                     {cond.sector && <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-accent-foreground">{cond.sector}</span>}
                     {cond.round_type && <span className="px-1.5 py-0.5 rounded text-[10px] bg-accent text-accent-foreground">{cond.round_type}+</span>}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,17 +6,24 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity, Receipt, Bot, Plug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
-import ApiKeyManager from "@/components/ApiKeyManager";
-import DataIngestion from "@/components/DataIngestion";
-import BriefingSettings from "@/components/BriefingSettings";
-import TeamManager from "@/components/TeamManager";
-import DataSourcesPanel from "@/components/DataSourcesPanel";
-import UsageAnalytics from "@/components/UsageAnalytics";
-import BillingDashboard from "@/components/BillingDashboard";
 import PageTransition from "@/components/PageTransition";
 import { AnimatedTabContent } from "@/components/AnimatedTabs";
-import ChatGPTSetup from "@/components/ChatGPTSetup";
-import IntegrationSettings from "@/components/IntegrationSettings";
+
+const ApiKeyManager = lazy(() => import("@/components/ApiKeyManager"));
+const DataIngestion = lazy(() => import("@/components/DataIngestion"));
+const BriefingSettings = lazy(() => import("@/components/BriefingSettings"));
+const TeamManager = lazy(() => import("@/components/TeamManager"));
+const DataSourcesPanel = lazy(() => import("@/components/DataSourcesPanel"));
+const UsageAnalytics = lazy(() => import("@/components/UsageAnalytics"));
+const BillingDashboard = lazy(() => import("@/components/BillingDashboard"));
+const ChatGPTSetup = lazy(() => import("@/components/ChatGPTSetup"));
+const IntegrationSettings = lazy(() => import("@/components/IntegrationSettings"));
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const ROLE_LABELS: Record<string, string> = {
   analyst: "Analyst",
@@ -273,23 +280,23 @@ const Settings = () => {
         </div>
       )}
 
-      {activeTab === "billing" && <BillingDashboard />}
+      {activeTab === "billing" && <Suspense fallback={<TabFallback />}><BillingDashboard /></Suspense>}
 
-      {activeTab === "usage" && <UsageAnalytics />}
+      {activeTab === "usage" && <Suspense fallback={<TabFallback />}><UsageAnalytics /></Suspense>}
 
-      {activeTab === "integrations" && <IntegrationSettings />}
+      {activeTab === "integrations" && <Suspense fallback={<TabFallback />}><IntegrationSettings /></Suspense>}
 
-      {activeTab === "briefing" && <BriefingSettings />}
+      {activeTab === "briefing" && <Suspense fallback={<TabFallback />}><BriefingSettings /></Suspense>}
 
-      {activeTab === "api" && <ApiKeyManager />}
+      {activeTab === "api" && <Suspense fallback={<TabFallback />}><ApiKeyManager /></Suspense>}
 
-      {activeTab === "chatgpt" && <ChatGPTSetup />}
+      {activeTab === "chatgpt" && <Suspense fallback={<TabFallback />}><ChatGPTSetup /></Suspense>}
 
-      {activeTab === "data" && <DataIngestion />}
+      {activeTab === "data" && <Suspense fallback={<TabFallback />}><DataIngestion /></Suspense>}
 
-      {activeTab === "sources" && <DataSourcesPanel />}
+      {activeTab === "sources" && <Suspense fallback={<TabFallback />}><DataSourcesPanel /></Suspense>}
 
-      {activeTab === "team" && <TeamManager />}
+      {activeTab === "team" && <Suspense fallback={<TabFallback />}><TeamManager /></Suspense>}
       </AnimatedTabContent>
     </div>
     </PageTransition>

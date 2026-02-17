@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Landmark, Users, Building2, Download, BarChart3 } from "lucide-react";
 import DataQualityBanner from "@/components/DataQualityBanner";
-import PortfolioBenchmark from "@/components/PortfolioBenchmark";
+import PortfolioBenchmark, { type Position as BenchmarkPosition } from "@/components/PortfolioBenchmark";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -278,7 +278,7 @@ const FundIntelligence = () => {
 
         <TabsContent value="benchmark">
           {portfolioPositions && portfolioPositions.length > 0 ? (
-            <PortfolioBenchmark positions={portfolioPositions as any} />
+            <PortfolioBenchmark positions={portfolioPositions as BenchmarkPosition[]} />
           ) : (
             <Card className="border-border bg-card">
               <CardContent className="py-12 text-center">

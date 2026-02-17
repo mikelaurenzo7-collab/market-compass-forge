@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
     /* Core surfaces */
@@ -73,6 +71,69 @@
     --font-sans: 'Inter', system-ui, sans-serif;
     --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  .light {
+    /* Core surfaces */
+    --background: 0 0% 98%;
+    --foreground: 230 25% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 230 25% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 25% 10%;
+
+    /* Brand: Electric Green */
+    --primary: 145 80% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Brand: Majestic Purple */
+    --brand-purple: 270 55% 50%;
+    --brand-purple-foreground: 0 0% 100%;
+
+    /* Surfaces */
+    --secondary: 240 10% 94%;
+    --secondary-foreground: 240 8% 35%;
+
+    --muted: 240 10% 96%;
+    --muted-foreground: 240 8% 45%;
+
+    --accent: 270 30% 95%;
+    --accent-foreground: 270 55% 50%;
+
+    /* Semantic */
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 80% 32%;
+    --success-foreground: 145 80% 20%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 20%;
+
+    /* Borders & inputs */
+    --border: 240 10% 87%;
+    --input: 240 10% 87%;
+    --ring: 145 80% 32%;
+
+    /* Charts */
+    --chart-1: 145 80% 32%;
+    --chart-2: 210 70% 50%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 60% 55%;
+    --chart-5: 0 72% 50%;
+    --chart-6: 270 55% 50%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 99%;
+    --sidebar-foreground: 240 8% 40%;
+    --sidebar-primary: 145 80% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 270 25% 95%;
+    --sidebar-accent-foreground: 230 25% 10%;
+    --sidebar-border: 240 10% 90%;
+    --sidebar-ring: 270 55% 50%;
   }
 }
 

@@ -3,15 +3,12 @@ import { useCompany, useCompanyFunding, useCompanyFinancials, useActivityEvents,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useAutoEnrich } from "@/hooks/useAutoEnrich";
 import { ArrowLeft, MapPin, Users, Calendar, Globe, Loader2, Send, Clock, TrendingUp, Printer, AlertCircle } from "lucide-react";
 import { AnimatedTabContent } from "@/components/AnimatedTabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import CompanyAvatar from "@/components/CompanyAvatar";
-import AIResearchChat from "@/components/AIResearchChat";
-import NewsFeed from "@/components/NewsFeed";
-import InvestmentMemo from "@/components/InvestmentMemo";
 import SharedNotes from "@/components/SharedNotes";
 import EnrichmentPanel from "@/components/EnrichmentPanel";
 import ConfidenceBadge from "@/components/ConfidenceBadge";
@@ -21,19 +18,30 @@ import DataQualityBanner from "@/components/DataQualityBanner";
 import { extractProvenance } from "@/lib/dataQuality";
 import CompanyScore from "@/components/CompanyScore";
 import FinancialsChart from "@/components/FinancialsChart";
-import DCFCalculator from "@/components/DCFCalculator";
-import ValuationFootballField from "@/components/ValuationFootballField";
 import CompanyAIAssessment from "@/components/CompanyAIAssessment";
-import RelationshipGraph from "@/components/RelationshipGraph";
 import { useCompanyScore } from "@/hooks/useCompanyScore";
 import { useSectorMultiples } from "@/hooks/useSectorMultiples";
 import { AddToWatchlistButton } from "@/components/WatchlistManager";
 import { printElement } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
 import { toast } from "sonner";
-import EvidencePanel from "@/components/EvidencePanel";
 import CreateDealButton from "@/components/CreateDealButton";
 import TrustPanel from "@/components/TrustPanel";
+
+// Heavy tab-specific components — lazy loaded
+const AIResearchChat = lazy(() => import("@/components/AIResearchChat"));
+const NewsFeed = lazy(() => import("@/components/NewsFeed"));
+const InvestmentMemo = lazy(() => import("@/components/InvestmentMemo"));
+const DCFCalculator = lazy(() => import("@/components/DCFCalculator"));
+const ValuationFootballField = lazy(() => import("@/components/ValuationFootballField"));
+const RelationshipGraph = lazy(() => import("@/components/RelationshipGraph"));
+const EvidencePanel = lazy(() => import("@/components/EvidencePanel"));
+
+const TabFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -679,7 +687,7 @@ const CompanyDetail = () => {
           </div>
 
           {/* Football Field — computed from company data with growth and margin inputs */}
-          <ValuationFootballField
+          <Suspense fallback={<TabFallback />}><ValuationFootballField
             companyData={{
               revenue: latestFinancial.revenue,
               ebitda: latestFinancial.ebitda,
@@ -692,15 +700,15 @@ const CompanyDetail = () => {
                 evEbitda: { p25: sectorMultiples.evEbitda.p25, median: sectorMultiples.evEbitda.median, p75: sectorMultiples.evEbitda.p75 },
               } : undefined,
             }}
-          />
+          /></Suspense>
 
           {/* DCF Calculator — pre-populated from company data */}
-          <DCFCalculator
+          <Suspense fallback={<TabFallback />}><DCFCalculator
             initialRevenue={dcfRevenue}
             initialGrowth={dcfGrowth}
             initialMargin={dcfMargin}
             companyName={company.name}
-          />
+          /></Suspense>
         </div>
       )}
 
@@ -793,23 +801,23 @@ const CompanyDetail = () => {
       )}
 
       {activeTab === "network" && (
-        <RelationshipGraph companyId={id} />
+        <Suspense fallback={<TabFallback />}><RelationshipGraph companyId={id} /></Suspense>
       )}
 
       {activeTab === "news" && (
-        <NewsFeed companyId={id!} />
+        <Suspense fallback={<TabFallback />}><NewsFeed companyId={id!} /></Suspense>
       )}
 
       {activeTab === "research" && (
-        <AIResearchChat companyId={id!} companyName={company.name} sector={company.sector} />
+        <Suspense fallback={<TabFallback />}><AIResearchChat companyId={id!} companyName={company.name} sector={company.sector} /></Suspense>
       )}
 
       {activeTab === "memo" && (
-        <InvestmentMemo companyId={id!} companyName={company.name} />
+        <Suspense fallback={<TabFallback />}><InvestmentMemo companyId={id!} companyName={company.name} /></Suspense>
       )}
 
       {activeTab === "evidence" && (
-        <EvidencePanel companyId={id!} />
+        <Suspense fallback={<TabFallback />}><EvidencePanel companyId={id!} /></Suspense>
       )}
       </AnimatedTabContent>
     </div>

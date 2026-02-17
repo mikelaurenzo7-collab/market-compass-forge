@@ -32,7 +32,7 @@ const DistressedAssets = () => {
        .channel('distressed-realtime')
        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'distressed_assets' }, (payload) => {
          queryClient.invalidateQueries({ queryKey: ["distressed-assets"] });
-         toast.info(`New distressed listing: ${(payload.new as any)?.name ?? "Unknown"}`);
+         toast.info(`New distressed listing: ${(payload.new as Record<string, unknown>)?.name ?? "Unknown"}`);
        })
        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'distressed_assets' }, () => {
          queryClient.invalidateQueries({ queryKey: ["distressed-assets"] });

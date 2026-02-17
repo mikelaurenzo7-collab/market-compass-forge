@@ -236,11 +236,11 @@ const TeamManager = () => {
           {teamActivity && teamActivity.length > 0 ? teamActivity.map((a) => (
             <div key={a.id} className="px-4 py-3 flex items-start gap-3">
               <div className="h-6 w-6 rounded-full bg-accent flex items-center justify-center text-[10px] font-semibold text-accent-foreground shrink-0 mt-0.5">
-                {((a as any).profiles?.display_name ?? "?")[0].toUpperCase()}
+                {(((a as { profiles?: { display_name: string | null } }).profiles?.display_name) ?? "?")[0].toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-foreground">
-                  <span className="font-medium">{(a as any).profiles?.display_name ?? "User"}</span>
+                  <span className="font-medium">{(a as { profiles?: { display_name: string | null } }).profiles?.display_name ?? "User"}</span>
                   {" "}{a.action}{" "}
                   {a.entity_name && <span className="text-primary">{a.entity_name}</span>}
                 </p>

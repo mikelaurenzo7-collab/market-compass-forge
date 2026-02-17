@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, Building2, Search, BarChart3 } from "lucide-react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
-import PortfolioBenchmark from "@/components/PortfolioBenchmark";
+import PortfolioBenchmark, { type Position as BenchmarkPosition } from "@/components/PortfolioBenchmark";
 
 const COLORS = [
   "hsl(270, 60%, 55%)", "hsl(142, 60%, 45%)", "hsl(38, 92%, 50%)",
@@ -232,7 +232,7 @@ const Portfolio = () => {
         <>
           {/* Benchmark section */}
           {showBenchmark && positions && positions.length > 0 && (
-            <PortfolioBenchmark positions={positions as any} />
+            <PortfolioBenchmark positions={positions as BenchmarkPosition[]} />
           )}
 
           {/* Metric cards */}

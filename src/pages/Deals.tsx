@@ -1,7 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import PipelineAnalytics from "@/components/PipelineAnalytics";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import PageTransition from "@/components/PageTransition";
-import DealTransactionsTable from "@/components/DealTransactionsTable";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,8 +14,18 @@ import CompanyHoverCard from "@/components/CompanyHoverCard";
 import { KanbanSkeleton } from "@/components/SkeletonLoaders";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileDealCard from "@/components/MobileCompanyCard";
-import DealWorkspace from "@/components/DealWorkspace";
 import { useSlackNotify } from "@/hooks/useSlackNotify";
+import { Loader2 } from "lucide-react";
+
+const PipelineAnalytics = lazy(() => import("@/components/PipelineAnalytics"));
+const DealTransactionsTable = lazy(() => import("@/components/DealTransactionsTable"));
+const DealWorkspace = lazy(() => import("@/components/DealWorkspace"));
+
+const LazyFallback = () => (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  </div>
+);
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -142,10 +150,10 @@ const Deals = () => {
       </div>
 
       {view === "table" ? (
-        <DealTransactionsTable />
+        <Suspense fallback={<LazyFallback />}><DealTransactionsTable /></Suspense>
       ) : (
         <>
-          {showAnalytics && <PipelineAnalytics />}
+          {showAnalytics && <Suspense fallback={<LazyFallback />}><PipelineAnalytics /></Suspense>}
           {isLoading ? <KanbanSkeleton /> : (
             isMobile ? (
               <div className="space-y-2 pb-4">
@@ -228,12 +236,12 @@ const Deals = () => {
 
       {/* Deal Workspace Modal */}
       {workspaceDeal && (
-        <DealWorkspace
+        <Suspense fallback={<LazyFallback />}><DealWorkspace
           dealId={workspaceDeal.id}
           companyId={workspaceDeal.companyId}
           companyName={workspaceDeal.companyName}
           onClose={() => setWorkspaceDeal(null)}
-        />
+        /></Suspense>
       )}
     </div>
     </PageTransition>
