@@ -1,7 +1,7 @@
 import { BarChart3, TrendingUp, Globe, Trophy, Loader2, Activity, Target, Zap, Users } from "lucide-react";
 import MacroImpactMatrix from "@/components/MacroImpactMatrix";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, RadialBarChart, RadialBar } from "recharts";
-import { DealFlowChart, SectorHeatmap } from "@/components/Charts";
+
 import { useValuationByStage, useGeographicDistribution, useTopCompaniesByARR } from "@/hooks/useAnalyticsData";
 import { formatCurrency } from "@/hooks/useData";
 import { useAuth } from "@/hooks/useAuth";
@@ -330,11 +330,6 @@ const Analytics = () => {
         <h2 className="text-lg font-semibold text-foreground mb-4">Market Analytics</h2>
       </div>
 
-      {/* Row: Deal Flow + Sector */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <DealFlowChart />
-        <SectorHeatmap />
-      </div>
 
       {/* Row: Valuation by Stage + Geo */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

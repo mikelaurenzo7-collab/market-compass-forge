@@ -6,11 +6,8 @@ import CommandPalette from "@/components/CommandPalette";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import DisclaimerFooter from "@/components/DisclaimerFooter";
-
 import AmbientGrid from "@/components/AmbientGrid";
-import TickerTape from "@/components/TickerTape";
 import AICopilot from "@/components/AICopilot";
-import CompareMode from "@/components/CompareMode";
 import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { Bell, Menu, X } from "lucide-react";
@@ -22,7 +19,6 @@ const AppLayout = () => {
   const location = useLocation();
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [compareOpen, setCompareOpen] = useState(false);
   const { data: unreadCount } = useUnreadCount();
 
   const openPalette = useCallback(() => {
@@ -32,8 +28,7 @@ const AppLayout = () => {
   useHotkeys([
     { key: "/", meta: true, handler: () => setShowShortcuts((v) => !v) },
     { key: "?", handler: () => setShowShortcuts((v) => !v) },
-    { key: "Escape", handler: () => { setShowShortcuts(false); setMobileMenuOpen(false); setCompareOpen(false); } },
-    { key: "c", meta: true, shift: true, handler: () => setCompareOpen((v) => !v) },
+    { key: "Escape", handler: () => { setShowShortcuts(false); setMobileMenuOpen(false); } },
     ...SIDEBAR_ROUTES.map((route, i) => ({
       key: String(i + 1),
       meta: true,
@@ -78,13 +73,8 @@ const AppLayout = () => {
       <KeyboardShortcuts open={showShortcuts} onClose={() => setShowShortcuts(false)} />
 
       <main className="flex-1 min-w-0 flex flex-col">
-        {/* Premium header */}
+        {/* Clean header */}
         <header className="sticky top-0 z-30 bg-background/60 backdrop-blur-2xl px-3 md:px-6 py-2.5 flex items-center gap-3 md:gap-4 border-b border-border/20">
-          {/* Subtle top edge glow */}
-          <div className="absolute top-0 left-0 right-0 h-px" style={{
-            background: "linear-gradient(90deg, transparent, hsl(var(--primary) / 0.15) 30%, hsl(var(--brand-purple) / 0.1) 70%, transparent)"
-          }} />
-
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -98,10 +88,6 @@ const AppLayout = () => {
             <SearchBar onOpen={openPalette} />
           </div>
           <div className="flex items-center gap-2 md:gap-3">
-            {/* BETA badge with animated border */}
-            <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-grape/30 text-grape bg-grape/6 holo-shimmer">
-              Beta
-            </span>
             <button
               onClick={() => navigate("/alerts")}
               className="relative p-2 rounded-lg hover:bg-secondary/60 transition-all duration-300 text-muted-foreground hover:text-foreground group"
@@ -114,21 +100,6 @@ const AppLayout = () => {
             </button>
           </div>
         </header>
-
-        {/* Enhanced status strip */}
-        <div className="status-strip px-4 md:px-6 py-1.5 flex items-center gap-4 text-[10px] font-mono text-muted-foreground/70">
-          <span className="flex items-center gap-1.5 shrink-0">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary shadow-[0_0_6px_hsl(var(--primary)/0.6)]" />
-            </span>
-            <span className="text-primary/80 font-semibold tracking-wider">LIVE</span>
-          </span>
-          <div className="flex-1 min-w-0">
-            <TickerTape />
-          </div>
-          <span className="ml-auto hidden sm:inline opacity-40 shrink-0 text-[9px] tracking-wider">⌘K search · ⌘/ shortcuts · ⌘⇧C compare</span>
-        </div>
 
         <ErrorBoundary>
           <motion.div
@@ -143,7 +114,6 @@ const AppLayout = () => {
         </ErrorBoundary>
         <DisclaimerFooter />
         <AICopilot />
-        <CompareMode open={compareOpen} onClose={() => setCompareOpen(false)} />
       </main>
     </div>
   );
