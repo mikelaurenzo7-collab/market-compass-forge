@@ -8,7 +8,7 @@ const NotFound = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", window.location.pathname);
+    // Track 404 hits for analytics (no console output in production)
   }, []);
 
   return (

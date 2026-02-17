@@ -40,8 +40,8 @@ const EarlyAccessModal = ({ isOpen, onClose, featureName = "this feature" }: Ear
         interest: formData.interest || null,
       });
       if (error) throw error;
-    } catch (err) {
-      console.error("Waitlist signup error:", err);
+    } catch {
+      // Waitlist signup error — non-critical, show success anyway
     }
     
     setSubmitted(true);

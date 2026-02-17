@@ -39,8 +39,7 @@ const SharedNotes = ({ companyId }: { companyId: string }) => {
           table: "shared_notes",
           filter: `company_id=eq.${companyId}`,
         },
-        (payload) => {
-          console.log("Realtime shared_notes update:", payload.eventType);
+        () => {
           queryClient.invalidateQueries({ queryKey: ["shared-notes", companyId] });
         }
       )

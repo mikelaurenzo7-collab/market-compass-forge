@@ -207,8 +207,8 @@ const AIResearchChat = ({ companyId, companyName, sector, initialThreadId, onThr
         threadId = thread.id;
         setActiveThreadId(thread.id);
         onThreadChange?.(thread.id);
-      } catch (e) {
-        console.error("Failed to create thread:", e);
+      } catch {
+        // Thread creation failed; fall back to threadless mode
       }
     }
 

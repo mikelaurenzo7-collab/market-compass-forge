@@ -191,7 +191,6 @@ const CompTableBuilder = ({ embedded }: { embedded?: boolean } = {}) => {
         }
       }
     } catch (e) {
-      console.error(e);
       toast({ title: "Analysis error", description: String(e), variant: "destructive" });
     }
     setAiLoading(false);

@@ -42,8 +42,8 @@ export function useSlackNotify() {
       await supabase.functions.invoke("slack-notify", {
         body: { type, channel, data, user_id: user?.id },
       });
-    } catch (e) {
-      console.error("Slack notification failed:", e);
+    } catch {
+      // Slack notifications are non-critical; silently ignore failures
     }
   };
 

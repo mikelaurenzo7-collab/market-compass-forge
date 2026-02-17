@@ -10,6 +10,7 @@ import AmbientGrid from "@/components/AmbientGrid";
 import AICopilot from "@/components/AICopilot";
 import { useHotkeys, SIDEBAR_ROUTES } from "@/hooks/useHotkeys";
 import { useUnreadCount } from "@/hooks/useUnreadCount";
+import { useSessionGuard } from "@/hooks/useSessionGuard";
 import { Bell, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
@@ -20,6 +21,7 @@ const AppLayout = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: unreadCount } = useUnreadCount();
+  useSessionGuard();
 
   const openPalette = useCallback(() => {
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }));
@@ -38,11 +40,18 @@ const AppLayout = () => {
 
   return (
     <div className="flex min-h-screen bg-background relative">
+      {/* Skip to content link for keyboard/screen reader users */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-md focus:bg-primary focus:text-primary-foreground focus:text-sm focus:font-medium"
+      >
+        Skip to content
+      </a>
       <AmbientGrid />
       {/* Desktop sidebar */}
-      <div className="hidden md:block">
+      <nav className="hidden md:block" aria-label="Main navigation">
         <AppSidebar />
-      </div>
+      </nav>
 
       {/* Mobile sidebar overlay */}
       <AnimatePresence>
@@ -103,6 +112,7 @@ const AppLayout = () => {
 
         <ErrorBoundary>
           <motion.div
+            id="main-content"
             key={location.pathname}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}

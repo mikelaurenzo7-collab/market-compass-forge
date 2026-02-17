@@ -126,6 +126,7 @@ export const useActivityEvents = (companyId?: string) =>
       if (error) throw error;
       return data as ActivityEvent[];
     },
+    staleTime: 2 * 60 * 1000, // 2 min — activity feed updates frequently
   });
 
 export const useDashboardMetrics = () =>
@@ -151,7 +152,7 @@ export const useDashboardMetrics = () =>
       // Fallback to live queries
       const [companiesRes, roundsRes] = await Promise.all([
         supabase.from("companies").select("id", { count: "exact", head: true }),
-        supabase.from("funding_rounds").select("amount, valuation_post, date").order("date", { ascending: false }),
+        supabase.from("funding_rounds").select("amount, valuation_post, date").order("date", { ascending: false }).limit(2000),
       ]);
 
       const totalCompanies = companiesRes.count ?? 0;
@@ -173,6 +174,7 @@ export const useSectorData = () =>
       if (error) throw error;
       return data;
     },
+    staleTime: 10 * 60 * 1000, // 10 min — sector aggregates change slowly
   });
 
 export const useDealFlowData = () =>
@@ -183,7 +185,8 @@ export const useDealFlowData = () =>
         .from("funding_rounds")
         .select("amount, date")
         .not("date", "is", null)
-        .order("date", { ascending: true });
+        .order("date", { ascending: true })
+        .limit(5000);
       if (error) throw error;
 
       const byMonth: Record<string, { deals: number; value: number }> = {};
@@ -199,6 +202,7 @@ export const useDealFlowData = () =>
         .slice(-8)
         .map(([month, d]) => ({ month, deals: d.deals, value: Math.round(d.value * 10) / 10 }));
     },
+    staleTime: 10 * 60 * 1000, // 10 min — aggregated historical data
   });
 
 export const useCompaniesWithFinancials = () =>
@@ -236,6 +240,7 @@ export const useCompaniesWithFinancials = () =>
         latestFinancials: latestFinancials[c.id] ?? null,
       }));
     },
+    staleTime: 5 * 60 * 1000, // 5 min — heavy query, cache aggressively
   });
 
 export const useSearchCompanies = (query: string) =>
@@ -263,6 +268,7 @@ export const useSearchCompanies = (query: string) =>
         .map((r: any) => ({ id: r.entity_id, name: r.name, sector: r.subtitle, stage: null }));
     },
     enabled: query.length >= 2,
+    staleTime: 30_000, // 30s — search results should feel fresh
   });
 
 export const useSearchInvestors = (query: string) =>
@@ -278,6 +284,7 @@ export const useSearchInvestors = (query: string) =>
       return data;
     },
     enabled: query.length >= 2,
+    staleTime: 30_000, // 30s — search results should feel fresh
   });
 
 export const useCompaniesWithFinancialsAll = () =>
@@ -316,6 +323,7 @@ export const useCompaniesWithFinancialsAll = () =>
         latestFinancials: latestFinancials[c.id] ?? null,
       }));
     },
+    staleTime: 5 * 60 * 1000, // 5 min — heavy query, cache aggressively
   });
 
 // Distressed assets hook
@@ -326,7 +334,8 @@ export const useDistressedAssets = () =>
       const { data, error } = await supabase
         .from("distressed_assets")
         .select("*")
-        .order("listed_date", { ascending: false });
+        .order("listed_date", { ascending: false })
+        .limit(500);
       if (error) throw error;
       return data;
     },
@@ -340,7 +349,8 @@ export const usePrivateListings = () =>
       const { data, error } = await supabase
         .from("private_listings")
         .select("*")
-        .order("listed_date", { ascending: false });
+        .order("listed_date", { ascending: false })
+        .limit(500);
       if (error) throw error;
       return data;
     },

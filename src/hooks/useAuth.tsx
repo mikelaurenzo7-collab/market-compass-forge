@@ -39,7 +39,7 @@ async function seedDemoContent(userId: string) {
       company_id: companyId,
       stage: DEMO_STAGES[i],
       priority: i < 2 ? "high" : i < 4 ? "medium" : "low",
-      notes: "Auto-generated demo deal",
+      notes: "",
     }));
     await supabase.from("deal_pipeline").insert(deals);
 
@@ -70,9 +70,8 @@ async function seedDemoContent(userId: string) {
       tier: "professional",
     });
 
-    console.log("Demo content seeded for new user");
-  } catch (e) {
-    console.error("Failed to seed demo content:", e);
+  } catch {
+    // Seeding failure is non-critical; user can still use the platform
   }
 }
 

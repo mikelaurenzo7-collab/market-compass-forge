@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
+import { toast } from "sonner";
 import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock, AlertTriangle, Briefcase, Building, Loader2 } from "lucide-react";
 
 const fadeUp = {
@@ -104,9 +105,7 @@ const Landing = () => {
       });
       if (error) throw error;
       setSubmitted(true);
-    } catch (err) {
-      console.error("Waitlist error:", err);
-      const { toast } = await import("sonner");
+    } catch {
       toast.error("Something went wrong. Please try again or email us at contact@grapevine.io");
     }
     setLoading(false);

@@ -24,7 +24,7 @@ export const logActivity = async ({
       entity_name: entityName ?? null,
       detail: detail ?? null,
     });
-  } catch (e) {
-    console.warn("Failed to log activity:", e);
+  } catch {
+    // Activity logging is non-critical; silently ignore failures
   }
 };
