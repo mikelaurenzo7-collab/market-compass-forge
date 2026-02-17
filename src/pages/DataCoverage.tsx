@@ -31,18 +31,6 @@ const COVERAGE_DATA: ModuleCoverage[] = [
     sources: ["SEC EDGAR", "Firecrawl", "User uploads"],
   },
   {
-    module: "Public Markets",
-    icon: <BarChart3 className="h-4 w-4" />,
-    totalMetrics: 18,
-    verified: 12,
-    providerEstimated: 4,
-    modelEstimated: 2,
-    userInput: 0,
-    refreshCadence: "Daily",
-    lastRefresh: "6 hours ago",
-    sources: ["FMP API", "SEC EDGAR", "FRED"],
-  },
-  {
     module: "Real Estate Intel",
     icon: <Building2 className="h-4 w-4" />,
     totalMetrics: 14,
