@@ -13,13 +13,12 @@ export interface WidgetConfig {
 export const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "morning-briefing", label: "Morning Briefing", visible: true, order: 0, section: "full" },
   { id: "quick-actions", label: "Quick Actions", visible: true, order: 1, section: "full" },
-  { id: "metrics", label: "Key Metrics", visible: true, order: 2, section: "full" },
-  { id: "alpha-signals", label: "Alpha Signals", visible: true, order: 3, section: "full" },
-  { id: "companies-table", label: "Companies Table", visible: true, order: 4, section: "main" },
-  { id: "pipeline-deals", label: "Pipeline Deals", visible: true, order: 5, section: "sidebar" },
-  { id: "watchlists", label: "Watchlists", visible: true, order: 6, section: "sidebar" },
-  { id: "distressed", label: "Distressed Opportunities", visible: true, order: 7, section: "sidebar" },
-  { id: "news-wire", label: "News Wire", visible: true, order: 8, section: "sidebar" },
+  { id: "alpha-signals", label: "Alpha Signals", visible: true, order: 2, section: "full" },
+  { id: "companies-table", label: "Companies Table", visible: true, order: 3, section: "main" },
+  { id: "pipeline-deals", label: "Pipeline Deals", visible: true, order: 4, section: "sidebar" },
+  { id: "watchlists", label: "Watchlists", visible: true, order: 5, section: "sidebar" },
+  { id: "distressed", label: "Distressed Opportunities", visible: true, order: 6, section: "sidebar" },
+  { id: "news-wire", label: "News Wire", visible: true, order: 7, section: "sidebar" },
 ];
 
 function mergeWithDefaults(saved: Partial<WidgetConfig>[] | null): WidgetConfig[] {
