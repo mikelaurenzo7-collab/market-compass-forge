@@ -21,6 +21,7 @@ import { format, differenceInDays, formatDistanceToNow } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import PageTransition from "@/components/PageTransition";
 import EmptyState from "@/components/EmptyState";
+import QuickActions from "@/components/QuickActions";
 
 // ── Interest-state labels for the pipeline ──────────────────────────────
 const INTEREST_LABELS: Record<string, string> = {
@@ -291,6 +292,9 @@ const DealsOverview = () => {
             onClick={() => navigate("/deals/recommended")}
           />
         </div>
+
+        {/* Quick Actions */}
+        <QuickActions />
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

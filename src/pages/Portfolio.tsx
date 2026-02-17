@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePortfolios, usePortfolioPositions, useCreatePortfolio, useAddPosition, useRemovePosition, useDeletePortfolio, type PortfolioPosition } from "@/hooks/usePortfolio";
 import { supabase } from "@/integrations/supabase/client";
-import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, ArrowUpRight, ArrowDownRight, Building2, Search, BarChart3 } from "lucide-react";
+import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, Building2, Search, BarChart3 } from "lucide-react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
 import PortfolioBenchmark from "@/components/PortfolioBenchmark";
@@ -66,9 +66,9 @@ const Portfolio = () => {
 
   // Portfolio metrics
   const metrics = useMemo(() => {
-    if (!positions?.length) return { totalValue: 0, totalCost: 0, totalPnL: 0, pnlPct: 0, dayPnL: 0 };
+    if (!positions?.length) return { totalValue: 0, totalCost: 0, totalPnL: 0, pnlPct: 0, moic: 0 };
 
-    let totalValue = 0, totalCost = 0, dayPnL = 0;
+    let totalValue = 0, totalCost = 0;
     positions.forEach((p) => {
       const cost = Number(p.shares) * Number(p.entry_price);
       totalCost += cost;
@@ -85,7 +85,7 @@ const Portfolio = () => {
       totalCost,
       totalPnL: totalValue - totalCost,
       pnlPct: totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
-      dayPnL,
+      moic: totalCost > 0 ? totalValue / totalCost : 0,
     };
   }, [positions]);
 
@@ -213,10 +213,11 @@ const Portfolio = () => {
               positive={metrics.totalPnL >= 0}
             />
             <MetricBox
-              label="Day P&L"
-              value={`${metrics.dayPnL >= 0 ? "+" : ""}${formatCurrency(metrics.dayPnL)}`}
-              icon={metrics.dayPnL >= 0 ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-              positive={metrics.dayPnL >= 0}
+              label="MOIC"
+              value={`${metrics.moic.toFixed(2)}x`}
+              sub={metrics.moic >= 1 ? "Above cost" : "Below cost"}
+              icon={<TrendingUp className="h-4 w-4" />}
+              positive={metrics.moic >= 1}
             />
             <MetricBox label="Positions" value={String(positions?.length ?? 0)} icon={<Building2 className="h-4 w-4" />} />
           </div>
@@ -299,8 +300,8 @@ const Portfolio = () => {
                               {pos.companies?.name ?? "Unknown"}
                             </button>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-primary/10 text-primary">
-                                PRIVATE
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${pos.companies?.market_type === "public" ? "bg-chart-4/10 text-chart-4" : "bg-primary/10 text-primary"}`}>
+                                {pos.companies?.market_type === "public" ? "PUBLIC" : "PRIVATE"}
                               </span>
                               {pos.companies?.sector && <span className="text-[10px] text-muted-foreground">{pos.companies.sector}</span>}
                             </div>

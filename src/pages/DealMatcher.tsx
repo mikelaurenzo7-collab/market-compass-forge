@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, Loader2, Target, AlertTriangle, TrendingUp, ArrowRight, RefreshCw, Zap, Shield, Globe, Building2, ChevronDown, ChevronUp } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { Sparkles, Loader2, Target, AlertTriangle, TrendingUp, ArrowRight, RefreshCw, Zap, Shield, Globe, Building2, ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/hooks/useData";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +73,7 @@ const ScoreRing = ({ score }: { score: number }) => {
   );
 };
 
-const DealMatchCard = ({ m, i, navigate }: { m: DealMatch; i: number; navigate: any }) => {
+const DealMatchCard = ({ m, i, navigate, onAddToPipeline, addingId }: { m: DealMatch; i: number; navigate: any; onAddToPipeline: (m: DealMatch) => void; addingId: string | null }) => {
   const [expanded, setExpanded] = useState(false);
   const TypeIcon = typeIcons[m.type] ?? Building2;
 
@@ -138,7 +139,7 @@ const DealMatchCard = ({ m, i, navigate }: { m: DealMatch; i: number; navigate: 
                   </div>
                 </div>
               </div>
-              <div className="mt-3 flex justify-end">
+              <div className="mt-3 flex justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -147,11 +148,25 @@ const DealMatchCard = ({ m, i, navigate }: { m: DealMatch; i: number; navigate: 
                     e.stopPropagation();
                     if (m.type === "distressed") navigate("/distressed");
                     else if (m.type === "global") navigate("/global");
-                    else navigate("/deals");
+                    else navigate(`/companies/${m.id}`);
                   }}
                 >
                   View Details <ArrowRight className="h-3 w-3" />
                 </Button>
+                {m.type === "deal_comp" && (
+                  <Button
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    disabled={addingId === m.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddToPipeline(m);
+                    }}
+                  >
+                    {addingId === m.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                    Add to Pipeline
+                  </Button>
+                )}
               </div>
             </div>
           </motion.div>
@@ -163,9 +178,49 @@ const DealMatchCard = ({ m, i, navigate }: { m: DealMatch; i: number; navigate: 
 
 const DealMatcher = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [matches, setMatches] = useState<DealMatch[]>([]);
   const [meta, setMeta] = useState<{ pipelineCount?: number; sectorsAnalyzed?: string[] }>({});
+  const [addingId, setAddingId] = useState<string | null>(null);
   const { checkAndTrack, showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
+
+  const addToPipeline = async (m: DealMatch) => {
+    if (!user || m.type !== "deal_comp") return;
+    setAddingId(m.id);
+    try {
+      const { data, error } = await supabase
+        .from("deal_pipeline")
+        .insert({ company_id: m.id, user_id: user.id, stage: "sourced", notes: JSON.stringify({ thesis: m.matchReason, risks: m.riskFlag }) })
+        .select("id")
+        .single();
+      if (error) {
+        if (error.code === "23505") {
+          // Already in pipeline — find existing entry and navigate
+          const { data: existing } = await supabase
+            .from("deal_pipeline")
+            .select("id")
+            .eq("company_id", m.id)
+            .eq("user_id", user.id)
+            .single();
+          if (existing) {
+            toast.info("Already in your pipeline — opening Deal Room");
+            navigate(`/deals/${existing.id}`);
+          }
+        } else {
+          throw error;
+        }
+      } else if (data) {
+        queryClient.invalidateQueries({ queryKey: ["deals-overview"] });
+        toast.success(`${m.name} added to pipeline`);
+        navigate(`/deals/${data.id}`);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add to pipeline");
+    } finally {
+      setAddingId(null);
+    }
+  };
 
   const runMatcher = useMutation({
     mutationFn: async () => {
@@ -305,7 +360,7 @@ const DealMatcher = () => {
       {hasResults && (
         <div className="space-y-3">
           {matches.map((m, i) => (
-            <DealMatchCard key={`${m.type}-${m.id}-${i}`} m={m} i={i} navigate={navigate} />
+            <DealMatchCard key={`${m.type}-${m.id}-${i}`} m={m} i={i} navigate={navigate} onAddToPipeline={addToPipeline} addingId={addingId} />
           ))}
         </div>
       )}

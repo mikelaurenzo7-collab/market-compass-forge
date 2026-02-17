@@ -23,6 +23,8 @@ import {
   LayoutDashboard,
   Upload,
   GitBranch,
+  Calculator,
+  Scale,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -50,6 +52,8 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "deals-overview", label: "Deals", icon: LayoutDashboard, path: "/deals" },
       { id: "deal-flow", label: "Deal Flow", icon: Handshake, path: "/deals/flow" },
       { id: "recommended", label: "AI Matcher", icon: Sparkles, path: "/deals/recommended" },
+      { id: "valuations", label: "Valuations", icon: Calculator, path: "/valuations" },
+      { id: "decisions", label: "Decisions", icon: Scale, path: "/decisions" },
     ],
   },
   {
@@ -76,7 +80,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "research", label: "Research & AI", icon: Search, path: "/research" },
       { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
       { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
-      { id: "data-room", label: "Data Room", icon: Upload, path: "/data-room" },
+      { id: "documents", label: "Documents", icon: Upload, path: "/data-room" },
     ],
   },
 ];
@@ -101,14 +105,13 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const isAdminOrPartner = userRole === "admin" || userRole === "partner";
 
   const isActive = (path: string) => {
-    // Exact match for /deals to avoid matching /deals/flow etc.
+    // Exact match for top-level sections that have sub-routes
     if (path === "/deals") return location.pathname === "/deals";
-    // For /deals/flow, match /deals/flow exactly
     if (path === "/deals/flow") return location.pathname === "/deals/flow";
-    // For /deals/recommended, match /deals/recommended exactly
     if (path === "/deals/recommended") return location.pathname === "/deals/recommended";
-    // Exact match for /network
     if (path === "/network") return location.pathname === "/network";
+    if (path === "/valuations") return location.pathname === "/valuations";
+    if (path === "/decisions") return location.pathname === "/decisions";
     // For all others, prefix match
     return location.pathname.startsWith(path);
   };
