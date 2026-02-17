@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -49,7 +49,7 @@
     --input: 240 18% 12%;
     --ring: 145 100% 39%;
 
-    --radius: 0.375rem;
+    --radius: 0.5rem;
 
     /* Charts */
     --chart-1: 145 100% 39%;
@@ -71,6 +71,7 @@
 
     /* Typography */
     --font-sans: 'Inter', system-ui, sans-serif;
+    --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
 }
@@ -89,27 +90,31 @@
 
   /* Scrollbar styling */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
     background: hsl(var(--border));
-    border-radius: 3px;
+    border-radius: 99px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
+    background: hsl(var(--muted-foreground) / 0.5);
   }
 }
 
 @layer utilities {
   .font-mono {
     font-family: var(--font-mono);
+  }
+
+  .font-display {
+    font-family: var(--font-display);
   }
 
   .text-data {
@@ -125,6 +130,10 @@
 
   .glow-primary-intense {
     box-shadow: 0 0 30px -5px hsl(var(--primary) / 0.4), 0 0 60px -15px hsl(var(--primary) / 0.2);
+  }
+
+  .glow-grape {
+    box-shadow: 0 0 20px -5px hsl(var(--brand-purple) / 0.3);
   }
 
   .border-glow {
@@ -155,6 +164,70 @@
       0 0 0 1px hsl(var(--border) / 0.3),
       0 8px 32px -8px hsl(0 0% 0% / 0.4),
       inset 0 1px 0 hsl(var(--foreground) / 0.03);
+  }
+
+  /* Elevated glass card with stronger depth */
+  .glass-elevated {
+    background: linear-gradient(145deg, hsl(var(--card) / 0.8) 0%, hsl(270 60% 55% / 0.06) 40%, hsl(var(--card) / 0.5) 100%);
+    backdrop-filter: blur(32px) saturate(2);
+    -webkit-backdrop-filter: blur(32px) saturate(2);
+    border: 1px solid hsl(270 60% 55% / 0.1);
+    box-shadow:
+      0 0 0 1px hsl(var(--border) / 0.2),
+      0 16px 48px -12px hsl(0 0% 0% / 0.5),
+      0 4px 12px -2px hsl(var(--brand-purple) / 0.08),
+      inset 0 1px 0 hsl(var(--foreground) / 0.04);
+  }
+
+  /* Animated gradient border */
+  .border-gradient-animated {
+    position: relative;
+  }
+
+  .border-gradient-animated::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      var(--gradient-angle, 135deg),
+      hsl(var(--primary) / 0.3),
+      hsl(var(--brand-purple) / 0.3),
+      hsl(var(--chart-2) / 0.2),
+      hsl(var(--primary) / 0.3)
+    );
+    background-size: 300% 300%;
+    animation: gradientRotate 6s linear infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+  }
+
+  .border-gradient-animated:hover::before {
+    opacity: 1;
+  }
+
+  @keyframes gradientRotate {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Noise texture overlay for depth */
+  .noise-overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.015;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    z-index: 1;
+    border-radius: inherit;
   }
 
   /* Futuristic scan-line overlay (very subtle) */
@@ -248,6 +321,10 @@
     text-shadow: 0 0 8px hsl(var(--primary) / 0.6), 0 0 24px hsl(var(--primary) / 0.3), 0 0 48px hsl(var(--primary) / 0.1);
   }
 
+  .text-glow-grape {
+    text-shadow: 0 0 10px hsl(var(--brand-purple) / 0.5), 0 0 30px hsl(var(--brand-purple) / 0.2);
+  }
+
   /* Breathing border glow */
   .border-breathe {
     animation: borderBreathe 4s ease-in-out infinite;
@@ -275,6 +352,43 @@
 
   .text-negative {
     color: hsl(var(--destructive));
+  }
+
+  /* Vignette overlay for immersive depth */
+  .vignette::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    background: radial-gradient(ellipse at center, transparent 50%, hsl(var(--background) / 0.4) 100%);
+  }
+
+  /* Accent line animation for headers */
+  .accent-line {
+    position: relative;
+  }
+
+  .accent-line::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary) / 0.6) 0%,
+      hsl(var(--brand-purple) / 0.4) 50%,
+      transparent 100%
+    );
+    border-radius: 999px;
+  }
+
+  /* Frosted divider */
+  .divider-glow {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.15), hsl(var(--brand-purple) / 0.1), transparent);
   }
 }
 
@@ -317,8 +431,10 @@
   }
 
   .transition-lift:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.15);
+    transform: translateY(-2px);
+    box-shadow: 
+      0 8px 24px -4px hsl(var(--primary) / 0.12),
+      0 2px 8px -2px hsl(0 0% 0% / 0.3);
   }
 
   /* Print utilities */
@@ -344,4 +460,24 @@
   border-radius: 9999px;
   background: hsl(var(--primary));
   box-shadow: 0 0 8px hsl(var(--primary) / 0.6);
+}
+
+/* Premium widget card styling */
+.widget-card {
+  background: linear-gradient(160deg, hsl(var(--card) / 0.8) 0%, hsl(var(--card) / 0.5) 100%);
+  border: 1px solid hsl(var(--border) / 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.widget-card:hover {
+  border-color: hsl(var(--primary) / 0.15);
+  box-shadow: 0 4px 20px -4px hsl(0 0% 0% / 0.3), 0 0 0 1px hsl(var(--primary) / 0.05);
+}
+
+/* Status strip styling */
+.status-strip {
+  background: linear-gradient(180deg, hsl(var(--muted) / 0.3) 0%, hsl(var(--background) / 0.6) 100%);
+  border-bottom: 1px solid hsl(var(--border) / 0.2);
 }

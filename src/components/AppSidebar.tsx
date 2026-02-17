@@ -141,14 +141,15 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   };
 
   return (
-    <aside className={`${collapsed ? "w-14" : "w-56"} shrink-0 border-r border-border bg-sidebar flex flex-col h-screen sticky top-0 transition-all duration-200`}>
+    <aside className={`${collapsed ? "w-14" : "w-56"} shrink-0 border-r border-border/40 bg-sidebar flex flex-col h-screen sticky top-0 transition-all duration-300`}>
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border">
-        <div className="h-8 w-8 rounded-md bg-grape flex items-center justify-center shrink-0 shadow-[0_0_12px_hsl(var(--brand-purple)/0.4)]">
-          <span className="text-xs font-bold text-grape-foreground">GV</span>
+      <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border/30 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-grape/4 to-transparent pointer-events-none" />
+        <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-grape to-grape/80 flex items-center justify-center shrink-0 shadow-[0_0_16px_hsl(var(--brand-purple)/0.5),0_2px_8px_hsl(0_0%_0%/0.3)]">
+          <span className="text-xs font-bold text-grape-foreground font-display">GV</span>
         </div>
         {!collapsed && (
-          <span className="text-sm font-semibold text-foreground tracking-tight">Grapevine</span>
+          <span className="relative text-sm font-semibold text-foreground tracking-tight font-display">Grapevine</span>
         )}
       </div>
 
