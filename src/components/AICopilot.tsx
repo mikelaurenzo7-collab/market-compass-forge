@@ -24,6 +24,7 @@ const PAGE_CONTEXT: Record<string, string> = {
   "/automations": "workflow automation engine with trigger-based rules, templates, and action chains",
   "/data-room": "document management and data room for secure file sharing and analysis",
   "/decisions": "decision audit trail tracking IC votes, stage changes, and investment committee records",
+  "/lp-reporting": "LP reporting module for generating quarterly updates, capital calls, distribution notices, and fund performance reports with IRR, TVPI, DPI metrics",
 };
 
 /**

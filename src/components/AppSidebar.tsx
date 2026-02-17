@@ -26,6 +26,7 @@ import {
   Calculator,
   Scale,
   Zap,
+  FileText,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -69,6 +70,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Portfolio",
     items: [
       { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
+      { id: "lp-reporting", label: "LP Reporting", icon: FileText, path: "/lp-reporting" },
     ],
   },
   {
