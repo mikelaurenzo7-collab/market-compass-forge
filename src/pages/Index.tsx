@@ -22,6 +22,9 @@ import EmptyState from "@/components/EmptyState";
 import { AnimatePresence, motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import FeatureTooltip from "@/components/FeatureTooltip";
+import QuickActions from "@/components/QuickActions";
+import DashboardCustomizer from "@/components/DashboardCustomizer";
+import { useDashboardLayout } from "@/hooks/useDashboardLayout";
 
 const NewsFeed = lazy(() => import("@/components/NewsFeed"));
 const AlphaSignalWidget = lazy(() => import("@/components/AlphaSignalWidget"));
@@ -296,6 +299,88 @@ const DistressedWidget = () => {
   );
 };
 
+// Widget component map
+const WIDGET_COMPONENTS: Record<string, React.ComponentType> = {
+  "morning-briefing": () => (
+    <FeatureTooltip featureId="morning-briefing" tip="Pro tip: Customize your daily briefing content and frequency in Settings → Briefing." side="bottom">
+      <div>
+        <Suspense fallback={<ChartSkeleton />}>
+          <MorningBriefing />
+        </Suspense>
+      </div>
+    </FeatureTooltip>
+  ),
+  "quick-actions": QuickActions,
+  "alpha-signals": () => (
+    <Suspense fallback={<ChartSkeleton />}>
+      <AlphaSignalWidget />
+    </Suspense>
+  ),
+  "companies-table": () => {
+    const navigate = useNavigate();
+    return (
+      <div className="rounded-lg border border-border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Companies</h3>
+          <button onClick={() => navigate("/companies")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">
+            View All
+          </button>
+        </div>
+        <CompanyTable />
+      </div>
+    );
+  },
+  "pipeline-deals": RecentPipelineDeals,
+  "watchlists": WatchlistWidget,
+  "distressed": DistressedWidget,
+  "news-wire": () => (
+    <Suspense fallback={<WidgetSkeleton />}>
+      <NewsFeed compact />
+    </Suspense>
+  ),
+};
+
+// Metrics widget needs props so it's handled inline
+const MetricsWidget = ({ metrics, isLoading, batch }: { metrics: any; isLoading: boolean; batch: any }) => {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <motion.div
+      className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
+      initial="initial"
+      animate="animate"
+      variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
+    >
+      <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} index={0} />
+      <MetricCard
+        label="Companies Tracked"
+        value={String(batch?.privateCount ?? 0)}
+        subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Private Markets</span>}
+        index={1}
+      />
+      <MetricCard
+        label="Distressed Alerts"
+        value={String(batch?.distressedCount ?? 0)}
+        subtitle={<span className="flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Active</span>}
+        index={2}
+      />
+      <MetricCard
+        label="Pipeline Deals"
+        value={String(batch?.pipelineCount ?? 0)}
+        subtitle={<span className="flex items-center gap-1"><Briefcase className="h-2.5 w-2.5" /> In Progress</span>}
+        index={3}
+      />
+    </motion.div>
+  );
+};
+
 const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
@@ -303,8 +388,8 @@ const Index = () => {
   const queryClient = useQueryClient();
   const { data: batch } = useDashboardBatch();
   const { showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
+  const { widgets, fullWidgets, mainWidgets, sidebarWidgets, updateWidgets, resetToDefaults } = useDashboardLayout();
 
-  // Realtime: refresh dashboard when activity events or signals change
   useEffect(() => {
     const channel = supabase
       .channel("dashboard-realtime")
@@ -327,6 +412,16 @@ const Index = () => {
     ? `Data as of ${format(new Date(batch.latestEventDate), "MMM d, yyyy")}`
     : "Private Investment Intelligence";
 
+  const hasSidebar = sidebarWidgets.length > 0;
+
+  const renderWidget = (widgetId: string) => {
+    if (widgetId === "metrics") {
+      return <MetricsWidget key="metrics" metrics={metrics} isLoading={isLoading} batch={batch} />;
+    }
+    const Component = WIDGET_COMPONENTS[widgetId];
+    return Component ? <Component key={widgetId} /> : null;
+  };
+
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       {/* Hero Header */}
@@ -337,126 +432,42 @@ const Index = () => {
         className="relative overflow-hidden rounded-xl glass-premium p-5 sm:p-6"
       >
         <div className="absolute inset-0 aurora-gradient opacity-50 pointer-events-none" />
-        <div className="relative">
-          <motion.h1
-            initial={{ opacity: 0, x: -12 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-            className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
-          >
-            Command Center
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-sm text-muted-foreground mt-0.5"
-          >
-            {freshnessLabel}
-          </motion.p>
+        <div className="relative flex items-start justify-between">
+          <div>
+            <motion.h1
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+              className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
+            >
+              Command Center
+            </motion.h1>
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-sm text-muted-foreground mt-0.5">
+              {freshnessLabel}
+            </motion.p>
+          </div>
+          <DashboardCustomizer widgets={widgets} onSave={updateWidgets} onReset={resetToDefaults} />
         </div>
       </motion.div>
 
       <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
-
       <AnimatePresence>{showOnboarding && <OnboardingFlow />}</AnimatePresence>
 
-      {/* Morning Briefing */}
-      <FeatureTooltip
-        featureId="morning-briefing"
-        tip="Pro tip: Customize your daily briefing content and frequency in Settings → Briefing."
-        side="bottom"
-      >
-        <div>
-          <Suspense fallback={<ChartSkeleton />}>
-            <MorningBriefing />
-          </Suspense>
-        </div>
-      </FeatureTooltip>
+      {/* Full-width widgets */}
+      {fullWidgets.map((w) => renderWidget(w.id))}
 
-      {/* Alpha Signals */}
-      <Suspense fallback={<ChartSkeleton />}>
-        <AlphaSignalWidget />
-      </Suspense>
-
-      {/* Metrics Row */}
-      {isLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-      ) : (
-        <motion.div
-          className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
-          initial="initial"
-          animate="animate"
-          variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-        >
-          <MetricCard
-            label="Total Deal Value"
-            value={formatCurrency(metrics?.totalDealValue ?? 0)}
-            subtitle={`${metrics?.totalRounds ?? 0} rounds`}
-            index={0}
-          />
-          <MetricCard
-            label="Companies Tracked"
-            value={String(batch?.privateCount ?? 0)}
-            subtitle={
-              <span className="flex items-center gap-1">
-                <Lock className="h-2.5 w-2.5" /> Private Markets
-              </span>
-            }
-            index={1}
-          />
-          <MetricCard
-            label="Distressed Alerts"
-            value={String(batch?.distressedCount ?? 0)}
-            subtitle={
-              <span className="flex items-center gap-1">
-                <AlertTriangle className="h-2.5 w-2.5" /> Active
-              </span>
-            }
-            index={2}
-          />
-          <MetricCard
-            label="Pipeline Deals"
-            value={String(batch?.pipelineCount ?? 0)}
-            subtitle={
-              <span className="flex items-center gap-1">
-                <Briefcase className="h-2.5 w-2.5" /> In Progress
-              </span>
-            }
-            index={3}
-          />
-        </motion.div>
-      )}
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
-        <div className="lg:col-span-2">
-          <div className="rounded-lg border border-border bg-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Companies</h3>
-              <button
-                onClick={() => navigate("/companies")}
-                className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline"
-              >
-                View All
-              </button>
-            </div>
-            <CompanyTable />
+      {/* Main content grid */}
+      <div className={`grid grid-cols-1 ${hasSidebar ? "lg:grid-cols-3" : ""} gap-3 sm:gap-4`}>
+        {mainWidgets.length > 0 && (
+          <div className={hasSidebar ? "lg:col-span-2" : ""}>
+            {mainWidgets.map((w) => renderWidget(w.id))}
           </div>
-        </div>
-
-        <div className="space-y-3 sm:space-y-4">
-          <RecentPipelineDeals />
-          <WatchlistWidget />
-          <DistressedWidget />
-          <Suspense fallback={<WidgetSkeleton />}>
-            <NewsFeed compact />
-          </Suspense>
-        </div>
+        )}
+        {hasSidebar && (
+          <div className="space-y-3 sm:space-y-4">
+            {sidebarWidgets.map((w) => renderWidget(w.id))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -23,8 +23,8 @@ const steps = [
     icon: List,
     title: "Build a watchlist",
     description: "Group companies by sector or theme. Get real-time alerts when new intel surfaces on any of them.",
-    cta: "Go to Screening",
-    path: "/screening",
+    cta: "Go to Companies",
+    path: "/companies",
     benefit: "Watchlists drive 4x faster deal response times",
   },
   {
