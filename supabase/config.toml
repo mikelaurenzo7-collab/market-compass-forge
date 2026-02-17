@@ -110,3 +110,9 @@ verify_jwt = false
 
 [functions.chatgpt-openapi]
 verify_jwt = false
+
+[functions.slack-notify]
+verify_jwt = false
+
+[functions.email-inbound]
+verify_jwt = false

@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Briefcase, Loader2, CheckCircle2, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activityLogger";
+import { useSlackNotify } from "@/hooks/useSlackNotify";
 
 const DILIGENCE_CHECKLIST = [
   { category: "Financial", items: ["Review financials & valuation basis", "Validate discount / recovery assumptions", "Assess capital requirements"] },
@@ -26,6 +27,7 @@ const AddToPipelineButton = ({ entityName, entityType, entityId, sector, descrip
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { notify: slackNotify } = useSlackNotify();
   const [created, setCreated] = useState(false);
   const [dealId, setDealId] = useState<string | null>(null);
 
@@ -120,6 +122,11 @@ const AddToPipelineButton = ({ entityName, entityType, entityId, sector, descrip
       setCreated(true);
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       toast.success("Added to pipeline with diligence checklist");
+      slackNotify("deal_added", {
+        company_name: entityName,
+        stage: "Sourced",
+        sector: sector ?? entityType.replace("_", " "),
+      });
     },
     onError: (e: any) => {
       toast.error(e.message || "Failed to add to pipeline");

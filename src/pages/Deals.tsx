@@ -17,6 +17,7 @@ import { KanbanSkeleton } from "@/components/SkeletonLoaders";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileDealCard from "@/components/MobileCompanyCard";
 import DealWorkspace from "@/components/DealWorkspace";
+import { useSlackNotify } from "@/hooks/useSlackNotify";
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ const Deals = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { notify: slackNotify } = useSlackNotify();
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [view, setView] = useState<"kanban" | "table">("kanban");
@@ -66,10 +68,19 @@ const Deals = () => {
 
   const updateStage = useMutation({
     mutationFn: async ({ id, stage }: { id: string; stage: string }) => {
+      const deal = deals?.find((d) => d.id === id);
+      const previousStage = deal?.stage;
       const { error } = await supabase.from("deal_pipeline").update({ stage }).eq("id", id);
       if (error) throw error;
-      const deal = deals?.find((d) => d.id === id);
-      if (user && deal) logActivity({ userId: user.id, action: `moved to ${STAGE_LABELS[stage]}`, entityType: "deal", entityId: deal.company_id, entityName: deal.companies?.name ?? "Unknown" });
+      if (user && deal) {
+        logActivity({ userId: user.id, action: `moved to ${STAGE_LABELS[stage]}`, entityType: "deal", entityId: deal.company_id, entityName: deal.companies?.name ?? "Unknown" });
+        slackNotify("deal_stage_change", {
+          company_name: deal.companies?.name ?? "Unknown",
+          new_stage: STAGE_LABELS[stage],
+          previous_stage: previousStage ? STAGE_LABELS[previousStage] : undefined,
+          sector: deal.companies?.sector,
+        });
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pipeline"] }),
   });

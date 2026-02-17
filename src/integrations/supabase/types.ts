@@ -1321,6 +1321,45 @@ export type Database = {
         }
         Relationships: []
       }
+      email_inbound_log: {
+        Row: {
+          action_taken: string | null
+          created_at: string
+          entity_id: string | null
+          from_email: string
+          id: string
+          parsed_company: string | null
+          parsed_contacts: Json | null
+          raw_snippet: string | null
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_taken?: string | null
+          created_at?: string
+          entity_id?: string | null
+          from_email: string
+          id?: string
+          parsed_company?: string | null
+          parsed_contacts?: Json | null
+          raw_snippet?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_taken?: string | null
+          created_at?: string
+          entity_id?: string | null
+          from_email?: string
+          id?: string
+          parsed_company?: string | null
+          parsed_contacts?: Json | null
+          raw_snippet?: string | null
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       financials: {
         Row: {
           arr: number | null
@@ -1874,6 +1913,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      integration_settings: {
+        Row: {
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          integration_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          integration_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          integration_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       intelligence_signals: {
         Row: {
@@ -3441,6 +3510,42 @@ export type Database = {
             referencedColumns: ["company_id"]
           },
         ]
+      }
+      slack_notifications: {
+        Row: {
+          channel: string
+          created_at: string
+          error: string | null
+          id: string
+          message_type: string
+          payload: Json
+          slack_ts: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          message_type: string
+          payload?: Json
+          slack_ts?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          message_type?: string
+          payload?: Json
+          slack_ts?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       subscription_tiers: {
         Row: {
