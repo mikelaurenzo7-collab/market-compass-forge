@@ -46,9 +46,9 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Deals",
     items: [
-      { id: "deals-overview", label: "Deals Overview", icon: LayoutDashboard, path: "/deals" },
+      { id: "deals-overview", label: "Deals", icon: LayoutDashboard, path: "/deals" },
       { id: "deal-flow", label: "Deal Flow", icon: Handshake, path: "/deals/flow" },
-      { id: "recommended", label: "Recommended", icon: Sparkles, path: "/deals/recommended" },
+      { id: "recommended", label: "AI Matcher", icon: Sparkles, path: "/deals/recommended" },
     ],
   },
   {

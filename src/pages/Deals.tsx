@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/hooks/useData";
-import { GripVertical, Trash2, Download, BarChart3, LayoutGrid, Table as TableIcon, MessageSquare } from "lucide-react";
+import { GripVertical, Trash2, Download, BarChart3, LayoutGrid, Table as TableIcon, MessageSquare, ExternalLink } from "lucide-react";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import { exportPipelineCSV } from "@/lib/export";
 import { logActivity } from "@/lib/activityLogger";
@@ -21,8 +21,8 @@ import { useSlackNotify } from "@/hooks/useSlackNotify";
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
-  sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
-  ic_review: "IC Review", committed: "Committed", passed: "Passed",
+  sourced: "Watching", screening: "Interested", due_diligence: "Diligencing",
+  ic_review: "Soft Commit", committed: "Committed", passed: "Passed",
 };
 const STAGE_COLORS: Record<string, string> = {
   sourced: "border-t-muted-foreground", screening: "border-t-primary",
@@ -109,10 +109,10 @@ const Deals = () => {
     <div className="p-3 sm:p-6 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Deal Flow</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-semibold text-foreground tracking-tight">Deal Flow</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
             {view === "kanban" ? (
-              <><span className="font-mono text-primary">{deals?.length ?? 0}</span> deals in pipeline · Drag to move between stages</>
+              <><span className="font-mono text-primary">{deals?.length ?? 0}</span> deals in pipeline · Drag to advance · Click to open Deal Room</>
             ) : (
               <>Market transaction log · Filterable by type, industry, and size</>
             )}
@@ -188,7 +188,7 @@ const Deals = () => {
                               <div className="flex items-center gap-2">
                                 <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
                                 <CompanyHoverCard company={{ id: deal.company_id, name: deal.companies?.name ?? "Unknown", sector: deal.companies?.sector, stage: deal.companies?.stage }}>
-                                  <button onClick={(e) => { e.stopPropagation(); navigate(`/companies/${deal.company_id}`); }} className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left">
+                                  <button onClick={(e) => { e.stopPropagation(); navigate(`/deals/${deal.id}`); }} className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left">
                                     {deal.companies?.name ?? "Unknown"}
                                   </button>
                                 </CompanyHoverCard>
@@ -201,11 +201,11 @@ const Deals = () => {
                               <Trash2 className="h-3 w-3" />
                             </button>
                             <button
-                              onClick={(e) => { e.stopPropagation(); setWorkspaceDeal({ id: deal.id, companyId: deal.company_id, companyName: deal.companies?.name ?? "Unknown" }); }}
+                              onClick={(e) => { e.stopPropagation(); navigate(`/deals/${deal.id}`); }}
                               className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all"
-                              title="Open deal workspace"
+                              title="Open Deal Room"
                             >
-                              <MessageSquare className="h-3 w-3" />
+                              <ExternalLink className="h-3 w-3" />
                             </button>
                           </div>
                         </div>
