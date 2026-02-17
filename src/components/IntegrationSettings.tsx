@@ -163,7 +163,7 @@ function SlackSection({
         body: {
           type: "deal_added",
           channel,
-          data: { company_name: "Test Company", stage: "Sourced", sector: "Technology" },
+          data: { company_name: "Test Company", stage: "Watching", sector: "Technology" },
         },
       });
       if (error) throw error;
@@ -322,7 +322,7 @@ function EmailSection({
             <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
               <li>Forward intro emails to the webhook endpoint below</li>
               <li>Grapevine extracts company names and contacts automatically</li>
-              <li>New companies are created and added to your pipeline as "Sourced"</li>
+              <li>New companies are created and added to your pipeline as "Watching"</li>
               <li>Contact info is preserved in deal notes for follow-up</li>
             </ol>
           </div>

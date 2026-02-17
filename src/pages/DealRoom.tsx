@@ -389,8 +389,8 @@ const TimelineTab = ({ dealId }: { dealId: string }) => {
   const { data: timeline, isLoading } = useDealTimeline(dealId);
 
   const STAGE_LABELS: Record<string, string> = {
-    sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
-    ic_review: "IC Review", committed: "Committed", passed: "Passed",
+    sourced: "Watching", screening: "Interested", due_diligence: "Diligencing",
+    ic_review: "Soft Commit", committed: "Committed", passed: "Passed",
   };
 
   if (isLoading) {

@@ -7,8 +7,8 @@ import { TrendingUp, Clock, Target, ArrowRight, Loader2 } from "lucide-react";
 
 const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
 const STAGE_LABELS: Record<string, string> = {
-  sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
-  ic_review: "IC Review", committed: "Committed", passed: "Passed",
+  sourced: "Watching", screening: "Interested", due_diligence: "Diligencing",
+  ic_review: "Soft Commit", committed: "Committed", passed: "Passed",
 };
 const STAGE_COLORS: Record<string, string> = {
   sourced: "hsl(215, 20%, 55%)",

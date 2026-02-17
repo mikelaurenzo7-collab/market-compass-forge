@@ -37,8 +37,8 @@ const ChartTooltip = ({ active, payload, label }: any) => {
 
 const STAGE_ORDER = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"];
 const STAGE_LABELS: Record<string, string> = {
-  sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
-  ic_review: "IC Review", committed: "Committed", passed: "Passed",
+  sourced: "Watching", screening: "Interested", due_diligence: "Diligencing",
+  ic_review: "Soft Commit", committed: "Committed", passed: "Passed",
 };
 
 /* ─── User Activity Stats ─── */

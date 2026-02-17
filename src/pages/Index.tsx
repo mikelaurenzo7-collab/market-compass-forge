@@ -129,10 +129,10 @@ const RecentPipelineDeals = () => {
     );
 
   const STAGE_LABELS: Record<string, string> = {
-    sourced: "Sourced",
-    screening: "Screening",
-    due_diligence: "Due Diligence",
-    ic_review: "IC Review",
+    sourced: "Watching",
+    screening: "Interested",
+    due_diligence: "Diligencing",
+    ic_review: "Soft Commit",
     committed: "Committed",
     passed: "Passed",
   };

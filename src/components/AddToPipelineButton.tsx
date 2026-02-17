@@ -124,7 +124,7 @@ const AddToPipelineButton = ({ entityName, entityType, entityId, sector, descrip
       toast.success("Added to pipeline with diligence checklist");
       slackNotify("deal_added", {
         company_name: entityName,
-        stage: "Sourced",
+        stage: "Watching",
         sector: sector ?? entityType.replace("_", " "),
       });
     },
