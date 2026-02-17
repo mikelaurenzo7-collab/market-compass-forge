@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  LayoutDashboard,
+  Handshake,
+  Users,
+  Briefcase,
   Building2,
   Globe,
-  Handshake,
-  Sparkles,
-  DollarSign,
-  Rss,
-  Activity,
   Building,
   AlertTriangle,
   Landmark,
+  Search,
+  Rss,
+  Activity,
   Bell,
   Settings,
   ShieldCheck,
@@ -19,10 +19,9 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Search,
+  Sparkles,
+  LayoutDashboard,
   Upload,
-  Briefcase,
-  BookOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -31,50 +30,51 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+interface NavItem {
+  id: string;
+  label: string;
+  icon: typeof Handshake;
+  path: string;
+}
+
 interface NavGroup {
   label: string;
-  items: { id: string; label: string; icon: typeof LayoutDashboard; path: string }[];
+  items: NavItem[];
 }
 
 const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Command Center",
+    label: "Deals",
     items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
+      { id: "deals-overview", label: "Deals Overview", icon: LayoutDashboard, path: "/deals" },
+      { id: "deal-flow", label: "Deal Flow", icon: Handshake, path: "/deals/flow" },
+      { id: "recommended", label: "Recommended", icon: Sparkles, path: "/deals/recommended" },
     ],
   },
   {
-    label: "Markets",
+    label: "Rooms",
+    items: [
+      { id: "rooms", label: "Rooms", icon: Users, path: "/rooms" },
+    ],
+  },
+  {
+    label: "Portfolio",
+    items: [
+      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
+    ],
+  },
+  {
+    label: "Intelligence",
     items: [
       { id: "companies", label: "Companies", icon: Building2, path: "/companies" },
       { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
       { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
       { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
       { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
-    ],
-  },
-  {
-    label: "Deal Engine",
-    items: [
-      { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
-      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
-      { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
-      { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
-      { id: "decisions", label: "Decisions", icon: BookOpen, path: "/decisions" },
-    ],
-  },
-  {
-    label: "Workspace",
-    items: [
-      { id: "data-room", label: "Data Room", icon: Upload, path: "/data-room" },
-    ],
-  },
-  {
-    label: "Intelligence",
-    items: [
       { id: "research", label: "Research & AI", icon: Search, path: "/research" },
       { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
       { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
+      { id: "data-room", label: "Data Room", icon: Upload, path: "/data-room" },
     ],
   },
 ];
@@ -84,6 +84,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const { data: unreadCount } = useUnreadCount();
   const { signOut, user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const { data: userRole } = useQuery({
     queryKey: ["sidebar-role", user?.id],
@@ -97,8 +98,20 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
   const isAdminOrPartner = userRole === "admin" || userRole === "partner";
 
-  const isActive = (path: string) =>
-    path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
+  const isActive = (path: string) => {
+    // Exact match for /deals to avoid matching /deals/flow etc.
+    if (path === "/deals") return location.pathname === "/deals";
+    // For /deals/flow, match /deals/flow exactly
+    if (path === "/deals/flow") return location.pathname === "/deals/flow";
+    // For /deals/recommended, match /deals/recommended exactly
+    if (path === "/deals/recommended") return location.pathname === "/deals/recommended";
+    // For all others, prefix match
+    return location.pathname.startsWith(path);
+  };
+
+  const toggleGroup = (label: string) => {
+    setCollapsedGroups((prev) => ({ ...prev, [label]: !prev[label] }));
+  };
 
   const bottomItems = [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
@@ -107,13 +120,13 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
   ];
 
-  const renderLink = (item: { id: string; label: string; icon: typeof LayoutDashboard; path: string; badge?: number }) => {
+  const renderLink = (item: NavItem & { badge?: number }) => {
     const active = isActive(item.path);
     const link = (
       <NavLink
         key={item.id}
         to={item.path}
-        end={item.path === "/dashboard"}
+        end={item.path === "/deals"}
         className={`group relative w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-200 ${
           active
             ? "bg-primary/8 text-primary font-medium"
@@ -146,7 +159,11 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   };
 
   return (
-    <aside className={`${collapsed ? "w-14" : "w-56"} shrink-0 border-r border-border/40 bg-sidebar flex flex-col h-screen sticky top-0 transition-all duration-300`}>
+    <aside
+      className={`${collapsed ? "w-14" : "w-56"} shrink-0 border-r border-border/40 bg-sidebar flex flex-col h-screen sticky top-0 transition-all duration-300`}
+      role="navigation"
+      aria-label="Main navigation"
+    >
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border/30 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-grape/4 to-transparent pointer-events-none" />
@@ -159,30 +176,46 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 px-2 py-2 overflow-y-auto space-y-1">
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={group.label}>
-            {gi > 0 && (
-              <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-grape/20 to-transparent" />
-            )}
-            {!collapsed && (
-              <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-                <span className="h-1 w-1 rounded-full bg-grape/60" />
-                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
-                  {group.label}
-                </p>
-              </div>
-            )}
-            {collapsed && gi > 0 && (
-              <div className="flex justify-center py-1">
-                <span className="h-1 w-1 rounded-full bg-grape/50" />
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => renderLink(item))}
+      <nav className="flex-1 px-2 py-2 overflow-y-auto space-y-1" aria-label="Primary">
+        {NAV_GROUPS.map((group, gi) => {
+          const isGroupCollapsed = collapsedGroups[group.label];
+          const hasActiveChild = group.items.some((item) => isActive(item.path));
+
+          return (
+            <div key={group.label}>
+              {gi > 0 && (
+                <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-grape/20 to-transparent" />
+              )}
+              {!collapsed && (
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className="flex items-center gap-2 px-3 pt-2 pb-1 w-full text-left group/header"
+                  aria-expanded={!isGroupCollapsed}
+                >
+                  <span className={`h-1 w-1 rounded-full ${hasActiveChild ? "bg-primary" : "bg-grape/60"}`} />
+                  <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 flex-1">
+                    {group.label}
+                  </p>
+                  <ChevronRight
+                    className={`h-3 w-3 text-muted-foreground/40 transition-transform duration-200 ${
+                      isGroupCollapsed ? "" : "rotate-90"
+                    }`}
+                  />
+                </button>
+              )}
+              {collapsed && gi > 0 && (
+                <div className="flex justify-center py-1">
+                  <span className="h-1 w-1 rounded-full bg-grape/50" />
+                </div>
+              )}
+              {(!isGroupCollapsed || collapsed) && (
+                <div className="space-y-0.5">
+                  {group.items.map((item) => renderLink(item))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Bottom nav */}
@@ -191,6 +224,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <ChevronRight className="h-4 w-4 shrink-0" /> : <ChevronLeft className="h-4 w-4 shrink-0" />}
           {!collapsed && <span className="truncate">Collapse</span>}

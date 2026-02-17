@@ -117,6 +117,9 @@ const GlobalMarkets = () => {
      <div className="p-4 sm:p-6 space-y-4">
        <div className="flex items-center justify-between">
          <div>
+           <div className="flex items-center gap-2 mb-0.5">
+             <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">Intelligence</span>
+           </div>
            <h1 className="text-xl font-semibold text-foreground">Global Investment Opportunities</h1>
            <p className="text-sm text-muted-foreground mt-0.5">Cross-border M&A, PE/VC, sovereign wealth fund co-investments, and emerging market deals</p>
          </div>

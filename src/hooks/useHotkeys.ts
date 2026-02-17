@@ -90,12 +90,12 @@ export const useTableNavigation = (
 };
 
 export const SIDEBAR_ROUTES = [
-  "/dashboard",
-  "/companies",
-  "/global",
   "/deals",
-  "/deal-matcher",
-  "/valuations",
+  "/deals/flow",
+  "/deals/recommended",
+  "/rooms",
+  "/portfolio",
+  "/companies",
   "/research",
   "/intelligence",
 ];

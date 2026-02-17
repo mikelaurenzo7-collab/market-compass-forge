@@ -6,36 +6,45 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
-import Companies from "./pages/Companies";
-import CompanyDetail from "./pages/CompanyDetail";
-import Deals from "./pages/Deals";
-import Valuations from "./pages/Valuations";
-import FundIntelligence from "./pages/FundIntelligence";
-import RealEstateIntel from "./pages/RealEstateIntel";
-import Research from "./pages/Research";
-import Alerts from "./pages/Alerts";
-import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
-import Help from "./pages/Help";
-import IntelligenceFeed from "./pages/IntelligenceFeed";
-import DistressedAssets from "./pages/DistressedAssets";
-import AdminDashboard from "./pages/AdminDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import GlobalMarkets from "./pages/GlobalMarkets";
-import SectorPulse from "./pages/SectorPulse";
-import DealMatcher from "./pages/DealMatcher";
-import Screening from "./pages/Screening";
-import Portfolio from "./pages/Portfolio";
-import DocumentAnalyzer from "./pages/DocumentAnalyzer";
-import DataRoom from "./pages/DataRoom";
-import Decisions from "./pages/Decisions";
-import InvestorMetrics from "./pages/InvestorMetrics";
 import DataCoverage from "./pages/DataCoverage";
+import NotFound from "./pages/NotFound";
+
+// Deal Room OS — Core
+import DealsOverview from "./pages/DealsOverview";
+import Deals from "./pages/Deals";
+import DealRoom from "./pages/DealRoom";
+import DealMatcher from "./pages/DealMatcher";
+import Rooms from "./pages/Rooms";
+import RoomDetail from "./pages/RoomDetail";
+import Portfolio from "./pages/Portfolio";
+
+// Intelligence
+import Companies from "./pages/Companies";
+import CompanyDetail from "./pages/CompanyDetail";
+import GlobalMarkets from "./pages/GlobalMarkets";
+import RealEstateIntel from "./pages/RealEstateIntel";
+import DistressedAssets from "./pages/DistressedAssets";
+import FundIntelligence from "./pages/FundIntelligence";
+import Research from "./pages/Research";
+import IntelligenceFeed from "./pages/IntelligenceFeed";
+import SectorPulse from "./pages/SectorPulse";
+import DataRoom from "./pages/DataRoom";
+
+// Deal Engine (repositioned)
+import Valuations from "./pages/Valuations";
+import Decisions from "./pages/Decisions";
+
+// Utility
+import Alerts from "./pages/Alerts";
+import Settings from "./pages/Settings";
+import Help from "./pages/Help";
+import AdminDashboard from "./pages/AdminDashboard";
+
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -61,51 +70,77 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* Public routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/data-coverage" element={<DataCoverage />} />
+
+            {/* Protected routes — Deal Room OS */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Index />} />
+              {/* ===== DEALS (primary) ===== */}
+              <Route path="/deals" element={<DealsOverview />} />
+              <Route path="/deals/flow" element={<Deals />} />
+              <Route path="/deals/recommended" element={<DealMatcher />} />
+              <Route path="/deals/:id" element={<DealRoom />} />
+
+              {/* ===== ROOMS ===== */}
+              <Route path="/rooms" element={<Rooms />} />
+              <Route path="/rooms/:id" element={<RoomDetail />} />
+
+              {/* ===== PORTFOLIO ===== */}
+              <Route path="/portfolio" element={<Portfolio />} />
+
+              {/* ===== INTELLIGENCE ===== */}
               <Route path="/companies" element={<Companies />} />
               <Route path="/companies/:id" element={<CompanyDetail />} />
-              <Route path="/valuations" element={<Valuations />} />
-              <Route path="/deals" element={<Deals />} />
-              <Route path="/fund-intelligence" element={<FundIntelligence />} />
+              <Route path="/global" element={<GlobalMarkets />} />
               <Route path="/real-estate" element={<RealEstateIntel />} />
               <Route path="/distressed" element={<DistressedAssets />} />
-              <Route path="/global" element={<GlobalMarkets />} />
-              <Route path="/sector-pulse" element={<SectorPulse />} />
-              <Route path="/deal-matcher" element={<DealMatcher />} />
+              <Route path="/fund-intelligence" element={<FundIntelligence />} />
               <Route path="/research" element={<Research />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
-              <Route path="/screening" element={<Navigate to="/companies" replace />} />
-              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/sector-pulse" element={<SectorPulse />} />
               <Route path="/data-room" element={<DataRoom />} />
+
+              {/* ===== DEAL ENGINE (repositioned, still accessible) ===== */}
+              <Route path="/valuations" element={<Valuations />} />
               <Route path="/decisions" element={<Decisions />} />
-              <Route path="/document-analyzer" element={<Navigate to="/research" replace />} />
+
+              {/* ===== UTILITY ===== */}
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/help" element={<Help />} />
-              <Route path="/developers" element={<Navigate to="/settings" replace />} />
-              {/* metrics route removed from public access */}
-              {/* Legacy redirects */}
+              <Route path="/admin" element={<AdminDashboard />} />
+
+              {/* ===== LEGACY DASHBOARD (kept, redirects to Deals) ===== */}
+              <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
+
+              {/* ===== LEGACY REDIRECTS ===== */}
+              {/* Old deal-matcher → new recommended deals */}
+              <Route path="/deal-matcher" element={<Navigate to="/deals/recommended" replace />} />
+
+              {/* Preserved legacy redirects from original codebase */}
+              <Route path="/screening" element={<Navigate to="/companies" replace />} />
               <Route path="/discover" element={<Navigate to="/companies" replace />} />
+              <Route path="/document-analyzer" element={<Navigate to="/research" replace />} />
+              <Route path="/documents" element={<Navigate to="/research" replace />} />
               <Route path="/competitive-intel" element={<Navigate to="/intelligence" replace />} />
               <Route path="/sector-momentum" element={<Navigate to="/sector-pulse" replace />} />
-              <Route path="/documents" element={<Navigate to="/document-analyzer" replace />} />
+              <Route path="/people" element={<Navigate to="/fund-intelligence" replace />} />
+              <Route path="/analytics" element={<Navigate to="/fund-intelligence" replace />} />
+              <Route path="/comps" element={<Navigate to="/valuations" replace />} />
+              <Route path="/compare" element={<Navigate to="/valuations" replace />} />
+              <Route path="/watchlists" element={<Navigate to="/companies" replace />} />
               <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
               <Route path="/markets/public" element={<Navigate to="/companies" replace />} />
-              <Route path="/watchlists" element={<Navigate to="/screening" replace />} />
-              <Route path="/comps" element={<Navigate to="/valuations" replace />} />
-              <Route path="/analytics" element={<Navigate to="/fund-intelligence" replace />} />
-              <Route path="/people" element={<Navigate to="/fund-intelligence" replace />} />
-              <Route path="/compare" element={<Navigate to="/valuations" replace />} />
-              <Route path="/network" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/network" element={<Navigate to="/deals" replace />} />
+              <Route path="/developers" element={<Navigate to="/settings" replace />} />
             </Route>
+
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

@@ -25,7 +25,7 @@ const actions = [
     icon: Handshake,
     label: "Match Deals",
     description: "AI-powered matching",
-    path: "/deal-matcher",
+    path: "/deals/recommended",
   },
   {
     icon: Building,

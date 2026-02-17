@@ -179,9 +179,14 @@ const Companies = () => {
       
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">Intelligence</span>
+          </div>
           <h1 className="text-xl font-semibold text-foreground">Companies</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             <span className="font-mono text-primary">{filtered.length}</span> private companies tracked
+            <span className="mx-1.5">·</span>
+            <button onClick={() => navigate("/deals")} className="text-primary hover:underline">View Deals</button>
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 self-start flex-wrap">

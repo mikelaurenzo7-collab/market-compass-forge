@@ -124,6 +124,9 @@ const IntelligenceFeed = () => {
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">Intelligence</span>
+          </div>
           <h1 className="text-xl font-semibold text-foreground">Intelligence Feed</h1>
           <p className="text-sm text-muted-foreground mt-0.5">AI-curated private market intelligence and deal flow signals</p>
         </div>

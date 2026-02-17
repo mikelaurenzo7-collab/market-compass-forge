@@ -74,6 +74,9 @@ const DistressedAssets = () => {
   if (isLoading) {
     return (
       <div className="p-4 sm:p-6 space-y-4">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">Intelligence</span>
+        </div>
         <h1 className="text-xl font-semibold text-foreground">Distressed & Special Situations</h1>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20" />)}
@@ -87,6 +90,9 @@ const DistressedAssets = () => {
       <div className="p-4 sm:p-6 space-y-4">
        <div className="flex items-center justify-between">
          <div>
+           <div className="flex items-center gap-2 mb-0.5">
+             <span className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">Intelligence</span>
+           </div>
            <h1 className="text-xl font-semibold text-foreground">Distressed & Special Situations</h1>
            <p className="text-sm text-muted-foreground mt-0.5">Distressed businesses, foreclosed properties, and turnaround opportunities</p>
          </div>

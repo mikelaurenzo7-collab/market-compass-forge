@@ -77,17 +77,23 @@ const CommandPalette = () => {
 
         {!query && (
           <CommandGroup heading="Navigate">
-            <CommandItem onSelect={() => goTo("/")}>
-              <FileText className="mr-2 h-4 w-4" /> Dashboard
+            <CommandItem onSelect={() => goTo("/deals")}>
+              <FileText className="mr-2 h-4 w-4" /> Deals Overview
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/deals/flow")}>
+              <Search className="mr-2 h-4 w-4" /> Deal Flow
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/deals/recommended")}>
+              <Search className="mr-2 h-4 w-4" /> Recommended Deals
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/rooms")}>
+              <Users className="mr-2 h-4 w-4" /> Rooms
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/portfolio")}>
+              <FileText className="mr-2 h-4 w-4" /> Portfolio
             </CommandItem>
             <CommandItem onSelect={() => goTo("/companies")}>
               <Building2 className="mr-2 h-4 w-4" /> Companies
-            </CommandItem>
-            <CommandItem onSelect={() => goTo("/deals")}>
-              <Search className="mr-2 h-4 w-4" /> Deal Pipeline
-            </CommandItem>
-            <CommandItem onSelect={() => goTo("/analytics")}>
-              <FileText className="mr-2 h-4 w-4" /> Analytics
             </CommandItem>
             <CommandItem onSelect={() => goTo("/intelligence")}>
               <Radio className="mr-2 h-4 w-4" /> Intelligence Feed
