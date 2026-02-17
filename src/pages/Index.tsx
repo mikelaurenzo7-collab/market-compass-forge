@@ -5,40 +5,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
 import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
-import UsageMeters from "@/components/UsageMeters";
 import UpgradePrompt from "@/components/UpgradePrompt";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
 import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
 import {
-  Search,
-  TrendingUp,
-  FileText,
-  ArrowRight,
-  List,
   Lock,
-  Settings2,
   AlertTriangle,
   Building,
   Briefcase,
-  Bell,
-  Zap,
-  Globe,
+  List,
 } from "lucide-react";
 import { format } from "date-fns";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { useHotkeys } from "@/hooks/useHotkeys";
 import OnboardingFlow, { useOnboardingStatus } from "@/components/OnboardingFlow";
 import EmptyState from "@/components/EmptyState";
 import { AnimatePresence, motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LiveIndicator } from "@/components/LiveIndicator";
 import FeatureTooltip from "@/components/FeatureTooltip";
 
-// Lazy load heavy chart components
-const DealFlowChart = lazy(() => import("@/components/Charts").then((m) => ({ default: m.DealFlowChart })));
-const SectorHeatmap = lazy(() => import("@/components/Charts").then((m) => ({ default: m.SectorHeatmap })));
 const NewsFeed = lazy(() => import("@/components/NewsFeed"));
 const AlphaSignalWidget = lazy(() => import("@/components/AlphaSignalWidget"));
 const MorningBriefing = lazy(() => import("@/components/MorningBriefing"));
@@ -76,13 +60,13 @@ const WidgetSkeleton = () => (
   </div>
 );
 
-// Batched dashboard data hook — single query for pipeline count, latest event, and market counts
+// Batched dashboard data hook
 const useDashboardBatch = () => {
   const { user } = useAuth();
   return useQuery({
     queryKey: ["dashboard-batch", user?.id],
     queryFn: async () => {
-      const [pipelineRes, privateRes, distressedRes, listingsRes, sectorRes, latestEventRes] = await Promise.all([
+      const [pipelineRes, privateRes, distressedRes, latestEventRes] = await Promise.all([
         user
           ? supabase.from("deal_pipeline").select("*", { count: "exact", head: true }).eq("user_id", user.id)
           : Promise.resolve({ count: 0 }),
@@ -91,8 +75,6 @@ const useDashboardBatch = () => {
           .select("id", { count: "exact", head: true })
           .or("market_type.eq.private,market_type.is.null"),
         supabase.from("distressed_assets").select("id", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("private_listings").select("id", { count: "exact", head: true }).eq("status", "available"),
-        supabase.from("companies").select("sector").not("sector", "is", null),
         supabase
           .from("activity_events")
           .select("published_at")
@@ -100,14 +82,10 @@ const useDashboardBatch = () => {
           .limit(1)
           .maybeSingle(),
       ]);
-      const sectorSet = new Set((sectorRes.data ?? []).map((r: any) => r.sector));
       return {
         pipelineCount: (pipelineRes as any).count ?? 0,
         privateCount: privateRes.count ?? 0,
-        companyCount: privateRes.count ?? 0,
         distressedCount: distressedRes.count ?? 0,
-        listingsCount: listingsRes.count ?? 0,
-        sectorCount: sectorSet.size,
         latestEventDate: latestEventRes.data?.published_at ?? null,
       };
     },
@@ -143,7 +121,7 @@ const RecentPipelineDeals = () => {
         <EmptyState
           icon={Briefcase}
           title="No deals in pipeline"
-          description="Browse 7,800+ private companies. Filter by sector, stage and revenue, then save the opportunities that interest you."
+          description="Browse companies, filter by sector and stage, then save opportunities."
           actionLabel="Browse Companies"
           onAction={() => navigate("/companies")}
           secondaryLabel="AI Match"
@@ -231,9 +209,7 @@ const WatchlistWidget = () => {
           title="No watchlists yet"
           description="Group companies by sector, theme, or strategy. Get alerts when new intel surfaces."
           actionLabel="Build Watchlist"
-          onAction={() => navigate("/screening")}
-          secondaryLabel="AI Screening"
-          onSecondary={() => navigate("/screening")}
+          onAction={() => navigate("/companies")}
         />
       </div>
     );
@@ -242,12 +218,6 @@ const WatchlistWidget = () => {
     <div className="rounded-lg border border-border bg-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Watchlists</h3>
-        <button
-          onClick={() => navigate("/watchlists")}
-          className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline"
-        >
-          Manage
-        </button>
       </div>
       {isLoading ? (
         <div className="divide-y divide-border/50">
@@ -326,148 +296,6 @@ const DistressedWidget = () => {
   );
 };
 
-const OffMarketWidget = () => {
-  const navigate = useNavigate();
-  const { data: listings } = useQuery({
-    queryKey: ["listings-dashboard"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("private_listings")
-        .select("id, property_type, city, state, asking_price, estimated_cap_rate, listing_type")
-        .eq("status", "available")
-        .order("listed_date", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 60_000,
-  });
-
-  if (!listings?.length) return null;
-
-  return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Building className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Off-Market Properties</h3>
-        </div>
-        <button
-          onClick={() => navigate("/real-estate")}
-          className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline"
-        >
-          View All
-        </button>
-      </div>
-      <div className="divide-y divide-border/50">
-        {listings.map((l) => (
-          <div
-            key={l.id}
-            onClick={() => navigate("/real-estate")}
-            className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors"
-          >
-            <div>
-              <p className="text-sm font-medium text-foreground truncate">
-                {l.property_type} · {l.city}, {l.state}
-              </p>
-              <p className="text-[10px] text-muted-foreground capitalize">{l.listing_type?.replace("_", " ")}</p>
-            </div>
-            <span className="text-xs font-mono font-medium text-foreground shrink-0">
-              {l.estimated_cap_rate ? `${l.estimated_cap_rate}% cap` : formatCurrency(l.asking_price)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const DataSourcesBadge = () => {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Zap className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Data Sources</h3>
-      </div>
-      <div className="grid grid-cols-3 gap-3 text-center">
-        <div className="rounded-md bg-muted/30 p-2">
-          <p className="text-xs font-semibold text-foreground">SEC EDGAR</p>
-          <p className="text-[10px] text-muted-foreground">Public Filings</p>
-        </div>
-        <div className="rounded-md bg-muted/30 p-2">
-          <p className="text-xs font-semibold text-foreground">Firecrawl</p>
-          <p className="text-[10px] text-muted-foreground">Web Intelligence</p>
-        </div>
-        <div className="rounded-md bg-muted/30 p-2">
-          <p className="text-xs font-semibold text-foreground">Proprietary</p>
-          <p className="text-[10px] text-muted-foreground">Private Markets</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const GlobalPulseWidget = () => {
-  const navigate = useNavigate();
-  const { data: opportunities } = useQuery({
-    queryKey: ["global-dashboard"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("global_opportunities")
-        .select("id, name, region, country, deal_value_usd, opportunity_type, risk_rating")
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (error) throw error;
-      return data;
-    },
-    staleTime: 60_000,
-  });
-
-  if (!opportunities?.length) return null;
-
-  const fmt = (v: number | null) => {
-    if (!v) return "—";
-    if (v >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
-    if (v >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
-    return `$${v.toLocaleString()}`;
-  };
-
-  return (
-    <div className="rounded-lg border border-border bg-card">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Globe className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Global Pulse</h3>
-        </div>
-        <button
-          onClick={() => navigate("/global")}
-          className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline"
-        >
-          View All
-        </button>
-      </div>
-      <div className="divide-y divide-border/50">
-        {opportunities.map((o: any) => (
-          <div
-            key={o.id}
-            onClick={() => navigate("/global")}
-            className="px-4 py-2.5 flex items-center justify-between cursor-pointer hover:bg-secondary/30 transition-colors"
-          >
-            <div>
-              <p className="text-sm font-medium text-foreground truncate">{o.name}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {o.country} · {o.region}
-              </p>
-            </div>
-            <span className="text-xs font-mono font-medium text-foreground shrink-0">{fmt(o.deal_value_usd)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
 const Index = () => {
   const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
@@ -493,176 +321,74 @@ const Index = () => {
     };
   }, [queryClient]);
 
-  const [customizingDashboard, setCustomizingDashboard] = useState(false);
-  const [visibleWidgets, setVisibleWidgets] = useState<string[]>([
-    "morning-briefing",
-    "alpha-signals",
-    "watchlist",
-    "deal-flow",
-    "sector-heatmap",
-    "pipeline",
-    "distressed",
-    "off-market",
-    "intelligence-feed",
-  ]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("dashboard-widgets");
-    if (saved) {
-      try {
-        setVisibleWidgets(JSON.parse(saved));
-      } catch (e) {}
-    }
-  }, []);
-
-  const updateWidgets = (widgets: string[]) => {
-    setVisibleWidgets(widgets);
-    localStorage.setItem("dashboard-widgets", JSON.stringify(widgets));
-    toast.success("Dashboard updated");
-  };
-
-  const toggleWidget = (id: string) => {
-    if (visibleWidgets.includes(id)) updateWidgets(visibleWidgets.filter((w) => w !== id));
-    else updateWidgets([...visibleWidgets, id]);
-  };
-
   const { data: onboardingCompleted } = useOnboardingStatus();
   const showOnboarding = !onboardingCompleted;
   const freshnessLabel = batch?.latestEventDate
     ? `Data as of ${format(new Date(batch.latestEventDate), "MMM d, yyyy")}`
     : "Private Investment Intelligence";
 
-  useHotkeys([
-    {
-      meta: true,
-      shift: true,
-      key: "d",
-      handler: () => setCustomizingDashboard((prev) => !prev),
-      description: "Toggle dashboard customization",
-    },
-  ]);
-
-  const allWidgets = [
-    { id: "morning-briefing", label: "Morning Briefing" },
-    { id: "alpha-signals", label: "Alpha Signals" },
-    { id: "watchlist", label: "Watchlists" },
-    { id: "deal-flow", label: "Deal Flow Chart" },
-    { id: "sector-heatmap", label: "Sector Heatmap" },
-    { id: "pipeline", label: "Your Pipeline" },
-    { id: "distressed", label: "Distressed Opportunities" },
-    { id: "off-market", label: "Off-Market Properties" },
-    { id: "intelligence-feed", label: "Intelligence Feed" },
-    { id: "global-pulse", label: "Global Pulse" },
-  ];
-
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
-      {/* Cinematic Hero Header */}
+      {/* Hero Header */}
       <motion.div
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
         className="relative overflow-hidden rounded-xl glass-premium p-5 sm:p-6"
       >
-        {/* Aurora accent */}
         <div className="absolute inset-0 aurora-gradient opacity-50 pointer-events-none" />
-        <div className="relative flex items-center justify-between">
-          <div>
-            <motion.h1
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-              className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
-            >
-              Command Center
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-sm text-muted-foreground mt-0.5"
-            >
-              {freshnessLabel || "See the deal before the market does"}
-            </motion.p>
-          </div>
-          <div className="flex items-center gap-3">
-            <LiveIndicator />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCustomizingDashboard(!customizingDashboard)}
-              className="gap-1 border-border/50 hover:border-primary/30"
-            >
-              <Settings2 className="h-4 w-4" />
-              <span className="hidden sm:inline">{customizingDashboard ? "Done" : "Customize"}</span>
-            </Button>
-          </div>
+        <div className="relative">
+          <motion.h1
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
+            className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
+          >
+            Command Center
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-sm text-muted-foreground mt-0.5"
+          >
+            {freshnessLabel}
+          </motion.p>
         </div>
       </motion.div>
-
-      {customizingDashboard && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="rounded-lg border border-border glass-premium p-4 space-y-3 overflow-hidden"
-        >
-          <p className="text-xs font-semibold text-foreground uppercase tracking-wider">Dashboard Widgets</p>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {allWidgets.map((widget) => (
-              <button
-                key={widget.id}
-                onClick={() => toggleWidget(widget.id)}
-                className={`text-left px-3 py-2 rounded-md border transition-all duration-300 ${visibleWidgets.includes(widget.id) ? "border-primary/40 bg-primary/10 text-foreground glow-primary" : "border-border bg-muted/30 text-muted-foreground hover:border-primary/20"}`}
-              >
-                <span className="text-sm font-medium">{widget.label}</span>
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      )}
 
       <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
 
       <AnimatePresence>{showOnboarding && <OnboardingFlow />}</AnimatePresence>
 
-      <UpgradePrompt open={showUpgrade} onClose={dismissUpgrade} blockedAction={blockedAction} />
-
       {/* Morning Briefing */}
-      {visibleWidgets.includes("morning-briefing") && (
-        <FeatureTooltip
-          featureId="morning-briefing"
-          tip="Pro tip: Customize your daily briefing content and frequency in Settings → Briefing."
-          side="bottom"
-        >
-          <div>
-            <Suspense fallback={<ChartSkeleton />}>
-              <MorningBriefing />
-            </Suspense>
-          </div>
-        </FeatureTooltip>
-      )}
+      <FeatureTooltip
+        featureId="morning-briefing"
+        tip="Pro tip: Customize your daily briefing content and frequency in Settings → Briefing."
+        side="bottom"
+      >
+        <div>
+          <Suspense fallback={<ChartSkeleton />}>
+            <MorningBriefing />
+          </Suspense>
+        </div>
+      </FeatureTooltip>
 
       {/* Alpha Signals */}
-      {visibleWidgets.includes("alpha-signals") && (
-        <Suspense fallback={<ChartSkeleton />}>
-          <AlphaSignalWidget />
-        </Suspense>
-      )}
-
-      {/* Data Sources */}
-      <DataSourcesBadge />
+      <Suspense fallback={<ChartSkeleton />}>
+        <AlphaSignalWidget />
+      </Suspense>
 
       {/* Metrics Row */}
       {isLoading ? (
-        <div className="grid grid-cols-2 gap-2 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <CardSkeleton key={i} />
           ))}
         </div>
       ) : (
         <motion.div
-          className="grid grid-cols-2 gap-2 sm:gap-4"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
           initial="initial"
           animate="animate"
           variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
@@ -694,11 +420,11 @@ const Index = () => {
             index={2}
           />
           <MetricCard
-            label="Off-Market Listings"
-            value={String(batch?.listingsCount ?? 0)}
+            label="Pipeline Deals"
+            value={String(batch?.pipelineCount ?? 0)}
             subtitle={
               <span className="flex items-center gap-1">
-                <Building className="h-2.5 w-2.5" /> Available
+                <Briefcase className="h-2.5 w-2.5" /> In Progress
               </span>
             }
             index={3}
@@ -706,23 +432,7 @@ const Index = () => {
         </motion.div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-        {visibleWidgets.includes("deal-flow") && (
-          <Suspense fallback={<ChartSkeleton />}>
-            <div className="min-h-[240px] sm:min-h-[300px]">
-              <DealFlowChart />
-            </div>
-          </Suspense>
-        )}
-        {visibleWidgets.includes("sector-heatmap") && (
-          <Suspense fallback={<ChartSkeleton />}>
-            <div className="min-h-[240px] sm:min-h-[300px]">
-              <SectorHeatmap />
-            </div>
-          </Suspense>
-        )}
-      </div>
-
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         <div className="lg:col-span-2">
           <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -740,17 +450,12 @@ const Index = () => {
         </div>
 
         <div className="space-y-3 sm:space-y-4">
-          <UsageMeters />
-          {visibleWidgets.includes("watchlist") && <WatchlistWidget />}
-          {visibleWidgets.includes("pipeline") && <RecentPipelineDeals />}
-          {visibleWidgets.includes("distressed") && <DistressedWidget />}
-          {visibleWidgets.includes("off-market") && <OffMarketWidget />}
-          {visibleWidgets.includes("global-pulse") && <GlobalPulseWidget />}
-          {visibleWidgets.includes("intelligence-feed") && (
-            <Suspense fallback={<WidgetSkeleton />}>
-              <NewsFeed compact />
-            </Suspense>
-          )}
+          <RecentPipelineDeals />
+          <WatchlistWidget />
+          <DistressedWidget />
+          <Suspense fallback={<WidgetSkeleton />}>
+            <NewsFeed compact />
+          </Suspense>
         </div>
       </div>
     </div>

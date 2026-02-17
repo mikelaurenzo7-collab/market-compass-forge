@@ -7,21 +7,17 @@ import {
   Handshake,
   Sparkles,
   DollarSign,
-  SlidersHorizontal,
   Rss,
   Activity,
   Building,
   AlertTriangle,
   Landmark,
   Bell,
-  Briefcase,
   Settings,
   ShieldCheck,
-  Code,
   ChevronLeft,
   ChevronRight,
   LogOut,
-  FileText,
   Search,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -41,13 +37,12 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Command Center",
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
     ],
   },
   {
     label: "Markets",
     items: [
-      { id: "companies", label: "Private Markets", icon: Building2, path: "/companies" },
+      { id: "companies", label: "Companies", icon: Building2, path: "/companies" },
       { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
       { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
       { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
@@ -66,10 +61,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Intelligence",
     items: [
       { id: "research", label: "Research & AI", icon: Search, path: "/research" },
-      { id: "screening", label: "Screening", icon: SlidersHorizontal, path: "/screening" },
       { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
       { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
-      { id: "documents", label: "Document Analyzer", icon: FileText, path: "/document-analyzer" },
     ],
   },
 ];
@@ -98,7 +91,6 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const bottomItems = [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
-    { id: "developers", label: "API Docs", icon: Code, path: "/developers" },
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
   ];
 
@@ -157,7 +149,6 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       <nav className="flex-1 px-2 py-2 overflow-y-auto space-y-1">
         {NAV_GROUPS.map((group, gi) => (
           <div key={group.label}>
-            {/* Glow separator between groups */}
             {gi > 0 && (
               <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-grape/20 to-transparent" />
             )}

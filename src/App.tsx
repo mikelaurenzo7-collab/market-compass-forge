@@ -28,7 +28,6 @@ import GlobalMarkets from "./pages/GlobalMarkets";
 import SectorPulse from "./pages/SectorPulse";
 import DealMatcher from "./pages/DealMatcher";
 import Screening from "./pages/Screening";
-import Developers from "./pages/Developers";
 import Portfolio from "./pages/Portfolio";
 import DocumentAnalyzer from "./pages/DocumentAnalyzer";
 import InvestorMetrics from "./pages/InvestorMetrics";
@@ -77,13 +76,13 @@ const App = () => (
               <Route path="/deal-matcher" element={<DealMatcher />} />
               <Route path="/research" element={<Research />} />
               <Route path="/intelligence" element={<IntelligenceFeed />} />
-              <Route path="/screening" element={<Screening />} />
-              <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/document-analyzer" element={<DocumentAnalyzer />} />
+              <Route path="/screening" element={<Navigate to="/companies" replace />} />
+              <Route path="/portfolio" element={<Navigate to="/deals" replace />} />
+              <Route path="/document-analyzer" element={<Navigate to="/research" replace />} />
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/developers" element={<Developers />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/developers" element={<Navigate to="/settings" replace />} />
               {/* metrics route removed from public access */}
               {/* Legacy redirects */}
               <Route path="/discover" element={<Navigate to="/companies" replace />} />
