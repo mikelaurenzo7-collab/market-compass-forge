@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
-import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock, AlertTriangle, Briefcase, Building, Loader2 } from "lucide-react";
+import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Brain, BarChart3, FileText, Globe, ChevronRight, Lock, Briefcase, Loader2, Users, Sparkles, Target, GitBranch } from "lucide-react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -27,45 +27,44 @@ const pulseGlow = {
 };
 
 const INTERESTS = [
-  "Fund Intelligence",
-  "Real Estate Intel",
-  "AI Research",
-  "Document Analysis",
-  "Deal Flow Tracking",
-  "Company Screening",
+  "Deal Room Collaboration",
+  "Deal Flow & Pipeline",
+  "AI Research & Memos",
+  "Valuation & Diligence",
+  "Portfolio Monitoring",
   "Other",
 ];
 
 const CAPABILITIES = [
   {
+    icon: Target,
+    title: "Deal Rooms",
+    description: "Every deal gets a structured workspace — thesis, diligence tasks, allocation, and intelligence in one place. The canonical home for every opportunity.",
+  },
+  {
     icon: Brain,
-    title: "AI Deal Intelligence",
-    description: "AI-synthesized company profiles, investment memos, and deal matching across 800+ private companies.",
+    title: "AI Intelligence Layer",
+    description: "AI research chat, investment memos, sector signals, and company health scores — all wired into every Deal Room automatically.",
+  },
+  {
+    icon: Users,
+    title: "Verified Rooms & Trust Graph",
+    description: "Curated co-invest circles with verification, trust scores, and intro routing. Access flows through relationships, not cold outreach.",
   },
   {
     icon: BarChart3,
     title: "Valuation Toolkit",
-    description: "DCF, comps, and football field analysis with sector-adjusted benchmarks and forward multiples.",
+    description: "DCF, comps, LBO, and football field analysis with live macro data, sector-adjusted benchmarks, and sensitivity matrices.",
+  },
+  {
+    icon: Sparkles,
+    title: "AI Deal Matcher",
+    description: "Our AI analyses your pipeline to surface distressed assets, global opportunities, and comparable transactions — scored and ranked.",
   },
   {
     icon: Shield,
     title: "Data Provenance",
-    description: "Every data point tracked to source — SEC EDGAR, web intelligence, or manual entry. Full audit trail.",
-  },
-  {
-    icon: FileText,
-    title: "Document Analyzer",
-    description: "Upload CIMs, PPMs, and financial statements. Extract key metrics, risk factors, and valuation indicators.",
-  },
-  {
-    icon: Globe,
-    title: "Multi-Asset Coverage",
-    description: "Private equity, distressed debt, off-market real estate, and global opportunities in one platform.",
-  },
-  {
-    icon: Zap,
-    title: "REST API & Webhooks",
-    description: "Programmatic access to deal flow, company intelligence, and fund data. Build your own integrations.",
+    description: "Every data point tracked to source — SEC EDGAR, web intelligence, or manual entry. Confidence scoring and full audit trail.",
   },
 ];
 
@@ -79,13 +78,15 @@ const Landing = () => {
   const { data: liveCounts } = useQuery({
     queryKey: ["landing-live-counts"],
     queryFn: async () => {
-      const [companiesRes, distressedRes] = await Promise.all([
+      const [companiesRes, distressedRes, roomsRes] = await Promise.all([
         supabase.from("companies").select("id", { count: "exact", head: true }).or("market_type.eq.private,market_type.is.null"),
         supabase.from("distressed_assets").select("id", { count: "exact", head: true }).eq("status", "active"),
+        supabase.from("deal_rooms").select("id", { count: "exact", head: true }),
       ]);
       return {
         companiesCount: companiesRes.count ?? 0,
         distressedCount: distressedRes.count ?? 0,
+        roomsCount: roomsRes.count ?? 0,
       };
     },
     staleTime: 60_000,
@@ -181,11 +182,11 @@ const Landing = () => {
           {/* Headline */}
           <motion.div custom={1} variants={fadeUp} className="space-y-4">
             <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter leading-[0.9]">
-              See the deal<br />
-              <span className="text-glow text-primary">before the market.</span>
+              The operating system<br />
+              <span className="text-glow text-primary">for private deals.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              AI-powered private market intelligence for PE firms and family offices. Source deals, generate memos, and track your pipeline — all from one command center.
+              Every deal gets a Deal Room — thesis, intelligence, diligence, and allocation in one structured workspace. Built for PE firms, family offices, and funds.
             </p>
           </motion.div>
 
@@ -193,10 +194,10 @@ const Landing = () => {
           <motion.div custom={2} variants={fadeUp} className="w-full max-w-lg">
             <div className="grid grid-cols-4 gap-3">
               {[
-                { value: formatCurrency(metrics?.totalDealValue ?? 0), label: "Total Deal Value", icon: BarChart3 },
-                { value: String(liveCounts?.companiesCount ?? 0), label: "Companies Tracked", icon: Building },
-                { value: String(liveCounts?.distressedCount ?? 0), label: "Distressed Alerts", icon: AlertTriangle },
-                { value: String(metrics?.totalRounds ?? 0), label: "Funding Rounds", icon: Briefcase },
+                { value: formatCurrency(metrics?.totalDealValue ?? 0), label: "Deal Value Tracked", icon: BarChart3 },
+                { value: String(liveCounts?.companiesCount ?? 0), label: "Private Companies", icon: Briefcase },
+                { value: String(liveCounts?.distressedCount ?? 0), label: "Distressed Alerts", icon: Target },
+                { value: String(metrics?.totalRounds ?? 0), label: "Funding Rounds", icon: Globe },
               ].map((s) => (
                 <div key={s.label} className="rounded-lg border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-center space-y-1">
                   <s.icon className="h-3.5 w-3.5 text-primary mx-auto" />
@@ -211,7 +212,7 @@ const Landing = () => {
           <motion.div custom={3} variants={fadeUp}>
             <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-[hsl(var(--brand-purple)/0.3)] text-[hsl(var(--brand-purple))] bg-[hsl(var(--brand-purple)/0.06)] backdrop-blur-sm shadow-lg shadow-[hsl(var(--brand-purple)/0.1)]">
               <FlaskConical className="h-4 w-4" />
-              Your Unfair Advantage — Now in Private Beta
+              The Deal Room OS — Now in Private Beta
             </span>
           </motion.div>
 
@@ -278,6 +279,48 @@ const Landing = () => {
         </motion.div>
       </section>
 
+      {/* HOW IT WORKS — The 5-Stage Loop */}
+      <section className="relative z-10 px-6 py-20 max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-semibold mb-2">How It Works</p>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            One workspace, from sourcing to close
+          </h2>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+            Every deal flows through a structured loop. The Deal Room compounds intelligence at every stage.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
+          {[
+            { step: "01", label: "Discover", desc: "Source deals from rooms, AI matcher, or your network" },
+            { step: "02", label: "Diligence", desc: "AI research, investment memos, and structured data room" },
+            { step: "03", label: "Coordinate", desc: "Collaborate in verified rooms with trusted co-investors" },
+            { step: "04", label: "Allocate", desc: "Soft circles, IC workflow, and close checklist" },
+            { step: "05", label: "Report", desc: "Portfolio tracking with MOIC, IRR, and benchmarking" },
+          ].map((s, i) => (
+            <motion.div
+              key={s.step}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.08, duration: 0.5 }}
+              className="rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-4 text-center space-y-2"
+            >
+              <span className="text-[10px] font-mono text-primary font-bold">{s.step}</span>
+              <h3 className="text-sm font-semibold text-foreground">{s.label}</h3>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">{s.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
       {/* CAPABILITIES SECTION */}
       <section className="relative z-10 px-6 py-20 max-w-5xl mx-auto">
         <motion.div
@@ -287,12 +330,12 @@ const Landing = () => {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-semibold mb-2">Platform Capabilities</p>
+          <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-semibold mb-2">Platform</p>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Everything you need to move faster
+            Everything compounds inside the Deal Room
           </h2>
           <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            Replace your fragmented stack of Excel, email, and legacy databases with one AI-native command center.
+            Replace your fragmented stack of Excel, email, and legacy databases with one AI-native operating system.
           </p>
         </motion.div>
 
@@ -370,17 +413,17 @@ const Landing = () => {
             {
               persona: "PE Partner",
               pain: "Spending 40% of time on deal sourcing instead of portfolio value creation",
-              solution: "AI Deal Matcher surfaces 50+ relevant opportunities weekly, pre-scored and benchmarked",
+              solution: "AI Deal Matcher surfaces relevant opportunities, pre-scored. One click to open a Deal Room and start diligence.",
             },
             {
               persona: "Family Office Analyst",
               pain: "Juggling 6 separate tools for screening, research, and due diligence",
-              solution: "One command center: screen → research → memo → pipeline in a single workflow",
+              solution: "One Deal Room: thesis, AI research, investment memo, valuation toolkit, and allocation — all in one workspace.",
             },
             {
               persona: "Growth Equity VP",
-              pain: "Missing off-market deals because intelligence is trapped in email threads",
-              solution: "Real-time alerts, morning briefings, and collaborative deal workspaces for the team",
+              pain: "Missing co-invest opportunities because intelligence is trapped in email threads",
+              solution: "Verified Rooms with trust scores, intro routing, and real-time deal signals from your network.",
             },
           ].map((p, i) => (
             <motion.div
@@ -411,18 +454,18 @@ const Landing = () => {
           className="max-w-md mx-auto space-y-4"
         >
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Stop chasing deals.<br />
-            <span className="text-primary">Start catching them.</span>
+            Every deal deserves<br />
+            <span className="text-primary">its own room.</span>
           </h2>
           <p className="text-sm text-muted-foreground">
-            Join the private beta. Limited spots for Q1 2026.
+            Join the private beta. Built for PE firms, family offices, and funds.
           </p>
           <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            onClick={() => navigate("/auth")}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-[hsl(var(--brand-purple)/0.25)]"
           >
-            <Mail className="h-4 w-4" />
-            Request Access
+            <Lock className="h-4 w-4" />
+            Enter Beta
             <ArrowRight className="h-4 w-4" />
           </button>
         </motion.div>
@@ -431,7 +474,7 @@ const Landing = () => {
       {/* Footer */}
       <footer className="relative z-10 px-6 py-8 border-t border-border/30">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-[10px] text-muted-foreground/40">
-          <span>© {new Date().getFullYear()} Grapevine · Private Market Intelligence</span>
+          <span>© {new Date().getFullYear()} Grapevine · The Deal Room OS</span>
           <div className="flex items-center gap-4">
             <button onClick={() => navigate("/data-coverage")} className="hover:text-muted-foreground transition-colors">Data Coverage</button>
             <button onClick={() => navigate("/terms")} className="hover:text-muted-foreground transition-colors">Terms</button>
