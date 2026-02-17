@@ -21,10 +21,10 @@ export type ResearchMessage = {
   created_at: string;
 };
 
-export function useResearchThreads(companyId?: string) {
+export function useResearchThreads(companyId?: string, dealId?: string) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["research-threads", user?.id, companyId],
+    queryKey: ["research-threads", user?.id, companyId, dealId],
     queryFn: async () => {
       let q = supabase
         .from("research_threads")
@@ -33,6 +33,7 @@ export function useResearchThreads(companyId?: string) {
         .order("updated_at", { ascending: false })
         .limit(50);
       if (companyId) q = q.eq("company_id", companyId);
+      if (dealId) q = q.eq("deal_id", dealId);
       const { data, error } = await q;
       if (error) throw error;
       return data as ResearchThread[];

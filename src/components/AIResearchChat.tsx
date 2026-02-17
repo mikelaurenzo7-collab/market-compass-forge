@@ -147,10 +147,11 @@ interface AIResearchChatProps {
   companyName: string;
   sector?: string | null;
   initialThreadId?: string | null;
+  dealId?: string | null;
   onThreadChange?: (threadId: string | null) => void;
 }
 
-const AIResearchChat = ({ companyId, companyName, sector, initialThreadId, onThreadChange }: AIResearchChatProps) => {
+const AIResearchChat = ({ companyId, companyName, sector, initialThreadId, dealId, onThreadChange }: AIResearchChatProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -203,6 +204,7 @@ const AIResearchChat = ({ companyId, companyName, sector, initialThreadId, onThr
         const thread = await createThread.mutateAsync({
           title: question.slice(0, 100),
           company_id: companyId,
+          deal_id: dealId ?? undefined,
         });
         threadId = thread.id;
         setActiveThreadId(thread.id);

@@ -9,14 +9,12 @@ import {
   MessageSquare,
   Clock,
   DollarSign,
-  Bell,
   Upload,
   Building2,
   Briefcase,
   ExternalLink,
   ChevronRight,
   Target,
-  AlertTriangle,
   CheckCircle2,
   Circle,
   Lightbulb,
@@ -25,6 +23,11 @@ import {
   Save,
   X,
   TrendingUp,
+  TrendingDown,
+  Minus,
+  Sparkles,
+  BookOpen,
+  BarChart3,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +38,12 @@ import SharedNotes from "@/components/SharedNotes";
 import PipelineTasks from "@/components/PipelineTasks";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import CompanyAIAssessment from "@/components/CompanyAIAssessment";
+import AIResearchChat from "@/components/AIResearchChat";
+import NewsFeed from "@/components/NewsFeed";
+import InvestmentMemo from "@/components/InvestmentMemo";
+import { useAlphaSignals } from "@/hooks/useAlphaSignals";
+import { useResearchThreads } from "@/hooks/useResearchThreads";
 
 // ── Interest State Machine ──────────────────────────────────────────────
 const INTEREST_STATES = [
@@ -146,14 +155,38 @@ const InterestStepper = ({ currentState, onChangeState, isPending }: {
   );
 };
 
-// ── Thesis Card ("What we need to believe") ─────────────────────────────
-const ThesisCard = ({ dealId }: { dealId: string }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [thesis, setThesis] = useState("");
-  const [risks, setRisks] = useState("");
+// ── Thesis Card ("What we need to believe") — persisted via deal_pipeline.notes ──
+const ThesisCard = ({ deal }: { deal: any }) => {
+  const queryClient = useQueryClient();
 
-  // In production these would be stored in a deal_thesis table.
-  // For now, use local state with a clean placeholder structure.
+  // Parse structured notes from deal_pipeline.notes
+  const parsed = (() => {
+    try {
+      if (deal.notes?.startsWith("{")) return JSON.parse(deal.notes);
+    } catch { /* fallback */ }
+    return { thesis: deal.notes ?? "", risks: "" };
+  })();
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [thesis, setThesis] = useState(parsed.thesis);
+  const [risks, setRisks] = useState(parsed.risks);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from("deal_pipeline")
+        .update({ notes: JSON.stringify({ thesis, risks }) })
+        .eq("id", deal.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deal-room", deal.id] });
+      setIsEditing(false);
+      toast.success("Thesis saved");
+    },
+    onError: () => toast.error("Failed to save thesis"),
+  });
+
   const hasContent = thesis.trim().length > 0 || risks.trim().length > 0;
 
   if (!isEditing && !hasContent) {
@@ -188,16 +221,17 @@ const ThesisCard = ({ dealId }: { dealId: string }) => {
           </h3>
           <div className="flex items-center gap-1.5">
             <button
-              onClick={() => setIsEditing(false)}
+              onClick={() => { setThesis(parsed.thesis); setRisks(parsed.risks); setIsEditing(false); }}
               className="h-7 px-2.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               Cancel
             </button>
             <button
-              onClick={() => setIsEditing(false)}
-              className="h-7 px-2.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1"
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending}
+              className="h-7 px-2.5 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1 disabled:opacity-50"
             >
-              <Save className="h-3 w-3" /> Save
+              <Save className="h-3 w-3" /> {saveMutation.isPending ? "Saving…" : "Save"}
             </button>
           </div>
         </div>
@@ -258,15 +292,68 @@ const ThesisCard = ({ dealId }: { dealId: string }) => {
   );
 };
 
+// ── Sector Signal Inline Card ────────────────────────────────────────────
+const SectorSignalCard = ({ sector }: { sector?: string | null }) => {
+  const { data: alphaSignals } = useAlphaSignals();
+  const sectorSignal = alphaSignals?.find(s =>
+    sector?.toLowerCase().includes(s.sector.toLowerCase()) ||
+    s.sector.toLowerCase().includes(sector?.toLowerCase() ?? "")
+  );
+
+  if (!sectorSignal) return null;
+
+  const DirectionIcon = sectorSignal.direction === "bullish" ? TrendingUp
+    : sectorSignal.direction === "bearish" ? TrendingDown : Minus;
+  const dirColor = sectorSignal.direction === "bullish" ? "text-success"
+    : sectorSignal.direction === "bearish" ? "text-destructive" : "text-muted-foreground";
+  const dirBg = sectorSignal.direction === "bullish" ? "bg-success/10"
+    : sectorSignal.direction === "bearish" ? "bg-destructive/10" : "bg-muted/50";
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <BarChart3 className="h-3 w-3" /> Sector Signal
+        </h3>
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${dirBg} ${dirColor} capitalize`}>
+          {sectorSignal.direction}
+        </span>
+      </div>
+      <div className="flex items-center gap-3 mb-2">
+        <div className={`h-8 w-8 rounded-lg ${dirBg} flex items-center justify-center shrink-0`}>
+          <DirectionIcon className={`h-4 w-4 ${dirColor}`} />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-foreground">{sectorSignal.sector}</p>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            {sectorSignal.magnitude_pct != null && (
+              <span className={`font-mono font-medium ${dirColor}`}>
+                {sectorSignal.direction === "bearish" ? "" : "+"}{sectorSignal.magnitude_pct.toFixed(1)}%
+              </span>
+            )}
+            <span>·</span>
+            <span>{Math.round(sectorSignal.confidence * 100)}% confidence</span>
+          </div>
+        </div>
+      </div>
+      {sectorSignal.reasoning && (
+        <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{sectorSignal.reasoning}</p>
+      )}
+    </div>
+  );
+};
+
 // ── Summary Tab ─────────────────────────────────────────────────────────
-const SummaryTab = ({ deal }: { deal: any }) => {
+const SummaryTab = ({ deal, onSwitchTab }: { deal: any; onSwitchTab: (tab: string) => void }) => {
   const company = deal.companies;
   const navigate = useNavigate();
+  const { data: researchThreads } = useResearchThreads(company?.id);
+  const threadCount = researchThreads?.length ?? 0;
 
   return (
     <div className="space-y-5">
       {/* Thesis — the killer feature */}
-      <ThesisCard dealId={deal.id} />
+      <ThesisCard deal={deal} />
 
       {/* Company Overview */}
       <div className="rounded-lg border border-border bg-card p-5">
@@ -299,6 +386,9 @@ const SummaryTab = ({ deal }: { deal: any }) => {
         </div>
       </div>
 
+      {/* Sector Signal */}
+      <SectorSignalCard sector={company?.sector} />
+
       {/* Valuation Snapshot */}
       {company?.latest_valuation && (
         <div className="rounded-lg border border-border bg-card p-5">
@@ -320,6 +410,39 @@ const SummaryTab = ({ deal }: { deal: any }) => {
         </div>
       )}
 
+      {/* AI Assessment */}
+      {company?.id && (
+        <CompanyAIAssessment
+          sector={company.sector}
+          stage={company.stage}
+          companyName={company.name ?? "Unknown"}
+          companyId={company.id}
+        />
+      )}
+
+      {/* Research Threads Quick Access */}
+      {threadCount > 0 && (
+        <button
+          onClick={() => onSwitchTab("intelligence")}
+          className="w-full rounded-lg border border-border bg-card p-4 text-left hover:border-primary/20 transition-colors group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <BookOpen className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                  {threadCount} Research Thread{threadCount !== 1 ? "s" : ""}
+                </p>
+                <p className="text-[10px] text-muted-foreground">AI research conversations about this company</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+        </button>
+      )}
+
       {/* Tasks */}
       <div className="rounded-lg border border-border bg-card p-5">
         <h3 className="text-sm font-semibold text-foreground mb-3">Diligence Tasks</h3>
@@ -339,8 +462,35 @@ const DOC_CATEGORIES = [
   { key: "other", label: "Other Documents", icon: Upload, count: 0 },
 ];
 
-const DataRoomTab = ({ dealId, companyName }: { dealId: string; companyName: string }) => {
+const DataRoomTab = ({ dealId, companyId, companyName }: { dealId: string; companyId?: string; companyName: string }) => {
   const navigate = useNavigate();
+
+  // Query real document counts by type
+  const { data: docCounts } = useQuery({
+    queryKey: ["deal-doc-counts", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_documents")
+        .select("document_type")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((d: any) => {
+        const key = d.document_type ?? "other";
+        counts[key] = (counts[key] ?? 0) + 1;
+      });
+      return counts;
+    },
+    enabled: !!companyId,
+  });
+
+  const categories = DOC_CATEGORIES.map(cat => ({
+    ...cat,
+    count: docCounts?.[cat.key] ?? 0,
+  }));
+
+  const totalDocs = categories.reduce((sum, c) => sum + c.count, 0);
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-border bg-card">
@@ -348,6 +498,9 @@ const DataRoomTab = ({ dealId, companyName }: { dealId: string; companyName: str
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Upload className="h-4 w-4 text-primary" /> Data Room
+              {totalDocs > 0 && (
+                <span className="text-[10px] font-mono text-muted-foreground bg-muted rounded-full px-1.5 py-0.5">{totalDocs}</span>
+              )}
             </h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">Structured documents for {companyName}</p>
           </div>
@@ -366,7 +519,7 @@ const DataRoomTab = ({ dealId, companyName }: { dealId: string; companyName: str
 
         {/* Category grid */}
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {DOC_CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat.key}
               className="text-left rounded-lg border border-dashed border-border p-4 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group"
@@ -387,25 +540,27 @@ const DataRoomTab = ({ dealId, companyName }: { dealId: string; companyName: str
         </div>
 
         {/* Empty state hint */}
-        <div className="px-5 pb-4">
-          <div className="rounded-md bg-muted/20 border border-border/50 p-3 flex items-start gap-3">
-            <Lightbulb className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-            <div>
-              <p className="text-xs text-foreground font-medium">Organize diligence materials</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                Upload documents to the right category. Term sheets, financial models, legal docs — everything in one place.
-                Room members with access can view and comment.
-              </p>
+        {totalDocs === 0 && (
+          <div className="px-5 pb-4">
+            <div className="rounded-md bg-muted/20 border border-border/50 p-3 flex items-start gap-3">
+              <Lightbulb className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs text-foreground font-medium">Organize diligence materials</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                  Upload documents to the right category. Term sheets, financial models, legal docs — everything in one place.
+                  Room members with access can view and comment.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 };
 
 // ── Discussion Tab ──────────────────────────────────────────────────────
-const DiscussionTab = ({ dealId }: { dealId: string }) => (
+const DiscussionTab = ({ deal }: { deal: any }) => (
   <div className="space-y-4">
     <div className="rounded-lg border border-border bg-card">
       <div className="px-5 py-3 border-b border-border">
@@ -415,17 +570,19 @@ const DiscussionTab = ({ dealId }: { dealId: string }) => (
         <p className="text-[10px] text-muted-foreground mt-0.5">All Q&A and diligence discussion in one thread.</p>
       </div>
       <div className="p-4">
-        <DealComments dealId={dealId} />
+        <DealComments dealId={deal.id} />
       </div>
     </div>
-    <div className="rounded-lg border border-border bg-card">
-      <div className="px-5 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground">Shared Notes</h3>
+    {deal.companies?.id && (
+      <div className="rounded-lg border border-border bg-card">
+        <div className="px-5 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Shared Notes</h3>
+        </div>
+        <div className="p-4">
+          <SharedNotes companyId={deal.companies.id} />
+        </div>
       </div>
-      <div className="p-4">
-        <SharedNotes entityType="deal" entityId={dealId} />
-      </div>
-    </div>
+    )}
   </div>
 );
 
@@ -503,67 +660,149 @@ const TimelineTab = ({ dealId }: { dealId: string }) => {
   );
 };
 
-// ── Allocation Tab (the "OS" part) ──────────────────────────────────────
+// ── Allocation Tab (the "OS" part) — localStorage-persisted ─────────────
+const ALLOC_KEY = (dealId: string) => `grapevine-allocation-${dealId}`;
+const CHECKLIST_KEY = (dealId: string) => `grapevine-checklist-${dealId}`;
+
 const AllocationTab = ({ deal }: { deal: any }) => {
   const navigate = useNavigate();
   const interestState = STAGE_TO_INTEREST[deal.stage] ?? "watching";
 
-  // Placeholder allocation data — wired when allocation table exists
-  const allocation = {
-    targetAmount: null as number | null,
-    softCircle: null as number | null,
-    committed: null as number | null,
-    remaining: null as number | null,
-    cap: null as number | null,
+  // localStorage-persisted allocation
+  const storedAlloc = (() => {
+    try { return JSON.parse(localStorage.getItem(ALLOC_KEY(deal.id)) ?? "{}"); } catch { return {}; }
+  })();
+  const [isEditingAlloc, setIsEditingAlloc] = useState(false);
+  const [allocValues, setAllocValues] = useState({
+    targetAmount: storedAlloc.targetAmount ?? null as number | null,
+    softCircle: storedAlloc.softCircle ?? null as number | null,
+    committed: storedAlloc.committed ?? null as number | null,
+    cap: storedAlloc.cap ?? null as number | null,
+  });
+
+  const remaining = (allocValues.targetAmount ?? 0) - (allocValues.committed ?? 0) - (allocValues.softCircle ?? 0);
+
+  const saveAllocation = () => {
+    localStorage.setItem(ALLOC_KEY(deal.id), JSON.stringify(allocValues));
+    setIsEditingAlloc(false);
+    toast.success("Allocation saved");
   };
 
-  const closeChecklist = [
-    { id: "term_sheet", label: "Term sheet reviewed", done: false },
-    { id: "legal_review", label: "Legal review complete", done: false },
-    { id: "ic_approval", label: "IC approval", done: deal.stage === "committed" || deal.stage === "ic_review" },
-    { id: "docs_signed", label: "Documents signed", done: false },
-    { id: "wire_sent", label: "Wire sent", done: false },
+  // localStorage-persisted checklist
+  const storedChecklist: Record<string, boolean> = (() => {
+    try { return JSON.parse(localStorage.getItem(CHECKLIST_KEY(deal.id)) ?? "{}"); } catch { return {}; }
+  })();
+
+  const CHECKLIST_ITEMS = [
+    { id: "term_sheet", label: "Term sheet reviewed" },
+    { id: "legal_review", label: "Legal review complete" },
+    { id: "ic_approval", label: "IC approval" },
+    { id: "docs_signed", label: "Documents signed" },
+    { id: "wire_sent", label: "Wire sent" },
   ];
+
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({
+    ...Object.fromEntries(CHECKLIST_ITEMS.map(i => [i.id, false])),
+    ic_approval: deal.stage === "committed" || deal.stage === "ic_review",
+    ...storedChecklist,
+  });
+
+  const toggleCheck = (id: string) => {
+    const next = { ...checklist, [id]: !checklist[id] };
+    setChecklist(next);
+    localStorage.setItem(CHECKLIST_KEY(deal.id), JSON.stringify(next));
+  };
+
+  const parseAmount = (val: string) => {
+    const n = parseFloat(val.replace(/[^0-9.]/g, ""));
+    return isNaN(n) ? null : n * 1e6; // input in $M
+  };
 
   return (
     <div className="space-y-5">
       {/* Allocation Summary */}
       <div className="rounded-lg border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <DollarSign className="h-4 w-4 text-primary" /> Allocation
-        </h3>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
-          <AllocationStat label="Target" value={allocation.targetAmount ? formatValuation(allocation.targetAmount) : "—"} />
-          <AllocationStat label="Soft Circle" value={allocation.softCircle ? formatValuation(allocation.softCircle) : "—"} accent="warning" />
-          <AllocationStat label="Committed" value={allocation.committed ? formatValuation(allocation.committed) : "—"} accent="success" />
-          <AllocationStat label="Remaining" value={allocation.remaining ? formatValuation(allocation.remaining) : "—"} />
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" /> Allocation
+          </h3>
+          {!isEditingAlloc && (
+            <button
+              onClick={() => setIsEditingAlloc(true)}
+              className="h-6 px-2 rounded text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center gap-1"
+            >
+              <Edit3 className="h-3 w-3" /> Edit
+            </button>
+          )}
         </div>
 
-        {/* Interest state as context */}
-        <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30 border border-border/50">
-          <Target className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-          <p className="text-xs text-muted-foreground">
-            Current state: <span className="font-medium text-foreground capitalize">{interestState.replace("_", " ")}</span>
-            {interestState === "soft_commit" && " — ready for IC review and final commitment"}
-            {interestState === "committed" && " — allocation confirmed, proceed to close"}
-            {interestState === "watching" && " — monitoring, not yet active in diligence"}
-          </p>
-        </div>
+        {isEditingAlloc ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { key: "targetAmount", label: "Target ($M)" },
+                { key: "softCircle", label: "Soft Circle ($M)" },
+                { key: "committed", label: "Committed ($M)" },
+                { key: "cap", label: "Cap ($M)" },
+              ].map((field) => (
+                <div key={field.key}>
+                  <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground block mb-1">{field.label}</label>
+                  <input
+                    type="text"
+                    defaultValue={allocValues[field.key as keyof typeof allocValues] ? ((allocValues[field.key as keyof typeof allocValues] as number) / 1e6).toFixed(1) : ""}
+                    onChange={(e) => setAllocValues(prev => ({ ...prev, [field.key]: parseAmount(e.target.value) }))}
+                    placeholder="0.0"
+                    className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 justify-end">
+              <button onClick={() => setIsEditingAlloc(false)} className="h-7 px-2.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">Cancel</button>
+              <button onClick={saveAllocation} className="h-7 px-3 rounded bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1">
+                <Save className="h-3 w-3" /> Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+              <AllocationStat label="Target" value={allocValues.targetAmount ? formatValuation(allocValues.targetAmount) : "—"} />
+              <AllocationStat label="Soft Circle" value={allocValues.softCircle ? formatValuation(allocValues.softCircle) : "—"} accent="warning" />
+              <AllocationStat label="Committed" value={allocValues.committed ? formatValuation(allocValues.committed) : "—"} accent="success" />
+              <AllocationStat label="Remaining" value={allocValues.targetAmount ? formatValuation(remaining) : "—"} />
+            </div>
+
+            {/* Interest state as context */}
+            <div className="flex items-center gap-2 p-3 rounded-md bg-muted/30 border border-border/50">
+              <Target className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Current state: <span className="font-medium text-foreground capitalize">{interestState.replace("_", " ")}</span>
+                {interestState === "soft_commit" && " — ready for IC review and final commitment"}
+                {interestState === "committed" && " — allocation confirmed, proceed to close"}
+                {interestState === "watching" && " — monitoring, not yet active in diligence"}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Close Checklist */}
       <div className="rounded-lg border border-border bg-card p-5">
         <h3 className="text-sm font-semibold text-foreground mb-3">Close Checklist</h3>
         <div className="space-y-2">
-          {closeChecklist.map((item) => (
-            <label key={item.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 transition-colors cursor-pointer">
+          {CHECKLIST_ITEMS.map((item) => (
+            <label
+              key={item.id}
+              onClick={() => toggleCheck(item.id)}
+              className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/30 transition-colors cursor-pointer"
+            >
               <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                item.done ? "bg-success border-success" : "border-border"
+                checklist[item.id] ? "bg-success border-success" : "border-border"
               }`}>
-                {item.done && <CheckCircle2 className="h-3 w-3 text-success-foreground" />}
+                {checklist[item.id] && <CheckCircle2 className="h-3 w-3 text-success-foreground" />}
               </div>
-              <span className={`text-sm ${item.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+              <span className={`text-sm ${checklist[item.id] ? "text-muted-foreground line-through" : "text-foreground"}`}>
                 {item.label}
               </span>
             </label>
@@ -594,24 +833,61 @@ const AllocationTab = ({ deal }: { deal: any }) => {
   );
 };
 
-// ── Updates Tab ─────────────────────────────────────────────────────────
-const UpdatesTab = ({ deal }: { deal: any }) => (
-  <div className="rounded-lg border border-border bg-card p-5">
-    <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-      <Bell className="h-4 w-4 text-primary" /> Updates
-    </h3>
-    <p className="text-[10px] text-muted-foreground mb-6">Post-close updates, performance, and news. The network compounds here.</p>
-    <div className="text-center py-8">
-      <Bell className="h-8 w-8 mx-auto mb-3 text-muted-foreground/20" />
-      <p className="text-sm text-muted-foreground font-medium">
-        No updates yet for {deal.companies?.name ?? "this deal"}
-      </p>
-      <p className="text-xs text-muted-foreground/70 mt-1 max-w-xs mx-auto">
-        After close, updates from the company, fund reports, and performance data will appear here — building a permanent record.
-      </p>
+// ── Intelligence Tab ────────────────────────────────────────────────────
+const IntelligenceTab = ({ deal }: { deal: any }) => {
+  const company = deal.companies;
+  if (!company?.id) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-16 text-center">
+        <Sparkles className="h-8 w-8 mx-auto mb-3 text-muted-foreground/20" />
+        <p className="text-sm text-muted-foreground font-medium">No company linked to this deal</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* AI Research Chat */}
+      <AIResearchChat
+        companyId={company.id}
+        companyName={company.name ?? "Unknown"}
+        sector={company.sector}
+        dealId={deal.id}
+      />
+
+      {/* News + Investment Memo side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <NewsFeed companyId={company.id} compact />
+        <InvestmentMemo companyId={company.id} companyName={company.name ?? "Unknown"} />
+      </div>
     </div>
-  </div>
-);
+  );
+};
+
+// ── Header Signal Badge ─────────────────────────────────────────────────
+const HeaderSignalBadge = ({ sector }: { sector?: string | null }) => {
+  const { data: alphaSignals } = useAlphaSignals();
+  const signal = alphaSignals?.find(s =>
+    sector?.toLowerCase().includes(s.sector.toLowerCase()) ||
+    s.sector.toLowerCase().includes(sector?.toLowerCase() ?? "")
+  );
+  if (!signal) return null;
+
+  const dirColor = signal.direction === "bullish" ? "text-success"
+    : signal.direction === "bearish" ? "text-destructive" : "text-muted-foreground";
+  const dirBg = signal.direction === "bullish" ? "bg-success/10"
+    : signal.direction === "bearish" ? "bg-destructive/10" : "bg-muted/50";
+  const DirectionIcon = signal.direction === "bullish" ? TrendingUp
+    : signal.direction === "bearish" ? TrendingDown : Minus;
+
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${dirBg} ${dirColor}`}>
+      <DirectionIcon className="h-2.5 w-2.5" />
+      {signal.direction}
+      {signal.magnitude_pct != null && <span className="font-mono">{signal.magnitude_pct > 0 ? "+" : ""}{signal.magnitude_pct.toFixed(1)}%</span>}
+    </span>
+  );
+};
 
 // ── Main Deal Room Page ─────────────────────────────────────────────────
 const DealRoom = () => {
@@ -688,27 +964,20 @@ const DealRoom = () => {
 
         {/* Header */}
         <div className="space-y-3">
-          <div className="flex items-start justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-                {companyName}
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
+              {companyName}
+            </h1>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 {deal.companies?.sector && <span>{deal.companies.sector}</span>}
                 {deal.companies?.sector && deal.updated_at && <span>·</span>}
                 {deal.updated_at && (
                   <span>Updated {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}</span>
                 )}
               </p>
+              <HeaderSignalBadge sector={deal.companies?.sector} />
             </div>
-            {deal.companies?.id && (
-              <button
-                onClick={() => navigate(`/companies/${deal.companies.id}`)}
-                className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5"
-              >
-                <Building2 className="h-3.5 w-3.5" /> Company Profile
-              </button>
-            )}
           </div>
 
           {/* Interest State Stepper */}
@@ -719,16 +988,40 @@ const DealRoom = () => {
           />
         </div>
 
+        {/* Quick Context Links */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {deal.companies?.id && (
+            <button
+              onClick={() => navigate(`/companies/${deal.companies.id}`)}
+              className="h-7 px-2.5 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1"
+            >
+              <Building2 className="h-3 w-3" /> Company Profile
+            </button>
+          )}
+          <button
+            onClick={() => navigate("/valuations")}
+            className="h-7 px-2.5 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1"
+          >
+            <DollarSign className="h-3 w-3" /> Valuation Toolkit
+          </button>
+          <button
+            onClick={() => navigate("/sector-pulse")}
+            className="h-7 px-2.5 rounded-md border border-border text-[10px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1"
+          >
+            <BarChart3 className="h-3 w-3" /> Sector Pulse
+          </button>
+        </div>
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="w-full justify-start bg-transparent border-b border-border rounded-none h-auto p-0 gap-0 overflow-x-auto">
             {[
               { value: "summary", label: "Summary", icon: FileText },
+              { value: "intelligence", label: "Intelligence", icon: Sparkles },
               { value: "data-room", label: "Data Room", icon: Upload },
               { value: "discussion", label: "Discussion", icon: MessageSquare },
               { value: "timeline", label: "Timeline", icon: Clock },
               { value: "allocation", label: "Allocation", icon: DollarSign },
-              { value: "updates", label: "Updates", icon: Bell },
             ].map((tab) => (
               <TabsTrigger
                 key={tab.value}
@@ -743,22 +1036,22 @@ const DealRoom = () => {
           </TabsList>
 
           <TabsContent value="summary" className="mt-5">
-            <SummaryTab deal={deal} />
+            <SummaryTab deal={deal} onSwitchTab={setActiveTab} />
+          </TabsContent>
+          <TabsContent value="intelligence" className="mt-5">
+            <IntelligenceTab deal={deal} />
           </TabsContent>
           <TabsContent value="data-room" className="mt-5">
-            <DataRoomTab dealId={deal.id} companyName={companyName} />
+            <DataRoomTab dealId={deal.id} companyId={deal.companies?.id} companyName={companyName} />
           </TabsContent>
           <TabsContent value="discussion" className="mt-5">
-            <DiscussionTab dealId={deal.id} />
+            <DiscussionTab deal={deal} />
           </TabsContent>
           <TabsContent value="timeline" className="mt-5">
             <TimelineTab dealId={deal.id} />
           </TabsContent>
           <TabsContent value="allocation" className="mt-5">
             <AllocationTab deal={deal} />
-          </TabsContent>
-          <TabsContent value="updates" className="mt-5">
-            <UpdatesTab deal={deal} />
           </TabsContent>
         </Tabs>
       </div>
