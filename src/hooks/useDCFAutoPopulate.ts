@@ -25,15 +25,16 @@ export const useDCFAutoPopulate = (companyId: string | null) =>
           .order("period", { ascending: false })
           .limit(5),
         supabase
-          .from("public_market_data")
-          .select("beta, revenue, ebitda, ev_revenue, ev_ebitda")
+          .from("funding_rounds")
+          .select("amount, valuation_post, round_type, date")
           .eq("company_id", companyId!)
-          .maybeSingle(),
+          .order("date", { ascending: false })
+          .limit(1),
       ]);
 
       const company = companyRes.data;
       const financials = financialsRes.data ?? [];
-      const market = marketRes.data;
+      const latestRound = (marketRes.data ?? [])[0];
 
       // Calculate revenue: prefer SEC/FMP data, fallback to financials table
       let revenue: number | null = null;
@@ -41,13 +42,7 @@ export const useDCFAutoPopulate = (companyId: string | null) =>
       let revenueGrowth: number | null = null;
       let source = "manual";
 
-      if (market?.revenue && market.revenue > 0) {
-        revenue = market.revenue / 1e6;
-        source = "FMP";
-        if (market.ebitda && market.ebitda > 0) {
-          ebitdaMargin = (market.ebitda / market.revenue) * 100;
-        }
-      } else if (financials.length > 0) {
+      if (financials.length > 0) {
         const latest = financials[0];
         if (latest.revenue && latest.revenue > 0) {
           revenue = latest.revenue / 1e6;
@@ -80,7 +75,7 @@ export const useDCFAutoPopulate = (companyId: string | null) =>
         revenue,
         revenueGrowth: revenueGrowth !== null ? Math.round(revenueGrowth * 10) / 10 : null,
         ebitdaMargin: ebitdaMargin !== null ? Math.round(ebitdaMargin * 10) / 10 : null,
-        beta: market?.beta ?? null,
+        beta: null,
         companyName: company?.name ?? "Unknown",
         sector: company?.sector ?? null,
         marketType: company?.market_type ?? "private",

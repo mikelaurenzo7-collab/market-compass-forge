@@ -24,15 +24,7 @@ export type PortfolioPosition = {
     sector: string | null;
     market_type: string;
   } | null;
-  public_market_data: {
-    price: number | null;
-    price_change_pct: number | null;
-    ticker: string;
-    beta: number | null;
-    market_cap: number | null;
-    ev_ebitda: number | null;
-    ev_revenue: number | null;
-  }[] | null;
+  latest_valuation: number | null;
   funding_rounds: {
     valuation_post: number | null;
     round_type: string;
@@ -72,16 +64,10 @@ export const usePortfolioPositions = (portfolioId: string | null) => {
         .order("created_at", { ascending: false });
       if (error) throw error;
 
-      // Fetch market data and latest funding for each position
+      // Fetch latest funding for each position (private market valuations)
       const companyIds = data.map((p: any) => p.company_id);
       
-      const [marketRes, fundingRes] = await Promise.all([
-        supabase.from("public_market_data").select("company_id, price, price_change_pct, ticker, beta, market_cap, ev_ebitda, ev_revenue").in("company_id", companyIds),
-        supabase.from("funding_rounds").select("company_id, valuation_post, round_type, date").in("company_id", companyIds).order("date", { ascending: false }),
-      ]);
-
-      const marketMap = new Map<string, any>();
-      (marketRes.data ?? []).forEach((m: any) => marketMap.set(m.company_id, m));
+      const fundingRes = await supabase.from("funding_rounds").select("company_id, valuation_post, round_type, date").in("company_id", companyIds).order("date", { ascending: false });
 
       const fundingMap = new Map<string, any>();
       (fundingRes.data ?? []).forEach((f: any) => {
@@ -90,7 +76,7 @@ export const usePortfolioPositions = (portfolioId: string | null) => {
 
       return data.map((p: any) => ({
         ...p,
-        public_market_data: marketMap.has(p.company_id) ? [marketMap.get(p.company_id)] : null,
+        latest_valuation: fundingMap.has(p.company_id) ? fundingMap.get(p.company_id).valuation_post : null,
         funding_rounds: fundingMap.has(p.company_id) ? [fundingMap.get(p.company_id)] : null,
       })) as PortfolioPosition[];
     },

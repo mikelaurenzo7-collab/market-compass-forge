@@ -7,12 +7,11 @@ const ENDPOINTS = [
     action: "companies",
     label: "Companies",
     icon: Building2,
-    description: "Search and filter 7,800+ private and public companies",
+    description: "Search and filter 7,800+ private companies and alternative assets",
     params: [
       { name: "search", type: "string", desc: "Filter by company name" },
       { name: "sector", type: "string", desc: "Filter by sector (e.g. AI/ML, Fintech)" },
       { name: "stage", type: "string", desc: "Filter by stage (e.g. Series A, Growth)" },
-      { name: "market_type", type: "string", desc: "Filter: private or public" },
     ],
     example: `curl -H "Authorization: Bearer lpi_YOUR_KEY" \\
   "https://kilhdiuacbylampaukza.supabase.co/functions/v1/api-access?action=companies&sector=AI/ML&limit=10"`,

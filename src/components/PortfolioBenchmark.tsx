@@ -10,7 +10,7 @@ type Position = {
   entry_date: string;
   company_id: string;
   companies?: { name: string; sector: string | null; market_type: string } | null;
-  public_market_data?: Array<{ price: number | null; price_change_pct: number | null }>;
+  latest_valuation?: number | null;
   funding_rounds?: Array<{ valuation_post: number | null; round_type: string }>;
 };
 
@@ -22,7 +22,7 @@ function formatCurrency(val: number) {
 }
 
 function getCurrentPrice(pos: Position): number | null {
-  if (pos.public_market_data?.[0]?.price) return Number(pos.public_market_data[0].price);
+  if (pos.latest_valuation) return Number(pos.latest_valuation) / 1e6;
   if (pos.funding_rounds?.[0]?.valuation_post) return Number(pos.funding_rounds[0].valuation_post) / 1e6;
   return null;
 }
@@ -98,12 +98,12 @@ export default function PortfolioBenchmark({ positions }: { positions: Position[
     }).sort((a, b) => a.date.getTime() - b.date.getTime());
     const portfolioIRR = calcXIRR(allCashflows);
 
-    // PME (Public Market Equivalent) — use real S&P return from FRED if available
-    const sp500Indicator = macroIndicators?.find(m => m.series_id === "SP500");
-    // Use 10-year Treasury as risk-free proxy for expected market return when S&P data unavailable
+    // PME (Private Market Equivalent) — benchmark against expected market return
+    const treasuryIndicator = macroIndicators?.find(m => m.series_id === "DGS10");
+    // Use 10-year Treasury as risk-free proxy for expected market return
     const treasuryRate = macroIndicators?.find(m => m.series_id === "DGS10");
     // Estimate S&P annual return: historically ~10%, or use treasury + ~5.5% ERP
-    const spReturn = treasuryRate ? (treasuryRate.value / 100 + 0.055) : 0.10;
+    const spReturn = treasuryIndicator ? (treasuryIndicator.value / 100 + 0.055) : 0.10;
     
     const pme = positions.reduce((acc, pos) => {
       const cost = Number(pos.shares) * Number(pos.entry_price);
@@ -154,7 +154,7 @@ export default function PortfolioBenchmark({ positions }: { positions: Position[
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KPI label="Portfolio MOIC" value={`${analysis.portfolioMOIC.toFixed(2)}x`} icon={<TrendingUp className="h-4 w-4" />} positive={analysis.portfolioMOIC >= 1} />
         <KPI label="Portfolio IRR" value={`${(analysis.portfolioIRR * 100).toFixed(1)}%`} icon={<Target className="h-4 w-4" />} positive={analysis.portfolioIRR >= 0} />
-        <KPI label="PME (vs S&P)" value={`${analysis.pmeRatio.toFixed(2)}x`} icon={<BarChart3 className="h-4 w-4" />} positive={analysis.pmeRatio >= 1} sub={`${analysis.pmeRatio >= 1 ? "Outperforming" : "Underperforming"} · ${(analysis.spReturn * 100).toFixed(1)}% benchmark`} />
+        <KPI label="PME (Benchmark)" value={`${analysis.pmeRatio.toFixed(2)}x`} icon={<BarChart3 className="h-4 w-4" />} positive={analysis.pmeRatio >= 1} sub={`${analysis.pmeRatio >= 1 ? "Outperforming" : "Underperforming"} · ${(analysis.spReturn * 100).toFixed(1)}% benchmark`} />
         <KPI label="Total Cost" value={formatCurrency(analysis.totalCost)} icon={<Shield className="h-4 w-4" />} />
         <KPI label="Current Value" value={formatCurrency(analysis.totalValue)} icon={<TrendingUp className="h-4 w-4" />} positive={analysis.totalValue >= analysis.totalCost} />
       </div>
@@ -214,8 +214,8 @@ export default function PortfolioBenchmark({ positions }: { positions: Position[
                 <tr key={i} className="border-b border-border/50 hover:bg-secondary/30">
                   <td className="px-4 py-2.5">
                     <span className="text-foreground font-medium">{p.name}</span>
-                    <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded-full ${p.marketType === "public" ? "bg-success/10 text-success" : "bg-primary/10 text-primary"}`}>
-                      {p.marketType === "public" ? "PUB" : "PVT"}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                      PVT
                     </span>
                   </td>
                   <td className="text-right px-3 py-2.5 font-mono text-muted-foreground">{formatCurrency(p.cost)}</td>

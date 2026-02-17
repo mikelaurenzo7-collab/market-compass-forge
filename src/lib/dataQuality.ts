@@ -6,7 +6,7 @@
 // ── Staleness thresholds (in milliseconds) by data category ──
 
 export type DataCategory =
-  | "market"       // public_market_data — 24h
+  | "market"       // sector multiples, deal flow — 24h
   | "financials"   // financials, funding_rounds — 90 days
   | "news"         // news_articles, intelligence_signals — 7 days
   | "alternative"  // distressed, CRE, global opportunities — 30 days
