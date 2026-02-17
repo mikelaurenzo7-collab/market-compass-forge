@@ -28,6 +28,8 @@ import {
   Sparkles,
   BookOpen,
   BarChart3,
+  RefreshCw,
+  Calendar,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -44,6 +46,8 @@ import NewsFeed from "@/components/NewsFeed";
 import InvestmentMemo from "@/components/InvestmentMemo";
 import { useAlphaSignals } from "@/hooks/useAlphaSignals";
 import { useResearchThreads } from "@/hooks/useResearchThreads";
+import { useGoogleDrive } from "@/hooks/useGoogleDrive";
+import { useCalendarSync } from "@/hooks/useCalendarSync";
 
 // ── Interest State Machine ──────────────────────────────────────────────
 const INTEREST_STATES = [
@@ -464,6 +468,8 @@ const DOC_CATEGORIES = [
 
 const DataRoomTab = ({ dealId, companyId, companyName }: { dealId: string; companyId?: string; companyName: string }) => {
   const navigate = useNavigate();
+  const { isConfigured: isDriveConfigured, syncFiles } = useGoogleDrive();
+  const [driveSyncing, setDriveSyncing] = useState(false);
 
   // Query real document counts by type
   const { data: docCounts } = useQuery({
@@ -511,6 +517,26 @@ const DataRoomTab = ({ dealId, companyId, companyName }: { dealId: string; compa
             >
               Global Data Room
             </button>
+            {isDriveConfigured && companyId && (
+              <button
+                onClick={async () => {
+                  setDriveSyncing(true);
+                  try {
+                    await syncFiles(companyId);
+                    toast.success("Drive files synced to Data Room");
+                  } catch {
+                    toast.error("Drive sync failed");
+                  } finally {
+                    setDriveSyncing(false);
+                  }
+                }}
+                disabled={driveSyncing}
+                className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {driveSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Sync from Drive
+              </button>
+            )}
             <button className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
               <Upload className="h-3 w-3" /> Upload
             </button>
@@ -589,6 +615,8 @@ const DiscussionTab = ({ deal }: { deal: any }) => (
 // ── Timeline Tab ────────────────────────────────────────────────────────
 const TimelineTab = ({ dealId }: { dealId: string }) => {
   const { data: timeline, isLoading } = useDealTimeline(dealId);
+  const { isConfigured: isCalendarConfigured, pushDealEvent } = useCalendarSync();
+  const [calSyncing, setCalSyncing] = useState(false);
 
   const STAGE_LABELS: Record<string, string> = {
     sourced: "Watching", screening: "Interested", due_diligence: "Diligencing",
@@ -610,11 +638,33 @@ const TimelineTab = ({ dealId }: { dealId: string }) => {
 
   return (
     <div className="rounded-lg border border-border bg-card">
-      <div className="px-5 py-3 border-b border-border">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Clock className="h-4 w-4 text-primary" /> Timeline
-        </h3>
-        <p className="text-[10px] text-muted-foreground mt-0.5">Every decision, stage change, and milestone — tracked.</p>
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" /> Timeline
+          </h3>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Every decision, stage change, and milestone — tracked.</p>
+        </div>
+        {isCalendarConfigured && (
+          <button
+            onClick={async () => {
+              setCalSyncing(true);
+              try {
+                await pushDealEvent(dealId, { title: "Deal timeline sync", type: "milestone" });
+                toast.success("Timeline synced to calendar");
+              } catch {
+                toast.error("Calendar sync failed");
+              } finally {
+                setCalSyncing(false);
+              }
+            }}
+            disabled={calSyncing}
+            className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5 disabled:opacity-50"
+          >
+            {calSyncing ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Calendar className="h-3 w-3" />}
+            Sync to Calendar
+          </button>
+        )}
       </div>
       {timeline && timeline.length > 0 ? (
         <div className="p-5">

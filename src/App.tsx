@@ -13,6 +13,7 @@ import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import DataCoverage from "./pages/DataCoverage";
 import NotFound from "./pages/NotFound";
+import AuthCallback from "./pages/AuthCallback";
 
 // Deal Room OS — Core
 import DealsOverview from "./pages/DealsOverview";
@@ -78,6 +79,9 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/data-coverage" element={<DataCoverage />} />
+
+            {/* OAuth callback (protected, no AppLayout) */}
+            <Route path="/auth/callback" element={<ProtectedRoute><AuthCallback /></ProtectedRoute>} />
 
             {/* Protected routes — Deal Room OS */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>

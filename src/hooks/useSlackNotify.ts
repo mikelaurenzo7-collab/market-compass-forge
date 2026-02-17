@@ -28,7 +28,7 @@ export function useSlackNotify() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const notify = async (type: SlackNotificationType, data: Record<string, any>) => {
+  const notify = async (type: SlackNotificationType, data: Record<string, any>, dealId?: string) => {
     if (!slackConfig?.enabled || !slackConfig?.config) return;
 
     const config = slackConfig.config as { channel?: string; notifications?: Record<string, boolean> };
@@ -40,7 +40,7 @@ export function useSlackNotify() {
 
     try {
       await supabase.functions.invoke("slack-notify", {
-        body: { type, channel, data, user_id: user?.id },
+        body: { type, channel, data: { ...data, deal_id: dealId }, user_id: user?.id },
       });
     } catch (e) {
       console.error("Slack notification failed:", e);

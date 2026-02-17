@@ -162,6 +162,22 @@ serve(async (req) => {
         }];
     }
 
+    // Add "View in Grapevine" deep link button when deal_id is present
+    if (data.deal_id) {
+      const appUrl = Deno.env.get("APP_URL") ?? "https://app.grapevine.vc";
+      blocks.push({
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: "View in Grapevine", emoji: true },
+            url: `${appUrl}/deals/${data.deal_id}`,
+            style: "primary",
+          },
+        ],
+      });
+    }
+
     // Add Grapevine footer to all messages
     blocks.push({
       type: "context",
