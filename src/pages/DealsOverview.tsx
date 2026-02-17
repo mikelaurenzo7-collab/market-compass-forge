@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Users,
   TrendingUp,
-  Briefcase,
   Target,
   Eye,
   FileText,
@@ -19,7 +18,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { format, differenceInDays, formatDistanceToNow } from "date-fns";
-import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import PageTransition from "@/components/PageTransition";
 import EmptyState from "@/components/EmptyState";

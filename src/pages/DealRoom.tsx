@@ -24,7 +24,6 @@ import {
   Edit3,
   Save,
   X,
-  Users,
   TrendingUp,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";

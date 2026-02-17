@@ -10,11 +10,9 @@ import {
   Send,
   UserPlus,
   ChevronRight,
-  Building2,
   TrendingUp,
   CheckCircle2,
   Clock,
-  ExternalLink,
   GitBranch,
 } from "lucide-react";
 import { motion } from "framer-motion";
