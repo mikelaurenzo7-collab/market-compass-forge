@@ -1,172 +1,114 @@
 
 
-# Grapevine Platform Audit -- Founder's Perspective
+# Customizable Dashboard with Highlighted Core Features
 
-## Executive Summary
+## Overview
 
-The platform has strong bones but suffers from **feature bloat, unclear data visualization, and too many widgets competing for attention**. An investor walking through a demo would be overwhelmed. A user would struggle to find the 3-4 things that actually matter. This plan strips it down to what's genuinely useful and highlights the AI capabilities that differentiate Grapevine.
+Transform the Command Center dashboard into a user-customizable layout that surfaces the most valuable features by default while letting users drag, reorder, show/hide, and resize widgets. The design follows a "smart defaults, full control" philosophy -- new users see the highest-value layout immediately, power users can tailor it to their workflow.
 
----
+## Default Widget Order (Most Common Use Cases First)
 
-## What to REMOVE (Confusing or Not Useful)
+1. **Morning Briefing** -- AI-synthesized daily digest (collapsible)
+2. **Quick Actions Bar** -- NEW: One-click access to "Analyze Document", "Generate Memo", "AI Research", "Match Deals"
+3. **Key Metrics** -- 4 stat cards (Deal Value, Companies, Distressed, Pipeline)
+4. **Alpha Signals** -- AI sector analysis with reasoning
+5. **Companies Table** -- Top companies by valuation (2/3 width)
+6. **Pipeline Deals** -- User's active deal pipeline (1/3 width sidebar)
+7. **Watchlists** -- Saved company groups (1/3 width sidebar)
+8. **Distressed Opportunities** -- Active distressed assets (1/3 width sidebar)
+9. **News Wire** -- Compact intelligence feed (full width)
 
-### Dashboard (Index.tsx) -- The Biggest Problem Area
+## New: Quick Actions Bar
 
-1. **"Deal Flow & Volume" chart** -- The area chart showing "Capital ($B)" by month is unclear. The Y-axis shows numbers like 10, 20, 30 but the legend says "$B" -- is it $30 billion? The data is from `funding_rounds` aggregated by month but the visual tells no story. **REMOVE.**
+A prominent horizontal bar below the hero header with 4-5 large action buttons that surface the platform's AI differentiators:
 
-2. **"Sector Activity" bar chart** -- Shows horizontal bars with numbers (0-600) but no label explaining what the numbers represent. Are those deals? Companies? The tooltip just says "deals: 547" which is the `deal_count_trailing_12m` from the sectors table but the user has no context for whether 547 is good or bad. **REMOVE.**
+- **AI Research** -- opens /research
+- **Generate Memo** -- opens /research with memo tab
+- **Analyze Document** -- opens /research with document tab
+- **Match Deals** -- opens /deal-matcher
+- **Screen Companies** -- opens /companies
 
-3. **"Data Sources" badge** -- Shows "SEC EDGAR / Firecrawl / Proprietary" as a static widget. This is marketing copy, not actionable intelligence. It wastes prime dashboard real estate. **REMOVE.**
+Each button has an icon, label, and short description. This replaces the need for users to discover these features buried in the sidebar.
 
-4. **"Today's Usage" meters** -- Shows AI Queries 0/200, Memos 0/100, Enrichments 0/100. This is internal product mechanics, not user value. An investor doesn't want to see rate limits on the homepage. **REMOVE from dashboard** (keep in Settings only).
+## Customization System
 
-5. **Ticker Tape (status strip)** -- The scrolling bar with "S&P 500 Level: 5980" and "CBOE VIX Index: 12.01" etc. is confusing for a private markets platform. Even after the public-market removal effort, it still shows S&P and VIX data. Contains a mix of real macro data and stale/synthetic numbers. **REMOVE entirely** -- it adds visual noise without actionable insight.
+### User Preferences Storage
+- Add a `dashboard_widgets` JSONB column to the `profiles` table
+- Schema: `{ widgets: [{ id: string, visible: boolean, order: number }], layout?: string }`
+- Default value: null (uses built-in defaults)
 
-6. **"LIVE" badge and live indicator dots** -- Multiple "LIVE" indicators (header badge, status strip, news wire) feel performative. Keep one subtle indicator, remove the rest.
+### Customize UI
+- A small "Customize" gear icon in the dashboard hero header (not a full panel)
+- Clicking it opens an overlay/modal with a simple toggle list of widgets (show/hide each)
+- Drag handles on each toggle to reorder
+- "Reset to defaults" button
+- Changes save automatically to the profiles table
 
-7. **"BETA" badge in header** -- Fine on landing page, redundant in the app header.
+### Widget IDs
+Each dashboard section gets a stable ID:
+- `morning-briefing`
+- `quick-actions`
+- `metrics`
+- `alpha-signals`
+- `companies-table`
+- `pipeline-deals`
+- `watchlists`
+- `distressed`
+- `news-wire`
 
-8. **Onboarding Flow** -- The multi-step onboarding widget is fine conceptually but clutters the dashboard for returning users. Keep it but make it dismissible (it already is, just verify).
+## Technical Implementation
 
-9. **Dashboard "Customize" button with widget toggles** -- Overengineered for current stage. Users don't need 10 toggle switches. Just show the best layout.
-
-### Sidebar -- Too Many Items
-
-10. **"Portfolio" page** -- Separate portfolio tracking page with limited utility when Pipeline already exists in Deal Flow. **REMOVE from sidebar** -- merge any useful bits into Deal Flow.
-
-11. **"Screening" vs "Private Markets"** -- These overlap significantly. Both let you browse/filter companies. **MERGE Screening into Private Markets** as a filter panel.
-
-12. **"Intelligence Feed" vs "News Wire" on dashboard** -- The Intelligence Feed page and the dashboard News Wire widget show similar content. Keep Intelligence Feed as a page, remove the redundant dashboard widget or make it link cleanly.
-
-13. **"Sector Pulse"** -- Has useful rotation analysis but requires data to be meaningful. The empty states are frequent. **KEEP but simplify** -- remove the sub-toggles (Flows vs Rotation views) and show one clean view.
-
-14. **"Document Analyzer" as separate sidebar item** -- It's already a tab inside Research & AI. Having it in both places is confusing. **REMOVE from sidebar** (keep as tab in Research).
-
-### Other Pages
-
-15. **"API Docs" (Developers page)** -- Pre-revenue beta product shouldn't prominently feature API documentation in the main nav. **MOVE to Settings sub-section.**
-
-16. **Keyboard shortcuts modal, Compare Mode** -- Power-user features that add complexity. Keep shortcuts, **remove Compare Mode** for now.
-
----
-
-## What to KEEP and HIGHLIGHT
-
-### Core Value Features (Promote These)
-
-1. **AI Research & Chat** -- The ability to select a company and chat with AI about it, get deep analysis. This is the core differentiator. **Make this more prominent.**
-
-2. **Investment Memo Generator** -- One-click IC-ready memos. High-value, instant wow factor. **Feature prominently.**
-
-3. **Morning Briefing** -- AI-synthesized overnight digest. Genuinely useful. **KEEP at top of dashboard.**
-
-4. **Alpha Signals** -- AI-generated sector signals with reasoning. Strong feature. **KEEP but clean up the macro bar** inside it (remove S&P/VIX references).
-
-5. **Deal Pipeline (Kanban)** -- Clean drag-and-drop pipeline management with stages. Core workflow. **KEEP.**
-
-6. **Company Database + Screening filters** -- 844 companies with sector/stage/revenue filters. **KEEP as unified "Companies" page.**
-
-7. **Distressed Assets** -- Unique dataset, clear value prop. **KEEP.**
-
-8. **Document Analyzer** -- Upload CIMs/PPMs, extract metrics. Strong feature. **KEEP inside Research.**
-
-9. **Valuation Toolkit** -- DCF, comps, football field. Solid toolset. **KEEP.**
-
-10. **AI Deal Matcher** -- Strategic deal matching. Differentiator. **KEEP.**
-
----
-
-## Restructured Dashboard Layout
-
-The new dashboard should tell a clear story in this order:
-
-```text
-+------------------------------------------+
-| Command Center (header)                   |
-+------------------------------------------+
-| Morning Briefing (collapsible)            |
-+------------------------------------------+
-| Alpha Signals (AI sector analysis)        |
-+------------------------------------------+
-| 4 Metric Cards (clean, clear labels)      |
-| Deal Value | Companies | Distressed | Pipeline |
-+------------------------------------------+
-| Companies Table        | Your Pipeline    |
-|                        | Watchlists       |
-|                        | Distressed Opps  |
-+------------------------------------------+
-| News Wire (compact)                       |
-+------------------------------------------+
+### Database Migration
+Add `dashboard_widgets` JSONB column to `profiles`:
+```sql
+ALTER TABLE profiles ADD COLUMN dashboard_widgets jsonb DEFAULT NULL;
 ```
 
-**Removed from dashboard:** Deal Flow chart, Sector Activity chart, Data Sources badge, Usage Meters, Off-Market widget, Global Pulse widget, Ticker Tape, Customize panel.
+### New Files
+1. **`src/hooks/useDashboardLayout.ts`** -- Hook that reads/writes widget preferences from profiles table. Returns ordered, visible widget list and update function.
+2. **`src/components/QuickActions.tsx`** -- The new Quick Actions bar component highlighting AI capabilities.
+3. **`src/components/DashboardCustomizer.tsx`** -- Modal/sheet with toggle list and drag-to-reorder for widgets.
 
----
+### Modified Files
+1. **`src/pages/Index.tsx`** -- Refactor dashboard to render widgets dynamically based on user preferences from `useDashboardLayout`. Each widget section becomes a named component rendered via a widget map. Add the Quick Actions bar. Add the customize button to the hero header.
+2. **`src/components/OnboardingFlow.tsx`** -- Fix the "Go to Screening" link (step 2) to point to `/companies` instead of `/screening` since Screening was merged.
 
-## Restructured Sidebar
+### Widget Rendering Pattern
+```typescript
+const WIDGET_MAP = {
+  'morning-briefing': MorningBriefingWidget,
+  'quick-actions': QuickActions,
+  'metrics': MetricsRow,
+  'alpha-signals': AlphaSignalsWidget,
+  'companies-table': CompaniesWidget,
+  // sidebar widgets handled separately
+  'pipeline-deals': RecentPipelineDeals,
+  'watchlists': WatchlistWidget,
+  'distressed': DistressedWidget,
+  'news-wire': NewsFeedWidget,
+};
 
-```text
-COMMAND CENTER
-  Dashboard
-
-MARKETS
-  Companies (merged Private Markets + Screening)
-  Global Markets
-  Distressed Assets
-  Real Estate
-
-DEAL ENGINE
-  Deal Flow (includes former Portfolio)
-  AI Deal Matcher
-  Valuations
-
-INTELLIGENCE
-  Research & AI (includes Doc Analyzer tab)
-  Intelligence Feed
-  Sector Pulse
-
----
-Alerts
-Settings (includes API Docs, Usage)
+// Render in user-defined order, skip hidden ones
+{visibleWidgets.map(w => {
+  const Component = WIDGET_MAP[w.id];
+  return Component ? <Component key={w.id} /> : null;
+})}
 ```
 
-**Removed:** Portfolio, Screening (merged), Document Analyzer (duplicate), API Docs (moved to Settings), Fund Intelligence sidebar item (merge into global or keep as-is based on usage).
+### Layout Logic
+- Main content widgets (morning-briefing, quick-actions, metrics, alpha-signals) render full-width in order
+- The 3-column grid section renders companies-table (2/3) + sidebar widgets (1/3)
+- Sidebar widget order is also customizable
+- If a user hides all sidebar widgets, companies-table goes full width
 
----
+## Summary of Changes
 
-## Technical Changes Summary
-
-### Files to Modify
-
-1. **`src/pages/Index.tsx`** -- Remove DealFlowChart, SectorHeatmap, DataSourcesBadge, UsageMeters, OffMarketWidget, GlobalPulseWidget, customization panel. Simplify to: Morning Briefing, Alpha Signals, Metric Cards, Company Table, Pipeline widget, Watchlist widget, Distressed widget, News Feed.
-
-2. **`src/components/AppLayout.tsx`** -- Remove Ticker Tape component and status strip. Remove "BETA" badge from header. Simplify to just search bar + alerts bell.
-
-3. **`src/components/AppSidebar.tsx`** -- Restructure NAV_GROUPS: remove Portfolio, Screening, Document Analyzer as separate items. Move API Docs under Settings.
-
-4. **`src/App.tsx`** -- Add redirect from `/portfolio` to `/deals`, `/screening` to `/companies`. Remove `/document-analyzer` route (handled as tab in Research).
-
-5. **`src/components/Charts.tsx`** -- Can be deleted entirely (DealFlowChart and SectorHeatmap removed).
-
-6. **`src/components/TickerTape.tsx`** -- Delete entirely.
-
-7. **`src/components/AlphaSignalWidget.tsx`** -- Clean up MacroBar to remove public market indicators (S&P 500, VIX). Only show private-market-relevant macro data (Fed Funds, 10Y Treasury, Unemployment).
-
-8. **`src/components/CompareMode.tsx`** -- Delete or keep but remove keyboard shortcut and sidebar reference.
-
-9. **`src/components/UsageMeters.tsx`** -- Remove from dashboard import. Keep component for use in Settings page only.
-
-10. **`src/pages/Screening.tsx`** -- Merge filtering capabilities into Companies page. The Screening page becomes a redirect.
-
-11. **`src/components/DataSourcesPanel.tsx`** -- Remove dashboard references (still useful in Admin).
-
-### Files to Delete
-
-- `src/components/Charts.tsx`
-- `src/components/TickerTape.tsx`
-
-### Sidebar Navigation Count
-
-- **Before:** 19 items (including bottom items)
-- **After:** 14 items -- a 26% reduction in cognitive load
+| Change | Purpose |
+|--------|---------|
+| Add `dashboard_widgets` column to profiles | Persist user layout preferences |
+| Create QuickActions bar | Surface AI features (memos, research, docs) prominently |
+| Create DashboardCustomizer modal | Let users toggle and reorder widgets |
+| Create useDashboardLayout hook | Read/write preferences, provide defaults |
+| Refactor Index.tsx to dynamic rendering | Enable customizable widget order |
+| Fix OnboardingFlow screening link | Correct stale /screening path |
 
