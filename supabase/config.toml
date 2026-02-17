@@ -89,3 +89,21 @@ verify_jwt = false
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.fetch-fred-data]
+verify_jwt = false
+
+[functions.fetch-real-deals]
+verify_jwt = false
+
+[functions.store-api-secret]
+verify_jwt = false
+
+[functions.fetch-intelligence]
+verify_jwt = false
+
+[functions.scheduler]
+verify_jwt = false
+
+[functions.send-test-briefing]
+verify_jwt = false
