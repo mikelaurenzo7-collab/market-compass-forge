@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, Filter, Download, ArrowRight, Clock, GitBranch, MessageSquare, CheckCircle, XCircle, Search } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
+import PageTransition from "@/components/PageTransition";
 import { format } from "date-fns";
 
 interface DecisionEntry {
@@ -13,7 +14,7 @@ interface DecisionEntry {
   from_state: string | null;
   to_state: string | null;
   rationale: string | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
   created_at: string;
   user_id: string;
   deal_pipeline: {
@@ -92,6 +93,7 @@ const Decisions = () => {
   }, [decisions]);
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <PageHeader
@@ -231,6 +233,7 @@ const Decisions = () => {
         Showing {filtered.length} of {decisions?.length ?? 0} decisions
       </p>
     </div>
+    </PageTransition>
   );
 };
 

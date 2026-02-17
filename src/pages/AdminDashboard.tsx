@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import PageTransition from "@/components/PageTransition";
 
 const INTEREST_COLORS: Record<string, string> = {
   "M&A Advisory": "bg-violet-500/15 text-violet-400 border-violet-500/20",
@@ -140,6 +141,7 @@ const AdminDashboard = () => {
   const interestOptions = Object.keys(stats?.byInterest ?? {});
 
   return (
+    <PageTransition>
     <div className="p-4 md:p-6 space-y-6 max-w-6xl">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
         <h1 className="text-xl font-semibold text-foreground">Sales & Operations</h1>
@@ -449,6 +451,7 @@ const AdminDashboard = () => {
         </TabsContent>
       </Tabs>
     </div>
+    </PageTransition>
   );
 };
 

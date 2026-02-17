@@ -7,18 +7,23 @@ import ReactMarkdown from "react-markdown";
 
 const PAGE_CONTEXT: Record<string, string> = {
   "/deals": "the deals overview showing pipeline status, active deals, and AI matches",
+  "/deals/flow": "the deal pipeline showing sourced, screening, and due diligence stage deals",
+  "/deals/recommended": "AI-powered deal matcher recommending deals based on your investment thesis and history",
   "/companies": "the private companies database with valuations, funding rounds, and sector analysis",
-  "/deals": "the deal pipeline showing sourced, screening, and due diligence stage deals",
   "/valuations": "the valuation tools including DCF calculator, comp tables, and football field charts",
   "/portfolio": "portfolio positions with MOIC, IRR tracking, and benchmark comparisons",
   "/intelligence": "intelligence signals feed with sentiment analysis and AI summaries",
   "/sector-pulse": "sector momentum dashboard tracking capital flow rotation patterns",
-  "/screening": "company screening with multi-factor filters and saved screen templates",
   "/research": "research workspace with AI chat, document analysis, and SEC filings",
   "/distressed": "distressed asset opportunities with discount analysis",
   "/global": "global cross-border investment opportunities across regions",
   "/fund-intelligence": "fund performance analytics with IRR, TVPI, and LP commitment data",
   "/real-estate": "commercial real estate market data, transactions, and off-market listings",
+  "/rooms": "deal rooms for high-trust circles, co-investment syndication, and diligence coordination",
+  "/network": "relationship intelligence with strength scoring, warm intro routing, and contact segmentation",
+  "/automations": "workflow automation engine with trigger-based rules, templates, and action chains",
+  "/data-room": "document management and data room for secure file sharing and analysis",
+  "/decisions": "decision audit trail tracking IC votes, stage changes, and investment committee records",
 };
 
 /**

@@ -233,7 +233,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
       {/* Bottom nav */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
-        {bottomItems.map((item) => renderLink(item as any))}
+        {bottomItems.map((item) => renderLink(item))}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"

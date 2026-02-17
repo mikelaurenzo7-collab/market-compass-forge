@@ -39,13 +39,11 @@ export function useAutoEnrich(companyId: string | undefined, enabled: boolean) {
     if (!shouldEnrich) return;
 
     triggered.current = true;
-    console.log("Auto-enriching company:", companyId);
 
     supabase.functions
       .invoke("enrich-company", { body: { companyId } })
       .then(({ error }) => {
         if (error) console.error("Auto-enrich failed:", error);
-        else console.log("Auto-enrich complete for:", companyId);
       });
   }, [companyId, enabled, enrichments]);
 }

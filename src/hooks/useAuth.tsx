@@ -70,7 +70,7 @@ async function seedDemoContent(userId: string) {
       tier: "professional",
     });
 
-    console.log("Demo content seeded for new user");
+    // Demo content seeded
   } catch (e) {
     console.error("Failed to seed demo content:", e);
   }

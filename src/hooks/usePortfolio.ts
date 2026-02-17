@@ -45,6 +45,7 @@ export const usePortfolios = () => {
       return data as Portfolio[];
     },
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 };
 
@@ -81,6 +82,7 @@ export const usePortfolioPositions = (portfolioId: string | null) => {
       })) as PortfolioPosition[];
     },
     enabled: !!user && !!portfolioId,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

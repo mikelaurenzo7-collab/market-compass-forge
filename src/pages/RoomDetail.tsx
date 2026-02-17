@@ -13,144 +13,82 @@ import {
   ShieldCheck,
   Star,
   ExternalLink,
-  TrendingUp,
+  Loader2,
+  Plus,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import PageTransition from "@/components/PageTransition";
-
-// ── Placeholder room data ───────────────────────────────────────────────
-const ROOMS_DATA: Record<string, any> = {
-  "room-1": {
-    name: "Series B Syndicate",
-    description: "Co-investment circle for late-stage B2B SaaS deals. Verified operators and repeat allocators only.",
-    memberCount: 8,
-    isPrivate: true,
-    isVerified: true,
-    trustScore: 94,
-    members: [
-      { id: "m1", name: "Alex Chen", role: "Lead", verified: true, dealCount: 12 },
-      { id: "m2", name: "Sarah Kim", role: "Member", verified: true, dealCount: 8 },
-      { id: "m3", name: "James Wright", role: "Member", verified: false, dealCount: 3 },
-    ],
-    deals: [
-      { id: "d1", name: "Acme Corp", stage: "Diligencing", sector: "B2B SaaS" },
-      { id: "d2", name: "DataFlow Inc", stage: "Soft Commit", sector: "Data Infrastructure" },
-      { id: "d3", name: "CloudSecure", stage: "Interested", sector: "Cybersecurity" },
-    ],
-    feed: [
-      { id: "f1", author: "Alex Chen", content: "Shared new term sheet for Acme Corp. Take a look at the updated cap table.", time: "2h ago", verified: true },
-      { id: "f2", author: "Sarah Kim", content: "DataFlow IC deck updated — financials are solid. Ready for soft circle.", time: "5h ago", verified: true },
-      { id: "f3", author: "James Wright", content: "Added CloudSecure to the pipeline. Early stage but the TAM thesis is compelling.", time: "1d ago", verified: false },
-    ],
-  },
-  "room-2": {
-    name: "Distressed Credit Club",
-    description: "Sourcing and diligence for distressed debt opportunities. Institutional members with minimum AUM $50M.",
-    memberCount: 12,
-    isPrivate: true,
-    isVerified: true,
-    trustScore: 97,
-    members: [
-      { id: "m1", name: "Morgan Taylor", role: "Lead", verified: true, dealCount: 24 },
-      { id: "m2", name: "Casey Brown", role: "Member", verified: true, dealCount: 15 },
-    ],
-    deals: [
-      { id: "d1", name: "Retail Holdings LLC", stage: "Watching", sector: "Retail" },
-    ],
-    feed: [
-      { id: "f1", author: "Morgan Taylor", content: "New distressed retail opportunity — 40% discount to NAV. Worth a deeper look.", time: "4h ago", verified: true },
-    ],
-  },
-  "room-3": {
-    name: "Climate Tech Scouts",
-    description: "Early-stage climate and energy transition deal flow. Open to accredited investors with cleantech thesis.",
-    memberCount: 6,
-    isPrivate: false,
-    isVerified: false,
-    trustScore: 82,
-    members: [
-      { id: "m1", name: "Jordan Lee", role: "Lead", verified: true, dealCount: 6 },
-    ],
-    deals: [
-      { id: "d1", name: "GreenGrid Energy", stage: "Interested", sector: "Clean Energy" },
-      { id: "d2", name: "CarbonCapture Co", stage: "Watching", sector: "Climate Tech" },
-    ],
-    feed: [
-      { id: "f1", author: "Jordan Lee", content: "GreenGrid raised $5M seed — worth a deeper look at unit economics.", time: "1d ago", verified: true },
-    ],
-  },
-  "room-4": {
-    name: "GP/LP Exchange",
-    description: "Direct communication channel between GPs and their LP base. Fund updates, co-invest opportunities, and reporting.",
-    memberCount: 24,
-    isPrivate: true,
-    isVerified: true,
-    trustScore: 99,
-    members: [
-      { id: "m1", name: "Diana Mitchell", role: "Lead", verified: true, dealCount: 31 },
-      { id: "m2", name: "Henry Roberts", role: "Member", verified: true, dealCount: 18 },
-    ],
-    deals: [
-      { id: "d1", name: "Fund VII Co-Invest", stage: "Soft Commit", sector: "Multi-sector" },
-    ],
-    feed: [
-      { id: "f1", author: "Diana Mitchell", content: "Fund VII co-invest opportunity — allocation closes Friday.", time: "30m ago", verified: true },
-    ],
-  },
-  "room-5": {
-    name: "Infrastructure Secondaries",
-    description: "Secondary market opportunities in infrastructure and real assets. LP transfers and GP-led restructurings.",
-    memberCount: 9,
-    isPrivate: true,
-    isVerified: true,
-    trustScore: 91,
-    members: [
-      { id: "m1", name: "Paul Kim", role: "Lead", verified: true, dealCount: 14 },
-      { id: "m2", name: "Rachel Wu", role: "Member", verified: true, dealCount: 9 },
-    ],
-    deals: [
-      { id: "d1", name: "InfraCo LP Stake", stage: "Diligencing", sector: "Infrastructure" },
-    ],
-    feed: [
-      { id: "f1", author: "Paul Kim", content: "InfraCo LP stake — diligence materials uploaded to data room.", time: "6h ago", verified: true },
-    ],
-  },
-};
+import { useRooms, RoomMember, RoomMessage, RoomDeal, RoomEvent } from "@/hooks/useRooms";
+import { formatDistanceToNow, format } from "date-fns";
 
 // ── Feed Tab ────────────────────────────────────────────────────────────
-const FeedTab = ({ feed }: { feed: any[] }) => {
+const FeedTab = ({
+  messages,
+  onSend,
+  isSaving,
+}: {
+  messages: RoomMessage[];
+  onSend: (content: string) => Promise<void>;
+  isSaving: boolean;
+}) => {
   const [message, setMessage] = useState("");
-  const handleSend = () => {
-    if (!message.trim()) return;
-    toast.success("Message sent", { description: "Room messaging is in preview." });
+
+  const handleSend = async () => {
+    if (!message.trim() || isSaving) return;
+    await onSend(message.trim());
     setMessage("");
   };
+
+  const formatTime = (iso: string) => {
+    try {
+      return formatDistanceToNow(new Date(iso), { addSuffix: true });
+    } catch {
+      return "recently";
+    }
+  };
+
   return (
     <div className="space-y-3">
-      {feed.map((item) => (
-        <div key={item.id} className="rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm font-medium text-foreground">{item.author}</span>
-              {item.verified && <ShieldCheck className="h-3 w-3 text-primary" />}
-            </div>
-            <span className="text-[10px] text-muted-foreground font-mono">{item.time}</span>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">{item.content}</p>
+      {messages.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <MessageSquare className="h-8 w-8 mx-auto mb-3 text-muted-foreground/20" />
+          <p className="text-sm font-medium text-foreground">No messages yet</p>
+          <p className="text-xs mt-1">Start the conversation — share deal updates, analysis, or questions.</p>
         </div>
-      ))}
+      ) : (
+        messages
+          .slice()
+          .reverse()
+          .map((item) => (
+            <div key={item.id} className="rounded-lg border border-border bg-card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-foreground">{item.author}</span>
+                  {item.verified && <ShieldCheck className="h-3 w-3 text-primary" />}
+                </div>
+                <span className="text-[10px] text-muted-foreground font-mono">{formatTime(item.createdAt)}</span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">{item.content}</p>
+            </div>
+          ))
+      )}
       <div className="flex gap-2 mt-4">
         <input
           type="text"
           placeholder="Share an update with the room..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSend();
+          }}
           className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
-        <button onClick={handleSend} className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors">
-          <Send className="h-4 w-4" />
+        <button
+          onClick={handleSend}
+          disabled={!message.trim() || isSaving}
+          className="h-9 w-9 rounded-md bg-primary text-primary-foreground flex items-center justify-center hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </button>
       </div>
     </div>
@@ -167,7 +105,7 @@ const STAGE_COLORS: Record<string, string> = {
   Passed: "bg-destructive/10 text-destructive",
 };
 
-const ActiveDealsTab = ({ deals, navigate }: { deals: any[]; navigate: (path: string) => void }) => (
+const ActiveDealsTab = ({ deals, navigate }: { deals: RoomDeal[]; navigate: (path: string) => void }) => (
   <div className="space-y-2">
     {deals.length > 0 ? (
       deals.map((deal) => (
@@ -183,7 +121,9 @@ const ActiveDealsTab = ({ deals, navigate }: { deals: any[]; navigate: (path: st
             <p className="text-[10px] text-muted-foreground mt-0.5">{deal.sector}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0 ml-3">
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded ${STAGE_COLORS[deal.stage] ?? "bg-muted text-muted-foreground"}`}>
+            <span
+              className={`text-[10px] font-medium px-2 py-0.5 rounded ${STAGE_COLORS[deal.stage] ?? "bg-muted text-muted-foreground"}`}
+            >
               {deal.stage}
             </span>
             <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -201,87 +141,272 @@ const ActiveDealsTab = ({ deals, navigate }: { deals: any[]; navigate: (path: st
 );
 
 // ── Members Tab ─────────────────────────────────────────────────────────
-const MembersTab = ({ members }: { members: any[] }) => (
-  <div className="space-y-2">
-    {members.map((member) => (
-      <div key={member.id} className="rounded-lg border border-border bg-card p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-grape/10 flex items-center justify-center text-xs font-semibold text-grape">
-            {member.name.split(" ").map((n: string) => n[0]).join("")}
+const MembersTab = ({
+  members,
+  onInvite,
+  isSaving,
+}: {
+  members: RoomMember[];
+  onInvite: (name: string) => Promise<void>;
+  isSaving: boolean;
+}) => {
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+
+  const handleInvite = async () => {
+    if (!inviteName.trim()) return;
+    await onInvite(inviteName.trim());
+    setInviteName("");
+    setShowInvite(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      {members.map((member) => (
+        <div key={member.id} className="rounded-lg border border-border bg-card p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-grape/10 flex items-center justify-center text-xs font-semibold text-grape">
+              {member.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .toUpperCase()}
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-medium text-foreground">{member.name}</p>
+                {member.verified && <ShieldCheck className="h-3 w-3 text-primary" />}
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-[10px] text-muted-foreground capitalize">{member.role}</p>
+                {member.dealCount > 0 && (
+                  <>
+                    <span className="text-[10px] text-muted-foreground/30">·</span>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <Handshake className="h-2.5 w-2.5" /> {member.dealCount} deals
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <p className="text-sm font-medium text-foreground">{member.name}</p>
-              {member.verified && <ShieldCheck className="h-3 w-3 text-primary" />}
-            </div>
-            <div className="flex items-center gap-2 mt-0.5">
-              <p className="text-[10px] text-muted-foreground">{member.role}</p>
-              {member.dealCount > 0 && (
-                <>
-                  <span className="text-[10px] text-muted-foreground/30">·</span>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Handshake className="h-2.5 w-2.5" /> {member.dealCount} deals
-                  </p>
-                </>
-              )}
-            </div>
+          {member.role === "lead" && (
+            <span className="text-[9px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+              Lead
+            </span>
+          )}
+        </div>
+      ))}
+
+      {showInvite ? (
+        <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-4 space-y-3">
+          <input
+            type="text"
+            placeholder="Contact name..."
+            value={inviteName}
+            onChange={(e) => setInviteName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleInvite();
+            }}
+            className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setShowInvite(false);
+                setInviteName("");
+              }}
+              className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleInvite}
+              disabled={!inviteName.trim() || isSaving}
+              className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {isSaving && <Loader2 className="h-3 w-3 animate-spin" />}
+              Invite
+            </button>
           </div>
         </div>
-        {member.role === "Lead" && (
-          <span className="text-[9px] font-medium uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-            Lead
-          </span>
-        )}
-      </div>
-    ))}
-    <button
-      onClick={() => toast.info("Member invitations coming soon")}
-      className="w-full rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground hover:text-foreground hover:border-primary/20 transition-all flex items-center justify-center gap-2"
-    >
-      <UserPlus className="h-4 w-4" /> Invite Member
-    </button>
-  </div>
-);
+      ) : (
+        <button
+          onClick={() => setShowInvite(true)}
+          className="w-full rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground hover:text-foreground hover:border-primary/20 transition-all flex items-center justify-center gap-2"
+        >
+          <UserPlus className="h-4 w-4" /> Invite Member
+        </button>
+      )}
+    </div>
+  );
+};
 
 // ── Events Tab ──────────────────────────────────────────────────────────
-const EventsTab = () => (
-  <div className="text-center py-12 text-muted-foreground">
-    <Calendar className="h-8 w-8 mx-auto mb-3 text-muted-foreground/20" />
-    <p className="text-sm font-medium text-foreground">No upcoming events</p>
-    <p className="text-xs mt-1">Schedule IC reviews, deal presentations, and group calls.</p>
-    <button
-      onClick={() => toast.info("Scheduling coming soon", { description: "IC reviews, deal presentations, and group calls." })}
-      className="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
-    >
-      Schedule Event
-    </button>
-  </div>
-);
+const EVENT_TYPE_LABELS: Record<RoomEvent["type"], string> = {
+  ic_review: "IC Review",
+  presentation: "Presentation",
+  call: "Group Call",
+  other: "Event",
+};
+
+const EventsTab = ({
+  events,
+  onSchedule,
+  isSaving,
+}: {
+  events: RoomEvent[];
+  onSchedule: (data: { title: string; date: string; type: RoomEvent["type"] }) => Promise<void>;
+  isSaving: boolean;
+}) => {
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [type, setType] = useState<RoomEvent["type"]>("call");
+
+  const handleSchedule = async () => {
+    if (!title.trim() || !date) return;
+    await onSchedule({ title: title.trim(), date, type });
+    setTitle("");
+    setDate("");
+    setType("call");
+    setShowSchedule(false);
+  };
+
+  return (
+    <div className="space-y-3">
+      {events.length > 0 ? (
+        events.map((event) => (
+          <div key={event.id} className="rounded-lg border border-border bg-card p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground">{event.title}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] text-muted-foreground">
+                  {(() => {
+                    try {
+                      return format(new Date(event.date), "MMM d, yyyy");
+                    } catch {
+                      return event.date;
+                    }
+                  })()}
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                  {EVENT_TYPE_LABELS[event.type]}
+                </span>
+              </div>
+            </div>
+            <Calendar className="h-4 w-4 text-muted-foreground/40" />
+          </div>
+        ))
+      ) : !showSchedule ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <Calendar className="h-8 w-8 mx-auto mb-3 text-muted-foreground/20" />
+          <p className="text-sm font-medium text-foreground">No upcoming events</p>
+          <p className="text-xs mt-1">Schedule IC reviews, deal presentations, and group calls.</p>
+        </div>
+      ) : null}
+
+      {showSchedule ? (
+        <div className="rounded-lg border border-primary/20 bg-primary/[0.02] p-4 space-y-3">
+          <input
+            type="text"
+            placeholder="Event title..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as RoomEvent["type"])}
+              className="h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="call">Group Call</option>
+              <option value="ic_review">IC Review</option>
+              <option value="presentation">Presentation</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => setShowSchedule(false)}
+              className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSchedule}
+              disabled={!title.trim() || !date || isSaving}
+              className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            >
+              {isSaving && <Loader2 className="h-3 w-3 animate-spin" />}
+              Schedule
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowSchedule(true)}
+          className="w-full h-9 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+        >
+          <Plus className="h-4 w-4" /> Schedule Event
+        </button>
+      )}
+    </div>
+  );
+};
 
 // ── Main ────────────────────────────────────────────────────────────────
 const RoomDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("feed");
+  const { getRoomById, addMessage, addMember, addEvent, isLoading, isSaving } = useRooms();
 
-  const room = id ? ROOMS_DATA[id] : null;
+  const room = id ? getRoomById(id) : undefined;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (!room) {
     return (
       <div className="p-6">
-        <button onClick={() => navigate("/rooms")} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-6 transition-colors">
+        <button
+          onClick={() => navigate("/rooms")}
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        >
           <ArrowLeft className="h-3.5 w-3.5" /> Back to Rooms
         </button>
         <div className="rounded-lg border border-border bg-card p-16 text-center max-w-md mx-auto">
           <h2 className="text-lg font-semibold text-foreground">Room not found</h2>
-          <p className="text-sm text-muted-foreground mt-1">This room may have been removed or you may not have access.</p>
-          <button onClick={() => navigate("/rooms")} className="mt-5 h-9 px-5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+          <p className="text-sm text-muted-foreground mt-1">
+            This room may have been removed or you may not have access.
+          </p>
+          <button
+            onClick={() => navigate("/rooms")}
+            className="mt-5 h-9 px-5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
             Go to Rooms
           </button>
         </div>
       </div>
     );
   }
+
+  const verifiedMemberCount = room.members.filter((m) => m.verified).length;
 
   return (
     <PageTransition>
@@ -298,22 +423,14 @@ const RoomDetail = () => {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-                {room.name}
-              </h1>
-              {room.isVerified && (
-                <ShieldCheck className="h-4 w-4 text-primary shrink-0" />
-              )}
+              <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">{room.name}</h1>
+              {room.isVerified && <ShieldCheck className="h-4 w-4 text-primary shrink-0" />}
             </div>
             <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-              {room.isPrivate ? (
-                <Lock className="h-3 w-3" />
-              ) : (
-                <Globe className="h-3 w-3" />
-              )}
+              {room.isPrivate ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
               <span>{room.isPrivate ? "Private" : "Open"}</span>
               <span>·</span>
-              <span>{room.memberCount} members</span>
+              <span>{room.members.length} members</span>
               {room.trustScore >= 90 && (
                 <>
                   <span>·</span>
@@ -327,12 +444,6 @@ const RoomDetail = () => {
               <p className="text-xs text-muted-foreground mt-2 max-w-xl leading-relaxed">{room.description}</p>
             )}
           </div>
-          <button
-            onClick={() => toast.info("Invitations coming soon", { description: "You'll be able to invite verified contacts to this room." })}
-            className="h-8 px-3 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
-          >
-            <UserPlus className="h-3.5 w-3.5" /> Invite
-          </button>
         </div>
 
         {/* Quick stats */}
@@ -341,10 +452,10 @@ const RoomDetail = () => {
             <Handshake className="h-3 w-3" /> {room.deals.length} active deals
           </span>
           <span className="flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" /> {room.feed.length} updates
+            <MessageSquare className="h-3 w-3" /> {room.messages.length} updates
           </span>
           <span className="flex items-center gap-1">
-            <Users className="h-3 w-3" /> {room.members.filter((m: any) => m.verified).length} verified members
+            <Users className="h-3 w-3" /> {verifiedMemberCount} verified members
           </span>
         </div>
 
@@ -369,16 +480,28 @@ const RoomDetail = () => {
           </TabsList>
 
           <TabsContent value="feed" className="mt-5">
-            <FeedTab feed={room.feed} />
+            <FeedTab
+              messages={room.messages}
+              onSend={(content) => addMessage(room.id, content)}
+              isSaving={isSaving}
+            />
           </TabsContent>
           <TabsContent value="deals" className="mt-5">
             <ActiveDealsTab deals={room.deals} navigate={navigate} />
           </TabsContent>
           <TabsContent value="members" className="mt-5">
-            <MembersTab members={room.members} />
+            <MembersTab
+              members={room.members}
+              onInvite={(name) => addMember(room.id, name)}
+              isSaving={isSaving}
+            />
           </TabsContent>
           <TabsContent value="events" className="mt-5">
-            <EventsTab />
+            <EventsTab
+              events={room.events}
+              onSchedule={(data) => addEvent(room.id, data)}
+              isSaving={isSaving}
+            />
           </TabsContent>
         </Tabs>
       </div>

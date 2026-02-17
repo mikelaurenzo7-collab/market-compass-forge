@@ -18,13 +18,18 @@ import {
   BarChart3,
   ChevronRight,
   Heart,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import PageTransition from "@/components/PageTransition";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import RelationshipGraph from "@/components/RelationshipGraph";
 import { useRelationshipIntel } from "@/hooks/useRelationshipIntel";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   getRelationshipHealth,
   HEALTH_COLORS,
@@ -33,6 +38,8 @@ import {
   type Contact,
   type RelationshipHealth,
 } from "@/lib/relationshipScoring";
+
+type SortOption = "strength" | "name" | "interactions";
 
 // ── Strength Bar ───────────────────────────────────────────────────────
 const StrengthBar = ({ value }: { value: number }) => {
@@ -227,6 +234,132 @@ const NetworkHealthDashboard = ({ stats }: { stats: ReturnType<typeof useRelatio
   </div>
 );
 
+// ── Add Contact Dialog ────────────────────────────────────────────────
+const AddContactDialog = ({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
+  const [firm, setFirm] = useState("");
+  const [email, setEmail] = useState("");
+  const [sectors, setSectors] = useState("");
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("key_personnel").insert({
+        name: name.trim(),
+        title: title.trim() || null,
+        linkedin_url: null,
+        company_id: null,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["relationship-contacts"] });
+      toast.success("Contact added", { description: name.trim() });
+      setName("");
+      setTitle("");
+      setFirm("");
+      setEmail("");
+      setSectors("");
+      onClose();
+    } catch (e) {
+      toast.error("Failed to add contact");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Contact</DialogTitle>
+          <DialogDescription>Add a contact to your relationship network.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 mt-2">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Name *</label>
+            <input
+              type="text"
+              placeholder="Full name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Title</label>
+              <input
+                type="text"
+                placeholder="e.g. Managing Director"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Firm</label>
+              <input
+                type="text"
+                placeholder="e.g. Sequoia Capital"
+                value={firm}
+                onChange={(e) => setFirm(e.target.value)}
+                className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Email</label>
+            <input
+              type="email"
+              placeholder="email@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Sectors (comma-separated)</label>
+            <input
+              type="text"
+              placeholder="e.g. SaaS, Fintech, Healthcare"
+              value={sectors}
+              onChange={(e) => setSectors(e.target.value)}
+              className="w-full h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="h-9 px-4 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!name.trim() || saving}
+              className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Add Contact
+            </button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // ── Main Network Page ──────────────────────────────────────────────────
 const Network = () => {
   const navigate = useNavigate();
@@ -234,9 +367,10 @@ const Network = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "strong" | "warm" | "at-risk">("all");
   const [segmentFilter, setSegmentFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"strength" | "name" | "interactions">("strength");
+  const [sortBy, setSortBy] = useState<SortOption>("strength");
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [introPaths, setIntroPaths] = useState<any[]>([]);
+  const [introPaths, setIntroPaths] = useState<{ hops: { id: string; name: string; firm?: string | null }[]; path_confidence: number }[]>([]);
+  const [showAddContact, setShowAddContact] = useState(false);
 
   const filteredContacts = useMemo(() => {
     let result = contacts.filter((c) => {
@@ -300,10 +434,10 @@ const Network = () => {
             </p>
           </div>
           <button
-            onClick={() => toast.info("Contact import coming soon", { description: "Import from LinkedIn, Gmail, or CRM." })}
+            onClick={() => setShowAddContact(true)}
             className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
           >
-            <UserPlus className="h-4 w-4" /> Import Contacts
+            <UserPlus className="h-4 w-4" /> Add Contact
           </button>
         </div>
 
@@ -382,7 +516,7 @@ const Network = () => {
           {/* Sort */}
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
             className="h-9 px-2 rounded-md border border-border bg-card text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="strength">Sort: Strength</option>
@@ -417,6 +551,8 @@ const Network = () => {
             </p>
           </div>
         )}
+
+        <AddContactDialog open={showAddContact} onClose={() => setShowAddContact(false)} />
       </div>
     </PageTransition>
   );

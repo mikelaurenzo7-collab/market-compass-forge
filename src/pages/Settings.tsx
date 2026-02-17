@@ -39,7 +39,7 @@ const Settings = () => {
   const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
   const [activeTab, setActiveTab] = useState<"profile" | "billing" | "usage" | "briefing" | "api" | "chatgpt" | "integrations" | "data" | "sources" | "team">(() => {
     const params = new URLSearchParams(window.location.search);
-    return (params.get("tab") as any) || "profile";
+    return (params.get("tab") as typeof activeTab) || "profile";
   });
 
   useEffect(() => {

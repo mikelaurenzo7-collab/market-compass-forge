@@ -50,7 +50,7 @@ const CompanyDetail = () => {
   
   const [noteContent, setNoteContent] = useState("");
   const searchParams = new URLSearchParams(window.location.search);
-  const initialTab = (searchParams.get("tab") as any) || "overview";
+  const initialTab = (searchParams.get("tab") as typeof activeTab) || "overview";
   const [activeTab, setActiveTab] = useState<"overview" | "financials" | "valuation" | "deals" | "network" | "analysis" | "news" | "research" | "memo" | "evidence">(initialTab === "filings" ? "overview" : initialTab);
 
   const handleTabChange = (tab: typeof activeTab) => {

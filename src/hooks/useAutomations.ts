@@ -32,9 +32,10 @@ export function useAutomations() {
       return data;
     },
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const rules: AutomationRule[] = (rulesRow?.config as any)?.rules ?? [];
+  const rules: AutomationRule[] = (rulesRow?.config as { rules?: AutomationRule[] })?.rules ?? [];
   const isEnabled = rulesRow?.enabled ?? true;
 
   // ── Save rules to DB ───────────────────────────────────────────────
@@ -210,9 +211,7 @@ async function executeAction(
     case "move_stage":
     case "add_to_watchlist":
     case "send_email":
-      // These actions are registered but execute as no-ops until
-      // the corresponding edge functions are wired up
-      console.log(`[Automation] Action ${actionType} queued`, config);
+      // These actions execute as no-ops until corresponding edge functions are wired up
       break;
   }
 }

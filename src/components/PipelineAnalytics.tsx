@@ -89,7 +89,7 @@ const PipelineAnalytics = () => {
     // Sector distribution
     const sectorMap = new Map<string, number>();
     deals.forEach((d) => {
-      const sector = (d.companies as any)?.sector ?? "Unknown";
+      const sector = (d.companies as { sector?: string } | null)?.sector ?? "Unknown";
       sectorMap.set(sector, (sectorMap.get(sector) ?? 0) + 1);
     });
     const sectorData = Array.from(sectorMap.entries())
@@ -101,7 +101,7 @@ const PipelineAnalytics = () => {
     const totalDeals = deals.length;
     const funnel = STAGES.map((s) => {
       const inOrPast = deals.filter((d) => {
-        const idx = STAGES.indexOf(d.stage as any);
+        const idx = STAGES.indexOf(d.stage as typeof STAGES[number]);
         const targetIdx = STAGES.indexOf(s);
         return idx >= targetIdx;
       }).length;

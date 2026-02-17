@@ -86,7 +86,7 @@ const Auth = () => {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as any)?.from || "/deals";
+  const from = (location.state as { from?: string })?.from || "/deals";
 
   useEffect(() => {
     if (user) {

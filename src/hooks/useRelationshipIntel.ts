@@ -61,7 +61,7 @@ export function useRelationshipIntel() {
 
   // ── Derive enriched contacts ─────────────────────────────────────
   const contacts: Contact[] = rawContacts.map((person: any) => {
-    const company = person.companies as any;
+    const company = person.companies as { name?: string; sector?: string } | null;
     const personEdges = edges.filter(
       (e) => e.source_id === person.id || e.target_id === person.id,
     );
