@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock } from "lucide-react";
+import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
+import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock, AlertTriangle, Briefcase, Building } from "lucide-react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -72,6 +74,22 @@ const Landing = () => {
   const [form, setForm] = useState({ name: "", email: "", firm: "", interest: "" });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const { data: metrics } = useDashboardMetrics();
+  const { data: liveCounts } = useQuery({
+    queryKey: ["landing-live-counts"],
+    queryFn: async () => {
+      const [companiesRes, distressedRes] = await Promise.all([
+        supabase.from("companies").select("id", { count: "exact", head: true }).or("market_type.eq.private,market_type.is.null"),
+        supabase.from("distressed_assets").select("id", { count: "exact", head: true }).eq("status", "active"),
+      ]);
+      return {
+        companiesCount: companiesRes.count ?? 0,
+        distressedCount: distressedRes.count ?? 0,
+      };
+    },
+    staleTime: 60_000,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,17 +186,18 @@ const Landing = () => {
             </p>
           </motion.div>
 
-          {/* Social proof stats */}
-          <motion.div custom={2} variants={fadeUp} className="w-full max-w-md">
-            <div className="grid grid-cols-4 gap-3 text-center">
+          {/* Live platform metrics */}
+          <motion.div custom={2} variants={fadeUp} className="w-full max-w-lg">
+            <div className="grid grid-cols-4 gap-3">
               {[
-                { value: "800+", label: "Private Companies" },
-                { value: "350+", label: "Distressed Assets" },
-                { value: "260+", label: "Off-Market Listings" },
-                { value: "REST", label: "API Access" },
+                { value: formatCurrency(metrics?.totalDealValue ?? 0), label: "Total Deal Value", icon: BarChart3 },
+                { value: String(liveCounts?.companiesCount ?? 0), label: "Companies Tracked", icon: Building },
+                { value: String(liveCounts?.distressedCount ?? 0), label: "Distressed Alerts", icon: AlertTriangle },
+                { value: String(metrics?.totalRounds ?? 0), label: "Funding Rounds", icon: Briefcase },
               ].map((s) => (
-                <div key={s.label} className="space-y-0.5">
-                  <p className="text-lg sm:text-xl font-black text-primary font-mono tracking-tight">{s.value}</p>
+                <div key={s.label} className="rounded-lg border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-center space-y-1">
+                  <s.icon className="h-3.5 w-3.5 text-primary mx-auto" />
+                  <p className="text-base sm:text-lg font-black text-primary font-mono tracking-tight leading-tight">{s.value}</p>
                   <p className="text-[9px] text-muted-foreground/70 leading-tight">{s.label}</p>
                 </div>
               ))}

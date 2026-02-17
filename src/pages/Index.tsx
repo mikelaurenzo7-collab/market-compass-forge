@@ -1,18 +1,13 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
-import MetricCard from "@/components/MetricCard";
 import CompanyTable from "@/components/CompanyTable";
 import UpgradePrompt from "@/components/UpgradePrompt";
 import { useUsageTracking } from "@/hooks/useUsageTracking";
-import { CardSkeleton } from "@/components/SkeletonLoaders";
 import { useNavigate } from "react-router-dom";
 import {
-  Lock,
   AlertTriangle,
-  Building,
   Briefcase,
   List,
 } from "lucide-react";
@@ -340,49 +335,7 @@ const WIDGET_COMPONENTS: Record<string, React.ComponentType> = {
   ),
 };
 
-// Metrics widget needs props so it's handled inline
-const MetricsWidget = ({ metrics, isLoading, batch }: { metrics: any; isLoading: boolean; batch: any }) => {
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <CardSkeleton key={i} />
-        ))}
-      </div>
-    );
-  }
-  return (
-    <motion.div
-      className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4"
-      initial="initial"
-      animate="animate"
-      variants={{ animate: { transition: { staggerChildren: 0.08 } } }}
-    >
-      <MetricCard label="Total Deal Value" value={formatCurrency(metrics?.totalDealValue ?? 0)} subtitle={`${metrics?.totalRounds ?? 0} rounds`} index={0} />
-      <MetricCard
-        label="Companies Tracked"
-        value={String(batch?.privateCount ?? 0)}
-        subtitle={<span className="flex items-center gap-1"><Lock className="h-2.5 w-2.5" /> Private Markets</span>}
-        index={1}
-      />
-      <MetricCard
-        label="Distressed Alerts"
-        value={String(batch?.distressedCount ?? 0)}
-        subtitle={<span className="flex items-center gap-1"><AlertTriangle className="h-2.5 w-2.5" /> Active</span>}
-        index={2}
-      />
-      <MetricCard
-        label="Pipeline Deals"
-        value={String(batch?.pipelineCount ?? 0)}
-        subtitle={<span className="flex items-center gap-1"><Briefcase className="h-2.5 w-2.5" /> In Progress</span>}
-        index={3}
-      />
-    </motion.div>
-  );
-};
-
 const Index = () => {
-  const { data: metrics, isLoading } = useDashboardMetrics();
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -415,9 +368,6 @@ const Index = () => {
   const hasSidebar = sidebarWidgets.length > 0;
 
   const renderWidget = (widgetId: string) => {
-    if (widgetId === "metrics") {
-      return <MetricsWidget key="metrics" metrics={metrics} isLoading={isLoading} batch={batch} />;
-    }
     const Component = WIDGET_COMPONENTS[widgetId];
     return Component ? <Component key={widgetId} /> : null;
   };
