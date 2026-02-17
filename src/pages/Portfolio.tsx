@@ -21,8 +21,8 @@ function formatCurrency(val: number) {
 }
 
 function getCurrentPrice(pos: PortfolioPosition): number | null {
-  if (pos.public_market_data?.[0]?.price) return Number(pos.public_market_data[0].price);
-  if (pos.funding_rounds?.[0]?.valuation_post) return Number(pos.funding_rounds[0].valuation_post) / 1e6; // rough per-share proxy
+  if (pos.latest_valuation) return Number(pos.latest_valuation) / 1e6;
+  if (pos.funding_rounds?.[0]?.valuation_post) return Number(pos.funding_rounds[0].valuation_post) / 1e6;
   return null;
 }
 
@@ -75,8 +75,6 @@ const Portfolio = () => {
       const currentPrice = getCurrentPrice(p);
       if (currentPrice !== null) {
         totalValue += Number(p.shares) * currentPrice;
-        const changePct = p.public_market_data?.[0]?.price_change_pct;
-        if (changePct) dayPnL += Number(p.shares) * currentPrice * (Number(changePct) / 100);
       } else {
         totalValue += cost; // fallback to cost basis
       }
@@ -301,8 +299,8 @@ const Portfolio = () => {
                               {pos.companies?.name ?? "Unknown"}
                             </button>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${isPublic ? "bg-chart-2/10 text-success" : "bg-primary/10 text-primary"}`}>
-                                {isPublic ? pos.public_market_data?.[0]?.ticker ?? "PUBLIC" : "PRIVATE"}
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-primary/10 text-primary">
+                                PRIVATE
                               </span>
                               {pos.companies?.sector && <span className="text-[10px] text-muted-foreground">{pos.companies.sector}</span>}
                             </div>

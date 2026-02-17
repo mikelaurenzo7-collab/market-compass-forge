@@ -10,35 +10,43 @@ type TickerItem = {
 };
 
 /**
- * Scrolling horizontal market ticker tape for the header status strip.
- * Shows live sector multiples and macro indicators.
+ * Scrolling horizontal ticker tape for the header status strip.
+ * Shows private market deal flow metrics, sector multiples, and macro indicators.
  */
 export default function TickerTape() {
   const { data: items } = useQuery({
     queryKey: ["ticker-tape"],
     queryFn: async (): Promise<TickerItem[]> => {
-      const [macroRes, sectorRes] = await Promise.all([
+      const [macroRes, sectorRes, dealRes, distressedRes] = await Promise.all([
         supabase
           .from("macro_indicators")
           .select("series_id, label, value")
-          .in("series_id", ["DGS10", "FEDFUNDS", "CPIAUCSL", "UNRATE"])
+          .in("series_id", ["DGS10", "FEDFUNDS"])
           .order("observation_date", { ascending: false })
-          .limit(4),
+          .limit(2),
         supabase
-          .from("public_market_data")
-          .select("ticker, price, price_change_pct")
-          .order("market_cap", { ascending: false })
-          .limit(6),
+          .from("mv_sector_multiples")
+          .select("sector, ev_rev_median, ev_ebitda_median, ev_rev_count")
+          .order("ev_rev_count", { ascending: false })
+          .limit(5),
+        supabase
+          .from("funding_rounds")
+          .select("round_type, amount, date")
+          .order("date", { ascending: false })
+          .limit(10),
+        supabase
+          .from("distressed_assets")
+          .select("id")
+          .eq("status", "active"),
       ]);
 
       const tickers: TickerItem[] = [];
 
+      // Macro indicators (rates only — no stock tickers)
       (macroRes.data ?? []).forEach((m: any) => {
         const labels: Record<string, string> = {
           DGS10: "10Y UST",
           FEDFUNDS: "Fed Rate",
-          CPIAUCSL: "CPI",
-          UNRATE: "Unemp.",
         };
         tickers.push({
           label: labels[m.series_id] ?? m.label,
@@ -46,13 +54,40 @@ export default function TickerTape() {
         });
       });
 
+      // Sector multiples from private market data
       (sectorRes.data ?? []).forEach((s: any) => {
-        tickers.push({
-          label: s.ticker,
-          value: `$${Number(s.price).toFixed(2)}`,
-          change: s.price_change_pct,
-        });
+        if (s.ev_rev_median && s.ev_rev_median > 0) {
+          tickers.push({
+            label: `${(s.sector ?? "Unknown").slice(0, 12)} EV/Rev`,
+            value: `${Number(s.ev_rev_median).toFixed(1)}x`,
+          });
+        }
       });
+
+      // Recent deal flow summary
+      const recentDeals = dealRes.data ?? [];
+      if (recentDeals.length > 0) {
+        const totalCapital = recentDeals.reduce((sum: number, d: any) => sum + (d.amount ?? 0), 0);
+        if (totalCapital > 0) {
+          tickers.push({
+            label: "Recent Deals",
+            value: totalCapital >= 1e9 ? `$${(totalCapital / 1e9).toFixed(1)}B` : `$${(totalCapital / 1e6).toFixed(0)}M`,
+          });
+        }
+        tickers.push({
+          label: "Deal Flow",
+          value: `${recentDeals.length} rounds`,
+        });
+      }
+
+      // Distressed asset count
+      const activeDistressed = distressedRes.data?.length ?? 0;
+      if (activeDistressed > 0) {
+        tickers.push({
+          label: "Distressed Active",
+          value: `${activeDistressed} assets`,
+        });
+      }
 
       return tickers;
     },

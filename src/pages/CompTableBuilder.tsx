@@ -75,23 +75,20 @@ const CompTableBuilder = ({ embedded }: { embedded?: boolean } = {}) => {
     queryFn: async () => {
       if (!selectedIds.length) return [];
 
-      const [companiesRes, financialsRes, fundingRes, marketRes] = await Promise.all([
+      const [companiesRes, financialsRes, fundingRes] = await Promise.all([
         supabase.from("companies").select("*").in("id", selectedIds),
         supabase.from("financials").select("*").in("company_id", selectedIds).order("period", { ascending: false }),
         supabase.from("funding_rounds").select("*").in("company_id", selectedIds).order("date", { ascending: false }),
-        supabase.from("public_market_data").select("*").in("company_id", selectedIds),
       ]);
 
       const companies = companiesRes.data ?? [];
       const financials = financialsRes.data ?? [];
       const funding = fundingRes.data ?? [];
-      const market = marketRes.data ?? [];
 
       return companies.map((c): CompanyRow => {
         const latestFin = financials.find((f) => f.company_id === c.id);
         const latestFunding = funding.find((f) => f.company_id === c.id);
-        const mkt = market.find((m) => m.company_id === c.id);
-        const valuation = latestFunding?.valuation_post ? Number(latestFunding.valuation_post) : mkt?.market_cap ? Number(mkt.market_cap) : null;
+        const valuation = latestFunding?.valuation_post ? Number(latestFunding.valuation_post) : null;
         const revenue = latestFin?.revenue ? Number(latestFin.revenue) : null;
 
         return {
@@ -108,12 +105,12 @@ const CompTableBuilder = ({ embedded }: { embedded?: boolean } = {}) => {
           ebitda: latestFin?.ebitda ? Number(latestFin.ebitda) : null,
           valuation,
           ev_revenue: revenue && valuation ? valuation / revenue : null,
-          market_cap: mkt?.market_cap ? Number(mkt.market_cap) : null,
-          pe_ratio: mkt?.pe_ratio ? Number(mkt.pe_ratio) : null,
-          price: mkt?.price ? Number(mkt.price) : null,
-          price_change_pct: mkt?.price_change_pct ? Number(mkt.price_change_pct) : null,
+          market_cap: null,
+          pe_ratio: null,
+          price: null,
+          price_change_pct: null,
           last_round: latestFunding?.round_type ?? null,
-          ticker: mkt?.ticker ?? null,
+          ticker: null,
         };
       });
     },

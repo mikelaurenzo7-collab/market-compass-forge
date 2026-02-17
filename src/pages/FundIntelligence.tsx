@@ -48,7 +48,7 @@ const FundIntelligence = () => {
       if (!portfolios?.length) return [];
       const { data: positions } = await supabase
         .from("portfolio_positions")
-        .select("*, companies(name, sector, market_type), public_market_data(price, price_change_pct), funding_rounds(valuation_post, round_type)")
+        .select("*, companies(name, sector, market_type), funding_rounds(valuation_post, round_type)")
         .eq("portfolio_id", portfolios[0].id);
       return positions ?? [];
     },
