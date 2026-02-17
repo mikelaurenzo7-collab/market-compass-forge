@@ -129,11 +129,11 @@ const Portfolio = () => {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <Briefcase className="h-5 w-5 text-primary" /> Portfolio Tracker
+          <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight flex items-center gap-2">
+            <Briefcase className="h-5 w-5 text-primary" /> Portfolio
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Track positions across public & private markets
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Track positions, performance, and post-close updates across your deals
           </p>
         </div>
         <div className="flex items-center gap-2">

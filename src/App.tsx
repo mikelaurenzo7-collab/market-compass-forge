@@ -22,6 +22,7 @@ import DealMatcher from "./pages/DealMatcher";
 import Rooms from "./pages/Rooms";
 import RoomDetail from "./pages/RoomDetail";
 import Portfolio from "./pages/Portfolio";
+import Network from "./pages/Network";
 
 // Intelligence
 import Companies from "./pages/Companies";
@@ -136,7 +137,7 @@ const App = () => (
               <Route path="/watchlists" element={<Navigate to="/companies" replace />} />
               <Route path="/markets/private" element={<Navigate to="/companies" replace />} />
               <Route path="/markets/public" element={<Navigate to="/companies" replace />} />
-              <Route path="/network" element={<Navigate to="/deals" replace />} />
+              <Route path="/network" element={<Network />} />
               <Route path="/developers" element={<Navigate to="/settings" replace />} />
             </Route>
 

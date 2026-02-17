@@ -22,6 +22,7 @@ import {
   Sparkles,
   LayoutDashboard,
   Upload,
+  GitBranch,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -52,9 +53,10 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Rooms",
+    label: "Rooms & Network",
     items: [
       { id: "rooms", label: "Rooms", icon: Users, path: "/rooms" },
+      { id: "network", label: "Network", icon: GitBranch, path: "/network" },
     ],
   },
   {
@@ -105,6 +107,8 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     if (path === "/deals/flow") return location.pathname === "/deals/flow";
     // For /deals/recommended, match /deals/recommended exactly
     if (path === "/deals/recommended") return location.pathname === "/deals/recommended";
+    // Exact match for /network
+    if (path === "/network") return location.pathname === "/network";
     // For all others, prefix match
     return location.pathname.startsWith(path);
   };

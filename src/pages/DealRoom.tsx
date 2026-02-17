@@ -331,33 +331,79 @@ const SummaryTab = ({ deal }: { deal: any }) => {
 };
 
 // ── Data Room Tab ───────────────────────────────────────────────────────
-const DataRoomTab = ({ dealId, companyName }: { dealId: string; companyName: string }) => (
-  <div className="space-y-4">
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Upload className="h-4 w-4 text-primary" /> Data Room
-        </h3>
-        <button
-          onClick={() => window.location.href = "/data-room"}
-          className="text-[10px] text-primary hover:underline font-medium"
-        >
-          Open Global Data Room
-        </button>
-      </div>
-      <div className="text-center py-12 text-muted-foreground">
-        <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground/30" />
-        <p className="text-sm font-medium text-foreground">Deal documents for {companyName}</p>
-        <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-          Upload term sheets, financials, legal docs, and diligence materials. Everything stays organized in one place.
-        </p>
-        <button className="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-          Upload Documents
-        </button>
+const DOC_CATEGORIES = [
+  { key: "term_sheet", label: "Term Sheet", icon: FileText, count: 0 },
+  { key: "financials", label: "Financials", icon: DollarSign, count: 0 },
+  { key: "legal", label: "Legal & Compliance", icon: Building2, count: 0 },
+  { key: "diligence", label: "Diligence Materials", icon: Target, count: 0 },
+  { key: "pitch", label: "Pitch & Memos", icon: Briefcase, count: 0 },
+  { key: "other", label: "Other Documents", icon: Upload, count: 0 },
+];
+
+const DataRoomTab = ({ dealId, companyName }: { dealId: string; companyName: string }) => {
+  const navigate = useNavigate();
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-border bg-card">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Upload className="h-4 w-4 text-primary" /> Data Room
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Structured documents for {companyName}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/data-room")}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Global Data Room
+            </button>
+            <button className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+              <Upload className="h-3 w-3" /> Upload
+            </button>
+          </div>
+        </div>
+
+        {/* Category grid */}
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {DOC_CATEGORIES.map((cat) => (
+            <button
+              key={cat.key}
+              className="text-left rounded-lg border border-dashed border-border p-4 hover:border-primary/30 hover:bg-primary/[0.02] transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-muted/50 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                  <cat.icon className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{cat.label}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {cat.count > 0 ? `${cat.count} document${cat.count > 1 ? "s" : ""}` : "No documents yet"}
+                  </p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Empty state hint */}
+        <div className="px-5 pb-4">
+          <div className="rounded-md bg-muted/20 border border-border/50 p-3 flex items-start gap-3">
+            <Lightbulb className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs text-foreground font-medium">Organize diligence materials</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                Upload documents to the right category. Term sheets, financial models, legal docs — everything in one place.
+                Room members with access can view and comment.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ── Discussion Tab ──────────────────────────────────────────────────────
 const DiscussionTab = ({ dealId }: { dealId: string }) => (
