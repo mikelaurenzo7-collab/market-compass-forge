@@ -144,7 +144,7 @@ const Auth = () => {
           setError(error.message);
         }
       } else {
-        setSuccess("Account created! You're being signed in...");
+        setSuccess("Account created! Check your email to verify your address before signing in.");
       }
     } else {
       const { error } = await signIn(email, password);

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { Mail, Loader2, Save, Clock, Send, Eye } from "lucide-react";
+import DOMPurify from "dompurify";
 
 const BriefingSettings = () => {
   const { user } = useAuth();
@@ -228,7 +229,7 @@ const BriefingPreviewButton = () => {
             <span className="text-xs font-semibold text-foreground">Briefing Preview</span>
             <button onClick={() => setHtml(null)} className="text-xs text-muted-foreground hover:text-foreground">Close</button>
           </div>
-          <div className="prose prose-sm dark:prose-invert max-w-none text-xs" dangerouslySetInnerHTML={{ __html: html }} />
+          <div className="prose prose-sm dark:prose-invert max-w-none text-xs" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
         </div>
       )}
     </>

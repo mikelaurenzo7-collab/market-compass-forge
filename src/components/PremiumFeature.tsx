@@ -56,8 +56,53 @@ export function hasAccess(userTier: string, requiredTier: Tier): boolean {
 }
 
 const PremiumFeature = ({ tier, children, featureName, inline = false }: PremiumFeatureProps) => {
-  // Single-tier model: all authenticated users get full access
-  return <>{children}</>;
+  const { data: userTier, isLoading } = useSubscriptionTier();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  // While loading subscription, show children to avoid flash of locked content
+  if (isLoading) return <>{children}</>;
+
+  const currentTier = userTier ?? "analyst";
+
+  if (hasAccess(currentTier, tier)) {
+    return <>{children}</>;
+  }
+
+  const requiredLabel = TIER_LABELS[tier] ?? tier;
+  const feature = featureName ?? "This feature";
+
+  if (inline) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <Lock className="h-3 w-3" />
+        <button onClick={() => setShowUpgrade(true)} className="underline hover:text-foreground transition-colors">
+          Upgrade to unlock
+        </button>
+        <UpgradePrompt open={showUpgrade} onClose={() => setShowUpgrade(false)} blockedAction={null} />
+      </span>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card/50 p-8 text-center space-y-3">
+        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+          <Lock className="h-5 w-5 text-primary" />
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">{feature} requires {requiredLabel}</h3>
+          <p className="text-xs text-muted-foreground mt-1">Upgrade your plan to access this feature.</p>
+        </div>
+        <button
+          onClick={() => setShowUpgrade(true)}
+          className="h-8 px-4 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-1.5"
+        >
+          <Zap className="h-3 w-3" /> Upgrade Plan
+        </button>
+      </div>
+      <UpgradePrompt open={showUpgrade} onClose={() => setShowUpgrade(false)} blockedAction={null} />
+    </>
+  );
 };
 
 export default PremiumFeature;
