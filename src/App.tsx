@@ -19,6 +19,8 @@ import Research from "./pages/Research";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ResetPassword from "./pages/ResetPassword";
+import Help from "./pages/Help";
 import IntelligenceFeed from "./pages/IntelligenceFeed";
 import DistressedAssets from "./pages/DistressedAssets";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -61,6 +63,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/data-coverage" element={<DataCoverage />} />
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route path="/dashboard" element={<Index />} />
@@ -82,6 +85,7 @@ const App = () => (
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/help" element={<Help />} />
               <Route path="/developers" element={<Navigate to="/settings" replace />} />
               {/* metrics route removed from public access */}
               {/* Legacy redirects */}
