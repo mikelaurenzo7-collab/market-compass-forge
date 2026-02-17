@@ -7,7 +7,7 @@ const actions = [
     icon: Brain,
     label: "AI Research",
     description: "Deep-dive any company",
-    path: "/research",
+    path: "/research?tab=chat",
   },
   {
     icon: FileText,
@@ -19,7 +19,7 @@ const actions = [
     icon: FileSearch,
     label: "Analyze Document",
     description: "Extract key metrics",
-    path: "/research?tab=document",
+    path: "/research?tab=documents",
   },
   {
     icon: Handshake,
