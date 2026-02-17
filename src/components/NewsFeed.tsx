@@ -80,13 +80,15 @@ const NewsFeed = ({ companyId, compact = false }: NewsFeedProps) => {
 
   const fetchMutation = useMutation({
     mutationFn: async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-news`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ company_id: companyId ?? null, topic: "market-moving technology and finance news" }),
+        body: JSON.stringify({ company_id: companyId ?? null, topic: "private equity venture capital M&A deals distressed assets fund intelligence" }),
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: "Unknown error" }));
