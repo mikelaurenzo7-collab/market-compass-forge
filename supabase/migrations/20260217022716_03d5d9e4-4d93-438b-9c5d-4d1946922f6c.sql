@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN dashboard_widgets jsonb DEFAULT NULL;
