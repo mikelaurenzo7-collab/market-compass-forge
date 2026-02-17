@@ -34,28 +34,18 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const page = body.page ?? 0;
 
-    // Fetch real M&A deals from FMP
-    console.log("Fetching real M&A data from FMP...");
-
-    const maUrl = `https://financialmodelingprep.com/stable/mergers-acquisitions/search?page=${page}&apikey=${FMP_API_KEY}`;
+    // Use the stable endpoint for latest M&A data
+    const maUrl = `https://financialmodelingprep.com/stable/mergers-acquisitions-latest?page=${page}&apikey=${FMP_API_KEY}`;
+    console.log("Fetching from:", maUrl.replace(FMP_API_KEY, "***"));
     const maResp = await fetch(maUrl);
 
     if (!maResp.ok) {
-      // Try alternative endpoint
-      const altUrl = `https://financialmodelingprep.com/api/v4/mergers-acquisitions-rss-feed?page=${page}&apikey=${FMP_API_KEY}`;
-      const altResp = await fetch(altUrl);
-      
-      if (!altResp.ok) {
-        const errText = await altResp.text();
-        console.error("FMP M&A error:", altResp.status, errText);
-        return new Response(
-          JSON.stringify({ error: `FMP API error: ${altResp.status}` }),
-          { status: altResp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      const deals = await altResp.json();
-      return await processDeals(supabase, deals);
+      const errText = await maResp.text();
+      console.error("FMP M&A error:", maResp.status, errText);
+      return new Response(
+        JSON.stringify({ error: `FMP API error: ${maResp.status}`, detail: errText.slice(0, 200) }),
+        { status: maResp.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const deals = await maResp.json();
