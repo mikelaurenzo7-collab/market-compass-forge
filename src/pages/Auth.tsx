@@ -15,6 +15,7 @@ const PASSWORD_RULES = [
   { label: "Lowercase letter", test: (p: string) => /[a-z]/.test(p) },
   { label: "Number", test: (p: string) => /[0-9]/.test(p) },
   { label: "Special character", test: (p: string) => /[^A-Za-z0-9]/.test(p) },
+  { label: "Not a common pattern", test: (p: string) => !/^(password|123456|qwerty|abc123|letmein|welcome|monkey|dragon|master|admin)/i.test(p) && !/^(.)\1+$/.test(p) && !/^(12345|abcde)/i.test(p) },
 ];
 
 const getStrength = (password: string) => {
