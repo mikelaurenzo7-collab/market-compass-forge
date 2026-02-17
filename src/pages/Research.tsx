@@ -41,6 +41,10 @@ const Research = () => {
   });
 
   useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "chat" || tab === "memo" || tab === "documents" || tab === "history") {
+      setActiveTab(tab);
+    }
     const companyId = searchParams.get("company");
     const companyName = searchParams.get("name");
     if (companyId && companyName && !selectedCompany) {
