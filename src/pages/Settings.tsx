@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscription } from "@/hooks/useSubscription";
-import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity, Receipt, Bot } from "lucide-react";
+import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity, Receipt, Bot, Plug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import ApiKeyManager from "@/components/ApiKeyManager";
@@ -16,6 +16,7 @@ import BillingDashboard from "@/components/BillingDashboard";
 import PageTransition from "@/components/PageTransition";
 import { AnimatedTabContent } from "@/components/AnimatedTabs";
 import ChatGPTSetup from "@/components/ChatGPTSetup";
+import IntegrationSettings from "@/components/IntegrationSettings";
 
 const ROLE_LABELS: Record<string, string> = {
   analyst: "Analyst",
@@ -36,7 +37,7 @@ const Settings = () => {
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
-  const [activeTab, setActiveTab] = useState<"profile" | "billing" | "usage" | "briefing" | "api" | "chatgpt" | "data" | "sources" | "team">(() => {
+  const [activeTab, setActiveTab] = useState<"profile" | "billing" | "usage" | "briefing" | "api" | "chatgpt" | "integrations" | "data" | "sources" | "team">(() => {
     const params = new URLSearchParams(window.location.search);
     return (params.get("tab") as any) || "profile";
   });
@@ -107,6 +108,7 @@ const Settings = () => {
     { id: "profile" as const, label: "Profile", icon: User },
     { id: "billing" as const, label: "Billing", icon: Receipt },
     { id: "usage" as const, label: "Usage", icon: Activity },
+    { id: "integrations" as const, label: "Integrations", icon: Plug },
     { id: "briefing" as const, label: "Briefing", icon: Mail },
     { id: "api" as const, label: "API Access", icon: Key },
     { id: "chatgpt" as const, label: "ChatGPT Agent", icon: Bot },
@@ -274,6 +276,8 @@ const Settings = () => {
       {activeTab === "billing" && <BillingDashboard />}
 
       {activeTab === "usage" && <UsageAnalytics />}
+
+      {activeTab === "integrations" && <IntegrationSettings />}
 
       {activeTab === "briefing" && <BriefingSettings />}
 
