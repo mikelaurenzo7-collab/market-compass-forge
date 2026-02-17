@@ -137,7 +137,11 @@ const Auth = () => {
     if (isSignUp) {
       const { error } = await signUp(email, password);
       if (error) {
-        setError(error.message);
+        if (error.message.toLowerCase().includes("weak") || error.message.toLowerCase().includes("common") || error.message.toLowerCase().includes("guess")) {
+          setError("This password is too common or has appeared in data breaches. Please choose a more unique password.");
+        } else {
+          setError(error.message);
+        }
       } else {
         setSuccess("Account created! You're being signed in...");
       }
