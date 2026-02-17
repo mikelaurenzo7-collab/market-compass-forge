@@ -30,7 +30,7 @@ const AlphaSignalWidget = lazy(() => import("@/components/AlphaSignalWidget"));
 const MorningBriefing = lazy(() => import("@/components/MorningBriefing"));
 
 const ChartSkeleton = () => (
-  <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+  <div className="rounded-xl widget-card p-4 space-y-4">
     <div className="flex items-center justify-between">
       <Skeleton className="h-4 w-32" />
       <Skeleton className="h-3 w-20" />
@@ -44,7 +44,7 @@ const ChartSkeleton = () => (
 );
 
 const WidgetSkeleton = () => (
-  <div className="rounded-lg border border-border bg-card">
+  <div className="rounded-xl widget-card">
     <div className="px-4 py-3 border-b border-border">
       <Skeleton className="h-4 w-28" />
     </div>
@@ -106,7 +106,7 @@ const RecentPipelineDeals = () => {
   });
 
   if (!recentDeals?.length) return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl widget-card">
       <div className="px-4 py-3 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground">Your Pipeline</h3>
       </div>
@@ -125,7 +125,7 @@ const RecentPipelineDeals = () => {
   const STAGE_LABELS: Record<string, string> = { sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence", ic_review: "IC Review", committed: "Committed", passed: "Passed" };
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl widget-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Your Pipeline</h3>
         <button onClick={() => navigate("/deals")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">View All</button>
@@ -168,7 +168,7 @@ const WatchlistWidget = () => {
   });
 
   if (!watchlists?.length) return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl widget-card">
       <div className="px-4 py-3 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground">Watchlists</h3>
       </div>
@@ -185,7 +185,7 @@ const WatchlistWidget = () => {
   );
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl widget-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Watchlists</h3>
         <button onClick={() => navigate("/watchlists")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">Manage</button>
@@ -228,7 +228,7 @@ const DistressedWidget = () => {
   if (!assets?.length) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl widget-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-warning" />
@@ -266,7 +266,7 @@ const OffMarketWidget = () => {
   if (!listings?.length) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl widget-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Building className="h-4 w-4 text-primary" />
@@ -293,7 +293,7 @@ const OffMarketWidget = () => {
 
 const DataSourcesBadge = () => {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-xl widget-card p-4">
       <div className="flex items-center gap-2 mb-3">
         <Zap className="h-4 w-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Data Sources</h3>
@@ -338,7 +338,7 @@ const GlobalPulseWidget = () => {
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-xl widget-card">
       <div className="px-4 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Globe className="h-4 w-4 text-primary" />
@@ -449,7 +449,7 @@ const Index = () => {
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.15, duration: 0.5, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] }}
-                className="text-xl sm:text-2xl font-bold text-foreground tracking-tight"
+                className="text-xl sm:text-2xl font-bold text-foreground tracking-tight font-display"
               >
                 Command Center
               </motion.h1>
@@ -554,7 +554,7 @@ const Index = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         <div className="lg:col-span-2">
-          <div className="rounded-lg border border-border bg-card overflow-hidden">
+          <div className="rounded-xl widget-card overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Companies</h3>
               <button onClick={() => navigate("/companies")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">View All</button>
