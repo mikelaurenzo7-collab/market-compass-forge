@@ -9,6 +9,7 @@ import MetricItem from "./MetricItem";
 import ValuationRangesSection from "./ValuationRangesSection";
 import RelationshipGraph from "@/components/RelationshipGraph";
 import AssetKPIs from "./AssetKPIs";
+import DealTasksPanel from "./DealTasksPanel";
 import { STAGE_LABELS } from "./types";
 
 interface SummaryTabProps {
@@ -248,6 +249,9 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
 
         {/* Valuation Ranges from Sensitivity Analysis */}
         <ValuationRangesSection dealId={dealId} />
+
+        {/* Stage Tasks */}
+        {dealId && <DealTasksPanel dealId={dealId} currentStage={deal.stage} />}
 
         {decisions && decisions.length > 0 && (
           <div className="rounded-lg border border-border bg-card p-4">

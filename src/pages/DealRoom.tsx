@@ -3,10 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ChevronRight, Link, Timer, CheckCircle, XCircle, LayoutDashboard, FileText, Scale, MessageSquare, Clock, PieChart, Bell } from "lucide-react";
+import { ChevronRight, Link, Timer, CheckCircle, XCircle, LayoutDashboard, FileText, Scale, MessageSquare, Clock, PieChart, Bell, ShieldAlert } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 
 import { STAGE_LABELS, STAGE_COLORS } from "@/components/deal-room/types";
@@ -145,6 +146,16 @@ const DealRoom = () => {
     enabled: !!id,
   });
 
+  const { data: dealTasks } = useQuery({
+    queryKey: ["deal-tasks", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("deal_tasks").select("*").eq("deal_id", id!).order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!id,
+  });
+
   // ── P3: Realtime subscriptions ──
   useEffect(() => {
     if (!id) return;
@@ -187,6 +198,20 @@ const DealRoom = () => {
     mutationFn: async (stage: string) => {
       if (!user) return;
       const oldStage = deal?.stage;
+
+      // Blocker check: warn if critical tasks incomplete for current stage
+      const currentStageTasks = (dealTasks ?? []).filter((t: any) => t.stage === oldStage);
+      const criticalBlockers = currentStageTasks.filter((t: any) => t.is_critical && !t.is_completed);
+      const ADVANCE_STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed"];
+      const oldIdx = ADVANCE_STAGES.indexOf(oldStage ?? "");
+      const newIdx = ADVANCE_STAGES.indexOf(stage);
+      if (criticalBlockers.length > 0 && newIdx > oldIdx) {
+        const confirmed = window.confirm(
+          `⚠️ ${criticalBlockers.length} critical task${criticalBlockers.length > 1 ? "s" : ""} incomplete:\n\n${criticalBlockers.map((t: any) => `• ${t.title}`).join("\n")}\n\nAdvance anyway?`
+        );
+        if (!confirmed) return;
+      }
+
       const { error } = await supabase.from("deal_pipeline").update({ stage }).eq("id", id!);
       if (error) throw error;
       await supabase.from("decision_log").insert({
@@ -197,6 +222,7 @@ const DealRoom = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deal-room", id] });
       queryClient.invalidateQueries({ queryKey: ["deal-decisions", id] });
+      queryClient.invalidateQueries({ queryKey: ["deal-tasks", id] });
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       toast.success("Stage updated");
     },
@@ -242,6 +268,12 @@ const DealRoom = () => {
   const dealAge = differenceInDays(new Date(), new Date(deal.created_at));
   const yesVotes = (votes ?? []).filter((v: any) => v.vote === "yes").length;
   const noVotes = (votes ?? []).filter((v: any) => v.vote === "no").length;
+
+  // Compliance progress for current stage
+  const currentStageTasks = (dealTasks ?? []).filter((t: any) => t.stage === deal.stage);
+  const completedStageTasks = currentStageTasks.filter((t: any) => t.is_completed).length;
+  const compliancePct = currentStageTasks.length > 0 ? Math.round((completedStageTasks / currentStageTasks.length) * 100) : 0;
+  const criticalBlockers = currentStageTasks.filter((t: any) => t.is_critical && !t.is_completed);
 
   return (
     <PageTransition>
@@ -296,6 +328,22 @@ const DealRoom = () => {
               </select>
             </div>
           </div>
+
+          {/* Compliance Progress Bar */}
+          {currentStageTasks.length > 0 && (
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex-1 flex items-center gap-2">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">Compliance</span>
+                <Progress value={compliancePct} className="h-1.5 flex-1" />
+                <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">{completedStageTasks}/{currentStageTasks.length}</span>
+              </div>
+              {criticalBlockers.length > 0 && (
+                <span className="text-[10px] text-destructive flex items-center gap-1 font-medium">
+                  <ShieldAlert className="h-3 w-3" /> {criticalBlockers.length} blocker{criticalBlockers.length > 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Tabs */}
           <div role="tablist" aria-label="Deal room tabs" className="flex items-center gap-1 mt-4 -mb-px overflow-x-auto" onKeyDown={handleKeyDown}>

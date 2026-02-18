@@ -1007,6 +1007,56 @@ export type Database = {
           },
         ]
       }
+      deal_tasks: {
+        Row: {
+          assignee_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          is_completed: boolean
+          is_critical: boolean
+          sort_order: number | null
+          stage: string
+          title: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          is_completed?: boolean
+          is_critical?: boolean
+          sort_order?: number | null
+          stage: string
+          title: string
+        }
+        Update: {
+          assignee_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          is_completed?: boolean
+          is_critical?: boolean
+          sort_order?: number | null
+          stage?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_tasks_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_transactions: {
         Row: {
           acquirer_investor: string | null
@@ -3726,6 +3776,36 @@ export type Database = {
           slack_ts?: string | null
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      stage_task_templates: {
+        Row: {
+          created_at: string
+          deal_mode: string
+          id: string
+          is_critical: boolean
+          sort_order: number | null
+          stage: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          deal_mode?: string
+          id?: string
+          is_critical?: boolean
+          sort_order?: number | null
+          stage: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          deal_mode?: string
+          id?: string
+          is_critical?: boolean
+          sort_order?: number | null
+          stage?: string
+          title?: string
         }
         Relationships: []
       }
