@@ -157,8 +157,8 @@ const Landing = () => {
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-6 md:px-12 py-5 max-w-6xl mx-auto w-full">
         <div className="flex items-center gap-3 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.3s]">
-          <div className="h-9 w-9 rounded-lg bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-lg shadow-[hsl(var(--brand-purple)/0.3)] overflow-hidden">
-            <img src={grapeLogo} alt="Grapevine" className="h-6 w-6 object-contain" />
+          <div className="h-9 w-9 rounded-lg bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-lg shadow-[hsl(var(--brand-purple)/0.3)] overflow-hidden p-0.5">
+            <img src={grapeLogo} alt="Grapevine" className="h-full w-full object-cover rounded-md" />
           </div>
           <span className="text-lg font-semibold tracking-tight">Grapevine</span>
           <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-primary/30 text-primary bg-primary/5">
@@ -181,8 +181,8 @@ const Landing = () => {
         <motion.div initial="hidden" animate="visible" className="space-y-8 flex flex-col items-center">
           <motion.div custom={0} variants={fadeUp}>
             <div className="relative">
-                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-2xl shadow-[hsl(var(--brand-purple)/0.4)] overflow-hidden">
-                  <img src={grapeLogo} alt="Grapevine" className="h-14 w-14 sm:h-16 sm:w-16 object-contain" />
+                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-2xl shadow-[hsl(var(--brand-purple)/0.4)] overflow-hidden p-1">
+                  <img src={grapeLogo} alt="Grapevine" className="h-full w-full object-cover rounded-xl" />
                 </div>
               <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-[hsl(var(--brand-purple)/0.25)] blur-xl absolute top-4 left-0 -z-10" />
             </div>
