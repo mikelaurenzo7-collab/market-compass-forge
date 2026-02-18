@@ -1,156 +1,157 @@
 
-# Grapevine CTO Roadmap — Capital Lifecycle OS
 
-## Vision
-Own the decision. From first signal to final wire. One system for the entire capital lifecycle.
+# Institutional Hardening Sweep -- Grapevine OS
 
----
+## Overview
 
-## ✅ SHIPPED (v1 Audit)
-
-### P0 — Critical Fixes
-- [x] Deleted `Index.tsx` and `Developers.tsx` (dead code)
-- [x] Rewired `OnboardingFlow` to lifecycle routes + OS copy
-- [x] Fixed Auth.tsx and Help.tsx stale copy
-- [x] Tightened `scheduler_runs` RLS to `service_role` only
-
-### P1 — Functional Improvements
-- [x] Embedded DCF Calculator + Comp Table Builder in Valuation tab
-- [x] Wired document upload in Diligence tab
-- [x] Display names in comments (profiles join)
-- [x] Loading states on votes, comments, stage changes, uploads
-
-### P2 — Component Extraction
-- [x] Extracted DealRoom into 7 modular tab components under `src/components/deal-room/`
-- [x] DealRoom.tsx reduced from 1111 lines to ~250 lines (orchestrator only)
-
-### P3 — Strategic Features
-- [x] Realtime subscriptions on `deal_comments`, `deal_votes`, `decision_log`, `deal_allocations`
-- [x] IC Memo Generation button in Summary tab
-- [x] Memo output renders inline with full structured sections
+A comprehensive sweep across the entire platform to elevate visual consistency, data precision, system robustness, security UI, and navigation to institutional-grade standards. This is broken into 5 workstreams that can be executed sequentially.
 
 ---
 
-## 🔥 PHASE 2 — CTO EXPANSION
+## 1. Visual & UI Consistency ("High-Finance" Aesthetic)
 
-### P0 — Product Integrity (Ship Before Any Demo)
+### 1A. Standardize Card Borders & Bento Layouts
+- Update `src/index.css`: Replace `glass-premium`, `glass-elevated`, and animated gradient borders with a single, clean card style using `1px solid hsl(var(--border))` and flat `bg-card`. Remove `border-gradient-animated`, `holo-shimmer`, `aurora-gradient`, and `scanlines` CSS utilities that create playful/startup aesthetics.
+- Update `MetricCard.tsx`: Strip `TiltCard` wrapper, `glass-premium`, `glow-primary-intense`, and animated gradient top borders. Replace with flat `rounded-lg border border-border bg-card p-4`.
+- Update `DealsOverview.tsx`: Restructure the dashboard into a strict Bento grid using `grid grid-cols-12` for precise column alignment across the Pulse Metrics, Bottleneck chart, and deal lists.
 
-#### 0.1 Promote Decision Journal to Sidebar
-The Decision Journal (`/decisions`) is one of our 3 core differentiators ("Decision Memory") but it's hidden under legacy tools with no sidebar link. Every PE partner who sees this feature says "this is what we've been building in Excel for 10 years."
+### 1B. Typography -- Tabular Numbers
+- Already using `font-mono` and `tabular-nums` in some places. Sweep all financial values in `SummaryTab`, `AllocationTab`, `ValuationTab`, `DealsOverview`, `CompanyTable`, and `MetricItem` to ensure every numeric value uses `font-mono tabular-nums` classes.
+- Update `MetricItem.tsx` to always apply `font-mono tabular-nums` to the value `<p>` tag.
 
-**Fix:** Add to sidebar nav between Portfolio and Alerts. Icon: `BookOpen`.
-
-#### 0.2 DRY Up Stage Constants
-`STAGE_LABELS` and `STAGE_COLORS` are duplicated across 3 files: `DealFlow.tsx`, `DealsOverview.tsx`, and `deal-room/types.ts`. Any stage name change requires 3 edits.
-
-**Fix:** Import from `deal-room/types.ts` everywhere. Add `STAGES` array to that file.
-
-#### 0.3 Update AICopilot Page Context Map
-`AICopilot.tsx` still references `/dashboard`, `/companies`, `/intelligence`, `/screening`, `/research` — all dead routes. The copilot gives wrong context for every page.
-
-**Fix:** Update `PAGE_CONTEXT` to match current routes: `/discover`, `/deals`, `/deals/:id`, `/portfolio`, `/decisions`, `/alerts`, `/settings`.
-
-#### 0.4 Fix CommandPalette Navigation
-`CommandPalette.tsx` navigates all results to `/discover` regardless of type. Company clicks should open a Deal Room, not just go to Discover.
-
-**Fix:** When selecting a company from search, call `openRoom` mutation to create/find a pipeline deal and navigate to `/deals/:id`.
-
-### P1 — UX Polish (Differentiation Details)
-
-#### 1.1 Realtime Toast Notifications
-Realtime subscriptions currently silently invalidate queries. When a teammate comments on your deal or casts a vote, you should see a toast: "Alex commented on Anthropic deal."
-
-**Fix:** Add toast notifications in DealRoom.tsx realtime handler, showing the event type and actor name.
-
-#### 1.2 Mark All Notifications Read
-The Alerts page shows notifications but has no "Mark all as read" button. Users with 30+ notifications have to click each one.
-
-**Fix:** Add bulk "Mark all read" mutation.
-
-#### 1.3 Replace prompt() Dialogs
-Portfolio page uses `prompt("Portfolio name:")` for creating portfolios. This is amateur UX for a $599/mo product.
-
-**Fix:** Replace with inline form or dialog component.
-
-#### 1.4 Global Activity Feed
-`team_activity` table exists but is only shown buried in Settings → Team tab. Team activity should be visible from the main layout — either in a collapsible sidebar panel or as a dedicated route.
-
-**Fix:** Add activity feed to DealsOverview page as a sidebar widget, replacing the current "Recent Activity" (which only shows decision_log) with the full team_activity feed.
-
-### P2 — Architecture & Code Quality
-
-#### 2.1 TeamManager Refactoring
-`TeamManager.tsx` is 261 lines with 3 sections (members, invites, activity) that should be separate components.
-
-**Fix:** Extract `TeamMembersList`, `InviteForm`, `TeamActivityFeed`.
-
-#### 2.2 Type Safety on Deal Queries
-Multiple files cast `deal.companies as any`. This loses type safety.
-
-**Fix:** Create proper TypeScript interfaces for joined query results.
-
-#### 2.3 Consistent Error Boundaries
-Only `AppLayout` has an `ErrorBoundary`. Individual pages crash silently.
-
-**Fix:** Wrap each major page section in error boundaries with fallback UI.
-
-### P3 — Strategic Differentiation
-
-#### 3.1 Relationship Graph Visualization
-`populate-relationships` edge function builds investor-company, co-investor, and executive edges. There's NO UI to visualize this. A relationship graph is the "wow" moment in every PE platform demo.
-
-**Fix:** Build a force-directed graph visualization using d3-force (already installed) on the Discover page. Show investor networks, co-investment patterns, and board connections.
-
-#### 3.2 Deal Room Activity Sidebar
-The Deal Room is great but lacks a persistent activity sidebar showing real-time updates: "Maria advanced to IC Review 2h ago", "John uploaded Q3 financials", "IC vote: 3 yes, 1 no."
-
-**Fix:** Add a collapsible activity rail on the right side of DealRoom, fed by `decision_log` + `deal_comments` + `company_documents` changes.
-
-#### 3.3 Portfolio → Deal Room Deep Links
-When viewing a position in Portfolio's "Thesis vs. Actuals" section, the "Open Room" link works, but there's no way to go from a Deal Room back to the Portfolio position to see performance.
-
-**Fix:** Add "View in Portfolio" link in DealRoom Summary tab when the company has a portfolio position.
-
-### P4 — Platform Hardening
-
-#### 4.1 Rate Limiting on Edge Functions
-No edge functions have rate limiting. A bad actor could hammer `enrich-company` or `generate-memo` and burn API credits.
-
-**Fix:** Add rate limiting middleware using a simple token bucket in the `api_telemetry` table.
-
-#### 4.2 Audit Log for Admin
-The Admin dashboard exists but doesn't show who did what. For institutional clients, audit trails are table stakes.
-
-**Fix:** Surface `team_activity` + `decision_log` + `api_telemetry` in Admin dashboard with filters.
-
-#### 4.3 Data Export Compliance
-Portfolio positions and deal pipeline data can be exported via CSV, but there's no audit trail of who exported what. For regulated firms, this matters.
-
-**Fix:** Log export events to `team_activity`.
+### 1C. Color Palette Cleanup
+- Update CSS variables in `src/index.css`:
+  - `--primary`: Change from electric green (`145 100% 39%`) to a professional teal-green (`160 84% 39%`, approximately `#10b981`).
+  - `--destructive`: Keep at red but normalize to `0 84% 60%` (matching `#ef4444`).
+  - Remove or mute `--brand-purple` references from card backgrounds (keep only in the GV logo).
+  - `--chart-4` (purple in charts): Replace with a muted slate blue.
+- Remove gradient overlays: `noise-overlay`, `vignette`, `text-glow`, `text-glow-grape`, `text-glow-intense`, `glow-grape`, `border-breathe` utilities from `index.css`. These create a gaming/neon feel inconsistent with institutional platforms.
 
 ---
 
-## Implementation Order
+## 2. Data Precision & Logic ("No-Error" Policy)
 
-| Priority | Item | Effort | Impact |
-|----------|------|--------|--------|
-| P0.1 | Decision Journal in sidebar | XS | High — surfaces hidden differentiator |
-| P0.2 | DRY stage constants | XS | Medium — code quality |
-| P0.3 | Fix AICopilot context map | XS | Medium — copilot gives wrong answers |
-| P0.4 | Fix CommandPalette navigation | S | Medium — search is broken |
-| P1.1 | Realtime toast notifications | S | High — collaboration feel |
-| P1.2 | Mark all notifications read | XS | Medium — table stakes UX |
-| P1.3 | Replace prompt() dialogs | S | Medium — professional UX |
-| P1.4 | Global activity feed | M | High — team awareness |
-| P2.1 | TeamManager refactoring | S | Low — maintainability |
-| P2.2 | Type safety on queries | M | Low — developer experience |
-| P3.1 | Relationship graph | L | Very High — demo wow factor |
-| P3.2 | Deal Room activity sidebar | M | High — collaboration |
-| P3.3 | Portfolio deep links | S | Medium — lifecycle continuity |
-| P4.1-4.3 | Platform hardening | M | Medium — enterprise readiness |
+### 2A. Number Formatting Utility
+- Create `src/lib/format.ts` with helper functions:
+  - `formatCurrency(value: number): string` -- Returns `$1,250,500.00` format with commas and 2 decimals.
+  - `formatCurrencyCompact(value: number): string` -- Returns `$1.25M` for dashboard display.
+  - `formatPercent(value: number, decimals = 2): string` -- Returns `12.34%`, capped at 2 decimals.
+  - `formatNumber(value: number): string` -- Comma-separated with tabular formatting.
+- Sweep all pages (`DealsOverview`, `SummaryTab`, `ValuationTab`, `AllocationTab`, `CompanyTable`, `MetricItem`, `DCFCalculator`) to use these formatters instead of inline `.toFixed()` / `.toLocaleString()` calls.
+
+### 2B. LaTeX for Financial Formulas
+- Already using KaTeX in `DealsOverview` for Yield Velocity. Extend to:
+  - `ValuationTab.tsx`: Render Cap Rate, WACC, and NPV formulas in KaTeX inside the sensitivity panel and DCF sections.
+  - `DCFCalculator.tsx`: Add a LaTeX-rendered formula block showing the DCF equation.
+  - `GrapevineScore.tsx`: Show the weighted-average formula in the tooltip breakdown.
+
+### 2C. Zero-State Professionalism
+- Audit every tab in the Deal Room and replace bare "No data" text with the existing `EmptyState` component, providing specific CTAs:
+  - Diligence: "No documents found. Upload your first PDF to begin extraction."
+  - Discussion: "No comments yet. Start the conversation with your deal team."
+  - Timeline: "No activity recorded. Stage changes and decisions will appear here."
+  - Allocation: "No allocations defined. Add your first capital commitment."
+  - Valuation: "No financial data available. Add financials to unlock valuation models."
+- Apply the same pattern to `CompanyTable` (no companies), `DealsOverview` (no deals), and `Portfolio` page.
 
 ---
 
-## REMAINING (Known Non-Critical)
-- Materialized views exposed in API (monitoring only, read-only)
-- `waitlist_signups` / `support_requests` INSERT `true` policies (acceptable for public forms)
+## 3. System Robustness ("Bank-Grade" Feel)
+
+### 3A. Global Loading States for Mutations
+- Sweep all mutation-triggering buttons across the app:
+  - `SummaryTab`: "Save" thesis button, "Generate IC Memo" button (already has `isPending`).
+  - `DiscussionTab`: Comment submit, Vote buttons.
+  - `AllocationTab`: Add/delete allocation buttons.
+  - `DiligenceTab`: Upload document, "Invite External Contributor" button.
+  - `DealRoom` header: Stage change `<select>` (already has `disabled={updateStage.isPending}`).
+  - `DealsOverview`: "Activate" watched company button.
+- Pattern: Add `disabled={mutation.isPending}` and replace button text with `<Loader2 className="h-3.5 w-3.5 animate-spin" />` when pending.
+
+### 3B. Institutional Error Messages
+- Update the global `QueryClient` `onError` handler to use professional copy instead of raw error messages.
+- Create a `src/lib/errorMessages.ts` map that translates common error patterns (e.g., "row-level security", "permission denied", "network error") into institutional language like:
+  - "System was unable to complete this operation. Please verify your permissions or contact an Administrator."
+  - "Connection to the data service was interrupted. Please retry in a moment."
+
+### 3C. Skeleton Loaders for Deal Room
+- Update `DealRoom.tsx`: Replace the spinning circle loader with `KanbanSkeleton`-style layout skeletons that match the Deal Room header + tab structure.
+- Add skeleton states inside each tab component for when their individual queries are loading:
+  - `SummaryTab`: Use `MetricsSkeleton` + `CardSkeleton` placeholders.
+  - `DiligenceTab`: Use `TableSkeleton` for document list.
+  - `ValuationTab`: Use `CardSkeleton` blocks for DCF and comps sections.
+
+---
+
+## 4. Security & Permissions UI ("Need-to-Know" Barrier)
+
+### 4A. RBAC DOM Removal
+- The Allocation tab is already filtered from TABS via `canViewAllocation` in `DealRoom.tsx` -- this is correct (DOM removal, not just hiding).
+- Extend this pattern:
+  - `AppSidebar.tsx`: The Admin link is already conditionally rendered for `admin`/`partner` roles. Verify this also applies to the Settings page "Audit Trail" tab.
+  - `SummaryTab.tsx`: Wrap the "Allocated" value display in a `canViewAllocation` check so Contributors/Viewers cannot see capital figures.
+  - `DealsOverview.tsx`: Wrap the "Institutional Velocity" section (Total Allocated, Yield Velocity) in an `isAdminOrPartner` check, since these are GP-level metrics.
+
+### 4B. "Last Modified" Accountability Stamps
+- Create a small reusable `<LastModified timestamp={string} userId={string} profiles={Record} />` component.
+- Add it to:
+  - `SummaryTab` -- Investment Thesis card footer.
+  - `AllocationTab` -- Each allocation row.
+  - `ValuationTab` -- Sensitivity panel.
+  - Deal cards on `DealsOverview` -- Show `updated_at` + last actor.
+
+---
+
+## 5. Navigation & Search ("Command" Logic)
+
+### 5A. Deal Room Breadcrumbs
+- Already partially implemented in `DealRoom.tsx` (line 287-291: "Deals > CompanyName"). Enhance to include:
+  - Sector if available: `Deals > Real Estate > 123 Main St`.
+  - Make each segment a clickable link (Deals links to `/deals`, sector could filter the deals list).
+
+### 5B. Command Palette Polish
+- Update `CommandPalette.tsx`:
+  - Add "Stage" and "Owner" metadata to company search results by joining `deal_pipeline` data in the `search_all` results or via a secondary lookup.
+  - Add navigation shortcuts for all major sections: Valuations (`/valuations`), Data Room (`/data-room`), Portfolio (`/portfolio`), Admin (`/admin`), Settings (`/settings`).
+  - Show keyboard hint `Stage: Screening | Owner: J. Smith` as subtitle text in `CommandItem`.
+
+---
+
+## Files Modified (Summary)
+
+| File | Changes |
+|------|---------|
+| `src/index.css` | Remove playful gradients/glows, standardize card styles, adjust color palette |
+| `src/lib/format.ts` | **NEW** -- Centralized number/currency/percent formatting |
+| `src/lib/errorMessages.ts` | **NEW** -- Institutional error copy map |
+| `src/components/MetricCard.tsx` | Strip TiltCard, use flat professional card |
+| `src/components/MetricItem` | Add `font-mono tabular-nums` |
+| `src/components/SkeletonLoaders.tsx` | Add `DealRoomSkeleton` variant |
+| `src/components/LastModified.tsx` | **NEW** -- Accountability timestamp component |
+| `src/components/CommandPalette.tsx` | Add stage/owner metadata, more nav shortcuts |
+| `src/components/EmptyState.tsx` | Minor refinements for institutional copy |
+| `src/pages/DealsOverview.tsx` | Bento grid, format numbers, RBAC gating on GP metrics |
+| `src/pages/DealRoom.tsx` | Enhanced breadcrumbs, skeleton loader, RBAC checks |
+| `src/components/deal-room/SummaryTab.tsx` | Format numbers, add LastModified, EmptyState, RBAC |
+| `src/components/deal-room/ValuationTab.tsx` | KaTeX formulas, format numbers, skeleton |
+| `src/components/deal-room/AllocationTab.tsx` | LastModified stamps, isPending states |
+| `src/components/deal-room/DiligenceTab.tsx` | EmptyState, isPending on upload |
+| `src/components/deal-room/DiscussionTab.tsx` | EmptyState, isPending on submit |
+| `src/components/deal-room/TimelineTab.tsx` | EmptyState |
+| `src/components/CompanyTable.tsx` | Format numbers with formatCurrency |
+| `src/components/GrapevineScore.tsx` | KaTeX formula in tooltip |
+| `tailwind.config.ts` | No structural changes needed |
+| `src/main.tsx` | Update QueryClient error handler |
+
+---
+
+## Execution Order
+
+1. Create utility files (`format.ts`, `errorMessages.ts`, `LastModified.tsx`)
+2. CSS and color palette cleanup (`index.css`, `MetricCard`)
+3. Number formatting sweep (all pages/components)
+4. Skeleton loaders and loading states
+5. RBAC gating and LastModified stamps
+6. Command palette and breadcrumb polish
+7. EmptyState and LaTeX additions
+
