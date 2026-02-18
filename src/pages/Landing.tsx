@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -98,6 +99,7 @@ const DIFFERENTIATORS = [
 
 const Landing = () => {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [form, setForm] = useState({ name: "", email: "", firm: "", interest: "" });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -114,6 +116,11 @@ const Landing = () => {
     },
     staleTime: 60_000,
   });
+
+  // Redirect authenticated users to deals dashboard
+  if (!authLoading && user) {
+    return <Navigate to="/deals" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

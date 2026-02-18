@@ -3,13 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign, AlertTriangle, Zap, Timer, Eye, Radio, ChevronRight } from "lucide-react";
+import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign, AlertTriangle, Zap, Timer, Eye, Radio, ChevronRight, Activity, Skull, BarChart3 } from "lucide-react";
 import { formatDistanceToNow, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
 import { useWatchlists } from "@/components/WatchlistManager";
 import { toast } from "sonner";
+import "katex/dist/katex.min.css";
+import katex from "katex";
 
 type PipelineDeal = {
   id: string;
@@ -199,6 +201,62 @@ const DealsOverview = () => {
     return { avgAge: Math.round(avgAge), staleCount, passedCount: stageCounts["passed"] ?? 0 };
   }, [deals, stageCounts]);
 
+  // GP Dashboard: Pulse Metrics
+  const pulseMetrics = useMemo(() => {
+    if (!deals?.length) return null;
+    const allDeals = deals ?? [];
+    const totalAllocated = allocationTotals ?? 0;
+
+    // Avg time to close: deals in "committed" stage
+    const committedDeals = allDeals.filter(d => d.stage === "committed");
+    const avgTimeToClose = committedDeals.length > 0
+      ? Math.round(committedDeals.reduce((sum, d) => sum + differenceInDays(new Date(), new Date(d.created_at)), 0) / committedDeals.length)
+      : 0;
+
+    // Kill rate: % of deals that die in diligence stages
+    const diligenceStages = ["screening", "due_diligence"];
+    const passedFromDiligence = allDeals.filter(d => d.stage === "passed").length; // approximate
+    const totalEverInDiligence = allDeals.filter(d => diligenceStages.includes(d.stage) || d.stage === "passed").length;
+    const killRate = totalEverInDiligence > 0 ? Math.round((passedFromDiligence / Math.max(allDeals.length, 1)) * 100) : 0;
+
+    // Yield Velocity = Sum(Allocated Capital) / Days in Diligence
+    const diligenceDeals = allDeals.filter(d => diligenceStages.includes(d.stage));
+    const avgDiligenceDays = diligenceDeals.length > 0
+      ? diligenceDeals.reduce((sum, d) => sum + differenceInDays(new Date(), new Date(d.created_at)), 0) / diligenceDeals.length
+      : 1;
+    const yieldVelocity = avgDiligenceDays > 0 ? totalAllocated / avgDiligenceDays : 0;
+
+    return { totalAllocated, avgTimeToClose, killRate, yieldVelocity, avgDiligenceDays: Math.round(avgDiligenceDays) };
+  }, [deals, allocationTotals]);
+
+  // Stage bottleneck data for horizontal bar chart
+  const BOTTLENECK_STAGES = [
+    { label: "Discover", stages: ["sourced"], color: "bg-primary" },
+    { label: "Diligence", stages: ["screening", "due_diligence"], color: "bg-warning" },
+    { label: "Coordinate", stages: ["ic_review"], color: "bg-chart-4" },
+    { label: "Allocate", stages: ["committed"], color: "bg-success" },
+    { label: "Report", stages: ["passed"], color: "bg-muted-foreground" },
+  ];
+
+  const bottleneckData = useMemo(() => {
+    const maxCount = Math.max(1, ...BOTTLENECK_STAGES.map(s => s.stages.reduce((sum, st) => sum + (stageCounts[st] ?? 0), 0)));
+    return BOTTLENECK_STAGES.map(s => ({
+      ...s,
+      count: s.stages.reduce((sum, st) => sum + (stageCounts[st] ?? 0), 0),
+      pct: (s.stages.reduce((sum, st) => sum + (stageCounts[st] ?? 0), 0) / maxCount) * 100,
+    }));
+  }, [stageCounts]);
+
+  // Render KaTeX formula
+  const yieldVelocityHtml = useMemo(() => {
+    try {
+      return katex.renderToString(
+        "\\text{Yield Velocity} = \\frac{\\sum \\text{Allocated Capital}}{\\text{Days in Diligence}}",
+        { throwOnError: false, displayMode: false }
+      );
+    } catch { return ""; }
+  }, []);
+
   const totalActive = (deals ?? []).filter((d) => d.stage !== "passed").length;
 
   const getDealAge = (deal: PipelineDeal) => {
@@ -245,6 +303,102 @@ const DealsOverview = () => {
             </button>
           </div>
         </div>
+
+        {/* ═══ Institutional Velocity (GP Dashboard) ═══ */}
+        {pulseMetrics && (
+          <section className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="px-5 py-3 border-b border-border bg-secondary/30 flex items-center justify-between">
+              <h2 className="text-xs font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
+                <Activity className="h-4 w-4 text-primary" /> Institutional Velocity
+              </h2>
+              <span className="text-[9px] text-muted-foreground font-mono">PARTNER VIEW</span>
+            </div>
+
+            <div className="p-5 space-y-5">
+              {/* Pulse Metrics Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
+                  className="rounded-lg border border-success/20 bg-success/5 p-4">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Allocated</p>
+                  <p className="text-xl font-black font-mono text-success">
+                    ${pulseMetrics.totalAllocated >= 1e6 ? `${(pulseMetrics.totalAllocated / 1e6).toFixed(1)}M` : pulseMetrics.totalAllocated.toLocaleString()}
+                  </p>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                  className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Avg Time to Close</p>
+                  <p className="text-xl font-black font-mono text-primary">{pulseMetrics.avgTimeToClose}d</p>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                  className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <Skull className="h-3 w-3" /> Kill Rate
+                  </p>
+                  <p className="text-xl font-black font-mono text-destructive">{pulseMetrics.killRate}%</p>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+                  className="rounded-lg border border-chart-4/20 bg-chart-4/5 p-4">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Yield Velocity</p>
+                  <p className="text-xl font-black font-mono text-chart-4">
+                    ${pulseMetrics.yieldVelocity >= 1e6 ? `${(pulseMetrics.yieldVelocity / 1e6).toFixed(1)}M` : pulseMetrics.yieldVelocity >= 1e3 ? `${(pulseMetrics.yieldVelocity / 1e3).toFixed(0)}K` : pulseMetrics.yieldVelocity.toFixed(0)}<span className="text-xs font-normal text-muted-foreground">/day</span>
+                  </p>
+                </motion.div>
+              </div>
+
+              {/* Stage Bottleneck Chart + Formula */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                <div className="lg:col-span-2">
+                  <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <BarChart3 className="h-3.5 w-3.5" /> Stage Bottleneck
+                  </h3>
+                  <div className="space-y-2">
+                    {bottleneckData.map((stage, i) => (
+                      <motion.div
+                        key={stage.label}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.06 }}
+                        className="flex items-center gap-3"
+                      >
+                        <span className="text-xs text-muted-foreground w-20 text-right shrink-0">{stage.label}</span>
+                        <div className="flex-1 h-6 bg-secondary rounded overflow-hidden relative">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.max(stage.pct, 2)}%` }}
+                            transition={{ duration: 0.7, delay: i * 0.08 }}
+                            className={`h-full ${stage.color} rounded flex items-center justify-end pr-2`}
+                          >
+                            {stage.count > 0 && (
+                              <span className="text-[10px] font-bold text-white drop-shadow-sm">{stage.count}</span>
+                            )}
+                          </motion.div>
+                        </div>
+                        <span className="text-xs font-mono text-foreground w-6 text-right">{stage.count}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Yield Velocity Formula */}
+                <div className="rounded-lg border border-border bg-secondary/30 p-4 flex flex-col justify-center items-center gap-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Formula</p>
+                  <div
+                    className="text-foreground"
+                    dangerouslySetInnerHTML={{ __html: yieldVelocityHtml }}
+                  />
+                  <div className="text-center mt-1">
+                    <p className="text-[10px] text-muted-foreground">
+                      ${pulseMetrics.totalAllocated.toLocaleString()} ÷ {pulseMetrics.avgDiligenceDays}d
+                    </p>
+                    <p className="text-sm font-black font-mono text-chart-4 mt-0.5">
+                      = ${pulseMetrics.yieldVelocity >= 1e3 ? `${(pulseMetrics.yieldVelocity / 1e3).toFixed(1)}K` : pulseMetrics.yieldVelocity.toFixed(0)}/day
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Lifecycle Progress + Velocity */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
