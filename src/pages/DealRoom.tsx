@@ -1,38 +1,33 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, FileText, MessageSquare, Clock, PieChart, Bell, LayoutDashboard, ChevronRight, Scale, BookOpen, Plus, Trash2, DollarSign, Upload, AlertTriangle, TrendingUp, BarChart3, Timer, CheckCircle, XCircle, Send, Edit3, Link, Loader2 } from "lucide-react";
-import { format, formatDistanceToNow, differenceInDays } from "date-fns";
+import { ChevronRight, Link, Timer, CheckCircle, XCircle, LayoutDashboard, FileText, Scale, MessageSquare, Clock, PieChart, Bell } from "lucide-react";
+import { differenceInDays } from "date-fns";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
-import DCFCalculator from "@/components/DCFCalculator";
-import CompTableBuilder from "@/components/CompTableBuilder";
 import { toast } from "sonner";
 
-const STAGE_LABELS: Record<string, string> = {
-  sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
-  ic_review: "IC Review", committed: "Committed", passed: "Passed",
-};
-
-const STAGE_COLORS: Record<string, string> = {
-  sourced: "border-muted-foreground/30", screening: "border-primary/40",
-  due_diligence: "border-warning/40", ic_review: "border-chart-4/40",
-  committed: "border-success/40", passed: "border-destructive/40",
-};
+import { STAGE_LABELS, STAGE_COLORS } from "@/components/deal-room/types";
+import type { TabId } from "@/components/deal-room/types";
+import SummaryTab from "@/components/deal-room/SummaryTab";
+import DiligenceTab from "@/components/deal-room/DiligenceTab";
+import ValuationTab from "@/components/deal-room/ValuationTab";
+import DiscussionTab from "@/components/deal-room/DiscussionTab";
+import TimelineTab from "@/components/deal-room/TimelineTab";
+import AllocationTab from "@/components/deal-room/AllocationTab";
+import UpdatesTab from "@/components/deal-room/UpdatesTab";
 
 const TABS = [
-  { id: "summary", label: "Summary", icon: LayoutDashboard },
-  { id: "diligence", label: "Diligence", icon: FileText },
-  { id: "valuation", label: "Valuation", icon: Scale },
-  { id: "discussion", label: "Discussion", icon: MessageSquare },
-  { id: "timeline", label: "Timeline", icon: Clock },
-  { id: "allocation", label: "Allocation", icon: PieChart },
-  { id: "updates", label: "Updates", icon: Bell },
-] as const;
-
-type TabId = (typeof TABS)[number]["id"];
+  { id: "summary" as TabId, label: "Summary", icon: LayoutDashboard },
+  { id: "diligence" as TabId, label: "Diligence", icon: FileText },
+  { id: "valuation" as TabId, label: "Valuation", icon: Scale },
+  { id: "discussion" as TabId, label: "Discussion", icon: MessageSquare },
+  { id: "timeline" as TabId, label: "Timeline", icon: Clock },
+  { id: "allocation" as TabId, label: "Allocation", icon: PieChart },
+  { id: "updates" as TabId, label: "Updates", icon: Bell },
+];
 
 const DealRoom = () => {
   const { id } = useParams<{ id: string }>();
@@ -60,12 +55,7 @@ const DealRoom = () => {
   const { data: decisions } = useQuery({
     queryKey: ["deal-decisions", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("decision_log")
-        .select("*")
-        .eq("deal_id", id!)
-        .order("created_at", { ascending: false })
-        .limit(30);
+      const { data, error } = await supabase.from("decision_log").select("*").eq("deal_id", id!).order("created_at", { ascending: false }).limit(30);
       if (error) throw error;
       return data;
     },
@@ -75,26 +65,17 @@ const DealRoom = () => {
   const { data: comments } = useQuery({
     queryKey: ["deal-comments", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("deal_comments")
-        .select("*")
-        .eq("deal_id", id!)
-        .order("created_at", { ascending: false })
-        .limit(50);
+      const { data, error } = await supabase.from("deal_comments").select("*").eq("deal_id", id!).order("created_at", { ascending: false }).limit(50);
       if (error) throw error;
       return data;
     },
     enabled: !!id,
   });
 
-  // Fetch profiles for display names
   const { data: profiles } = useQuery({
     queryKey: ["deal-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("user_id, display_name")
-        .limit(200);
+      const { data, error } = await supabase.from("profiles").select("user_id, display_name").limit(200);
       if (error) throw error;
       const map: Record<string, string> = {};
       data?.forEach((p: any) => { if (p.display_name) map[p.user_id] = p.display_name; });
@@ -107,11 +88,7 @@ const DealRoom = () => {
   const { data: allocations } = useQuery({
     queryKey: ["deal-allocations", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("deal_allocations")
-        .select("*")
-        .eq("deal_id", id!)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("deal_allocations").select("*").eq("deal_id", id!).order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -121,12 +98,7 @@ const DealRoom = () => {
   const { data: financials } = useQuery({
     queryKey: ["deal-financials", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("financials")
-        .select("*")
-        .eq("company_id", companyId!)
-        .order("period", { ascending: false })
-        .limit(8);
+      const { data, error } = await supabase.from("financials").select("*").eq("company_id", companyId!).order("period", { ascending: false }).limit(8);
       if (error) throw error;
       return data;
     },
@@ -136,11 +108,7 @@ const DealRoom = () => {
   const { data: documents } = useQuery({
     queryKey: ["deal-documents", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("company_documents")
-        .select("*")
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("company_documents").select("*").eq("company_id", companyId!).order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -150,12 +118,7 @@ const DealRoom = () => {
   const { data: fundingRounds } = useQuery({
     queryKey: ["deal-funding", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("funding_rounds")
-        .select("*")
-        .eq("company_id", companyId!)
-        .order("date", { ascending: false })
-        .limit(10);
+      const { data, error } = await supabase.from("funding_rounds").select("*").eq("company_id", companyId!).order("date", { ascending: false }).limit(10);
       if (error) throw error;
       return data;
     },
@@ -165,12 +128,7 @@ const DealRoom = () => {
   const { data: enrichments } = useQuery({
     queryKey: ["deal-enrichments", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("company_enrichments")
-        .select("*")
-        .eq("company_id", companyId!)
-        .order("scraped_at", { ascending: false })
-        .limit(10);
+      const { data, error } = await supabase.from("company_enrichments").select("*").eq("company_id", companyId!).order("scraped_at", { ascending: false }).limit(10);
       if (error) throw error;
       return data;
     },
@@ -180,16 +138,37 @@ const DealRoom = () => {
   const { data: votes } = useQuery({
     queryKey: ["deal-votes", id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("deal_votes")
-        .select("*")
-        .eq("pipeline_deal_id", id!)
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("deal_votes").select("*").eq("pipeline_deal_id", id!).order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
     enabled: !!id,
   });
+
+  // ── P3: Realtime subscriptions ──
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel(`deal-room-${id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "deal_comments", filter: `deal_id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["deal-comments", id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "deal_votes", filter: `pipeline_deal_id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["deal-votes", id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "decision_log", filter: `deal_id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["deal-decisions", id] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "deal_allocations", filter: `deal_id=eq.${id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["deal-allocations", id] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, queryClient]);
 
   const updateStage = useMutation({
     mutationFn: async (stage: string) => {
@@ -197,7 +176,6 @@ const DealRoom = () => {
       const oldStage = deal?.stage;
       const { error } = await supabase.from("deal_pipeline").update({ stage }).eq("id", id!);
       if (error) throw error;
-      // Log decision
       await supabase.from("decision_log").insert({
         deal_id: id!, user_id: user.id, decision_type: "stage_change",
         from_state: oldStage, to_state: stage, rationale: `Moved from ${STAGE_LABELS[oldStage ?? ""] ?? oldStage} to ${STAGE_LABELS[stage]}`
@@ -341,10 +319,10 @@ const DealRoom = () => {
         <div className="flex-1 overflow-y-auto">
           <div role="tabpanel" id={`panel-${activeTab}`} className="p-4 sm:p-6">
             {activeTab === "summary" && (
-              <SummaryTab company={company} deal={deal} decisions={decisions} comments={comments} financials={financials} fundingRounds={fundingRounds} documents={documents} allocations={allocations} enrichments={enrichments} votes={votes} onSaveThesis={(t: string) => updateThesis.mutate(t)} />
+              <SummaryTab company={company} deal={deal} decisions={decisions ?? null} comments={comments ?? null} financials={financials ?? null} fundingRounds={fundingRounds ?? null} documents={documents ?? null} allocations={allocations ?? null} enrichments={enrichments ?? null} votes={votes ?? null} onSaveThesis={(t: string) => updateThesis.mutate(t)} companyId={companyId} />
             )}
             {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} />}
-            {activeTab === "valuation" && <ValuationTab navigate={navigate} financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} />}
+            {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} />}
             {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} />}
             {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
             {activeTab === "allocation" && <AllocationTab allocations={allocations ?? []} dealId={id!} />}
@@ -353,758 +331,6 @@ const DealRoom = () => {
         </div>
       </div>
     </PageTransition>
-  );
-};
-
-/* ── Summary Tab ── */
-const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRounds, documents, allocations, enrichments, votes, onSaveThesis }: any) => {
-  const [editingThesis, setEditingThesis] = useState(false);
-  const [thesis, setThesis] = useState((deal as any).thesis ?? "");
-  const latestFinancial = financials?.[0];
-  const totalAllocated = (allocations ?? []).reduce((s: number, a: any) => s + (Number(a.amount) || 0), 0);
-  const yesVotes = (votes ?? []).filter((v: any) => v.vote === "yes").length;
-  const noVotes = (votes ?? []).filter((v: any) => v.vote === "no").length;
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-5xl">
-      <div className="lg:col-span-2 space-y-5">
-        {/* Thesis */}
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Edit3 className="h-3.5 w-3.5 text-primary" /> Investment Thesis
-            </h3>
-            <button onClick={() => { if (editingThesis) onSaveThesis(thesis); setEditingThesis(!editingThesis); }} className="text-[10px] text-primary hover:underline">
-              {editingThesis ? "Save" : "Edit"}
-            </button>
-          </div>
-          {editingThesis ? (
-            <textarea value={thesis} onChange={(e) => setThesis(e.target.value)} rows={4}
-              className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              placeholder="Why are we looking at this deal? What's the core thesis?" />
-          ) : (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {thesis || "No thesis documented yet. Click Edit to add your investment rationale."}
-            </p>
-          )}
-        </div>
-
-        {/* Key Financials */}
-        {latestFinancial && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" /> Key Financials
-              <span className="text-[10px] text-muted-foreground font-normal ml-auto">{latestFinancial.period}</span>
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {latestFinancial.revenue != null && <MetricItem label="Revenue" value={`$${(latestFinancial.revenue / 1e6).toFixed(1)}M`} />}
-              {latestFinancial.ebitda != null && <MetricItem label="EBITDA" value={`$${(latestFinancial.ebitda / 1e6).toFixed(1)}M`} />}
-              {latestFinancial.gross_margin != null && <MetricItem label="Gross Margin" value={`${(latestFinancial.gross_margin * 100).toFixed(1)}%`} />}
-              {latestFinancial.arr != null && <MetricItem label="ARR" value={`$${(latestFinancial.arr / 1e6).toFixed(1)}M`} />}
-              {latestFinancial.burn_rate != null && <MetricItem label="Burn Rate" value={`$${(Math.abs(latestFinancial.burn_rate) / 1e6).toFixed(1)}M/mo`} highlight="destructive" />}
-              {latestFinancial.runway_months != null && <MetricItem label="Runway" value={`${latestFinancial.runway_months} months`} />}
-            </div>
-          </div>
-        )}
-
-        {/* Company overview */}
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <h3 className="text-sm font-semibold text-foreground">Overview</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">{company?.description ?? "No company description available."}</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-            {company?.sector && <MetricItem label="Sector" value={company.sector} />}
-            {company?.stage && <MetricItem label="Stage" value={company.stage} />}
-            {company?.employee_count && <MetricItem label="Employees" value={company.employee_count.toLocaleString()} />}
-            {company?.founded_year && <MetricItem label="Founded" value={String(company.founded_year)} />}
-          </div>
-        </div>
-
-        {/* Funding history */}
-        {fundingRounds && fundingRounds.length > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" /> Funding History
-            </h3>
-            <div className="space-y-2">
-              {fundingRounds.map((r: any) => (
-                <div key={r.id} className="flex items-center justify-between text-xs border-b border-border/30 pb-2 last:border-0">
-                  <div>
-                    <span className="font-medium text-foreground">{r.round_type}</span>
-                    {r.date && <span className="text-muted-foreground ml-2">{format(new Date(r.date), "MMM yyyy")}</span>}
-                    {r.lead_investors?.length > 0 && <span className="text-muted-foreground ml-2">· Led by {r.lead_investors[0]}</span>}
-                  </div>
-                  <div className="text-right">
-                    {r.amount && <span className="font-mono text-foreground">${(r.amount / 1e6).toFixed(1)}M</span>}
-                    {r.valuation_post && <span className="text-muted-foreground ml-2">@ ${(r.valuation_post / 1e6).toFixed(0)}M</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {deal.notes && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-2">Deal Notes</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{deal.notes}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Sidebar */}
-      <div className="space-y-4">
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Deal Status</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Stage</span><span className="text-primary font-medium">{STAGE_LABELS[deal.stage] ?? deal.stage}</span></div>
-            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Priority</span><span className="text-foreground">{deal.priority ?? "—"}</span></div>
-            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Age</span><span className="text-foreground font-mono">{differenceInDays(new Date(), new Date(deal.created_at))} days</span></div>
-            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Updated</span><span className="text-foreground">{formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}</span></div>
-            {totalAllocated > 0 && (
-              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Allocated</span><span className="text-success font-mono font-medium">${totalAllocated.toLocaleString()}</span></div>
-            )}
-            {(yesVotes > 0 || noVotes > 0) && (
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">IC Votes</span>
-                <span className="flex items-center gap-2">
-                  <span className="text-success font-mono">{yesVotes} yes</span>
-                  <span className="text-destructive font-mono">{noVotes} no</span>
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-2">Quick Stats</h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between"><span className="text-muted-foreground">Decisions</span><span className="font-mono text-foreground">{decisions?.length ?? 0}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Comments</span><span className="font-mono text-foreground">{comments?.length ?? 0}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Documents</span><span className="font-mono text-foreground">{documents?.length ?? 0}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Allocations</span><span className="font-mono text-foreground">{allocations?.length ?? 0}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Enrichments</span><span className="font-mono text-foreground">{enrichments?.length ?? 0}</span></div>
-          </div>
-        </div>
-
-        {/* Recent activity */}
-        {decisions && decisions.length > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground mb-3">Recent Activity</h3>
-            <div className="space-y-2">
-              {decisions.slice(0, 5).map((d: any) => (
-                <div key={d.id} className="flex items-start gap-2 text-xs">
-                  <Clock className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-                  <div>
-                    <span className="text-foreground font-medium">{d.decision_type}</span>
-                    {d.rationale && <span className="text-muted-foreground"> — {d.rationale}</span>}
-                    <p className="text-muted-foreground/60 mt-0.5">{formatDistanceToNow(new Date(d.created_at), { addSuffix: true })}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const MetricItem = ({ label, value, highlight }: { label: string; value: string; highlight?: string }) => (
-  <div>
-    <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">{label}</p>
-    <p className={`text-sm font-mono mt-0.5 ${highlight === "destructive" ? "text-destructive" : "text-foreground"}`}>{value}</p>
-  </div>
-);
-
-/* ── Diligence Tab ── */
-const DiligenceTab = ({ documents, financials, enrichments, companyName, companyId }: { documents: any[]; financials: any[]; enrichments: any[]; companyName?: string; companyId?: string }) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user || !companyId) return;
-    setUploading(true);
-    try {
-      const filePath = `${user.id}/${companyId}/${Date.now()}_${file.name}`;
-      const { error: uploadError } = await supabase.storage.from("document-uploads").upload(filePath, file);
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("document-uploads").getPublicUrl(filePath);
-      const { error: insertError } = await supabase.from("company_documents").insert({
-        company_id: companyId,
-        file_name: file.name,
-        file_url: urlData.publicUrl,
-        document_type: file.name.endsWith(".pdf") ? "cim" : "financial_statement",
-        uploaded_by: user.id,
-      });
-      if (insertError) throw insertError;
-      queryClient.invalidateQueries({ queryKey: ["deal-documents", companyId] });
-      toast.success("Document uploaded");
-    } catch (err: any) {
-      toast.error(err.message || "Upload failed");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  return (
-  <div className="max-w-4xl space-y-6">
-    {/* Documents section */}
-    <div className="rounded-lg border border-border bg-card">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <FileText className="h-4 w-4 text-primary" /> Documents ({documents.length})
-        </h3>
-        <input ref={fileInputRef} type="file" accept=".pdf,.xlsx,.xls,.doc,.docx,.csv" onChange={handleUpload} className="hidden" />
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
-          className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5 disabled:opacity-50"
-        >
-          {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} {uploading ? "Uploading..." : "Upload"}
-        </button>
-      </div>
-      {documents.length === 0 ? (
-        <div className="p-8 text-center">
-          <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Upload CIMs, financials, rent rolls, and other diligence materials</p>
-        </div>
-      ) : (
-        <div className="divide-y divide-border/50">
-          {documents.map((doc: any) => (
-            <div key={doc.id} className="px-4 py-3 hover:bg-secondary/30 transition-colors flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="h-4 w-4 text-primary shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{doc.file_name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] text-muted-foreground capitalize">{doc.document_type}</span>
-                    <span className="text-[10px] text-muted-foreground">v{doc.version}</span>
-                    <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(doc.created_at), { addSuffix: true })}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {doc.ai_summary && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">AI Summary</span>}
-                {doc.red_flags && <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium">Flags</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-
-    {/* Enrichment data */}
-    {enrichments.length > 0 && (
-      <div className="rounded-lg border border-border bg-card">
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" /> Research & Enrichments ({enrichments.length})
-          </h3>
-        </div>
-        <div className="divide-y divide-border/50">
-          {enrichments.map((e: any) => (
-            <div key={e.id} className="px-4 py-3 hover:bg-secondary/30 transition-colors">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">{e.title ?? e.source_name}</p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                  e.confidence_score === "high" ? "bg-success/10 text-success" :
-                  e.confidence_score === "medium" ? "bg-warning/10 text-warning" :
-                  "bg-secondary text-muted-foreground"
-                }`}>
-                  {e.confidence_score}
-                </span>
-              </div>
-              {e.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{e.summary}</p>}
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] text-muted-foreground">{e.data_type} · {e.source_name}</span>
-                {e.source_url && (
-                  <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
-                    <Link className="h-2.5 w-2.5" /> Source
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-
-    {/* Financials history */}
-    {financials.length > 0 && (
-      <div className="rounded-lg border border-border bg-card">
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-primary" /> Financial History
-          </h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="text-left px-4 py-2 font-medium">Period</th>
-                <th className="text-right px-4 py-2 font-medium">Revenue</th>
-                <th className="text-right px-4 py-2 font-medium">EBITDA</th>
-                <th className="text-right px-4 py-2 font-medium">Gross Margin</th>
-                <th className="text-right px-4 py-2 font-medium">ARR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {financials.map((f: any) => (
-                <tr key={f.id} className="border-b border-border/50">
-                  <td className="px-4 py-2 font-medium text-foreground">{f.period}</td>
-                  <td className="text-right px-4 py-2 font-mono text-foreground">{f.revenue ? `$${(f.revenue / 1e6).toFixed(1)}M` : "—"}</td>
-                  <td className="text-right px-4 py-2 font-mono text-foreground">{f.ebitda ? `$${(f.ebitda / 1e6).toFixed(1)}M` : "—"}</td>
-                  <td className="text-right px-4 py-2 font-mono text-foreground">{f.gross_margin ? `${(f.gross_margin * 100).toFixed(1)}%` : "—"}</td>
-                  <td className="text-right px-4 py-2 font-mono text-foreground">{f.arr ? `$${(f.arr / 1e6).toFixed(1)}M` : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    )}
-
-    {/* Risk flags */}
-    <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
-      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
-        <AlertTriangle className="h-4 w-4 text-warning" /> Risk Assessment
-      </h3>
-      <p className="text-xs text-muted-foreground">AI risk analysis will populate automatically as documents are uploaded and analyzed.</p>
-    </div>
-  </div>
-  );
-};
-
-/* ── Valuation Tab ── */
-const ValuationTab = ({ financials, fundingRounds, companyName, companyId }: { navigate: any; financials: any[]; fundingRounds: any[]; companyName?: string; companyId?: string }) => {
-  const latestFinancial = financials?.[0];
-  const initialRevenue = latestFinancial?.revenue ? latestFinancial.revenue / 1e6 : undefined;
-  const initialGrowth = undefined; // Let DCF calculate from history
-  const initialMargin = latestFinancial?.ebitda && latestFinancial?.revenue ? Math.round((latestFinancial.ebitda / latestFinancial.revenue) * 100) : undefined;
-
-  return (
-    <div className="max-w-5xl space-y-6">
-      {fundingRounds.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Valuation History</h3>
-          <div className="space-y-2">
-            {fundingRounds.map((r: any) => (
-              <div key={r.id} className="flex items-center justify-between text-xs border-b border-border/30 pb-2 last:border-0">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-foreground">{r.round_type}</span>
-                  {r.date && <span className="text-muted-foreground">{format(new Date(r.date), "MMM yyyy")}</span>}
-                </div>
-                <div className="flex items-center gap-4">
-                  {r.amount && <span className="font-mono text-foreground">${(r.amount / 1e6).toFixed(1)}M raised</span>}
-                  {r.valuation_pre && <span className="text-muted-foreground">Pre: ${(r.valuation_pre / 1e6).toFixed(0)}M</span>}
-                  {r.valuation_post && <span className="text-primary font-mono font-medium">Post: ${(r.valuation_post / 1e6).toFixed(0)}M</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {financials.length > 0 && fundingRounds.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Implied Multiples</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {(() => {
-              const latestVal = fundingRounds[0]?.valuation_post;
-              const latestRev = financials[0]?.revenue;
-              const latestEbitda = financials[0]?.ebitda;
-              const latestArr = financials[0]?.arr;
-              return (
-                <>
-                  {latestVal && latestRev && <MetricItem label="EV/Revenue" value={`${(latestVal / latestRev).toFixed(1)}x`} />}
-                  {latestVal && latestEbitda && latestEbitda > 0 && <MetricItem label="EV/EBITDA" value={`${(latestVal / latestEbitda).toFixed(1)}x`} />}
-                  {latestVal && latestArr && <MetricItem label="EV/ARR" value={`${(latestVal / latestArr).toFixed(1)}x`} />}
-                  {latestVal && <MetricItem label="Last Valuation" value={`$${(latestVal / 1e6).toFixed(0)}M`} />}
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Embedded DCF Calculator */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Scale className="h-4 w-4 text-primary" /> DCF Model
-        </h3>
-        <DCFCalculator initialRevenue={initialRevenue} initialMargin={initialMargin} companyName={companyName} companyId={companyId} />
-      </div>
-
-      {/* Embedded Comp Table */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-primary" /> Comparable Analysis
-        </h3>
-        <CompTableBuilder embedded />
-      </div>
-    </div>
-  );
-};
-
-/* ── Discussion Tab with IC Voting ── */
-const DiscussionTab = ({ comments, dealId, votes, profiles }: { comments: any[]; dealId: string; votes: any[]; profiles: Record<string, string> }) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [newComment, setNewComment] = useState("");
-
-  const addComment = useMutation({
-    mutationFn: async () => {
-      if (!newComment.trim() || !user) return;
-      const { error } = await supabase.from("deal_comments").insert({ deal_id: dealId, user_id: user.id, content: newComment.trim() });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setNewComment("");
-      queryClient.invalidateQueries({ queryKey: ["deal-comments", dealId] });
-    },
-  });
-
-  const castVote = useMutation({
-    mutationFn: async (vote: string) => {
-      if (!user) return;
-      // Upsert vote
-      const { data: existing } = await supabase.from("deal_votes").select("id").eq("pipeline_deal_id", dealId).eq("user_id", user.id).maybeSingle();
-      if (existing) {
-        await supabase.from("deal_votes").update({ vote }).eq("id", existing.id);
-      } else {
-        await supabase.from("deal_votes").insert({ pipeline_deal_id: dealId, user_id: user.id, vote });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deal-votes", dealId] });
-      toast.success("Vote recorded");
-    },
-  });
-
-  const myVote = votes.find((v: any) => v.user_id === user?.id)?.vote;
-  const yesVotes = votes.filter((v: any) => v.vote === "yes").length;
-  const noVotes = votes.filter((v: any) => v.vote === "no").length;
-
-  return (
-    <div className="max-w-2xl space-y-4">
-      {/* IC Vote */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3">IC Vote</h3>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => castVote.mutate("yes")}
-            disabled={castVote.isPending}
-            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 ${myVote === "yes" ? "bg-success text-success-foreground" : "border border-border text-muted-foreground hover:text-success hover:border-success/30 hover:bg-success/5"}`}
-          >
-            {castVote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} Proceed ({yesVotes})
-          </button>
-          <button
-            onClick={() => castVote.mutate("no")}
-            disabled={castVote.isPending}
-            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 ${myVote === "no" ? "bg-destructive text-destructive-foreground" : "border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5"}`}
-          >
-            {castVote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} Pass ({noVotes})
-          </button>
-        </div>
-      </div>
-
-      {/* Comment input */}
-      <div className="flex gap-2">
-        <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !addComment.isPending && addComment.mutate()}
-          placeholder="Add a comment or IC note..."
-          className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" />
-        <button onClick={() => addComment.mutate()} disabled={!newComment.trim() || addComment.isPending} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1.5">
-          {addComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Post
-        </button>
-      </div>
-      {comments.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
-          <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No comments yet</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Start the IC conversation about this deal</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {comments.map((c: any) => (
-            <div key={c.id} className="rounded-lg border border-border bg-card p-3">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-foreground">{profiles[c.user_id] ?? c.user_id.slice(0, 8)}</span>
-                <span className="text-[10px] text-muted-foreground/60">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
-              </div>
-              <p className="text-sm text-foreground">{c.content}</p>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* ── Timeline Tab ── */
-const TimelineTab = ({ decisions }: { decisions: any[] }) => {
-  if (decisions.length === 0) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-8 text-center max-w-lg mx-auto">
-        <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">No timeline events yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Stage changes, votes, and notes will appear here</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-2xl space-y-1">
-      {decisions.map((d: any, i: number) => (
-        <div key={d.id} className="relative flex gap-3">
-          <div className="flex flex-col items-center">
-            <div className={`h-7 w-7 rounded-full border-2 bg-card flex items-center justify-center shrink-0 ${
-              d.decision_type === "stage_change" ? "border-primary" : "border-border"
-            }`}>
-              <Clock className="h-3 w-3 text-muted-foreground" />
-            </div>
-            {i < decisions.length - 1 && <div className="w-px flex-1 bg-border/50" />}
-          </div>
-          <div className="pb-4 flex-1">
-            <div className="rounded-lg border border-border bg-card p-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-foreground capitalize">{d.decision_type.replace(/_/g, " ")}</span>
-                {d.from_state && d.to_state && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                    {STAGE_LABELS[d.from_state] ?? d.from_state} → {STAGE_LABELS[d.to_state] ?? d.to_state}
-                  </span>
-                )}
-              </div>
-              {d.rationale && <p className="text-xs text-muted-foreground mt-1">{d.rationale}</p>}
-              <p className="text-[10px] text-muted-foreground/60 mt-1.5">{format(new Date(d.created_at), "MMM d, yyyy h:mm a")}</p>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-/* ── Allocation Tab ── */
-const AllocationTab = ({ allocations, dealId }: { allocations: any[]; dealId: string }) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ allocation_type: "equity", amount: "", source_name: "", ownership_pct: "", commitment_date: "", notes: "" });
-
-  const addAllocation = useMutation({
-    mutationFn: async () => {
-      if (!user) return;
-      const { error } = await supabase.from("deal_allocations").insert({
-        deal_id: dealId, user_id: user.id, allocation_type: form.allocation_type,
-        amount: form.amount ? parseFloat(form.amount) : null, source_name: form.source_name || null,
-        ownership_pct: form.ownership_pct ? parseFloat(form.ownership_pct) : null,
-        commitment_date: form.commitment_date || null, notes: form.notes || null,
-      } as any);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deal-allocations", dealId] });
-      setForm({ allocation_type: "equity", amount: "", source_name: "", ownership_pct: "", commitment_date: "", notes: "" });
-      setShowForm(false);
-      toast.success("Allocation added");
-    },
-  });
-
-  const deleteAllocation = useMutation({
-    mutationFn: async (allocId: string) => {
-      const { error } = await supabase.from("deal_allocations").delete().eq("id", allocId);
-      if (error) throw error;
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["deal-allocations", dealId] }); toast.success("Allocation removed"); },
-  });
-
-  const totalAmount = allocations.reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
-  const totalOwnership = allocations.reduce((sum: number, a: any) => sum + (Number(a.ownership_pct) || 0), 0);
-
-  // Group by type
-  const byType = allocations.reduce((acc: Record<string, number>, a: any) => {
-    acc[a.allocation_type] = (acc[a.allocation_type] ?? 0) + (Number(a.amount) || 0);
-    return acc;
-  }, {});
-
-  return (
-    <div className="max-w-3xl space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Capital Stack</h3>
-          <div className="flex items-center gap-3 mt-0.5">
-            {totalAmount > 0 && <span className="text-xs text-muted-foreground">Total: <span className="font-mono text-primary">${totalAmount.toLocaleString()}</span></span>}
-            {totalOwnership > 0 && <span className="text-xs text-muted-foreground">Ownership: <span className="font-mono text-foreground">{totalOwnership.toFixed(1)}%</span></span>}
-          </div>
-        </div>
-        <button onClick={() => setShowForm(!showForm)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
-          <Plus className="h-3 w-3" /> Add Allocation
-        </button>
-      </div>
-
-      {/* Stack summary */}
-      {Object.keys(byType).length > 1 && (
-        <div className="flex items-center gap-0.5 h-3 rounded-full overflow-hidden bg-secondary">
-          {Object.entries(byType).map(([type, amount]) => {
-            const amt = amount as number;
-            const pct = totalAmount > 0 ? (amt / totalAmount) * 100 : 0;
-            return (
-              <div
-                key={type}
-                style={{ width: `${pct}%` }}
-                className={`h-full ${type === "equity" ? "bg-primary" : type === "debt" ? "bg-warning" : type === "mezzanine" ? "bg-chart-4" : "bg-success"}`}
-                title={`${type}: $${amount.toLocaleString()} (${pct.toFixed(0)}%)`}
-              />
-            );
-          })}
-        </div>
-      )}
-
-      {showForm && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <select value={form.allocation_type} onChange={(e) => setForm({ ...form, allocation_type: e.target.value })} className="h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground">
-              <option value="equity">Equity</option><option value="debt">Debt</option><option value="mezzanine">Mezzanine</option><option value="preferred">Preferred</option>
-            </select>
-            <input type="number" placeholder="Amount ($)" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground" />
-            <input type="text" placeholder="Source / LP" value={form.source_name} onChange={(e) => setForm({ ...form, source_name: e.target.value })} className="h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground" />
-            <input type="number" placeholder="Ownership %" value={form.ownership_pct} onChange={(e) => setForm({ ...form, ownership_pct: e.target.value })} className="h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground" />
-            <input type="date" value={form.commitment_date} onChange={(e) => setForm({ ...form, commitment_date: e.target.value })} className="h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground" />
-            <button onClick={() => addAllocation.mutate()} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">Save</button>
-          </div>
-        </div>
-      )}
-
-      {allocations.length === 0 && !showForm ? (
-        <div className="rounded-lg border border-dashed border-border bg-card/50 p-12 text-center">
-          <DollarSign className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <h3 className="text-sm font-semibold text-foreground mb-1">No Allocations Yet</h3>
-          <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto">Track equity, debt, and mezzanine commitments. When capital is wired, it gets logged here.</p>
-        </div>
-      ) : (
-        <div className="rounded-lg border border-border bg-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-border text-muted-foreground">
-              <th className="text-left px-4 py-2 font-medium text-xs">Type</th>
-              <th className="text-right px-4 py-2 font-medium text-xs">Amount</th>
-              <th className="text-left px-4 py-2 font-medium text-xs">Source</th>
-              <th className="text-right px-4 py-2 font-medium text-xs">Ownership</th>
-              <th className="text-left px-4 py-2 font-medium text-xs">Date</th>
-              <th className="px-4 py-2"></th>
-            </tr></thead>
-            <tbody>
-              {allocations.map((a: any) => (
-                <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                  <td className="px-4 py-2.5"><span className="text-xs px-2 py-0.5 rounded-full border border-primary/20 bg-primary/5 text-primary font-medium capitalize">{a.allocation_type}</span></td>
-                  <td className="text-right px-4 py-2.5 font-mono text-foreground">{a.amount ? `$${Number(a.amount).toLocaleString()}` : "—"}</td>
-                  <td className="px-4 py-2.5 text-foreground">{a.source_name ?? "—"}</td>
-                  <td className="text-right px-4 py-2.5 font-mono text-foreground">{a.ownership_pct ? `${a.ownership_pct}%` : "—"}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground text-xs">{a.commitment_date ?? "—"}</td>
-                  <td className="px-4 py-2.5"><button onClick={() => deleteAllocation.mutate(a.id)} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"><Trash2 className="h-3 w-3" /></button></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-};
-
-/* ── Updates Tab with Decision Logger ── */
-const UpdatesTab = ({ decisions, dealId }: { decisions: any[]; dealId: string }) => {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const [showLogger, setShowLogger] = useState(false);
-  const [logForm, setLogForm] = useState({ decision_type: "note", rationale: "" });
-
-  const addDecision = useMutation({
-    mutationFn: async () => {
-      if (!user || !logForm.rationale.trim()) return;
-      const { error } = await supabase.from("decision_log").insert({
-        deal_id: dealId, user_id: user.id,
-        decision_type: logForm.decision_type, rationale: logForm.rationale.trim(),
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deal-decisions", dealId] });
-      setLogForm({ decision_type: "note", rationale: "" });
-      setShowLogger(false);
-      toast.success("Entry logged");
-    },
-  });
-
-  return (
-    <div className="max-w-2xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-foreground">Decision Journal & Updates</h3>
-        <button onClick={() => setShowLogger(!showLogger)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
-          <Plus className="h-3 w-3" /> Log Entry
-        </button>
-      </div>
-
-      {showLogger && (
-        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-          <select value={logForm.decision_type} onChange={(e) => setLogForm({ ...logForm, decision_type: e.target.value })} className="h-9 w-full px-3 rounded-md border border-border bg-background text-sm text-foreground">
-            <option value="note">IC Note</option>
-            <option value="kpi_update">KPI Update</option>
-            <option value="risk_flag">Risk Flag</option>
-            <option value="thesis_update">Thesis Update</option>
-            <option value="meeting_note">Meeting Note</option>
-            <option value="memo">Investment Memo</option>
-          </select>
-          <textarea
-            value={logForm.rationale}
-            onChange={(e) => setLogForm({ ...logForm, rationale: e.target.value })}
-            rows={3}
-            placeholder="What happened? What did you decide? Why?"
-            className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          />
-          <button onClick={() => addDecision.mutate()} disabled={!logForm.rationale.trim()} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
-            Save Entry
-          </button>
-        </div>
-      )}
-
-      {decisions.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
-          <BookOpen className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No entries yet</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Log IC notes, KPI updates, risk flags, and memos to build institutional memory.</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {decisions.map((d: any) => (
-            <div key={d.id} className="rounded-lg border border-border bg-card p-3">
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium capitalize ${
-                    d.decision_type === "risk_flag" ? "bg-destructive/10 text-destructive" :
-                    d.decision_type === "kpi_update" ? "bg-success/10 text-success" :
-                    d.decision_type === "stage_change" ? "bg-primary/10 text-primary" :
-                    "bg-secondary text-muted-foreground"
-                  }`}>
-                    {d.decision_type.replace(/_/g, " ")}
-                  </span>
-                  {d.from_state && d.to_state && (
-                    <span className="text-[10px] text-muted-foreground">{STAGE_LABELS[d.from_state] ?? d.from_state} → {STAGE_LABELS[d.to_state] ?? d.to_state}</span>
-                  )}
-                </div>
-                <span className="text-[10px] text-muted-foreground/60">{format(new Date(d.created_at), "MMM d, yyyy")}</span>
-              </div>
-              {d.rationale && <p className="text-sm text-foreground leading-relaxed">{d.rationale}</p>}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 };
 
