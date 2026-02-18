@@ -112,8 +112,8 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border/30 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-grape/4 to-transparent pointer-events-none" />
-        <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-grape to-grape/80 flex items-center justify-center shrink-0 shadow-[0_0_16px_hsl(var(--brand-purple)/0.5),0_2px_8px_hsl(0_0%_0%/0.3)] overflow-hidden">
-          <img src={grapeLogo} alt="Grapevine" className="h-5 w-5 object-contain" />
+        <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-grape to-grape/80 flex items-center justify-center shrink-0 shadow-[0_0_16px_hsl(var(--brand-purple)/0.5),0_2px_8px_hsl(0_0%_0%/0.3)] overflow-hidden p-0.5">
+          <img src={grapeLogo} alt="Grapevine" className="h-full w-full object-cover rounded-md" />
         </div>
         {!collapsed && (
           <span className="relative text-sm font-semibold text-foreground tracking-tight font-display">Grapevine</span>
