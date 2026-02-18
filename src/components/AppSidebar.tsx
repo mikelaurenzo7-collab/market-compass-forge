@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  LayoutDashboard,
   Handshake,
-  Sparkles,
-  DollarSign,
+  Folder,
+  Briefcase,
+  Brain,
   Bell,
   Settings,
   ShieldCheck,
@@ -12,9 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Upload,
-  Briefcase,
-  BookOpen,
+  User,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -23,35 +21,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-interface NavGroup {
+interface NavItem {
+  id: string;
   label: string;
-  items: { id: string; label: string; icon: typeof LayoutDashboard; path: string }[];
+  icon: typeof Handshake;
+  path: string;
+  badge?: number;
 }
-
-const NAV_GROUPS: NavGroup[] = [
-  {
-    label: "Command Center",
-    items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    ],
-  },
-  {
-    label: "Deal Engine",
-    items: [
-      { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
-      { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
-      { id: "deal-matcher", label: "AI Deal Matcher", icon: Sparkles, path: "/deal-matcher" },
-      { id: "valuations", label: "Valuations", icon: DollarSign, path: "/valuations" },
-      { id: "decisions", label: "Decisions", icon: BookOpen, path: "/decisions" },
-    ],
-  },
-  {
-    label: "Workspace",
-    items: [
-      { id: "data-room", label: "Data Room", icon: Upload, path: "/data-room" },
-    ],
-  },
-];
 
 const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const location = useLocation();
@@ -71,24 +47,34 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
 
   const isAdminOrPartner = userRole === "admin" || userRole === "partner";
 
-  const isActive = (path: string) =>
-    path === "/dashboard" ? location.pathname === "/dashboard" : location.pathname.startsWith(path);
+  const mainNav: NavItem[] = useMemo(() => [
+    { id: "deals", label: "Deals", icon: Handshake, path: "/deals" },
+    { id: "rooms", label: "Rooms", icon: Folder, path: "/rooms" },
+    { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
+    { id: "intelligence", label: "Intelligence", icon: Brain, path: "/intelligence" },
+  ], []);
 
-  const bottomItems = [
+  const bottomNav: NavItem[] = useMemo(() => [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
-    { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
+    { id: "account", label: "Account", icon: User, path: "/settings" },
     { id: "help", label: "Help", icon: HelpCircle, path: "/help" },
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
-  ];
+  ], [unreadCount, isAdminOrPartner]);
 
-  const renderLink = (item: { id: string; label: string; icon: typeof LayoutDashboard; path: string; badge?: number }) => {
+  const isActive = (path: string) => {
+    if (path === "/deals") return location.pathname === "/deals" || location.pathname.startsWith("/deals/");
+    if (path === "/settings") return location.pathname === "/settings" || location.pathname === "/account";
+    return location.pathname.startsWith(path);
+  };
+
+  const renderLink = (item: NavItem) => {
     const active = isActive(item.path);
     const link = (
       <NavLink
         key={item.id}
         to={item.path}
-        end={item.path === "/dashboard"}
-        className={`group relative w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-all duration-200 ${
+        end={false}
+        className={`group relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm transition-all duration-200 ${
           active
             ? "bg-primary/8 text-primary font-medium"
             : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:translate-x-[1px]"
@@ -100,7 +86,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
         )}
         <item.icon className={`h-4 w-4 shrink-0 transition-colors ${active ? "text-primary" : ""}`} />
         {!collapsed && <span className="truncate">{item.label}</span>}
-        {"badge" in item && (item.badge ?? 0) > 0 && (
+        {(item.badge ?? 0) > 0 && (
           <span className="absolute right-2 top-1/2 -translate-y-1/2 h-4 min-w-[16px] rounded-full bg-primary text-primary-foreground text-[10px] font-mono font-medium flex items-center justify-center px-1">
             {item.badge}
           </span>
@@ -133,35 +119,13 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 px-2 py-2 overflow-y-auto space-y-1">
-        {NAV_GROUPS.map((group, gi) => (
-          <div key={group.label}>
-            {gi > 0 && (
-              <div className="mx-3 my-2 h-px bg-gradient-to-r from-transparent via-grape/20 to-transparent" />
-            )}
-            {!collapsed && (
-              <div className="flex items-center gap-2 px-3 pt-2 pb-1">
-                <span className="h-1 w-1 rounded-full bg-grape/60" />
-                <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-muted-foreground/60">
-                  {group.label}
-                </p>
-              </div>
-            )}
-            {collapsed && gi > 0 && (
-              <div className="flex justify-center py-1">
-                <span className="h-1 w-1 rounded-full bg-grape/50" />
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {group.items.map((item) => renderLink(item))}
-            </div>
-          </div>
-        ))}
+      <nav className="flex-1 px-2 py-3 space-y-1">
+        {mainNav.map(renderLink)}
       </nav>
 
       {/* Bottom nav */}
       <div className="px-2 py-3 border-t border-border space-y-0.5">
-        {bottomItems.map((item) => renderLink(item as any))}
+        {bottomNav.map(renderLink)}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
