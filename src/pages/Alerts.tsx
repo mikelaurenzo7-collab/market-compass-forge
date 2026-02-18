@@ -286,9 +286,17 @@ const Alerts = () => {
               );
             })
           ) : (
-            <div className="rounded-lg border border-border bg-card p-6 text-center">
-              <Bell className="h-6 w-6 mx-auto mb-2 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No alerts configured</p>
+            <div className="rounded-lg border border-border bg-card p-8 text-center">
+              <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3 mx-auto ring-1 ring-primary/20">
+                <Bell className="h-6 w-6 text-primary" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No alerts configured</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
+                Set up rules to monitor funding rounds, SEC filings, distressed assets, and price movements across your target sectors.
+              </p>
+              <button onClick={() => setShowCreate(true)} className="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+                <Plus className="h-4 w-4" /> Create Your First Alert
+              </button>
             </div>
           )}
         </div>
@@ -324,9 +332,13 @@ const Alerts = () => {
             </div>
           ) : (
             <div className="rounded-lg border border-border bg-card p-8 text-center">
-              <Bell className="h-6 w-6 mx-auto mb-2 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">No notifications yet</p>
-              <p className="text-xs text-muted-foreground mt-1">Create an alert rule to start monitoring</p>
+              <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center mb-3 mx-auto ring-1 ring-border">
+                <BellRing className="h-6 w-6 text-muted-foreground/60" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No notifications yet</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
+                Notifications will appear here when your alert conditions are triggered — funding events, filings, price moves, and more.
+              </p>
             </div>
           )}
         </div>

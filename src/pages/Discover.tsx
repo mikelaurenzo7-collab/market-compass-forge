@@ -10,6 +10,7 @@ import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
 import { toast } from "sonner";
 import { useWatchlists } from "@/components/WatchlistManager";
+import { DiscoverSkeleton } from "@/components/SkeletonLoaders";
 
 const SECTORS = ["Technology", "Healthcare", "Financial Services", "Real Estate", "Energy", "Consumer", "Industrials", "Infrastructure"];
 
@@ -41,7 +42,7 @@ const Discover = () => {
   });
 
   // Browse companies (when not searching)
-  const { data: browseCompanies } = useQuery({
+  const { data: browseCompanies, isLoading: browseLoading } = useQuery({
     queryKey: ["discover-browse", sectorFilter],
     queryFn: async () => {
       let q = supabase
@@ -340,7 +341,9 @@ const Discover = () => {
         </div>
 
         {/* Companies grid */}
-        {displayCompanies && displayCompanies.length > 0 && (
+        {browseLoading && searchQuery.length < 2 ? (
+          <DiscoverSkeleton />
+        ) : displayCompanies && displayCompanies.length > 0 ? (
           <section>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -416,7 +419,7 @@ const Discover = () => {
               ))}
             </div>
           </section>
-        )}
+        ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main column */}
