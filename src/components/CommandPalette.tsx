@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFullTextSearch } from "@/hooks/useFullTextSearch";
+import { supabase } from "@/integrations/supabase/client";
 import { Building2, Search, FileText, Newspaper, AlertTriangle, Radio, Compass, Handshake, Briefcase } from "lucide-react";
 import {
   CommandDialog,
@@ -43,13 +44,31 @@ const CommandPalette = () => {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  const selectResult = (type: string, id: string) => {
+  const selectResult = async (type: string, id: string) => {
     setOpen(false);
     setQuery("");
-    if (type === "company") navigate(`/discover`);
-    else if (type === "news") navigate("/discover");
-    else if (type === "signal") navigate("/discover");
-    else if (type === "distressed") navigate("/discover");
+    if (type === "company") {
+      // Try to find or create a deal pipeline entry, then navigate to the Deal Room
+      try {
+        const { data: existing } = await supabase
+          .from("deal_pipeline")
+          .select("id")
+          .eq("company_id", id)
+          .maybeSingle();
+        if (existing) {
+          navigate(`/deals/${existing.id}`);
+        } else {
+          // Navigate to discover with the company context — don't auto-create deals from search
+          navigate(`/discover`);
+        }
+      } catch {
+        navigate("/discover");
+      }
+    } else if (type === "distressed") {
+      navigate("/discover");
+    } else {
+      navigate("/discover");
+    }
   };
 
   const goTo = (path: string) => {

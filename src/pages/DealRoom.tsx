@@ -151,14 +151,27 @@ const DealRoom = () => {
 
     const channel = supabase
       .channel(`deal-room-${id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "deal_comments", filter: `deal_id=eq.${id}` }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "deal_comments", filter: `deal_id=eq.${id}` }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ["deal-comments", id] });
+        if (payload.eventType === "INSERT" && (payload.new as any)?.user_id !== user?.id) {
+          const name = profiles?.[(payload.new as any)?.user_id] ?? "A teammate";
+          toast.info(`${name} commented on this deal`);
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "deal_votes", filter: `pipeline_deal_id=eq.${id}` }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "deal_votes", filter: `pipeline_deal_id=eq.${id}` }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ["deal-votes", id] });
+        if (payload.eventType === "INSERT" && (payload.new as any)?.user_id !== user?.id) {
+          const name = profiles?.[(payload.new as any)?.user_id] ?? "A teammate";
+          const vote = (payload.new as any)?.vote === "yes" ? "voted YES" : "voted NO";
+          toast.info(`${name} ${vote} on this deal`);
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "decision_log", filter: `deal_id=eq.${id}` }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "decision_log", filter: `deal_id=eq.${id}` }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ["deal-decisions", id] });
+        if (payload.eventType === "INSERT" && (payload.new as any)?.user_id !== user?.id) {
+          const name = profiles?.[(payload.new as any)?.user_id] ?? "A teammate";
+          toast.info(`${name} logged a decision on this deal`);
+        }
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "deal_allocations", filter: `deal_id=eq.${id}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["deal-allocations", id] });
@@ -168,7 +181,7 @@ const DealRoom = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [id, queryClient]);
+  }, [id, queryClient, user?.id, profiles]);
 
   const updateStage = useMutation({
     mutationFn: async (stage: string) => {
