@@ -2,10 +2,11 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePortfolios, usePortfolioPositions, useCreatePortfolio, useAddPosition, useRemovePosition, useDeletePortfolio, type PortfolioPosition } from "@/hooks/usePortfolio";
 import { supabase } from "@/integrations/supabase/client";
-import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, ArrowUpRight, ArrowDownRight, Building2, Search, BarChart3, Target, FileText, ChevronRight } from "lucide-react";
+import { Briefcase, Plus, Trash2, TrendingUp, TrendingDown, PieChart, DollarSign, ArrowUpRight, ArrowDownRight, Building2, Search, BarChart3, Target, FileText, ChevronRight, Download } from "lucide-react";
 import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useNavigate } from "react-router-dom";
 import PortfolioBenchmark from "@/components/PortfolioBenchmark";
+import LPReportGenerator from "@/components/LPReportGenerator";
 
 const COLORS = [
   "hsl(270, 60%, 55%)", "hsl(142, 60%, 45%)", "hsl(38, 92%, 50%)",
@@ -49,6 +50,7 @@ const Portfolio = () => {
   const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
   const [showAddPosition, setShowAddPosition] = useState(false);
   const [showBenchmark, setShowBenchmark] = useState(false);
+  const [showLPReport, setShowLPReport] = useState(false);
   const [showCreatePortfolio, setShowCreatePortfolio] = useState(false);
   const [newPortfolioName, setNewPortfolioName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -168,10 +170,16 @@ const Portfolio = () => {
             </select>
           )}
           {positions && positions.length > 0 && (
-            <button onClick={() => setShowBenchmark(!showBenchmark)}
-              className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center gap-2 ${showBenchmark ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
-              <BarChart3 className="h-4 w-4" /> Benchmark
-            </button>
+            <>
+              <button onClick={() => setShowBenchmark(!showBenchmark)}
+                className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center gap-2 ${showBenchmark ? "border-primary/30 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                <BarChart3 className="h-4 w-4" /> Benchmark
+              </button>
+              <button onClick={() => setShowLPReport(true)}
+                className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
+                <Download className="h-4 w-4" /> Generate LP Update
+              </button>
+            </>
           )}
           {showCreatePortfolio ? (
             <div className="flex items-center gap-2">
@@ -477,6 +485,38 @@ const Portfolio = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* LP Report Modal */}
+      {showLPReport && positions && (
+        <LPReportGenerator
+          portfolioName={portfolios?.find(p => p.id === selectedId)?.name ?? "Portfolio"}
+          positions={(positions ?? []).map((pos) => {
+            const companyId = (pos.companies as any)?.id;
+            const deal = companyId ? getDealForPosition(companyId) : null;
+            const currentPrice = getCurrentPrice(pos);
+            const posDecisions = deal ? (decisionEntries ?? []).filter(d => d.deal_id === deal.id) : [];
+            return {
+              companyName: pos.companies?.name ?? "Unknown",
+              sector: pos.companies?.sector ?? "Unknown",
+              shares: Number(pos.shares),
+              entryPrice: Number(pos.entry_price),
+              entryDate: pos.entry_date ?? new Date().toISOString(),
+              currentPrice,
+              thesis: deal ? (deal as any).thesis ?? null : null,
+              stage: deal?.stage ?? null,
+              decisionHistory: posDecisions.map(d => ({
+                type: d.decision_type,
+                rationale: d.rationale,
+                date: d.created_at,
+                toState: d.to_state,
+              })),
+            };
+          })}
+          totalValue={metrics.totalValue}
+          totalCost={metrics.totalCost}
+          onClose={() => setShowLPReport(false)}
+        />
       )}
     </div>
   );
