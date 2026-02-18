@@ -27,13 +27,17 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !user) {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const userEmail = claimsData.claims.email as string;
+    const userId = claimsData.claims.sub as string;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -44,7 +48,7 @@ Deno.serve(async (req) => {
     const { data: invite, error: inviteError } = await supabase
       .from("team_invites")
       .select("*")
-      .eq("email", user.email!.toLowerCase())
+      .eq("email", userEmail.toLowerCase())
       .eq("status", "pending")
       .order("created_at", { ascending: false })
       .limit(1)
@@ -61,7 +65,7 @@ Deno.serve(async (req) => {
     const { error: roleError } = await supabase
       .from("user_roles")
       .upsert(
-        { user_id: user.id, role: invite.role },
+        { user_id: userId, role: invite.role },
         { onConflict: "user_id" }
       );
 
@@ -79,7 +83,7 @@ Deno.serve(async (req) => {
       .update({ status: "accepted", accepted_at: new Date().toISOString() })
       .eq("id", invite.id);
 
-    console.log(`User ${user.email} accepted invite as ${invite.role}`);
+    console.log(`User ${userEmail} accepted invite as ${invite.role}`);
 
     return new Response(
       JSON.stringify({ success: true, role: invite.role }),
