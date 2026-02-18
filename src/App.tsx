@@ -6,23 +6,26 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
-import Deals from "./pages/Deals";
+import DealsOverview from "./pages/DealsOverview";
+import DealFlow from "./pages/DealFlow";
+import DealRoom from "./pages/DealRoom";
+import DealMatcher from "./pages/DealMatcher";
+import Rooms from "./pages/Rooms";
+import Portfolio from "./pages/Portfolio";
 import Valuations from "./pages/Valuations";
+import Decisions from "./pages/Decisions";
+import DataRoom from "./pages/DataRoom";
+import Intelligence from "./pages/Intelligence";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
+import AdminDashboard from "./pages/AdminDashboard";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
-import Help from "./pages/Help";
-import AdminDashboard from "./pages/AdminDashboard";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
-import DealMatcher from "./pages/DealMatcher";
-import Portfolio from "./pages/Portfolio";
-import DataRoom from "./pages/DataRoom";
-import Decisions from "./pages/Decisions";
 import { toast } from "sonner";
 
 const queryClient = new QueryClient({
@@ -48,47 +51,68 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* Public */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+
+            {/* Authenticated */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Index />} />
-              <Route path="/deals" element={<Deals />} />
+              {/* Deals — primary */}
+              <Route path="/deals" element={<DealsOverview />} />
+              <Route path="/deals/flow" element={<DealFlow />} />
+              <Route path="/deals/recommended" element={<DealMatcher />} />
+              <Route path="/deals/:id" element={<DealRoom />} />
+
+              {/* Rooms */}
+              <Route path="/rooms" element={<Rooms />} />
+
+              {/* Portfolio */}
               <Route path="/portfolio" element={<Portfolio />} />
-              <Route path="/deal-matcher" element={<DealMatcher />} />
+
+              {/* Intelligence */}
+              <Route path="/intelligence" element={<Intelligence />} />
+
+              {/* Utility / Settings */}
+              <Route path="/alerts" element={<Alerts />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/account" element={<Navigate to="/settings" replace />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/help" element={<Help />} />
+
+              {/* Legacy tools accessible via deep links */}
               <Route path="/valuations" element={<Valuations />} />
               <Route path="/decisions" element={<Decisions />} />
               <Route path="/data-room" element={<DataRoom />} />
-              <Route path="/alerts" element={<Alerts />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/help" element={<Help />} />
-              {/* Legacy redirects — all removed routes → dashboard */}
-              <Route path="/companies/*" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/fund-intelligence" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/real-estate" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/global" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/sector-pulse" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/research" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/intelligence" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/distressed" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/screening" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/data-coverage" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/document-analyzer" element={<Navigate to="/dashboard" replace />} />
+
+              {/* Legacy redirects */}
+              <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
+              <Route path="/deal-matcher" element={<Navigate to="/deals/recommended" replace />} />
+              <Route path="/companies/*" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/fund-intelligence" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/real-estate" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/global" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/sector-pulse" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/research" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/distressed" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/screening" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/data-coverage" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/document-analyzer" element={<Navigate to="/intelligence" replace />} />
               <Route path="/developers" element={<Navigate to="/settings" replace />} />
-              <Route path="/discover" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/competitive-intel" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/sector-momentum" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/people" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/discover" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/competitive-intel" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/sector-momentum" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/analytics" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/people" element={<Navigate to="/intelligence" replace />} />
               <Route path="/comps" element={<Navigate to="/valuations" replace />} />
               <Route path="/compare" element={<Navigate to="/valuations" replace />} />
-              <Route path="/network" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/markets/*" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/watchlists" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/network" element={<Navigate to="/deals" replace />} />
+              <Route path="/markets/*" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/watchlists" element={<Navigate to="/intelligence" replace />} />
             </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

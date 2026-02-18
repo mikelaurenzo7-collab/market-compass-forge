@@ -1,37 +1,37 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Sparkles, Handshake, DollarSign, Upload, BookOpen } from "lucide-react";
+import { Handshake, Sparkles, Briefcase, Folder, Brain } from "lucide-react";
 
 const actions = [
   {
     icon: Handshake,
     label: "Deal Flow",
-    description: "Manage your pipeline",
-    path: "/deals",
+    description: "Pipeline & Kanban",
+    path: "/deals/flow",
   },
   {
     icon: Sparkles,
-    label: "AI Deal Matcher",
+    label: "Find Deals",
     description: "AI-powered matching",
-    path: "/deal-matcher",
+    path: "/deals/recommended",
   },
   {
-    icon: DollarSign,
-    label: "Valuations",
-    description: "DCF & comps analysis",
-    path: "/valuations",
+    icon: Folder,
+    label: "Rooms",
+    description: "Secure deal rooms",
+    path: "/rooms",
   },
   {
-    icon: Upload,
-    label: "Data Room",
-    description: "Upload & analyze docs",
-    path: "/data-room",
+    icon: Briefcase,
+    label: "Portfolio",
+    description: "Track investments",
+    path: "/portfolio",
   },
   {
-    icon: BookOpen,
-    label: "Decisions",
-    description: "IC decision log",
-    path: "/decisions",
+    icon: Brain,
+    label: "Intelligence",
+    description: "Market signals & data",
+    path: "/intelligence",
   },
 ];
 

@@ -90,13 +90,10 @@ export const useTableNavigation = (
 };
 
 export const SIDEBAR_ROUTES = [
-  "/dashboard",
   "/deals",
+  "/rooms",
   "/portfolio",
-  "/deal-matcher",
-  "/valuations",
-  "/decisions",
-  "/data-room",
+  "/intelligence",
 ];
 
 export const GLOBAL_HOTKEYS_HELP = [

@@ -125,7 +125,7 @@ const ResetPassword = () => {
             </p>
           </div>
           <button
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/deals")}
             className="w-full h-10 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             Go to Dashboard

@@ -188,7 +188,7 @@ const Deals = () => {
                               <div className="flex items-center gap-2">
                                 <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
                                 <CompanyHoverCard company={{ id: deal.company_id, name: deal.companies?.name ?? "Unknown", sector: deal.companies?.sector, stage: deal.companies?.stage }}>
-                                  <button onClick={(e) => { e.stopPropagation(); navigate(`/companies/${deal.company_id}`); }} className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left">
+                                  <button onClick={(e) => { e.stopPropagation(); navigate(`/deals/${deal.id}`); }} className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left">
                                     {deal.companies?.name ?? "Unknown"}
                                   </button>
                                 </CompanyHoverCard>

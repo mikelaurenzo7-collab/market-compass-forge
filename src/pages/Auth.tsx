@@ -88,7 +88,7 @@ const Auth = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard", { replace: true });
+      navigate("/deals", { replace: true });
     }
   }, [user, navigate]);
 
