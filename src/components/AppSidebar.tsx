@@ -19,6 +19,7 @@ import { useUnreadCount } from "@/hooks/useUnreadCount";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import grapeLogo from "@/assets/grape-logo.png";
 
 interface NavItem {
   id: string;
@@ -51,14 +52,14 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     { id: "deals", label: "Deals", icon: Handshake, path: "/deals" },
     { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
     { id: "decisions", label: "Decisions", icon: BookOpen, path: "/decisions" },
-  ], []);
+    { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
+  ], [unreadCount]);
 
   const bottomNav: NavItem[] = useMemo(() => [
-    { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
     { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
     { id: "help", label: "Help", icon: HelpCircle, path: "/help" },
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
-  ], [unreadCount, isAdminOrPartner]);
+  ], [isAdminOrPartner]);
 
   const isActive = (path: string) => {
     if (path === "/deals") return location.pathname === "/deals" || location.pathname.startsWith("/deals/");
@@ -111,8 +112,8 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-3 py-4 border-b border-border/30 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-grape/4 to-transparent pointer-events-none" />
-        <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-grape to-grape/80 flex items-center justify-center shrink-0 shadow-[0_0_16px_hsl(var(--brand-purple)/0.5),0_2px_8px_hsl(0_0%_0%/0.3)]">
-          <span className="text-xs font-bold text-grape-foreground font-display">GV</span>
+        <div className="relative h-8 w-8 rounded-lg bg-gradient-to-br from-grape to-grape/80 flex items-center justify-center shrink-0 shadow-[0_0_16px_hsl(var(--brand-purple)/0.5),0_2px_8px_hsl(0_0%_0%/0.3)] overflow-hidden">
+          <img src={grapeLogo} alt="Grapevine" className="h-5 w-5 object-contain" />
         </div>
         {!collapsed && (
           <span className="relative text-sm font-semibold text-foreground tracking-tight font-display">Grapevine</span>
