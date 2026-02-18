@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign, AlertTriangle, Zap, Timer } from "lucide-react";
+import { formatDistanceToNow, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
@@ -16,19 +16,15 @@ type PipelineDeal = {
   priority: string | null;
   notes: string | null;
   updated_at: string;
+  created_at: string;
   companies: { name: string; sector: string | null; stage: string | null } | null;
 };
 
 const STAGE_LABELS: Record<string, string> = {
-  sourced: "Sourced",
-  screening: "Screening",
-  due_diligence: "Due Diligence",
-  ic_review: "IC Review",
-  committed: "Committed",
-  passed: "Passed",
+  sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
+  ic_review: "IC Review", committed: "Committed", passed: "Passed",
 };
 
-// Map pipeline stages to lifecycle verbs
 const LIFECYCLE_VERBS = [
   { verb: "Discover", stages: ["sourced"], icon: Compass, color: "bg-primary/10 text-primary border-primary/20" },
   { verb: "Diligence", stages: ["screening", "due_diligence"], icon: FileText, color: "bg-warning/10 text-warning border-warning/20" },
@@ -55,7 +51,6 @@ const DealsOverview = () => {
     enabled: !!user,
   });
 
-  // Recent activity for the feed
   const { data: recentDecisions } = useQuery({
     queryKey: ["deals-recent-decisions"],
     queryFn: async () => {
@@ -63,9 +58,22 @@ const DealsOverview = () => {
         .from("decision_log")
         .select("*, deal_pipeline(id, companies(name))")
         .order("created_at", { ascending: false })
-        .limit(5);
+        .limit(8);
       if (error) throw error;
       return data;
+    },
+    enabled: !!user,
+  });
+
+  // Allocation totals
+  const { data: allocationTotals } = useQuery({
+    queryKey: ["deals-allocation-totals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_allocations")
+        .select("amount");
+      if (error) throw error;
+      return (data ?? []).reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
     },
     enabled: !!user,
   });
@@ -87,13 +95,10 @@ const DealsOverview = () => {
 
   const stageCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    (deals ?? []).forEach((d) => {
-      counts[d.stage] = (counts[d.stage] ?? 0) + 1;
-    });
+    (deals ?? []).forEach((d) => { counts[d.stage] = (counts[d.stage] ?? 0) + 1; });
     return counts;
   }, [deals]);
 
-  // Lifecycle verb counts
   const lifecycleCounts = useMemo(() => {
     return LIFECYCLE_VERBS.map((v) => ({
       ...v,
@@ -101,7 +106,25 @@ const DealsOverview = () => {
     }));
   }, [stageCounts]);
 
+  // Deal velocity metrics
+  const velocityMetrics = useMemo(() => {
+    if (!deals?.length) return null;
+    const activeD = deals.filter(d => d.stage !== "passed");
+    const avgAge = activeD.length > 0
+      ? activeD.reduce((sum, d) => sum + differenceInDays(new Date(), new Date(d.created_at)), 0) / activeD.length
+      : 0;
+    const staleCount = activeD.filter(d => differenceInDays(new Date(), new Date(d.updated_at)) > 14).length;
+    return { avgAge: Math.round(avgAge), staleCount, passedCount: stageCounts["passed"] ?? 0 };
+  }, [deals, stageCounts]);
+
   const totalActive = (deals ?? []).filter((d) => d.stage !== "passed").length;
+
+  const getDealAge = (deal: PipelineDeal) => {
+    const days = differenceInDays(new Date(), new Date(deal.created_at));
+    if (days > 30) return { label: `${days}d`, color: "text-destructive" };
+    if (days > 14) return { label: `${days}d`, color: "text-warning" };
+    return { label: `${days}d`, color: "text-muted-foreground" };
+  };
 
   if (isLoading) {
     return (
@@ -120,6 +143,9 @@ const DealsOverview = () => {
             <h1 className="text-xl font-semibold text-foreground">Deals</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               <span className="font-mono text-primary">{deals?.length ?? 0}</span> deals in pipeline
+              {allocationTotals != null && allocationTotals > 0 && (
+                <span className="ml-2 text-success font-mono">· ${(allocationTotals / 1e6).toFixed(1)}M allocated</span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -138,41 +164,67 @@ const DealsOverview = () => {
           </div>
         </div>
 
-        {/* Lifecycle Progress — the capital deployment funnel */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Capital Lifecycle</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {lifecycleCounts.map((lc, i) => (
-              <motion.div
-                key={lc.verb}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.05 }}
-                className={`rounded-lg border p-4 text-center ${lc.color} transition-all cursor-pointer hover:scale-[1.02]`}
-                onClick={() => navigate("/deals/flow")}
-              >
-                <lc.icon className="h-5 w-5 mx-auto mb-1.5" />
-                <p className="text-2xl font-black font-mono">{lc.count}</p>
-                <p className="text-[11px] font-medium mt-0.5">{lc.verb}</p>
-              </motion.div>
-            ))}
+        {/* Lifecycle Progress + Velocity */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <div className="lg:col-span-3 rounded-lg border border-border bg-card p-4">
+            <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Capital Lifecycle</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {lifecycleCounts.map((lc, i) => (
+                <motion.div
+                  key={lc.verb}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: i * 0.05 }}
+                  className={`rounded-lg border p-4 text-center ${lc.color} transition-all cursor-pointer hover:scale-[1.02]`}
+                  onClick={() => navigate("/deals/flow")}
+                >
+                  <lc.icon className="h-5 w-5 mx-auto mb-1.5" />
+                  <p className="text-2xl font-black font-mono">{lc.count}</p>
+                  <p className="text-[11px] font-medium mt-0.5">{lc.verb}</p>
+                </motion.div>
+              ))}
+            </div>
+            {totalActive > 0 && (
+              <div className="flex items-center gap-0.5 mt-3 h-2 rounded-full overflow-hidden bg-secondary">
+                {lifecycleCounts.map((lc) => {
+                  const pct = totalActive > 0 ? (lc.count / totalActive) * 100 : 0;
+                  if (pct === 0) return null;
+                  return (
+                    <motion.div
+                      key={lc.verb}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className={`h-full ${lc.verb === "Discover" ? "bg-primary" : lc.verb === "Diligence" ? "bg-warning" : lc.verb === "Coordinate" ? "bg-chart-4" : "bg-success"}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
-          {/* Progress bar */}
-          {totalActive > 0 && (
-            <div className="flex items-center gap-0.5 mt-3 h-2 rounded-full overflow-hidden bg-secondary">
-              {lifecycleCounts.map((lc) => {
-                const pct = totalActive > 0 ? (lc.count / totalActive) * 100 : 0;
-                if (pct === 0) return null;
-                return (
-                  <motion.div
-                    key={lc.verb}
-                    initial={{ width: 0 }}
-                    animate={{ width: `${pct}%` }}
-                    transition={{ duration: 0.6, ease: "easeOut" }}
-                    className={`h-full ${lc.verb === "Discover" ? "bg-primary" : lc.verb === "Diligence" ? "bg-warning" : lc.verb === "Coordinate" ? "bg-chart-4" : "bg-success"}`}
-                  />
-                );
-              })}
+
+          {/* Velocity widget */}
+          {velocityMetrics && (
+            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-primary" /> Velocity
+              </h2>
+              <div className="space-y-2.5">
+                <div>
+                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Avg Deal Age</p>
+                  <p className="text-lg font-black font-mono text-foreground">{velocityMetrics.avgAge}d</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Stale (&gt;14d)</p>
+                  <p className={`text-lg font-black font-mono ${velocityMetrics.staleCount > 0 ? "text-warning" : "text-success"}`}>
+                    {velocityMetrics.staleCount}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Passed</p>
+                  <p className="text-lg font-black font-mono text-muted-foreground">{velocityMetrics.passedCount}</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -197,37 +249,45 @@ const DealsOverview = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {activeDeals.slice(0, 6).map((deal, i) => (
-                <motion.button
-                  key={deal.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  onClick={() => navigate(`/deals/${deal.id}`)}
-                  className="rounded-lg border border-border bg-card p-4 text-left hover:border-primary/40 hover:bg-primary/5 transition-all group"
-                >
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                        {deal.companies?.name ?? "Unknown"}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">{deal.companies?.sector ?? "—"}</p>
+              {activeDeals.slice(0, 6).map((deal, i) => {
+                const age = getDealAge(deal);
+                return (
+                  <motion.button
+                    key={deal.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => navigate(`/deals/${deal.id}`)}
+                    className="rounded-lg border border-border bg-card p-4 text-left hover:border-primary/40 hover:bg-primary/5 transition-all group"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                          {deal.companies?.name ?? "Unknown"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">{deal.companies?.sector ?? "—"}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 bg-primary/5 text-primary font-medium">
-                      {STAGE_LABELS[deal.stage] ?? deal.stage}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/60">
-                      {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}
-                    </span>
-                  </div>
-                  {deal.notes && (
-                    <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2">{deal.notes}</p>
-                  )}
-                </motion.button>
-              ))}
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border border-primary/20 bg-primary/5 text-primary font-medium">
+                        {STAGE_LABELS[deal.stage] ?? deal.stage}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-mono flex items-center gap-0.5 ${age.color}`}>
+                          <Timer className="h-2.5 w-2.5" /> {age.label}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}
+                        </span>
+                      </div>
+                    </div>
+                    {deal.notes && (
+                      <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2">{deal.notes}</p>
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
           )}
         </section>
@@ -250,10 +310,13 @@ const DealsOverview = () => {
                       className="rounded-lg border border-border bg-card p-3 text-left hover:border-primary/30 transition-colors flex items-center gap-3"
                     >
                       <CompanyAvatar name={deal.companies?.name ?? "?"} sector={deal.companies?.sector} />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">{deal.companies?.name ?? "Unknown"}</p>
                         <p className="text-[11px] text-muted-foreground">{deal.companies?.sector ?? "—"}</p>
                       </div>
+                      <span className={`text-[10px] font-mono ${getDealAge(deal).color}`}>
+                        {getDealAge(deal).label}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -264,7 +327,7 @@ const DealsOverview = () => {
             {committed.length > 0 && (
               <section>
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                  <Clock className="h-4 w-4 text-success" /> Committed
+                  <DollarSign className="h-4 w-4 text-success" /> Committed
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {committed.map((deal) => (
@@ -282,6 +345,22 @@ const DealsOverview = () => {
                   ))}
                 </div>
               </section>
+            )}
+
+            {/* Stale deals warning */}
+            {velocityMetrics && velocityMetrics.staleCount > 0 && (
+              <div className="rounded-lg border border-warning/30 bg-warning/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <h3 className="text-sm font-semibold text-foreground">{velocityMetrics.staleCount} Stale Deal{velocityMetrics.staleCount > 1 ? "s" : ""}</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  These deals haven't been updated in over 14 days. Consider advancing them or moving to Passed.
+                </p>
+                <button onClick={() => navigate("/deals/flow")} className="text-xs text-warning hover:underline mt-2 inline-flex items-center gap-1">
+                  Review in Pipeline <ArrowRight className="h-3 w-3" />
+                </button>
+              </div>
             )}
           </div>
 
