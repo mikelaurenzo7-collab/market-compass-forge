@@ -2,10 +2,12 @@ import { useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { FileText, Upload, AlertTriangle, TrendingUp, BarChart3, Link, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import InspectionGallery from "./InspectionGallery";
+import FieldMode from "./FieldMode";
 
 interface DiligenceTabProps {
   documents: any[];
@@ -19,6 +21,7 @@ interface DiligenceTabProps {
 
 const DiligenceTab = ({ documents, financials, enrichments, companyName, companyId, dealId, dealMode }: DiligenceTabProps) => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -52,6 +55,11 @@ const DiligenceTab = ({ documents, financials, enrichments, companyName, company
 
   return (
     <div className="max-w-4xl space-y-6">
+      {/* Mobile Field Mode */}
+      {isMobile && dealId && companyId && (
+        <FieldMode dealId={dealId} companyId={companyId} />
+      )}
+
       {/* Inspection Gallery (Asset mode) */}
       {dealMode === "asset" && dealId && companyId && (
         <InspectionGallery dealId={dealId} companyId={companyId} />
