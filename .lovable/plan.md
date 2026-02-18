@@ -1,176 +1,123 @@
 
+# Elite Audit: Grapevine — Private Markets Operating System
 
-# The Private Markets Operating System Pivot
+## Current State Assessment
 
-## Vision
-
-Grapevine becomes **the system where capital gets deployed** -- not a terminal, not a CRM, not a data room. A capital lifecycle OS built around five verbs:
-
-**Discover --> Diligence --> Coordinate --> Allocate --> Report**
-
-Every feature maps to one of these verbs. The Deal Room is the atomic unit of the product.
+The product has undergone two rapid pivots (Deal Room OS, then Capital Lifecycle OS). The core architecture is solid: clean sidebar, lifecycle-oriented routing, working Deal Room with 7 tabs, Discover engine, Portfolio with thesis-vs-actuals. However, the speed of pivoting has left **critical gaps, dead code, stale copy, security issues, and missing UX polish** that would undermine credibility in any pilot conversation.
 
 ---
 
-## What Changes
+## CRITICAL GAPS (Must Fix)
 
-### 1. Navigation: The Five Pillars
+### 1. Dead Code: Index.tsx is a Ghost Dashboard
+`src/pages/Index.tsx` (442 lines) is the old "Command Center" dashboard. It still references `/companies`, `/deal-matcher`, `/distressed` -- all dead routes. It renders `CompanyTable`, `OnboardingFlow`, `MorningBriefing`, etc. **It is still routed** via `App.tsx` redirects but if anyone lands on it directly, they see a broken page.
 
-Replace current sidebar (Deals / Rooms / Portfolio / Intelligence) with the capital lifecycle spine:
+**Fix:** Delete `Index.tsx`. Ensure `/dashboard` redirect in `App.tsx` points to `/deals` (already done). Remove any imports.
 
-```text
-SIDEBAR
---------------------------
-[GV] Grapevine
+### 2. OnboardingFlow References Dead Routes
+`src/components/OnboardingFlow.tsx` has 5 onboarding steps pointing to `/companies`, `/dashboard`, `/research` -- all legacy routes. The copy says "command center" and "browse 800+ private companies."
 
-  Discover        /discover
-  Deals           /deals
-  Portfolio        /portfolio
+**Fix:** Rewrite OnboardingFlow steps to match the Capital Lifecycle:
+- Step 1: "Discover your first opportunity" -> `/discover`
+- Step 2: "Open a Deal Room" -> `/deals`
+- Step 3: "Document your thesis" -> `/deals` (first deal)
+- Step 4: "Set up alerts" -> `/alerts`
+- Step 5: "Track your portfolio" -> `/portfolio`
+Update all copy to OS language.
 
-  ─── utility ───
-  Alerts           /alerts
-  Settings         /settings
-  Help             /help
-  [Admin]          /admin
-  Sign Out
-```
+### 3. Auth Page Copy is Stale
+`Auth.tsx` line 240: "Private market intelligence that moves faster than your competition" -- this is terminal language, not OS language.
 
-**Why only 3 main items instead of 5?** Diligence, Coordinate, and Allocate all live *inside* the Deal Room (`/deals/:id`). They are not top-level pages -- they are tabs within a deal. This keeps the sidebar ultra-clean while the Deal Room itself embodies the full lifecycle.
+**Fix:** Change to "The system where capital gets deployed."
 
-- **Discover** = current Intelligence page, reimagined as "Surface rooms worth opening" -- the AI matcher, signal feed, and market intel all unified under one verb
-- **Deals** = the pipeline (overview + flow + individual deal rooms with all lifecycle tabs)  
-- **Portfolio** = the report phase -- performance vs. thesis, institutional memory
+### 4. Help Page FAQ is Stale
+`Help.tsx` FAQ still describes Grapevine as "an AI-powered private market intelligence platform" with references to "command center" and old feature descriptions.
 
-The "Rooms" concept merges into Deal Rooms. Every deal IS a room.
+**Fix:** Rewrite FAQ to describe the Capital Lifecycle OS, Deal Rooms, and the 5 verbs.
 
-### 2. Deal Room: The Product's Center of Gravity
+### 5. RLS Security: 4 Overly Permissive Policies
+The database linter found 4 `USING (true)` or `WITH CHECK (true)` policies on non-SELECT operations:
+- `waitlist_signups` INSERT (acceptable -- public form)
+- `support_requests` INSERT (acceptable -- public form)
+- `scheduler_runs` INSERT/UPDATE (should be service-role only, not anon-accessible)
 
-The existing `/deals/:id` DealRoom page gets upgraded from 6 tabs to a true lifecycle workspace. New tab structure:
+**Fix:** Tighten `scheduler_runs` policies to require `auth.role() = 'service_role'` instead of `true`.
 
-| Tab | Verb | What It Does |
-|-----|------|-------------|
-| Summary | -- | High-signal overview with key metrics, thesis, and quick stats |
-| Diligence | Diligence | Documents, AI extraction, risk flags, comparable analysis. Embeds the existing DataRoom CSV importer scoped to this deal |
-| Valuation | Diligence | Embeds the existing Valuation toolkit (DCF, comps, football field) scoped to this deal |
-| Discussion | Coordinate | Threaded comments (already working), IC notes |
-| Timeline | Coordinate | Decision journal filtered to this deal (reuses existing Decisions component logic) |
-| Allocation | Allocate | Capital stack: equity, debt, commitments, check size, ownership %. New lightweight form |
-| Updates | Report | Memos, KPI updates, performance vs. original thesis |
+### 6. Materialized Views Exposed in API
+3 materialized views (`mv_dashboard_summary`, `mv_sector_multiples`, `mv_company_scores`) are accessible via the public API. While read-only, they should be moved out of the public API schema or explicitly secured.
 
-### 3. Discover Page (replaces Intelligence)
-
-Route: `/discover` (redirect `/intelligence` to `/discover`)
-
-Transform the current Intelligence hub from a grid of "coming soon" cards into a live discovery engine:
-- **AI Deal Matcher** embedded directly (currently at `/deals/recommended`)
-- **Signal Feed** section showing latest alerts/notifications  
-- **Buy Box Filters** for surfacing opportunities matching the firm's criteria
-- Each discovered opportunity has a "Open Room" CTA that creates a deal and navigates to `/deals/:id`
-
-### 4. Landing Page Reframe
-
-Update copy from "AI-powered private market intelligence" to the OS positioning:
-- Headline: "The system where capital gets deployed"
-- Subline: "From signal to signed wire. One platform."
-- Capabilities section maps to the 5 verbs instead of generic features
-- Remove "AI terminal" language; replace with "operating system" language
-
-### 5. Deals Overview Upgrade
-
-The `/deals` page gets a new section: **Lifecycle Progress** -- a visual showing how many deals are in each verb stage (Discover/Diligence/Coordinate/Allocate), giving the GP/Partner a single-glance view of firm activity.
-
-### 6. Portfolio as "Report" Phase
-
-Add a "Thesis vs. Actuals" card to Portfolio positions that links back to the original Deal Room, showing:
-- Original IC memo (if exists)
-- Entry thesis / rationale from decision log
-- Current performance metrics
-
-### 7. Cleanup: Dead References and Orphaned Code
-
-Files and references to fix:
-- **`src/pages/Index.tsx`**: Currently the old dashboard with references to `/companies`, `/distressed`, etc. Replace with a redirect to `/deals` (the dashboard IS DealsOverview now)
-- **`src/pages/Rooms.tsx`**: Delete -- rooms are now Deal Rooms
-- **`src/pages/Intelligence.tsx`**: Delete -- replaced by Discover
-- **`src/components/CommandPalette.tsx`**: Fix `navigate("/distressed")` to `/discover`
-- **`src/pages/DealMatcher.tsx`**: Fix `navigate("/distressed")` and `navigate("/global")` to `/discover`
-- **`src/pages/Portfolio.tsx`**: Fix `navigate("/companies")` to `/discover`
-- **`src/pages/Decisions.tsx`**: Fix `navigate("/companies/...")` to `/deals/...`
-- **`src/components/CompanyTable.tsx`**: Fix `navigate("/companies")` to `/discover`
-- **`src/pages/Landing.tsx`**: Fix `navigate("/data-coverage")` to `/discover`, update all copy
-- **`src/hooks/useHotkeys.ts`**: Update SIDEBAR_ROUTES to match new nav
-- **`src/components/QuickActions.tsx`**: Update actions to new routes
-
-### 8. Route Map (Final)
-
-```text
-AUTHENTICATED ROUTES
-  /deals                    DealsOverview (home after auth)
-  /deals/flow               DealFlow (Kanban pipeline)  
-  /deals/recommended        DealMatcher (AI matching)
-  /deals/:id                DealRoom (lifecycle workspace)
-  /discover                 Discover (signals + matcher + intel)
-  /portfolio                Portfolio (reporting + tracking)
-  /alerts                   Alerts
-  /settings                 Settings
-  /help                     Help
-  /admin                    AdminDashboard
-
-LEGACY TOOLS (accessible, not in nav)
-  /valuations               Valuations (standalone)
-  /decisions                Decisions (standalone journal)
-  /data-room                DataRoom (standalone importer)
-
-REDIRECTS
-  /dashboard --> /deals
-  /intelligence --> /discover
-  /rooms --> /deals
-  /companies/* --> /discover
-  /distressed --> /discover
-  /global --> /discover
-  /research --> /discover
-  /fund-intelligence --> /discover
-  /real-estate --> /discover
-  /sector-pulse --> /discover
-  ... (all other legacy paths)
-```
+**Fix:** Revoke `SELECT` on these views from the `anon` and `authenticated` roles if they're only consumed by edge functions, or add explicit security documentation.
 
 ---
 
-## Technical Implementation Order
+## IMPROVEMENTS (Should Fix)
 
-### Step 1: Sidebar + Routes + Cleanup
-- Rewrite `AppSidebar.tsx` with 3 main nav items (Discover, Deals, Portfolio)
-- Update `App.tsx` routes: add `/discover`, redirect `/intelligence` and `/rooms`
-- Delete `src/pages/Rooms.tsx` and `src/pages/Intelligence.tsx`
-- Fix all stale `navigate()` calls across the codebase
-- Update `useHotkeys.ts` and `QuickActions.tsx`
-- Route `/dashboard` and old Index to `/deals`
+### 7. DealRoom.tsx is 1038 Lines -- Needs Component Extraction
+The entire Deal Room is a single file with 8 inline components (`SummaryTab`, `DiligenceTab`, `ValuationTab`, `DiscussionTab`, `TimelineTab`, `AllocationTab`, `UpdatesTab`, `MetricItem`). This hurts maintainability and makes the file unwieldy.
 
-### Step 2: Discover Page
-- Create `src/pages/Discover.tsx` -- unified signal + matcher + buy-box hub
-- Embed the AI Deal Matcher as the hero action
-- Add a "Recent Signals" feed from `alert_notifications`
-- Each result card has "Open Room" CTA
+**Fix:** Extract each tab into its own file under `src/components/deal-room/`:
+- `SummaryTab.tsx`
+- `DiligenceTab.tsx`
+- `ValuationTab.tsx`
+- `DiscussionTab.tsx`
+- `TimelineTab.tsx`
+- `AllocationTab.tsx`
+- `UpdatesTab.tsx`
 
-### Step 3: Deal Room Lifecycle Upgrade
-- Add Diligence tab (embed deal-scoped file upload + AI extraction placeholder)
-- Add Valuation tab (embed existing `ValuationFootballField` + `DCFCalculator` + `CompTableBuilder`)
-- Upgrade Allocation tab from placeholder to a lightweight capital stack form (equity amount, debt source, ownership %, commitment date) -- stored in a new `deal_allocations` table
-- Upgrade Updates tab to show decision log entries for this deal + memo attachment placeholder
-- Improve Summary tab with a "Thesis" editable field
+### 8. Discussion Tab Shows User IDs Instead of Names
+`DealRoom.tsx` line 764: `{c.user_id.slice(0, 8)}` -- comments show truncated UUIDs instead of display names. This is a bad UX for a collaboration tool.
 
-### Step 4: Database Migration
-- Create `deal_allocations` table: `id, deal_id, allocation_type (equity/debt/mezzanine), amount, source_name, ownership_pct, commitment_date, notes, created_at, user_id`
-- Add `thesis` column to `deal_pipeline` table for storing the investment thesis
-- RLS policies scoped to authenticated users
+**Fix:** Join `profiles` table in the comments query to show `display_name`. Same for decision log entries and votes.
 
-### Step 5: Landing Page Reframe
-- Update headline, subline, and capabilities to reflect the OS positioning
-- Map capabilities to the 5 verbs (Discover, Diligence, Coordinate, Allocate, Report)
-- Remove "terminal" and "command center" language
+### 9. Document Upload Button is Non-Functional
+Diligence tab has an "Upload" button (line 508-509) that does nothing -- no `onClick` handler. For a data room product, this is a critical gap.
 
-### Step 6: Portfolio "Report" Enhancement
-- Add "Thesis vs. Actuals" linking back to Deal Room
-- Show original entry rationale from `decision_log`
+**Fix:** Wire up file upload to the `document-uploads` storage bucket, create a record in `company_documents`, and show the uploaded file.
 
+### 10. Valuation Tab Links Out Instead of Embedding
+The Valuation tab shows a "Open Valuation Tools" button that navigates to `/valuations` (line 676). The components (`DCFCalculator`, `CompTableBuilder`, `ValuationFootballField`) already exist.
+
+**Fix:** Embed `DCFCalculator` and `CompTableBuilder` directly in the Valuation tab, pre-populated with the deal's financial data.
+
+### 11. No Loading States on Key Mutations
+Several mutations (`openRoom`, `updateStage`, `addAllocation`, `addComment`) don't show loading indicators, leading to double-clicks.
+
+**Fix:** Add `isPending` checks to disable buttons and show spinners during mutations.
+
+### 12. Developers Page is Orphaned
+`src/pages/Developers.tsx` exists but has no route in `App.tsx` (redirects to `/settings`). It imports `Terminal` icon and has full API documentation. Either integrate it into Settings or delete it.
+
+**Fix:** The Settings page already has an "API Access" tab. Verify Developers.tsx content is redundant and delete the file if so.
+
+---
+
+## NEXT STEPS (Strategic Features)
+
+### 13. Deal Room File Upload + AI Extraction
+Wire the Diligence tab upload button to actually accept files (PDF, XLSX), store them in the `document-uploads` bucket, and trigger the existing `analyze-document` edge function for AI extraction. This is the single most valuable feature for pilot conversations.
+
+### 14. Deal Room Realtime
+Add Supabase Realtime subscriptions to `deal_comments`, `deal_votes`, and `decision_log` so multiple team members see updates live. The DealFlow page already has realtime -- extend it to Deal Room.
+
+### 15. IC Memo Generation from Deal Room
+Add a "Generate IC Memo" button to the Summary tab that calls the existing `generate-memo` edge function with the deal's company data, thesis, financials, and decision history. This produces a structured investment memo -- the killer feature for pilot demos.
+
+---
+
+## Implementation Order
+
+| Priority | Item | Effort |
+|----------|------|--------|
+| P0 | Delete Index.tsx, fix OnboardingFlow routes/copy | Small |
+| P0 | Fix Auth.tsx and Help.tsx stale copy | Small |
+| P0 | Fix scheduler_runs RLS policies | Small |
+| P1 | Show display names in comments/decisions (join profiles) | Small |
+| P1 | Wire document upload in Diligence tab | Medium |
+| P1 | Embed DCF/Comps in Valuation tab | Medium |
+| P2 | Extract DealRoom tab components | Medium |
+| P2 | Add mutation loading states | Small |
+| P2 | Delete Developers.tsx | Small |
+| P3 | Deal Room realtime subscriptions | Medium |
+| P3 | IC Memo generation from Deal Room | Medium |
+
+All P0 and P1 items should ship before any pilot conversation. P2 items are code quality. P3 items are differentiators for the demo.
