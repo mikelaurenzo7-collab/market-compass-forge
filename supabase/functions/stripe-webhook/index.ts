@@ -7,6 +7,14 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
   // Add product IDs here when Professional / Institutional products are created
 };
 
+const ALLOWED_EVENTS = [
+  "checkout.session.completed",
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "invoice.payment_failed",
+];
+
 const logStep = (step: string, details?: unknown) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${details ? ` - ${JSON.stringify(details)}` : ""}`);
 };
@@ -18,10 +26,10 @@ async function resolveUserByCustomer(
 ): Promise<{ userId: string; email: string } | null> {
   const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
   if (!customer.email) return null;
-  const { data: users } = await supabase.auth.admin.listUsers();
-  const user = users?.users?.find((u: any) => u.email === customer.email);
-  if (!user) return null;
-  return { userId: user.id, email: customer.email };
+  // Use efficient single-user lookup instead of listing all users
+  const { data, error } = await supabase.auth.admin.getUserByEmail(customer.email);
+  if (error || !data?.user) return null;
+  return { userId: data.user.id, email: customer.email };
 }
 
 function resolvePlan(sub: Stripe.Subscription): { plan: string; priceId: string; interval: string } {
@@ -39,8 +47,12 @@ serve(async (req) => {
   }
 
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
   if (!stripeKey) {
     return new Response("STRIPE_SECRET_KEY not configured", { status: 500 });
+  }
+  if (!webhookSecret) {
+    return new Response("STRIPE_WEBHOOK_SECRET not configured", { status: 500 });
   }
 
   const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
@@ -52,8 +64,39 @@ serve(async (req) => {
 
   try {
     const body = await req.text();
-    const event = JSON.parse(body) as Stripe.Event;
-    logStep("Event received", { type: event.type, id: event.id });
+    const sig = req.headers.get("stripe-signature");
+
+    if (!sig) {
+      logStep("ERROR", { message: "Missing stripe-signature header" });
+      return new Response(JSON.stringify({ error: "Missing stripe-signature header" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    // Verify webhook signature
+    let event: Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logStep("Signature verification failed", { message: msg });
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        headers: { "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
+    logStep("Event verified", { type: event.type, id: event.id });
+
+    // Validate event type whitelist
+    if (!ALLOWED_EVENTS.includes(event.type)) {
+      logStep("Ignoring unhandled event type", { type: event.type });
+      return new Response(JSON.stringify({ received: true }), {
+        headers: { "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     switch (event.type) {
       case "checkout.session.completed": {
@@ -61,8 +104,20 @@ serve(async (req) => {
         const userId = session.metadata?.user_id;
         const plan = session.metadata?.plan ?? "essential";
         const interval = session.metadata?.interval ?? "month";
-        if (userId && session.subscription) {
-          // Fetch the full subscription to get period end
+
+        if (!userId) {
+          logStep("No user_id in session metadata, skipping");
+          break;
+        }
+
+        // Verify user exists before upserting
+        const { data: existingUser, error: userErr } = await supabase.auth.admin.getUserById(userId);
+        if (userErr || !existingUser?.user) {
+          logStep("User not found for checkout", { userId });
+          break;
+        }
+
+        if (session.subscription) {
           const sub = await stripe.subscriptions.retrieve(session.subscription as string);
           const priceId = sub.items.data[0]?.price?.id ?? "";
           await supabase.from("subscription_tiers").upsert(
@@ -145,7 +200,6 @@ serve(async (req) => {
       case "invoice.payment_failed": {
         const invoice = event.data.object as any;
         logStep("Payment failed", { invoice: invoice.id, customer: invoice.customer });
-        // Optionally downgrade or flag
         const resolved = await resolveUserByCustomer(stripe, supabase, invoice.customer);
         if (resolved) {
           await supabase.from("subscription_tiers").update({
@@ -156,9 +210,6 @@ serve(async (req) => {
         }
         break;
       }
-
-      default:
-        logStep("Unhandled event type", { type: event.type });
     }
 
     return new Response(JSON.stringify({ received: true }), {
