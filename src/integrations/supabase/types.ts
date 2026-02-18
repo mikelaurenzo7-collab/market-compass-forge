@@ -803,6 +803,73 @@ export type Database = {
         }
         Relationships: []
       }
+      data_room_invites: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          deal_id: string
+          expires_at: string
+          id: string
+          invited_email: string | null
+          invited_name: string | null
+          max_uploads: number | null
+          revoked_at: string | null
+          token: string
+          upload_count: number | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          deal_id: string
+          expires_at?: string
+          id?: string
+          invited_email?: string | null
+          invited_name?: string | null
+          max_uploads?: number | null
+          revoked_at?: string | null
+          token?: string
+          upload_count?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          deal_id?: string
+          expires_at?: string
+          id?: string
+          invited_email?: string | null
+          invited_name?: string | null
+          max_uploads?: number | null
+          revoked_at?: string | null
+          token?: string
+          upload_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_room_invites_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_invites_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "data_room_invites_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dead_letter_queue: {
         Row: {
           created_at: string
