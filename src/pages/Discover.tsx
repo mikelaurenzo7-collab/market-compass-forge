@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Compass, Sparkles, Bell, ArrowRight, Target, TrendingUp, Globe, AlertTriangle, Search, Plus, Building2, Zap, Filter, X, MapPin, DollarSign, Users, BarChart3, Clock } from "lucide-react";
+import { Compass, Sparkles, Bell, ArrowRight, Target, TrendingUp, Globe, AlertTriangle, Search, Plus, Building2, Zap, Filter, X, MapPin, DollarSign, Users, BarChart3, Clock, Eye, EyeOff } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
 import { toast } from "sonner";
+import { useWatchlists } from "@/components/WatchlistManager";
 
 const SECTORS = ["Technology", "Healthcare", "Financial Services", "Real Estate", "Energy", "Consumer", "Industrials", "Infrastructure"];
 
@@ -156,6 +157,60 @@ const Discover = () => {
       return count ?? 0;
     },
     enabled: !!user,
+  });
+
+  // Watchlist quick-add
+  const { data: watchlists } = useWatchlists();
+
+  const defaultWatchlistId = useMemo(() => watchlists?.[0]?.id ?? null, [watchlists]);
+  const watchedCompanyIds = useMemo(() => {
+    const ids = new Set<string>();
+    (watchlists ?? []).forEach((wl) => {
+      ((wl.company_ids ?? []) as string[]).forEach((id) => ids.add(id));
+    });
+    return ids;
+  }, [watchlists]);
+
+  const toggleWatch = useMutation({
+    mutationFn: async (companyId: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const isWatched = watchedCompanyIds.has(companyId);
+
+      if (isWatched) {
+        // Remove from all watchlists
+        for (const wl of (watchlists ?? [])) {
+          const ids = (wl.company_ids ?? []) as string[];
+          if (ids.includes(companyId)) {
+            await supabase
+              .from("user_watchlists")
+              .update({ company_ids: ids.filter((id) => id !== companyId) })
+              .eq("id", wl.id);
+          }
+        }
+      } else {
+        // Add to default watchlist or create one
+        if (defaultWatchlistId) {
+          const wl = watchlists!.find((w) => w.id === defaultWatchlistId)!;
+          const existing = (wl.company_ids ?? []) as string[];
+          await supabase
+            .from("user_watchlists")
+            .update({ company_ids: [...existing, companyId] })
+            .eq("id", defaultWatchlistId);
+        } else {
+          await supabase.from("user_watchlists").insert({
+            name: "Watchlist",
+            user_id: user.id,
+            company_ids: [companyId],
+          });
+        }
+      }
+    },
+    onSuccess: (_, companyId) => {
+      queryClient.invalidateQueries({ queryKey: ["watchlists"] });
+      const wasWatched = watchedCompanyIds.has(companyId);
+      toast.success(wasWatched ? "Removed from watchlist" : "Added to watchlist");
+    },
+    onError: () => toast.error("Failed to update watchlist"),
   });
 
   // Open Room: add company to pipeline and navigate
@@ -336,7 +391,19 @@ const Discover = () => {
                       </a>
                     )}
                   </div>
-                  <div className="flex items-center justify-end pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleWatch.mutate(company.id); }}
+                      disabled={toggleWatch.isPending}
+                      className={`h-7 px-2.5 rounded-md text-[11px] font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 ${
+                        watchedCompanyIds.has(company.id)
+                          ? "bg-warning/10 text-warning border border-warning/20 hover:bg-warning/20"
+                          : "border border-border text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      }`}
+                    >
+                      {watchedCompanyIds.has(company.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      {watchedCompanyIds.has(company.id) ? "Watching" : "Watch"}
+                    </button>
                     <button
                       onClick={() => openRoom.mutate(company.id)}
                       disabled={openRoom.isPending}

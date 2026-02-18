@@ -1,13 +1,15 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign, AlertTriangle, Zap, Timer } from "lucide-react";
+import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign, AlertTriangle, Zap, Timer, Eye, Radio, ChevronRight } from "lucide-react";
 import { formatDistanceToNow, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
+import { useWatchlists } from "@/components/WatchlistManager";
+import { toast } from "sonner";
 
 type PipelineDeal = {
   id: string;
@@ -34,6 +36,7 @@ const ACTIVE_STAGES = ["screening", "due_diligence", "ic_review"];
 const DealsOverview = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: deals, isLoading } = useQuery({
     queryKey: ["pipeline"],
@@ -74,6 +77,88 @@ const DealsOverview = () => {
     },
     enabled: !!user,
   });
+
+  // Watchlist data
+  const { data: watchlists } = useWatchlists();
+  const watchedCompanyIds = useMemo(() => {
+    const ids = new Set<string>();
+    (watchlists ?? []).forEach((wl) => {
+      ((wl.company_ids ?? []) as string[]).forEach((id) => ids.add(id));
+    });
+    return ids;
+  }, [watchlists]);
+
+  // Get company details for watched items
+  const watchedIdsArray = useMemo(() => Array.from(watchedCompanyIds), [watchedCompanyIds]);
+  const { data: watchedCompanies } = useQuery({
+    queryKey: ["watched-companies", watchedIdsArray],
+    queryFn: async () => {
+      if (watchedIdsArray.length === 0) return [];
+      const { data, error } = await supabase
+        .from("companies")
+        .select("id, name, sector, description, stage")
+        .in("id", watchedIdsArray);
+      if (error) throw error;
+      return data;
+    },
+    enabled: watchedIdsArray.length > 0,
+  });
+
+  // Signal strength: count recent alert_notifications per watched company
+  const { data: signalCounts } = useQuery({
+    queryKey: ["watched-signals", watchedIdsArray],
+    queryFn: async () => {
+      if (watchedIdsArray.length === 0) return {};
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("alert_notifications")
+        .select("company_id")
+        .in("company_id", watchedIdsArray)
+        .gte("created_at", thirtyDaysAgo);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((n) => { if (n.company_id) counts[n.company_id] = (counts[n.company_id] ?? 0) + 1; });
+      return counts;
+    },
+    enabled: watchedIdsArray.length > 0,
+  });
+
+  // Filter out watched companies already in pipeline
+  const pipelineCompanyIds = useMemo(() => {
+    return new Set((deals ?? []).map((d) => d.company_id));
+  }, [deals]);
+
+  const filteredWatched = useMemo(() => {
+    return (watchedCompanies ?? []).filter((c) => !pipelineCompanyIds.has(c.id));
+  }, [watchedCompanies, pipelineCompanyIds]);
+
+  // Activate: move watched company to pipeline
+  const activateWatched = useMutation({
+    mutationFn: async (companyId: string) => {
+      if (!user) throw new Error("Not authenticated");
+      const { data, error } = await supabase
+        .from("deal_pipeline")
+        .insert({ company_id: companyId, user_id: user.id, stage: "sourced" })
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data.id;
+    },
+    onSuccess: (dealId) => {
+      queryClient.invalidateQueries({ queryKey: ["pipeline"] });
+      toast.success("Deal room created from watchlist");
+      navigate(`/deals/${dealId}`);
+    },
+    onError: () => toast.error("Failed to activate deal"),
+  });
+
+  const getSignalStrength = (companyId: string) => {
+    const count = signalCounts?.[companyId] ?? 0;
+    if (count >= 5) return { label: "Hot", color: "text-destructive", bg: "bg-destructive/10", bars: 3 };
+    if (count >= 2) return { label: "Warm", color: "text-warning", bg: "bg-warning/10", bars: 2 };
+    if (count >= 1) return { label: "Active", color: "text-primary", bg: "bg-primary/10", bars: 1 };
+    return { label: "Quiet", color: "text-muted-foreground", bg: "bg-secondary", bars: 0 };
+  };
 
   const activeDeals = useMemo(
     () => (deals ?? []).filter((d) => ACTIVE_STAGES.includes(d.stage)),
@@ -225,6 +310,69 @@ const DealsOverview = () => {
             </div>
           )}
         </div>
+
+        {/* Shadow Pipeline — Watchlist */}
+        {filteredWatched.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Eye className="h-4 w-4 text-warning" /> Watchlist
+                <span className="text-[10px] font-mono text-muted-foreground bg-secondary rounded-full px-1.5 py-0.5">{filteredWatched.length}</span>
+              </h2>
+              <button onClick={() => navigate("/discover")} className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                Add more <Plus className="h-3 w-3" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredWatched.map((company, i) => {
+                const signal = getSignalStrength(company.id);
+                return (
+                  <motion.div
+                    key={company.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="rounded-lg border border-warning/20 bg-card p-4 hover:border-warning/40 transition-all group"
+                  >
+                    <div className="flex items-center gap-2.5 mb-2">
+                      <CompanyAvatar name={company.name} sector={company.sector} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground truncate">{company.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{company.sector ?? "—"}</p>
+                      </div>
+                      {/* Signal Strength Indicator */}
+                      <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium ${signal.bg} ${signal.color}`}>
+                        <div className="flex items-center gap-px">
+                          {[1, 2, 3].map((bar) => (
+                            <div
+                              key={bar}
+                              className={`w-[3px] rounded-sm transition-all ${bar <= signal.bars ? "bg-current" : "bg-current/20"}`}
+                              style={{ height: `${6 + bar * 3}px` }}
+                            />
+                          ))}
+                        </div>
+                        <span>{signal.label}</span>
+                      </div>
+                    </div>
+                    {company.description && (
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 mb-3">{company.description}</p>
+                    )}
+                    <div className="flex items-center justify-end pt-2 border-t border-border/50">
+                      <button
+                        onClick={() => activateWatched.mutate(company.id)}
+                        disabled={activateWatched.isPending}
+                        className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Plus className="h-3 w-3" /> Activate
+                        <ChevronRight className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Active deals */}
         <section>
