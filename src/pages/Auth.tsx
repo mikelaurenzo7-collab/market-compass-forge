@@ -237,7 +237,7 @@ const Auth = () => {
           </div>
           <h1 className="text-xl font-semibold text-foreground">Grapevine</h1>
           <p className="text-sm text-muted-foreground">
-            Private market intelligence that moves faster than your competition
+            The operating system where capital gets deployed
           </p>
         </div>
 
