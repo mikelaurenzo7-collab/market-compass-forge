@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { Scale, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
+import { formatCurrencyCompact, formatMultiple } from "@/lib/format";
 import DCFCalculator from "@/components/DCFCalculator";
 import CompTableBuilder from "@/components/CompTableBuilder";
 import ValuationFootballField from "@/components/ValuationFootballField";
@@ -111,9 +112,9 @@ const ValuationTab = ({ financials, fundingRounds, companyName, companyId, dealI
                   {r.date && <span className="text-muted-foreground">{format(new Date(r.date), "MMM yyyy")}</span>}
                 </div>
                 <div className="flex items-center gap-4">
-                  {r.amount && <span className="font-mono text-foreground">${(r.amount / 1e6).toFixed(1)}M raised</span>}
-                  {r.valuation_pre && <span className="text-muted-foreground">Pre: ${(r.valuation_pre / 1e6).toFixed(0)}M</span>}
-                  {r.valuation_post && <span className="text-primary font-mono font-medium">Post: ${(r.valuation_post / 1e6).toFixed(0)}M</span>}
+                    {r.amount && <span className="font-mono tabular-nums text-foreground">{formatCurrencyCompact(r.amount)} raised</span>}
+                    {r.valuation_pre && <span className="text-muted-foreground">Pre: {formatCurrencyCompact(r.valuation_pre)}</span>}
+                    {r.valuation_post && <span className="text-primary font-mono tabular-nums font-medium">Post: {formatCurrencyCompact(r.valuation_post)}</span>}
                 </div>
               </div>
             ))}
@@ -132,10 +133,10 @@ const ValuationTab = ({ financials, fundingRounds, companyName, companyId, dealI
               const latestArr = financials[0]?.arr;
               return (
                 <>
-                  {latestVal && latestRev && <MetricItem label="EV/Revenue" value={`${(latestVal / latestRev).toFixed(1)}x`} />}
-                  {latestVal && latestEbitda && latestEbitda > 0 && <MetricItem label="EV/EBITDA" value={`${(latestVal / latestEbitda).toFixed(1)}x`} />}
-                  {latestVal && latestArr && <MetricItem label="EV/ARR" value={`${(latestVal / latestArr).toFixed(1)}x`} />}
-                  {latestVal && <MetricItem label="Last Valuation" value={`$${(latestVal / 1e6).toFixed(0)}M`} />}
+                  {latestVal && latestRev && <MetricItem label="EV/Revenue" value={formatMultiple(latestVal / latestRev)} />}
+                  {latestVal && latestEbitda && latestEbitda > 0 && <MetricItem label="EV/EBITDA" value={formatMultiple(latestVal / latestEbitda)} />}
+                  {latestVal && latestArr && <MetricItem label="EV/ARR" value={formatMultiple(latestVal / latestArr)} />}
+                  {latestVal && <MetricItem label="Last Valuation" value={formatCurrencyCompact(latestVal)} />}
                 </>
               );
             })()}

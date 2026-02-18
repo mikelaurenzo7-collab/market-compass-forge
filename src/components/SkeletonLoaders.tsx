@@ -30,7 +30,7 @@ export const MetricsSkeleton = ({ count = 4 }: { count?: number }) => (
 );
 
 export const CardSkeleton = () => (
-  <div className="rounded-lg border border-border glass-premium p-4 space-y-3 shimmer">
+  <div className="rounded-lg border border-border bg-card p-4 space-y-3 shimmer">
     <div className="flex items-center gap-2">
       <Skeleton className="h-6 w-6 rounded" />
       <Skeleton className="h-4 w-32" />
@@ -57,5 +57,38 @@ export const KanbanSkeleton = () => (
         </div>
       </div>
     ))}
+  </div>
+);
+
+/** Skeleton for DealRoom page — header + tabs + content area */
+export const DealRoomSkeleton = () => (
+  <div className="flex flex-col h-full animate-pulse">
+    {/* Header skeleton */}
+    <div className="px-6 pt-4 pb-3 border-b border-border bg-card/50">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Skeleton className="h-3 w-12" />
+        <Skeleton className="h-3 w-3" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-10 w-10 rounded-lg" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-56" />
+        </div>
+      </div>
+      {/* Tab bar skeleton */}
+      <div className="flex items-center gap-4 mt-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-4 w-16" />
+        ))}
+      </div>
+    </div>
+    {/* Content skeleton */}
+    <div className="p-6 space-y-4">
+      <MetricsSkeleton count={4} />
+      <CardSkeleton />
+      <CardSkeleton />
+    </div>
   </div>
 );

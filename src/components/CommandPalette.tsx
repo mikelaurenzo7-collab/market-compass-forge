@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useFullTextSearch } from "@/hooks/useFullTextSearch";
 import { useDealIntelligenceSearch } from "@/hooks/useDealIntelligenceSearch";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Search, FileText, Newspaper, AlertTriangle, Radio, Compass, Handshake, Briefcase, Brain, BookOpen } from "lucide-react";
+import { Building2, Search, FileText, Newspaper, AlertTriangle, Radio, Compass, Handshake, Briefcase, Brain, BookOpen, Settings, Shield, BarChart3, Database } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -115,6 +115,18 @@ const CommandPalette = () => {
             </CommandItem>
             <CommandItem onSelect={() => goTo("/deals/recommended")}>
               <Radio className="mr-2 h-4 w-4" /> AI Deal Matcher
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/valuations")}>
+              <BarChart3 className="mr-2 h-4 w-4" /> Valuations
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/data-room")}>
+              <Database className="mr-2 h-4 w-4" /> Data Room
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/settings")}>
+              <Settings className="mr-2 h-4 w-4" /> Settings
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/admin")}>
+              <Shield className="mr-2 h-4 w-4" /> Admin Dashboard
             </CommandItem>
           </CommandGroup>
         )}

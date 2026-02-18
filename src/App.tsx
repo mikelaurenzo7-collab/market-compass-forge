@@ -27,6 +27,7 @@ import ResetPassword from "./pages/ResetPassword";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import { toast } from "sonner";
+import { getInstitutionalError } from "@/lib/errorMessages";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,8 +37,8 @@ const queryClient = new QueryClient({
       retry: 1,
     },
     mutations: {
-      onError: (error: any) => {
-        toast.error(error?.message || "Something went wrong");
+      onError: (error: unknown) => {
+        toast.error(getInstitutionalError(error));
       },
     },
   },

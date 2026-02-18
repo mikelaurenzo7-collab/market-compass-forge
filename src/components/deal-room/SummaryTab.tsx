@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Edit3, BarChart3, TrendingUp, Clock, CheckCircle, XCircle, FileText, Loader2, Building2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Edit3, BarChart3, TrendingUp, Clock, CheckCircle, XCircle, FileText, Loader2, Building2 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import MetricItem from "./MetricItem";
@@ -11,7 +11,9 @@ import RelationshipGraph from "@/components/RelationshipGraph";
 import HistoricalPrecedent from "./HistoricalPrecedent";
 import AssetKPIs from "./AssetKPIs";
 import DealTasksPanel from "./DealTasksPanel";
+import LastModified from "@/components/LastModified";
 import { STAGE_LABELS } from "./types";
+import { formatCurrencyCompact, formatPercent } from "@/lib/format";
 
 interface SummaryTabProps {
   company: any;
@@ -117,6 +119,7 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
               {thesis || "No thesis documented yet. Click Edit to add your investment rationale."}
             </p>
           )}
+          <LastModified timestamp={deal.updated_at} userId={deal.user_id} />
         </div>
 
         {/* IC Memo Output */}
@@ -156,11 +159,11 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
               <span className="text-[10px] text-muted-foreground font-normal ml-auto">{latestFinancial.period}</span>
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {latestFinancial.revenue != null && <MetricItem label="Revenue" value={`$${(latestFinancial.revenue / 1e6).toFixed(1)}M`} />}
-              {latestFinancial.ebitda != null && <MetricItem label="EBITDA" value={`$${(latestFinancial.ebitda / 1e6).toFixed(1)}M`} />}
-              {latestFinancial.gross_margin != null && <MetricItem label="Gross Margin" value={`${(latestFinancial.gross_margin * 100).toFixed(1)}%`} />}
-              {latestFinancial.arr != null && <MetricItem label="ARR" value={`$${(latestFinancial.arr / 1e6).toFixed(1)}M`} />}
-              {latestFinancial.burn_rate != null && <MetricItem label="Burn Rate" value={`$${(Math.abs(latestFinancial.burn_rate) / 1e6).toFixed(1)}M/mo`} highlight="destructive" />}
+              {latestFinancial.revenue != null && <MetricItem label="Revenue" value={formatCurrencyCompact(latestFinancial.revenue)} />}
+              {latestFinancial.ebitda != null && <MetricItem label="EBITDA" value={formatCurrencyCompact(latestFinancial.ebitda)} />}
+              {latestFinancial.gross_margin != null && <MetricItem label="Gross Margin" value={formatPercent(latestFinancial.gross_margin * 100, 1)} />}
+              {latestFinancial.arr != null && <MetricItem label="ARR" value={formatCurrencyCompact(latestFinancial.arr)} />}
+              {latestFinancial.burn_rate != null && <MetricItem label="Burn Rate" value={`${formatCurrencyCompact(Math.abs(latestFinancial.burn_rate))}/mo`} highlight="destructive" />}
               {latestFinancial.runway_months != null && <MetricItem label="Runway" value={`${latestFinancial.runway_months} months`} />}
             </div>
           </div>
@@ -223,7 +226,7 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">Age</span><span className="text-foreground font-mono">{differenceInDays(new Date(), new Date(deal.created_at))} days</span></div>
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">Updated</span><span className="text-foreground">{formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}</span></div>
             {totalAllocated > 0 && (
-              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Allocated</span><span className="text-success font-mono font-medium">${totalAllocated.toLocaleString()}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">Allocated</span><span className="text-success font-mono tabular-nums font-medium">{formatCurrencyCompact(totalAllocated)}</span></div>
             )}
             {(yesVotes > 0 || noVotes > 0) && (
               <div className="flex justify-between text-xs">

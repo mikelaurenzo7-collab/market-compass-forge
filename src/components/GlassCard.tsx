@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
 
 interface GlassCardProps {
   children: ReactNode;
@@ -11,31 +10,19 @@ interface GlassCardProps {
 }
 
 /**
- * Premium frosted glass card with animated border glow and depth.
+ * Clean institutional card with subtle border.
  */
-export default function GlassCard({ children, className, hover = true, glow = false, elevated = false }: GlassCardProps) {
+export default function GlassCard({ children, className, hover = true }: GlassCardProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+    <div
       className={cn(
-        "rounded-xl relative overflow-hidden border-gradient-animated",
-        elevated ? "glass-elevated" : "glass-premium",
-        "transition-all duration-500",
-        hover && "hover:border-primary/20 hover:shadow-xl hover:-translate-y-0.5",
-        glow && "border-breathe",
+        "rounded-lg border border-border bg-card relative overflow-hidden",
+        "transition-all duration-300",
+        hover && "hover:border-primary/20 hover:shadow-lg",
         className
       )}
     >
-      {/* Top highlight line */}
-      <div
-        className="absolute top-0 left-[5%] right-[5%] h-px opacity-40"
-        style={{
-          background: "linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.08), hsl(var(--primary) / 0.1), hsl(var(--foreground) / 0.08), transparent)",
-        }}
-      />
       {children}
-    </motion.div>
+    </div>
   );
 }

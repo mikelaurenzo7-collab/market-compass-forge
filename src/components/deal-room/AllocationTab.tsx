@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Trash2, DollarSign, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { formatCurrency, formatPercent } from "@/lib/format";
+import LastModified from "@/components/LastModified";
 
 interface AllocationTabProps {
   allocations: any[];
@@ -57,8 +59,8 @@ const AllocationTab = ({ allocations, dealId }: AllocationTabProps) => {
         <div>
           <h3 className="text-sm font-semibold text-foreground">Capital Stack</h3>
           <div className="flex items-center gap-3 mt-0.5">
-            {totalAmount > 0 && <span className="text-xs text-muted-foreground">Total: <span className="font-mono text-primary">${totalAmount.toLocaleString()}</span></span>}
-            {totalOwnership > 0 && <span className="text-xs text-muted-foreground">Ownership: <span className="font-mono text-foreground">{totalOwnership.toFixed(1)}%</span></span>}
+            {totalAmount > 0 && <span className="text-xs text-muted-foreground">Total: <span className="font-mono tabular-nums text-primary">{formatCurrency(totalAmount)}</span></span>}
+            {totalOwnership > 0 && <span className="text-xs text-muted-foreground">Ownership: <span className="font-mono tabular-nums text-foreground">{formatPercent(totalOwnership, 1)}</span></span>}
           </div>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
@@ -121,14 +123,17 @@ const AllocationTab = ({ allocations, dealId }: AllocationTabProps) => {
               {allocations.map((a: any) => (
                 <tr key={a.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                   <td className="px-4 py-2.5"><span className="text-xs px-2 py-0.5 rounded-full border border-primary/20 bg-primary/5 text-primary font-medium capitalize">{a.allocation_type}</span></td>
-                  <td className="text-right px-4 py-2.5 font-mono text-foreground">{a.amount ? `$${Number(a.amount).toLocaleString()}` : "—"}</td>
+                  <td className="text-right px-4 py-2.5 font-mono tabular-nums text-foreground">{a.amount ? formatCurrency(Number(a.amount)) : "—"}</td>
                   <td className="px-4 py-2.5 text-foreground">{a.source_name ?? "—"}</td>
-                  <td className="text-right px-4 py-2.5 font-mono text-foreground">{a.ownership_pct ? `${a.ownership_pct}%` : "—"}</td>
+                  <td className="text-right px-4 py-2.5 font-mono tabular-nums text-foreground">{a.ownership_pct ? formatPercent(a.ownership_pct) : "—"}</td>
                   <td className="px-4 py-2.5 text-muted-foreground text-xs">{a.commitment_date ?? "—"}</td>
                   <td className="px-4 py-2.5">
-                    <button onClick={() => deleteAllocation.mutate(a.id)} disabled={deleteAllocation.isPending} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all disabled:opacity-50">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => deleteAllocation.mutate(a.id)} disabled={deleteAllocation.isPending} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all disabled:opacity-50">
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <LastModified timestamp={a.created_at} userId={a.user_id} className="mt-1" />
                   </td>
                 </tr>
               ))}

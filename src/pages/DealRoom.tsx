@@ -3,7 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ChevronRight, Link, Timer, CheckCircle, XCircle, LayoutDashboard, FileText, Scale, MessageSquare, Clock, PieChart, Bell, ShieldAlert, Users } from "lucide-react";
+import { ChevronRight, Link, Timer, CheckCircle, XCircle, LayoutDashboard, FileText, Scale, MessageSquare, Clock, PieChart, Bell, ShieldAlert } from "lucide-react";
+import { DealRoomSkeleton } from "@/components/SkeletonLoaders";
+import { formatCurrencyCompact } from "@/lib/format";
 import { differenceInDays } from "date-fns";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
@@ -252,9 +254,9 @@ const DealRoom = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageTransition>
+        <DealRoomSkeleton />
+      </PageTransition>
     );
   }
 
@@ -286,8 +288,14 @@ const DealRoom = () => {
         <div className={`px-4 sm:px-6 pt-4 pb-3 border-b-2 ${STAGE_COLORS[deal.stage] ?? "border-border/40"} bg-card/50`}>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
             <button onClick={() => navigate("/deals")} className="hover:text-foreground transition-colors">Deals</button>
+            {company?.sector && (
+              <>
+                <ChevronRight className="h-3 w-3" />
+                <span className="hover:text-foreground transition-colors">{company.sector}</span>
+              </>
+            )}
             <ChevronRight className="h-3 w-3" />
-            <span className="text-foreground">{company?.name ?? "Deal Room"}</span>
+            <span className="text-foreground font-medium">{company?.name ?? "Deal Room"}</span>
           </div>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
@@ -317,8 +325,8 @@ const DealRoom = () => {
                 <Timer className="h-3 w-3" /> {dealAge}d in pipeline
               </span>
               {totalAllocated > 0 && (
-                <span className="text-xs font-mono text-success bg-success/10 border border-success/20 px-2 py-1 rounded-md">
-                  ${totalAllocated.toLocaleString()} allocated
+                <span className="text-xs font-mono tabular-nums text-success bg-success/10 border border-success/20 px-2 py-1 rounded-md">
+                  {formatCurrencyCompact(totalAllocated)} allocated
                 </span>
               )}
               {(yesVotes > 0 || noVotes > 0) && (
