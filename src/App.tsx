@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
 import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
+import ExternalPortal from "./pages/ExternalPortal";
 import ResetPassword from "./pages/ResetPassword";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/external-portal" element={<ExternalPortal />} />
 
             {/* Authenticated */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
