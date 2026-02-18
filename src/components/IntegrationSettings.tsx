@@ -479,7 +479,7 @@ function CRMSection() {
       </div>
 
       <p className="text-[10px] text-muted-foreground">
-        Exports include all deals in your pipeline with company data. Import the CSV into your CRM to sync.
+        Downloads a CSV file with all deals in your pipeline. You can then manually import it into your CRM.
       </p>
     </div>
   );

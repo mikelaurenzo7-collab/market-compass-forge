@@ -68,13 +68,44 @@ const ENTITY_CONFIGS: EntityConfig[] = [
   },
 ];
 
+const splitCSVLine = (line: string): string[] => {
+  const fields: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else if (ch === '"') {
+        inQuotes = false;
+      } else {
+        current += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ",") {
+        fields.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+  }
+  fields.push(current.trim());
+  return fields;
+};
+
 const parseCSV = (text: string): { headers: string[]; rows: ParsedRow[] } => {
   const lines = text.trim().split("\n");
   if (lines.length < 2) return { headers: [], rows: [] };
-  const headers = lines[0].split(",").map((h) => h.trim().replace(/^"|"$/g, "").toLowerCase().replace(/[\s-]/g, "_"));
+  const headers = splitCSVLine(lines[0]).map((h) => h.toLowerCase().replace(/[\s-]/g, "_"));
   const rows: ParsedRow[] = [];
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+    if (!lines[i].trim()) continue;
+    const values = splitCSVLine(lines[i]);
     const row: ParsedRow = {};
     headers.forEach((h, j) => { row[h] = values[j] ?? ""; });
     rows.push(row);
@@ -260,7 +291,7 @@ const CSVImporter = ({ config }: { config: EntityConfig }) => {
       await supabase.from("import_history").update({
         success_count: successCount,
         error_count: errorCount,
-        status: errorCount === 0 ? "complete" : "partial",
+        status: errorCount === 0 ? "complete" : successCount === 0 ? "failed" : "partial",
         errors: errors as any,
       } as any).eq("id", (importRecord as any).id);
 
