@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { FileText, Upload, AlertTriangle, TrendingUp, BarChart3, Link, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import InspectionGallery from "./InspectionGallery";
 
 interface DiligenceTabProps {
   documents: any[];
@@ -12,9 +13,11 @@ interface DiligenceTabProps {
   enrichments: any[];
   companyName?: string;
   companyId?: string;
+  dealId?: string;
+  dealMode?: string;
 }
 
-const DiligenceTab = ({ documents, financials, enrichments, companyName, companyId }: DiligenceTabProps) => {
+const DiligenceTab = ({ documents, financials, enrichments, companyName, companyId, dealId, dealMode }: DiligenceTabProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -49,6 +52,10 @@ const DiligenceTab = ({ documents, financials, enrichments, companyName, company
 
   return (
     <div className="max-w-4xl space-y-6">
+      {/* Inspection Gallery (Asset mode) */}
+      {dealMode === "asset" && dealId && companyId && (
+        <InspectionGallery dealId={dealId} companyId={companyId} />
+      )}
       {/* Documents section */}
       <div className="rounded-lg border border-border bg-card">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between">
