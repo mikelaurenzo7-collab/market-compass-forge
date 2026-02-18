@@ -26,6 +26,7 @@ import ExternalPortal from "./pages/ExternalPortal";
 import ResetPassword from "./pages/ResetPassword";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
+import Demo from "./pages/Demo";
 import { toast } from "sonner";
 import { getInstitutionalError } from "@/lib/errorMessages";
 
@@ -59,6 +60,7 @@ const App = () => (
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/external-portal" element={<ExternalPortal />} />
+            <Route path="/demo" element={<Demo />} />
 
             {/* Authenticated */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
