@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Compass, Sparkles, Bell, ArrowRight, Target, TrendingUp, Globe, AlertTriangle, Search, Plus, Building2, Zap, Filter, X } from "lucide-react";
+import { Compass, Sparkles, Bell, ArrowRight, Target, TrendingUp, Globe, AlertTriangle, Search, Plus, Building2, Zap, Filter, X, MapPin, DollarSign, Users, BarChart3, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import CompanyAvatar from "@/components/CompanyAvatar";
@@ -26,7 +26,7 @@ const Discover = () => {
     queryFn: async () => {
       let q = supabase
         .from("companies")
-        .select("id, name, sector, description, hq_country, stage, employee_count, market_type")
+        .select("id, name, sector, description, hq_country, stage, employee_count, market_type, domain, founded_year")
         .order("updated_at", { ascending: false })
         .limit(20);
       if (searchQuery.length >= 2) {
@@ -45,7 +45,7 @@ const Discover = () => {
     queryFn: async () => {
       let q = supabase
         .from("companies")
-        .select("id, name, sector, description, hq_country, stage, employee_count, market_type")
+        .select("id, name, sector, description, hq_country, stage, employee_count, market_type, domain, founded_year")
         .order("updated_at", { ascending: false })
         .limit(12);
       if (sectorFilter) q = q.eq("sector", sectorFilter);
@@ -54,6 +54,22 @@ const Discover = () => {
       return data;
     },
     enabled: searchQuery.length < 2,
+  });
+
+  // Sector breakdown for trending widget
+  const { data: sectorCounts } = useQuery({
+    queryKey: ["discover-sector-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("companies")
+        .select("sector")
+        .not("sector", "is", null);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      data?.forEach((c) => { if (c.sector) counts[c.sector] = (counts[c.sector] ?? 0) + 1; });
+      return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    },
+    staleTime: 60_000,
   });
 
   // Recent signals
@@ -85,13 +101,28 @@ const Discover = () => {
     },
   });
 
+  // Global opportunities
+  const { data: globalOpps } = useQuery({
+    queryKey: ["discover-global"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("global_opportunities")
+        .select("*")
+        .in("status", ["active", null as any])
+        .order("created_at", { ascending: false })
+        .limit(6);
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Distressed opportunities
   const { data: distressed } = useQuery({
     queryKey: ["discover-distressed"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("distressed_assets")
-        .select("id, name, asset_type, asking_price, discount_pct, sector, distress_type, status, description")
+        .select("id, name, asset_type, asking_price, discount_pct, sector, distress_type, status, description, location_city, location_state")
         .eq("status", "active")
         .order("listed_date", { ascending: false })
         .limit(6);
@@ -100,11 +131,37 @@ const Discover = () => {
     },
   });
 
+  // Recent deal transactions
+  const { data: recentDeals } = useQuery({
+    queryKey: ["discover-recent-deals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_transactions")
+        .select("*")
+        .order("announced_date", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Pipeline count for context
+  const { data: pipelineCount } = useQuery({
+    queryKey: ["discover-pipeline-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("deal_pipeline")
+        .select("id", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!user,
+  });
+
   // Open Room: add company to pipeline and navigate
   const openRoom = useMutation({
     mutationFn: async (companyId: string) => {
       if (!user) throw new Error("Not authenticated");
-      // Check if already in pipeline
       const { data: existing } = await supabase
         .from("deal_pipeline")
         .select("id")
@@ -130,6 +187,14 @@ const Discover = () => {
 
   const displayCompanies = searchQuery.length >= 2 ? searchResults : browseCompanies;
 
+  const formatValue = (val: number | null) => {
+    if (!val) return null;
+    if (val >= 1e9) return `$${(val / 1e9).toFixed(1)}B`;
+    if (val >= 1e6) return `$${(val / 1e6).toFixed(1)}M`;
+    if (val >= 1e3) return `$${(val / 1e3).toFixed(0)}K`;
+    return `$${val}`;
+  };
+
   return (
     <PageTransition>
       <div className="p-4 sm:p-6 space-y-6 max-w-7xl">
@@ -141,15 +206,26 @@ const Discover = () => {
               Discover
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Surface rooms worth opening. Search, filter, and open a Deal Room in one click.
+              Surface rooms worth opening.
+              {pipelineCount != null && pipelineCount > 0 && (
+                <span className="ml-2 text-primary font-mono">{pipelineCount} deals in pipeline</span>
+              )}
             </p>
           </div>
-          <button
-            onClick={() => navigate("/deals/recommended")}
-            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
-          >
-            <Sparkles className="h-4 w-4" /> AI Deal Matcher
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate("/deals")}
+              className="h-9 px-4 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+            >
+              <BarChart3 className="h-4 w-4" /> Pipeline
+            </button>
+            <button
+              onClick={() => navigate("/deals/recommended")}
+              className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+            >
+              <Sparkles className="h-4 w-4" /> AI Deal Matcher
+            </button>
+          </div>
         </div>
 
         {/* Search + Filters */}
@@ -208,7 +284,7 @@ const Discover = () => {
           </AnimatePresence>
         </div>
 
-        {/* Companies grid - the sourcing engine */}
+        {/* Companies grid */}
         {displayCompanies && displayCompanies.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-3">
@@ -216,6 +292,7 @@ const Discover = () => {
                 <Building2 className="h-4 w-4 text-primary" />
                 {searchQuery.length >= 2 ? `Results for "${searchQuery}"` : "Companies"}
               </h2>
+              <span className="text-[10px] text-muted-foreground font-mono">{displayCompanies.length} results</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {displayCompanies.map((company: any, i: number) => (
@@ -241,15 +318,25 @@ const Discover = () => {
                   {company.description && (
                     <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{company.description}</p>
                   )}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-2">
-                      {company.stage && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{company.stage}</span>
-                      )}
-                      {company.employee_count && (
-                        <span className="text-[10px] text-muted-foreground">{company.employee_count.toLocaleString()} emp</span>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-2 flex-wrap mb-3">
+                    {company.stage && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-muted-foreground">{company.stage}</span>
+                    )}
+                    {company.employee_count && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                        <Users className="h-2.5 w-2.5" /> {company.employee_count.toLocaleString()}
+                      </span>
+                    )}
+                    {company.founded_year && (
+                      <span className="text-[10px] text-muted-foreground">Est. {company.founded_year}</span>
+                    )}
+                    {company.domain && (
+                      <a href={`https://${company.domain}`} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline truncate max-w-[120px]">
+                        {company.domain}
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-end pt-2 border-t border-border/50">
                     <button
                       onClick={() => openRoom.mutate(company.id)}
                       disabled={openRoom.isPending}
@@ -300,6 +387,41 @@ const Discover = () => {
                 <p className="text-xs text-muted-foreground mt-0.5">Ingest companies, financials & contacts via CSV</p>
               </button>
             </div>
+
+            {/* Recent Deal Transactions */}
+            {recentDeals && recentDeals.length > 0 && (
+              <div className="rounded-lg border border-border bg-card">
+                <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-primary" /> Recent Transactions
+                  </h2>
+                  <button onClick={() => navigate("/deals/flow")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">
+                    View All
+                  </button>
+                </div>
+                <div className="divide-y divide-border/50">
+                  {recentDeals.map((deal: any, i: number) => (
+                    <motion.div
+                      key={deal.id}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      className="px-4 py-3 hover:bg-secondary/30 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium text-foreground">{deal.target_company}</p>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium capitalize">{deal.deal_type}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1">
+                        {deal.deal_value && <span className="text-xs font-mono text-foreground">{formatValue(deal.deal_value)}</span>}
+                        {deal.acquirer_investor && <span className="text-[10px] text-muted-foreground">by {deal.acquirer_investor}</span>}
+                        {deal.target_industry && <span className="text-[10px] text-muted-foreground">· {deal.target_industry}</span>}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Market Intelligence */}
             {marketEvents && marketEvents.length > 0 && (
@@ -367,8 +489,75 @@ const Discover = () => {
             )}
           </div>
 
-          {/* Sidebar: Distressed */}
+          {/* Sidebar */}
           <div className="space-y-4">
+            {/* Sector Heatmap */}
+            {sectorCounts && sectorCounts.length > 0 && (
+              <div className="rounded-lg border border-border bg-card">
+                <div className="px-4 py-3 border-b border-border">
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-primary" /> Sector Coverage
+                  </h2>
+                </div>
+                <div className="p-3 space-y-1.5">
+                  {sectorCounts.map(([sector, count], i) => {
+                    const maxCount = sectorCounts[0][1] as number;
+                    const pct = (count as number) / (maxCount as number) * 100;
+                    return (
+                      <button
+                        key={sector}
+                        onClick={() => { setSectorFilter(sectorFilter === sector ? null : sector); setShowFilters(true); }}
+                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors ${sectorFilter === sector ? "bg-primary/10 text-primary" : "hover:bg-secondary/50 text-foreground"}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="truncate font-medium">{sector}</span>
+                            <span className="font-mono text-muted-foreground ml-2">{count}</span>
+                          </div>
+                          <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ delay: i * 0.05, duration: 0.4 }}
+                              className="h-full rounded-full bg-primary/60"
+                            />
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Global Opportunities */}
+            {globalOpps && globalOpps.length > 0 && (
+              <div className="rounded-lg border border-border bg-card">
+                <div className="px-4 py-3 border-b border-border">
+                  <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-chart-4" /> Global Opportunities
+                  </h2>
+                </div>
+                <div className="divide-y divide-border/50">
+                  {globalOpps.map((opp: any) => (
+                    <div key={opp.id} className="px-4 py-3 hover:bg-secondary/30 transition-colors">
+                      <p className="text-sm font-medium text-foreground truncate">{opp.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                          <MapPin className="h-2.5 w-2.5" /> {opp.country}
+                        </span>
+                        {opp.sector && <span className="text-[10px] text-muted-foreground">· {opp.sector}</span>}
+                      </div>
+                      {opp.deal_value_usd && (
+                        <span className="text-xs font-mono text-primary mt-1 inline-block">{formatValue(opp.deal_value_usd)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Distressed Opportunities */}
             <div className="rounded-lg border border-border bg-card">
               <div className="px-4 py-3 border-b border-border">
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -389,13 +578,21 @@ const Discover = () => {
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{asset.description}</p>
                       )}
                       <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-[10px] text-muted-foreground capitalize">
-                          {asset.asset_type} · {asset.sector ?? "—"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-muted-foreground capitalize">{asset.asset_type}</span>
+                          {asset.location_city && (
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                              · <MapPin className="h-2.5 w-2.5" /> {asset.location_city}{asset.location_state ? `, ${asset.location_state}` : ""}
+                            </span>
+                          )}
+                        </div>
                         {asset.discount_pct && (
                           <span className="text-xs font-mono font-medium text-warning">{asset.discount_pct}% off</span>
                         )}
                       </div>
+                      {asset.asking_price && (
+                        <span className="text-[10px] font-mono text-primary mt-1 inline-block">{formatValue(asset.asking_price)}</span>
+                      )}
                     </div>
                   ))}
                 </div>

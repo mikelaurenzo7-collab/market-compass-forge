@@ -3,8 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, FileText, MessageSquare, Clock, PieChart, Bell, LayoutDashboard, ChevronRight, Scale, BookOpen, Plus, Trash2, DollarSign, Upload, AlertTriangle, TrendingUp, BarChart3 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { ArrowLeft, FileText, MessageSquare, Clock, PieChart, Bell, LayoutDashboard, ChevronRight, Scale, BookOpen, Plus, Trash2, DollarSign, Upload, AlertTriangle, TrendingUp, BarChart3, Timer, CheckCircle, XCircle, Send, Edit3, Link } from "lucide-react";
+import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
 import { toast } from "sonner";
@@ -12,6 +12,12 @@ import { toast } from "sonner";
 const STAGE_LABELS: Record<string, string> = {
   sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
   ic_review: "IC Review", committed: "Committed", passed: "Passed",
+};
+
+const STAGE_COLORS: Record<string, string> = {
+  sourced: "border-muted-foreground/30", screening: "border-primary/40",
+  due_diligence: "border-warning/40", ic_review: "border-chart-4/40",
+  committed: "border-success/40", passed: "border-destructive/40",
 };
 
 const TABS = [
@@ -57,11 +63,11 @@ const DealRoom = () => {
         .select("*")
         .eq("deal_id", id!)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(30);
       if (error) throw error;
       return data;
     },
-    enabled: !!id && ["timeline", "summary", "updates"].includes(activeTab),
+    enabled: !!id,
   });
 
   const { data: comments } = useQuery({
@@ -72,11 +78,11 @@ const DealRoom = () => {
         .select("*")
         .eq("deal_id", id!)
         .order("created_at", { ascending: false })
-        .limit(30);
+        .limit(50);
       if (error) throw error;
       return data;
     },
-    enabled: !!id && ["discussion", "summary"].includes(activeTab),
+    enabled: !!id,
   });
 
   const { data: allocations } = useQuery({
@@ -90,10 +96,9 @@ const DealRoom = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!id && ["allocation", "summary"].includes(activeTab),
+    enabled: !!id,
   });
 
-  // Financials for this company
   const { data: financials } = useQuery({
     queryKey: ["deal-financials", companyId],
     queryFn: async () => {
@@ -102,14 +107,13 @@ const DealRoom = () => {
         .select("*")
         .eq("company_id", companyId!)
         .order("period", { ascending: false })
-        .limit(4);
+        .limit(8);
       if (error) throw error;
       return data;
     },
-    enabled: !!companyId && ["summary", "diligence", "valuation"].includes(activeTab),
+    enabled: !!companyId,
   });
 
-  // Documents for this company
   const { data: documents } = useQuery({
     queryKey: ["deal-documents", companyId],
     queryFn: async () => {
@@ -121,10 +125,9 @@ const DealRoom = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!companyId && ["diligence", "summary"].includes(activeTab),
+    enabled: !!companyId,
   });
 
-  // Funding rounds
   const { data: fundingRounds } = useQuery({
     queryKey: ["deal-funding", companyId],
     queryFn: async () => {
@@ -133,20 +136,57 @@ const DealRoom = () => {
         .select("*")
         .eq("company_id", companyId!)
         .order("date", { ascending: false })
-        .limit(5);
+        .limit(10);
       if (error) throw error;
       return data;
     },
-    enabled: !!companyId && ["summary", "valuation"].includes(activeTab),
+    enabled: !!companyId,
+  });
+
+  const { data: enrichments } = useQuery({
+    queryKey: ["deal-enrichments", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_enrichments")
+        .select("*")
+        .eq("company_id", companyId!)
+        .order("scraped_at", { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: votes } = useQuery({
+    queryKey: ["deal-votes", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_votes")
+        .select("*")
+        .eq("pipeline_deal_id", id!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
   });
 
   const updateStage = useMutation({
     mutationFn: async (stage: string) => {
+      if (!user) return;
+      const oldStage = deal?.stage;
       const { error } = await supabase.from("deal_pipeline").update({ stage }).eq("id", id!);
       if (error) throw error;
+      // Log decision
+      await supabase.from("decision_log").insert({
+        deal_id: id!, user_id: user.id, decision_type: "stage_change",
+        from_state: oldStage, to_state: stage, rationale: `Moved from ${STAGE_LABELS[oldStage ?? ""] ?? oldStage} to ${STAGE_LABELS[stage]}`
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["deal-room", id] });
+      queryClient.invalidateQueries({ queryKey: ["deal-decisions", id] });
       queryClient.invalidateQueries({ queryKey: ["pipeline"] });
       toast.success("Stage updated");
     },
@@ -189,12 +229,15 @@ const DealRoom = () => {
 
   const company = deal.companies as any;
   const totalAllocated = (allocations ?? []).reduce((s: number, a: any) => s + (Number(a.amount) || 0), 0);
+  const dealAge = differenceInDays(new Date(), new Date(deal.created_at));
+  const yesVotes = (votes ?? []).filter((v: any) => v.vote === "yes").length;
+  const noVotes = (votes ?? []).filter((v: any) => v.vote === "no").length;
 
   return (
     <PageTransition>
       <div className="flex flex-col h-full">
         {/* Header */}
-        <div className="px-4 sm:px-6 pt-4 pb-3 border-b border-border/40 bg-card/50">
+        <div className={`px-4 sm:px-6 pt-4 pb-3 border-b-2 ${STAGE_COLORS[deal.stage] ?? "border-border/40"} bg-card/50`}>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
             <button onClick={() => navigate("/deals")} className="hover:text-foreground transition-colors">Deals</button>
             <ChevronRight className="h-3 w-3" />
@@ -209,17 +252,26 @@ const DealRoom = () => {
                   {company?.sector && <span className="text-xs text-muted-foreground">{company.sector}</span>}
                   {company?.hq_country && <span className="text-xs text-muted-foreground">· {company.hq_country}</span>}
                   {company?.domain && (
-                    <a href={`https://${company.domain}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-                      {company.domain}
+                    <a href={`https://${company.domain}`} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                      <Link className="h-2.5 w-2.5" /> {company.domain}
                     </a>
                   )}
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                <Timer className="h-3 w-3" /> {dealAge}d in pipeline
+              </span>
               {totalAllocated > 0 && (
                 <span className="text-xs font-mono text-success bg-success/10 border border-success/20 px-2 py-1 rounded-md">
                   ${totalAllocated.toLocaleString()} allocated
+                </span>
+              )}
+              {(yesVotes > 0 || noVotes > 0) && (
+                <span className="text-[10px] font-mono flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-secondary/50">
+                  <CheckCircle className="h-3 w-3 text-success" /> {yesVotes}
+                  <XCircle className="h-3 w-3 text-destructive" /> {noVotes}
                 </span>
               )}
               <select
@@ -238,6 +290,10 @@ const DealRoom = () => {
           <div role="tablist" aria-label="Deal room tabs" className="flex items-center gap-1 mt-4 -mb-px overflow-x-auto" onKeyDown={handleKeyDown}>
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
+              let badge: number | null = null;
+              if (tab.id === "discussion") badge = comments?.length ?? 0;
+              if (tab.id === "diligence") badge = documents?.length ?? 0;
+              if (tab.id === "allocation") badge = allocations?.length ?? 0;
               return (
                 <button
                   key={tab.id}
@@ -252,6 +308,9 @@ const DealRoom = () => {
                 >
                   <tab.icon className="h-3.5 w-3.5" />
                   {tab.label}
+                  {badge != null && badge > 0 && (
+                    <span className="text-[9px] font-mono bg-secondary text-muted-foreground rounded-full px-1 min-w-[16px] text-center">{badge}</span>
+                  )}
                 </button>
               );
             })}
@@ -262,14 +321,14 @@ const DealRoom = () => {
         <div className="flex-1 overflow-y-auto">
           <div role="tabpanel" id={`panel-${activeTab}`} className="p-4 sm:p-6">
             {activeTab === "summary" && (
-              <SummaryTab company={company} deal={deal} decisions={decisions} comments={comments} financials={financials} fundingRounds={fundingRounds} documents={documents} allocations={allocations} onSaveThesis={(t: string) => updateThesis.mutate(t)} />
+              <SummaryTab company={company} deal={deal} decisions={decisions} comments={comments} financials={financials} fundingRounds={fundingRounds} documents={documents} allocations={allocations} enrichments={enrichments} votes={votes} onSaveThesis={(t: string) => updateThesis.mutate(t)} />
             )}
-            {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} companyName={company?.name} />}
+            {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} />}
             {activeTab === "valuation" && <ValuationTab navigate={navigate} financials={financials ?? []} fundingRounds={fundingRounds ?? []} />}
-            {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} />}
+            {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} />}
             {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
             {activeTab === "allocation" && <AllocationTab allocations={allocations ?? []} dealId={id!} />}
-            {activeTab === "updates" && <UpdatesTab decisions={decisions ?? []} />}
+            {activeTab === "updates" && <UpdatesTab decisions={decisions ?? []} dealId={id!} />}
           </div>
         </div>
       </div>
@@ -278,11 +337,13 @@ const DealRoom = () => {
 };
 
 /* ── Summary Tab ── */
-const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRounds, documents, allocations, onSaveThesis }: any) => {
+const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRounds, documents, allocations, enrichments, votes, onSaveThesis }: any) => {
   const [editingThesis, setEditingThesis] = useState(false);
   const [thesis, setThesis] = useState((deal as any).thesis ?? "");
   const latestFinancial = financials?.[0];
   const totalAllocated = (allocations ?? []).reduce((s: number, a: any) => s + (Number(a.amount) || 0), 0);
+  const yesVotes = (votes ?? []).filter((v: any) => v.vote === "yes").length;
+  const noVotes = (votes ?? []).filter((v: any) => v.vote === "no").length;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-5xl">
@@ -290,7 +351,9 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
         {/* Thesis */}
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Investment Thesis</h3>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Edit3 className="h-3.5 w-3.5 text-primary" /> Investment Thesis
+            </h3>
             <button onClick={() => { if (editingThesis) onSaveThesis(thesis); setEditingThesis(!editingThesis); }} className="text-[10px] text-primary hover:underline">
               {editingThesis ? "Save" : "Edit"}
             </button>
@@ -313,43 +376,13 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
               <BarChart3 className="h-4 w-4 text-primary" /> Key Financials
               <span className="text-[10px] text-muted-foreground font-normal ml-auto">{latestFinancial.period}</span>
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {latestFinancial.revenue != null && (
-                <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Revenue</p>
-                  <p className="text-sm font-mono font-medium text-foreground mt-0.5">${(latestFinancial.revenue / 1e6).toFixed(1)}M</p>
-                </div>
-              )}
-              {latestFinancial.ebitda != null && (
-                <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">EBITDA</p>
-                  <p className="text-sm font-mono font-medium text-foreground mt-0.5">${(latestFinancial.ebitda / 1e6).toFixed(1)}M</p>
-                </div>
-              )}
-              {latestFinancial.gross_margin != null && (
-                <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Gross Margin</p>
-                  <p className="text-sm font-mono font-medium text-foreground mt-0.5">{(latestFinancial.gross_margin * 100).toFixed(1)}%</p>
-                </div>
-              )}
-              {latestFinancial.arr != null && (
-                <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">ARR</p>
-                  <p className="text-sm font-mono font-medium text-foreground mt-0.5">${(latestFinancial.arr / 1e6).toFixed(1)}M</p>
-                </div>
-              )}
-              {latestFinancial.burn_rate != null && (
-                <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Burn Rate</p>
-                  <p className="text-sm font-mono font-medium text-destructive mt-0.5">${(Math.abs(latestFinancial.burn_rate) / 1e6).toFixed(1)}M/mo</p>
-                </div>
-              )}
-              {latestFinancial.runway_months != null && (
-                <div>
-                  <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">Runway</p>
-                  <p className="text-sm font-mono font-medium text-foreground mt-0.5">{latestFinancial.runway_months} months</p>
-                </div>
-              )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {latestFinancial.revenue != null && <MetricItem label="Revenue" value={`$${(latestFinancial.revenue / 1e6).toFixed(1)}M`} />}
+              {latestFinancial.ebitda != null && <MetricItem label="EBITDA" value={`$${(latestFinancial.ebitda / 1e6).toFixed(1)}M`} />}
+              {latestFinancial.gross_margin != null && <MetricItem label="Gross Margin" value={`${(latestFinancial.gross_margin * 100).toFixed(1)}%`} />}
+              {latestFinancial.arr != null && <MetricItem label="ARR" value={`$${(latestFinancial.arr / 1e6).toFixed(1)}M`} />}
+              {latestFinancial.burn_rate != null && <MetricItem label="Burn Rate" value={`$${(Math.abs(latestFinancial.burn_rate) / 1e6).toFixed(1)}M/mo`} highlight="destructive" />}
+              {latestFinancial.runway_months != null && <MetricItem label="Runway" value={`${latestFinancial.runway_months} months`} />}
             </div>
           </div>
         )}
@@ -378,6 +411,7 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
                   <div>
                     <span className="font-medium text-foreground">{r.round_type}</span>
                     {r.date && <span className="text-muted-foreground ml-2">{format(new Date(r.date), "MMM yyyy")}</span>}
+                    {r.lead_investors?.length > 0 && <span className="text-muted-foreground ml-2">· Led by {r.lead_investors[0]}</span>}
                   </div>
                   <div className="text-right">
                     {r.amount && <span className="font-mono text-foreground">${(r.amount / 1e6).toFixed(1)}M</span>}
@@ -404,9 +438,19 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
           <div className="space-y-2">
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">Stage</span><span className="text-primary font-medium">{STAGE_LABELS[deal.stage] ?? deal.stage}</span></div>
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">Priority</span><span className="text-foreground">{deal.priority ?? "—"}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Age</span><span className="text-foreground font-mono">{differenceInDays(new Date(), new Date(deal.created_at))} days</span></div>
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">Updated</span><span className="text-foreground">{formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}</span></div>
             {totalAllocated > 0 && (
               <div className="flex justify-between text-xs"><span className="text-muted-foreground">Allocated</span><span className="text-success font-mono font-medium">${totalAllocated.toLocaleString()}</span></div>
+            )}
+            {(yesVotes > 0 || noVotes > 0) && (
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">IC Votes</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-success font-mono">{yesVotes} yes</span>
+                  <span className="text-destructive font-mono">{noVotes} no</span>
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -418,6 +462,7 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
             <div className="flex justify-between"><span className="text-muted-foreground">Comments</span><span className="font-mono text-foreground">{comments?.length ?? 0}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Documents</span><span className="font-mono text-foreground">{documents?.length ?? 0}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Allocations</span><span className="font-mono text-foreground">{allocations?.length ?? 0}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Enrichments</span><span className="font-mono text-foreground">{enrichments?.length ?? 0}</span></div>
           </div>
         </div>
 
@@ -444,15 +489,15 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
   );
 };
 
-const MetricItem = ({ label, value }: { label: string; value: string }) => (
+const MetricItem = ({ label, value, highlight }: { label: string; value: string; highlight?: string }) => (
   <div>
     <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">{label}</p>
-    <p className="text-sm text-foreground mt-0.5">{value}</p>
+    <p className={`text-sm font-mono mt-0.5 ${highlight === "destructive" ? "text-destructive" : "text-foreground"}`}>{value}</p>
   </div>
 );
 
 /* ── Diligence Tab ── */
-const DiligenceTab = ({ documents, financials, companyName }: { documents: any[]; financials: any[]; companyName?: string }) => (
+const DiligenceTab = ({ documents, financials, enrichments, companyName }: { documents: any[]; financials: any[]; enrichments: any[]; companyName?: string }) => (
   <div className="max-w-4xl space-y-6">
     {/* Documents section */}
     <div className="rounded-lg border border-border bg-card">
@@ -485,14 +530,51 @@ const DiligenceTab = ({ documents, financials, companyName }: { documents: any[]
                   </div>
                 </div>
               </div>
-              {doc.ai_summary && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">AI Summary</span>
-              )}
+              <div className="flex items-center gap-2">
+                {doc.ai_summary && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">AI Summary</span>}
+                {doc.red_flags && <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium">Flags</span>}
+              </div>
             </div>
           ))}
         </div>
       )}
     </div>
+
+    {/* Enrichment data */}
+    {enrichments.length > 0 && (
+      <div className="rounded-lg border border-border bg-card">
+        <div className="px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Research & Enrichments ({enrichments.length})
+          </h3>
+        </div>
+        <div className="divide-y divide-border/50">
+          {enrichments.map((e: any) => (
+            <div key={e.id} className="px-4 py-3 hover:bg-secondary/30 transition-colors">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">{e.title ?? e.source_name}</p>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                  e.confidence_score === "high" ? "bg-success/10 text-success" :
+                  e.confidence_score === "medium" ? "bg-warning/10 text-warning" :
+                  "bg-secondary text-muted-foreground"
+                }`}>
+                  {e.confidence_score}
+                </span>
+              </div>
+              {e.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{e.summary}</p>}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[10px] text-muted-foreground">{e.data_type} · {e.source_name}</span>
+                {e.source_url && (
+                  <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline flex items-center gap-0.5">
+                    <Link className="h-2.5 w-2.5" /> Source
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
 
     {/* Financials history */}
     {financials.length > 0 && (
@@ -529,7 +611,7 @@ const DiligenceTab = ({ documents, financials, companyName }: { documents: any[]
       </div>
     )}
 
-    {/* Risk flags placeholder */}
+    {/* Risk flags */}
     <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
       <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2">
         <AlertTriangle className="h-4 w-4 text-warning" /> Risk Assessment
@@ -542,7 +624,6 @@ const DiligenceTab = ({ documents, financials, companyName }: { documents: any[]
 /* ── Valuation Tab ── */
 const ValuationTab = ({ navigate, financials, fundingRounds }: { navigate: any; financials: any[]; fundingRounds: any[] }) => (
   <div className="max-w-4xl space-y-6">
-    {/* Latest valuation data */}
     {fundingRounds.length > 0 && (
       <div className="rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3">Valuation History</h3>
@@ -564,7 +645,6 @@ const ValuationTab = ({ navigate, financials, fundingRounds }: { navigate: any; 
       </div>
     )}
 
-    {/* Key multiples */}
     {financials.length > 0 && fundingRounds.length > 0 && (
       <div className="rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-semibold text-foreground mb-3">Implied Multiples</h3>
@@ -600,8 +680,8 @@ const ValuationTab = ({ navigate, financials, fundingRounds }: { navigate: any; 
   </div>
 );
 
-/* ── Discussion Tab ── */
-const DiscussionTab = ({ comments, dealId }: { comments: any[]; dealId: string }) => {
+/* ── Discussion Tab with IC Voting ── */
+const DiscussionTab = ({ comments, dealId, votes }: { comments: any[]; dealId: string; votes: any[] }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState("");
@@ -618,14 +698,57 @@ const DiscussionTab = ({ comments, dealId }: { comments: any[]; dealId: string }
     },
   });
 
+  const castVote = useMutation({
+    mutationFn: async (vote: string) => {
+      if (!user) return;
+      // Upsert vote
+      const { data: existing } = await supabase.from("deal_votes").select("id").eq("pipeline_deal_id", dealId).eq("user_id", user.id).maybeSingle();
+      if (existing) {
+        await supabase.from("deal_votes").update({ vote }).eq("id", existing.id);
+      } else {
+        await supabase.from("deal_votes").insert({ pipeline_deal_id: dealId, user_id: user.id, vote });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deal-votes", dealId] });
+      toast.success("Vote recorded");
+    },
+  });
+
+  const myVote = votes.find((v: any) => v.user_id === user?.id)?.vote;
+  const yesVotes = votes.filter((v: any) => v.vote === "yes").length;
+  const noVotes = votes.filter((v: any) => v.vote === "no").length;
+
   return (
     <div className="max-w-2xl space-y-4">
+      {/* IC Vote */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <h3 className="text-sm font-semibold text-foreground mb-3">IC Vote</h3>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => castVote.mutate("yes")}
+            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${myVote === "yes" ? "bg-success text-success-foreground" : "border border-border text-muted-foreground hover:text-success hover:border-success/30 hover:bg-success/5"}`}
+          >
+            <CheckCircle className="h-4 w-4" /> Proceed ({yesVotes})
+          </button>
+          <button
+            onClick={() => castVote.mutate("no")}
+            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${myVote === "no" ? "bg-destructive text-destructive-foreground" : "border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5"}`}
+          >
+            <XCircle className="h-4 w-4" /> Pass ({noVotes})
+          </button>
+        </div>
+      </div>
+
+      {/* Comment input */}
       <div className="flex gap-2">
         <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addComment.mutate()}
-          placeholder="Add a comment..."
+          placeholder="Add a comment or IC note..."
           className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" />
-        <button onClick={() => addComment.mutate()} disabled={!newComment.trim()} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">Post</button>
+        <button onClick={() => addComment.mutate()} disabled={!newComment.trim()} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1.5">
+          <Send className="h-3.5 w-3.5" /> Post
+        </button>
       </div>
       {comments.length === 0 ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center">
@@ -667,7 +790,9 @@ const TimelineTab = ({ decisions }: { decisions: any[] }) => {
       {decisions.map((d: any, i: number) => (
         <div key={d.id} className="relative flex gap-3">
           <div className="flex flex-col items-center">
-            <div className="h-7 w-7 rounded-full border-2 border-border bg-card flex items-center justify-center shrink-0">
+            <div className={`h-7 w-7 rounded-full border-2 bg-card flex items-center justify-center shrink-0 ${
+              d.decision_type === "stage_change" ? "border-primary" : "border-border"
+            }`}>
               <Clock className="h-3 w-3 text-muted-foreground" />
             </div>
             {i < decisions.length - 1 && <div className="w-px flex-1 bg-border/50" />}
@@ -675,8 +800,12 @@ const TimelineTab = ({ decisions }: { decisions: any[] }) => {
           <div className="pb-4 flex-1">
             <div className="rounded-lg border border-border bg-card p-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-foreground">{d.decision_type}</span>
-                {d.from_state && d.to_state && <span className="text-[10px] text-muted-foreground">{d.from_state} → {d.to_state}</span>}
+                <span className="text-xs font-medium text-foreground capitalize">{d.decision_type.replace(/_/g, " ")}</span>
+                {d.from_state && d.to_state && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                    {STAGE_LABELS[d.from_state] ?? d.from_state} → {STAGE_LABELS[d.to_state] ?? d.to_state}
+                  </span>
+                )}
               </div>
               {d.rationale && <p className="text-xs text-muted-foreground mt-1">{d.rationale}</p>}
               <p className="text-[10px] text-muted-foreground/60 mt-1.5">{format(new Date(d.created_at), "MMM d, yyyy h:mm a")}</p>
@@ -723,18 +852,46 @@ const AllocationTab = ({ allocations, dealId }: { allocations: any[]; dealId: st
   });
 
   const totalAmount = allocations.reduce((sum: number, a: any) => sum + (Number(a.amount) || 0), 0);
+  const totalOwnership = allocations.reduce((sum: number, a: any) => sum + (Number(a.ownership_pct) || 0), 0);
+
+  // Group by type
+  const byType = allocations.reduce((acc: Record<string, number>, a: any) => {
+    acc[a.allocation_type] = (acc[a.allocation_type] ?? 0) + (Number(a.amount) || 0);
+    return acc;
+  }, {});
 
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Capital Stack</h3>
-          {totalAmount > 0 && <p className="text-xs text-muted-foreground mt-0.5">Total: <span className="font-mono text-primary">${totalAmount.toLocaleString()}</span></p>}
+          <div className="flex items-center gap-3 mt-0.5">
+            {totalAmount > 0 && <span className="text-xs text-muted-foreground">Total: <span className="font-mono text-primary">${totalAmount.toLocaleString()}</span></span>}
+            {totalOwnership > 0 && <span className="text-xs text-muted-foreground">Ownership: <span className="font-mono text-foreground">{totalOwnership.toFixed(1)}%</span></span>}
+          </div>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
           <Plus className="h-3 w-3" /> Add Allocation
         </button>
       </div>
+
+      {/* Stack summary */}
+      {Object.keys(byType).length > 1 && (
+        <div className="flex items-center gap-0.5 h-3 rounded-full overflow-hidden bg-secondary">
+          {Object.entries(byType).map(([type, amount]) => {
+            const amt = amount as number;
+            const pct = totalAmount > 0 ? (amt / totalAmount) * 100 : 0;
+            return (
+              <div
+                key={type}
+                style={{ width: `${pct}%` }}
+                className={`h-full ${type === "equity" ? "bg-primary" : type === "debt" ? "bg-warning" : type === "mezzanine" ? "bg-chart-4" : "bg-success"}`}
+                title={`${type}: $${amount.toLocaleString()} (${pct.toFixed(0)}%)`}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {showForm && (
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -787,34 +944,95 @@ const AllocationTab = ({ allocations, dealId }: { allocations: any[]; dealId: st
   );
 };
 
-/* ── Updates Tab ── */
-const UpdatesTab = ({ decisions }: { decisions: any[] }) => (
-  <div className="max-w-2xl space-y-4">
-    <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="text-sm font-semibold text-foreground mb-3">Decision History</h3>
+/* ── Updates Tab with Decision Logger ── */
+const UpdatesTab = ({ decisions, dealId }: { decisions: any[]; dealId: string }) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [showLogger, setShowLogger] = useState(false);
+  const [logForm, setLogForm] = useState({ decision_type: "note", rationale: "" });
+
+  const addDecision = useMutation({
+    mutationFn: async () => {
+      if (!user || !logForm.rationale.trim()) return;
+      const { error } = await supabase.from("decision_log").insert({
+        deal_id: dealId, user_id: user.id,
+        decision_type: logForm.decision_type, rationale: logForm.rationale.trim(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["deal-decisions", dealId] });
+      setLogForm({ decision_type: "note", rationale: "" });
+      setShowLogger(false);
+      toast.success("Entry logged");
+    },
+  });
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-foreground">Decision Journal & Updates</h3>
+        <button onClick={() => setShowLogger(!showLogger)} className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+          <Plus className="h-3 w-3" /> Log Entry
+        </button>
+      </div>
+
+      {showLogger && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+          <select value={logForm.decision_type} onChange={(e) => setLogForm({ ...logForm, decision_type: e.target.value })} className="h-9 w-full px-3 rounded-md border border-border bg-background text-sm text-foreground">
+            <option value="note">IC Note</option>
+            <option value="kpi_update">KPI Update</option>
+            <option value="risk_flag">Risk Flag</option>
+            <option value="thesis_update">Thesis Update</option>
+            <option value="meeting_note">Meeting Note</option>
+            <option value="memo">Investment Memo</option>
+          </select>
+          <textarea
+            value={logForm.rationale}
+            onChange={(e) => setLogForm({ ...logForm, rationale: e.target.value })}
+            rows={3}
+            placeholder="What happened? What did you decide? Why?"
+            className="w-full rounded-md border border-border bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          />
+          <button onClick={() => addDecision.mutate()} disabled={!logForm.rationale.trim()} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+            Save Entry
+          </button>
+        </div>
+      )}
+
       {decisions.length === 0 ? (
-        <div className="p-6 text-center">
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
           <BookOpen className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">IC memos, KPI updates, and performance tracking will appear here.</p>
+          <p className="text-sm text-muted-foreground">No entries yet</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Log IC notes, KPI updates, risk flags, and memos to build institutional memory.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {decisions.map((d: any) => (
-            <div key={d.id} className="flex items-start gap-2 text-xs border-b border-border/30 pb-2 last:border-0">
-              <BookOpen className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-foreground font-medium">{d.decision_type}</span>
-                  <span className="text-[10px] text-muted-foreground/60">{format(new Date(d.created_at), "MMM d, yyyy")}</span>
+            <div key={d.id} className="rounded-lg border border-border bg-card p-3">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium capitalize ${
+                    d.decision_type === "risk_flag" ? "bg-destructive/10 text-destructive" :
+                    d.decision_type === "kpi_update" ? "bg-success/10 text-success" :
+                    d.decision_type === "stage_change" ? "bg-primary/10 text-primary" :
+                    "bg-secondary text-muted-foreground"
+                  }`}>
+                    {d.decision_type.replace(/_/g, " ")}
+                  </span>
+                  {d.from_state && d.to_state && (
+                    <span className="text-[10px] text-muted-foreground">{STAGE_LABELS[d.from_state] ?? d.from_state} → {STAGE_LABELS[d.to_state] ?? d.to_state}</span>
+                  )}
                 </div>
-                {d.rationale && <p className="text-muted-foreground mt-0.5">{d.rationale}</p>}
+                <span className="text-[10px] text-muted-foreground/60">{format(new Date(d.created_at), "MMM d, yyyy")}</span>
               </div>
+              {d.rationale && <p className="text-sm text-foreground leading-relaxed">{d.rationale}</p>}
             </div>
           ))}
         </div>
       )}
     </div>
-  </div>
-);
+  );
+};
 
 export default DealRoom;
