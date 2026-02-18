@@ -2,16 +2,9 @@ import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   LayoutDashboard,
-  Building2,
-  Globe,
   Handshake,
   Sparkles,
   DollarSign,
-  Rss,
-  Activity,
-  Building,
-  AlertTriangle,
-  Landmark,
   Bell,
   Settings,
   ShieldCheck,
@@ -19,7 +12,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  Search,
   Upload,
   Briefcase,
   BookOpen,
@@ -44,16 +36,6 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Markets",
-    items: [
-      { id: "companies", label: "Companies", icon: Building2, path: "/companies" },
-      { id: "global", label: "Global Markets", icon: Globe, path: "/global" },
-      { id: "real-estate", label: "Real Estate", icon: Building, path: "/real-estate" },
-      { id: "distressed", label: "Distressed Assets", icon: AlertTriangle, path: "/distressed" },
-      { id: "fund-intel", label: "Fund Intelligence", icon: Landmark, path: "/fund-intelligence" },
-    ],
-  },
-  {
     label: "Deal Engine",
     items: [
       { id: "deals", label: "Deal Flow", icon: Handshake, path: "/deals" },
@@ -67,14 +49,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Workspace",
     items: [
       { id: "data-room", label: "Data Room", icon: Upload, path: "/data-room" },
-    ],
-  },
-  {
-    label: "Intelligence",
-    items: [
-      { id: "research", label: "Research & AI", icon: Search, path: "/research" },
-      { id: "intelligence", label: "Intelligence Feed", icon: Rss, path: "/intelligence" },
-      { id: "sector-pulse", label: "Sector Pulse", icon: Activity, path: "/sector-pulse" },
     ],
   },
 ];
