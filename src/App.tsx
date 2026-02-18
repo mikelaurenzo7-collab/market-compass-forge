@@ -70,6 +70,7 @@ const App = () => (
 
               {/* Portfolio */}
               <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/decisions" element={<Decisions />} />
 
               {/* Utility */}
               <Route path="/alerts" element={<Alerts />} />
@@ -80,7 +81,6 @@ const App = () => (
 
               {/* Legacy tools (accessible, not in nav) */}
               <Route path="/valuations" element={<Valuations />} />
-              <Route path="/decisions" element={<Decisions />} />
               <Route path="/data-room" element={<DataRoom />} />
 
               {/* All legacy redirects → new routes */}

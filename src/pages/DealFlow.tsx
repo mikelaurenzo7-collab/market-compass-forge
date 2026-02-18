@@ -19,16 +19,8 @@ import MobileDealCard from "@/components/MobileCompanyCard";
 import DealWorkspace from "@/components/DealWorkspace";
 import { useSlackNotify } from "@/hooks/useSlackNotify";
 
-const STAGES = ["sourced", "screening", "due_diligence", "ic_review", "committed", "passed"] as const;
-const STAGE_LABELS: Record<string, string> = {
-  sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
-  ic_review: "IC Review", committed: "Committed", passed: "Passed",
-};
-const STAGE_COLORS: Record<string, string> = {
-  sourced: "border-t-muted-foreground", screening: "border-t-primary",
-  due_diligence: "border-t-warning", ic_review: "border-t-chart-4",
-  committed: "border-t-success", passed: "border-t-destructive",
-};
+import { STAGES, STAGE_LABELS, STAGE_BORDER_TOP_COLORS } from "@/components/deal-room/types";
+const STAGE_COLORS = STAGE_BORDER_TOP_COLORS;
 
 type PipelineDeal = {
   id: string; company_id: string; stage: string; priority: string | null;

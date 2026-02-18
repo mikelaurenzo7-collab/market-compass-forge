@@ -49,6 +49,8 @@ const Portfolio = () => {
   const [activePortfolioId, setActivePortfolioId] = useState<string | null>(null);
   const [showAddPosition, setShowAddPosition] = useState(false);
   const [showBenchmark, setShowBenchmark] = useState(false);
+  const [showCreatePortfolio, setShowCreatePortfolio] = useState(false);
+  const [newPortfolioName, setNewPortfolioName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [newPos, setNewPos] = useState({ company_id: "", shares: "", entry_price: "", entry_date: new Date().toISOString().split("T")[0], notes: "" });
 
@@ -122,8 +124,10 @@ const Portfolio = () => {
   }, [positions]);
 
   const handleCreatePortfolio = () => {
-    const name = prompt("Portfolio name:");
-    if (name?.trim()) createPortfolio.mutate(name.trim());
+    if (!newPortfolioName.trim()) return;
+    createPortfolio.mutate(newPortfolioName.trim());
+    setNewPortfolioName("");
+    setShowCreatePortfolio(false);
   };
 
   const handleAddPosition = () => {
@@ -169,9 +173,31 @@ const Portfolio = () => {
               <BarChart3 className="h-4 w-4" /> Benchmark
             </button>
           )}
-          <button onClick={handleCreatePortfolio} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
-            <Plus className="h-4 w-4" /> New Portfolio
-          </button>
+          {showCreatePortfolio ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={newPortfolioName}
+                onChange={(e) => setNewPortfolioName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreatePortfolio()}
+                placeholder="Portfolio name..."
+                autoFocus
+                className="h-9 px-3 rounded-md border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary w-48"
+              />
+              <button onClick={handleCreatePortfolio} disabled={!newPortfolioName.trim() || createPortfolio.isPending}
+                className="h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                Create
+              </button>
+              <button onClick={() => { setShowCreatePortfolio(false); setNewPortfolioName(""); }}
+                className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setShowCreatePortfolio(true)} className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2">
+              <Plus className="h-4 w-4" /> New Portfolio
+            </button>
+          )}
           {selectedId && (
             <button onClick={() => { if (confirm("Delete this portfolio and all positions?")) deletePortfolio.mutate(selectedId); }}
               className="h-9 px-3 rounded-md border border-border text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">

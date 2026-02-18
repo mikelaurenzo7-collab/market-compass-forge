@@ -20,10 +20,7 @@ type PipelineDeal = {
   companies: { name: string; sector: string | null; stage: string | null } | null;
 };
 
-const STAGE_LABELS: Record<string, string> = {
-  sourced: "Sourced", screening: "Screening", due_diligence: "Due Diligence",
-  ic_review: "IC Review", committed: "Committed", passed: "Passed",
-};
+import { STAGE_LABELS } from "@/components/deal-room/types";
 
 const LIFECYCLE_VERBS = [
   { verb: "Discover", stages: ["sourced"], icon: Compass, color: "bg-primary/10 text-primary border-primary/20" },

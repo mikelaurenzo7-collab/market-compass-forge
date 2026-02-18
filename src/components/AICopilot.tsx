@@ -6,19 +6,18 @@ import { supabase } from "@/integrations/supabase/client";
 import ReactMarkdown from "react-markdown";
 
 const PAGE_CONTEXT: Record<string, string> = {
-  "/dashboard": "the main dashboard showing market intelligence, deal flow, and portfolio metrics",
-  "/companies": "the private companies database with valuations, funding rounds, and sector analysis",
-  "/deals": "the deal pipeline showing sourced, screening, and due diligence stage deals",
-  "/valuations": "the valuation tools including DCF calculator, comp tables, and football field charts",
-  "/portfolio": "portfolio positions with MOIC, IRR tracking, and benchmark comparisons",
-  "/intelligence": "intelligence signals feed with sentiment analysis and AI summaries",
-  "/sector-pulse": "sector momentum dashboard tracking capital flow rotation patterns",
-  "/screening": "company screening with multi-factor filters and saved screen templates",
-  "/research": "research workspace with AI chat, document analysis, and SEC filings",
-  "/distressed": "distressed asset opportunities with discount analysis",
-  "/global": "global cross-border investment opportunities across regions",
-  "/fund-intelligence": "fund performance analytics with IRR, TVPI, and LP commitment data",
-  "/real-estate": "commercial real estate market data, transactions, and off-market listings",
+  "/discover": "the Discover page where users surface companies, market events, distressed assets, and global opportunities worth opening a Deal Room for",
+  "/deals": "the Deals overview showing capital lifecycle progress, active deals in diligence, velocity metrics, and recent IC decisions",
+  "/deals/flow": "the Kanban pipeline view where deals are dragged between stages: Sourced → Screening → Due Diligence → IC Review → Committed → Passed",
+  "/deals/recommended": "the AI Deal Matcher that analyzes pipeline patterns and recommends new opportunities based on sector, stage, and thesis fit",
+  "/portfolio": "portfolio positions with thesis-vs-actuals tracking, MOIC, P&L, sector allocation, and benchmark comparisons against original IC rationale",
+  "/decisions": "the Decision Journal — an audit trail of every stage change, IC vote, and commitment rationale across the entire deal pipeline",
+  "/alerts": "alert rules monitoring sectors, funding events, SEC filings, and distressed assets with real-time notification delivery",
+  "/settings": "account settings, team management, API keys, billing, integrations, and data import configuration",
+  "/admin": "admin dashboard with team roles, activity logs, and workspace management",
+  "/valuations": "valuation tools including DCF calculator, comparable company tables, and football field visualization",
+  "/data-room": "data import hub for ingesting companies, financials, and contacts via CSV upload",
+  "/help": "help center with FAQ about the Capital Lifecycle OS, Deal Rooms, and platform capabilities",
 };
 
 /**

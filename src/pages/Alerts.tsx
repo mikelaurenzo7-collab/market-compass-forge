@@ -130,15 +130,34 @@ const Alerts = () => {
         <div>
           <h1 className="text-xl font-semibold text-foreground">Alerts</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Monitor companies, sectors and investor activity. Create alert rules to receive notifications when metrics change or new opportunities emerge. <span className="font-mono text-primary">{unreadCount}</span> unread
+            Monitor companies, sectors and investor activity. <span className="font-mono text-primary">{unreadCount}</span> unread
           </p>
         </div>
-        <button
-          onClick={() => setShowCreate(!showCreate)}
-          className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" /> New Alert
-        </button>
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              onClick={() => {
+                const unreadIds = notifications?.filter(n => !n.is_read).map(n => n.id) ?? [];
+                if (!unreadIds.length) return;
+                Promise.all(unreadIds.map(nid => supabase.from("alert_notifications").update({ is_read: true }).eq("id", nid)))
+                  .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["alert-notifications"] });
+                    queryClient.invalidateQueries({ queryKey: ["unread-notifications"] });
+                    toast({ title: "All notifications marked as read" });
+                  });
+              }}
+              className="h-9 px-4 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-2"
+            >
+              <Check className="h-4 w-4" /> Mark All Read
+            </button>
+          )}
+          <button
+            onClick={() => setShowCreate(!showCreate)}
+            className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" /> New Alert
+          </button>
+        </div>
       </div>
 
       {/* Create Alert Form */}

@@ -4,6 +4,7 @@ import {
   Compass,
   Handshake,
   Briefcase,
+  BookOpen,
   Bell,
   Settings,
   ShieldCheck,
@@ -49,6 +50,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     { id: "discover", label: "Discover", icon: Compass, path: "/discover" },
     { id: "deals", label: "Deals", icon: Handshake, path: "/deals" },
     { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
+    { id: "decisions", label: "Decisions", icon: BookOpen, path: "/decisions" },
   ], []);
 
   const bottomNav: NavItem[] = useMemo(() => [
@@ -62,6 +64,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
     if (path === "/deals") return location.pathname === "/deals" || location.pathname.startsWith("/deals/");
     if (path === "/settings") return location.pathname === "/settings" || location.pathname === "/account";
     if (path === "/discover") return location.pathname === "/discover";
+    if (path === "/decisions") return location.pathname === "/decisions";
     return location.pathname.startsWith(path);
   };
 
