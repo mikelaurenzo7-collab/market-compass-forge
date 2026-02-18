@@ -6,13 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useDashboardMetrics, formatCurrency } from "@/hooks/useData";
-import { CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3, FileText, Globe, ChevronRight, Lock, AlertTriangle, Briefcase, Building, Loader2 } from "lucide-react";
+import {
+  CheckCircle, Mail, ArrowRight, FlaskConical, Shield, Zap, Brain, BarChart3,
+  FileText, Globe, ChevronRight, Lock, AlertTriangle, Briefcase, Building,
+  Loader2, Search, MessageSquare, PieChart, TrendingUp, Target, BookOpen
+} from "lucide-react";
 
+/* ── Animations ── */
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
+    opacity: 1, y: 0,
     transition: { delay: i * 0.12, duration: 0.7, ease: [0.22, 1, 0.36, 1] as const },
   }),
 };
@@ -20,52 +24,75 @@ const fadeUp = {
 const pulseGlow = {
   initial: { scale: 1, opacity: 0.6 },
   animate: {
-    scale: [1, 1.15, 1],
-    opacity: [0.6, 1, 0.6],
+    scale: [1, 1.15, 1], opacity: [0.6, 1, 0.6],
     transition: { duration: 3, repeat: Infinity, ease: "easeInOut" as const },
   },
 };
 
+/* ── Data ── */
 const INTERESTS = [
-  "Fund Intelligence",
-  "Real Estate Intel",
-  "AI Research",
-  "Document Analysis",
-  "Deal Flow Tracking",
-  "Company Screening",
+  "Deal Sourcing & Screening",
+  "Due Diligence Automation",
+  "IC Workflow & Coordination",
+  "Capital Allocation Tracking",
+  "Portfolio Reporting",
+  "Full Platform",
   "Other",
 ];
 
-const CAPABILITIES = [
+const LIFECYCLE_STEPS = [
   {
-    icon: Brain,
-    title: "Discover",
-    description: "AI-sourced signals across distressed, CRE, and PE opportunities. Surface rooms worth opening.",
+    icon: Search,
+    verb: "Discover",
+    title: "Surface the signal",
+    description: "AI-powered deal sourcing across distressed, CRE, and PE opportunities. Buy-box matching. Morning briefings. Surface rooms worth opening.",
+    color: "hsl(var(--primary))",
   },
   {
     icon: FileText,
-    title: "Diligence",
-    description: "Upload docs, extract metrics, flag risks. Every deal gets a structured underwriting package.",
+    verb: "Diligence",
+    title: "Underwrite with structure",
+    description: "Upload docs, extract metrics, flag risks. DCF, comps, and football fields — all scoped to the deal room. Every deal gets a structured package.",
+    color: "hsl(var(--chart-2))",
   },
   {
-    icon: BarChart3,
-    title: "Coordinate",
-    description: "IC notes, decision journal, threaded comments. No more email chains — everything lives in the room.",
+    icon: MessageSquare,
+    verb: "Coordinate",
+    title: "Decide as a team",
+    description: "IC notes, decision journal, threaded comments, proceed/pass voting. No more email chains — everything lives in the room.",
+    color: "hsl(var(--chart-4))",
   },
   {
-    icon: Globe,
-    title: "Allocate",
-    description: "Track equity, debt, and commitments. When capital is wired, it gets logged. That is gravity.",
+    icon: PieChart,
+    verb: "Allocate",
+    title: "Deploy capital",
+    description: "Track equity, debt, and mezzanine commitments. Ownership percentages, commitment dates, source tracking. When capital is wired, it gets logged.",
+    color: "hsl(var(--chart-3))",
+  },
+  {
+    icon: TrendingUp,
+    verb: "Report",
+    title: "Measure what matters",
+    description: "Thesis vs. actuals. Original IC memo linked to current performance. The institutional memory layer of your firm.",
+    color: "hsl(var(--chart-5))",
+  },
+];
+
+const DIFFERENTIATORS = [
+  {
+    icon: Target,
+    title: "The Deal Room",
+    description: "Every opportunity becomes a lifecycle workspace — from first signal to final wire. Summary, diligence, valuation, discussion, timeline, allocation, and updates in one place.",
+  },
+  {
+    icon: BookOpen,
+    title: "Decision Memory",
+    description: "Every stage change, every IC vote, every rationale — logged automatically. Your firm builds pattern recognition across hundreds of deals, not just the ones partners remember.",
   },
   {
     icon: Shield,
-    title: "Report",
-    description: "Thesis vs. actuals. Original IC memo linked to current performance. The memory layer of the firm.",
-  },
-  {
-    icon: Zap,
-    title: "API & Integrations",
-    description: "Programmatic access to deal flow, company intelligence, and fund data. Build your own workflows.",
+    title: "Data Provenance",
+    description: "Every data point traced to source with confidence scoring. SEC EDGAR, FRED, FMP, Firecrawl, and user uploads — all verified, all auditable. No black boxes.",
   },
 ];
 
@@ -83,10 +110,7 @@ const Landing = () => {
         supabase.from("companies").select("id", { count: "exact", head: true }).or("market_type.eq.private,market_type.is.null"),
         supabase.from("distressed_assets").select("id", { count: "exact", head: true }).eq("status", "active"),
       ]);
-      return {
-        companiesCount: companiesRes.count ?? 0,
-        distressedCount: distressedRes.count ?? 0,
-      };
+      return { companiesCount: companiesRes.count ?? 0, distressedCount: distressedRes.count ?? 0 };
     },
     staleTime: 60_000,
   });
@@ -97,10 +121,7 @@ const Landing = () => {
     setLoading(true);
     try {
       const { error } = await supabase.from("waitlist_signups").insert({
-        name: form.name,
-        email: form.email,
-        firm: form.firm || null,
-        interest: form.interest || null,
+        name: form.name, email: form.email, firm: form.firm || null, interest: form.interest || null,
       });
       if (error) throw error;
       setSubmitted(true);
@@ -114,7 +135,7 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-hidden relative">
-      {/* Layered ambient background */}
+      {/* Ambient background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_20%,hsl(var(--brand-purple)/0.14),transparent)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_80%,hsl(var(--primary)/0.08),transparent)]" />
@@ -122,19 +143,8 @@ const Landing = () => {
         <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")" }} />
       </div>
 
-      {/* Floating orbs */}
-      <motion.div
-        variants={pulseGlow}
-        initial="initial"
-        animate="animate"
-        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[hsl(var(--brand-purple)/0.08)] blur-[120px] pointer-events-none"
-      />
-      <motion.div
-        variants={pulseGlow}
-        initial="initial"
-        animate="animate"
-        className="absolute top-1/3 left-[60%] -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-[hsl(var(--primary)/0.06)] blur-[100px] pointer-events-none"
-      />
+      <motion.div variants={pulseGlow} initial="initial" animate="animate"
+        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-[hsl(var(--brand-purple)/0.08)] blur-[120px] pointer-events-none" />
 
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-20 flex items-center justify-between px-6 md:px-12 py-5 max-w-6xl mx-auto w-full">
@@ -144,31 +154,23 @@ const Landing = () => {
           </div>
           <span className="text-lg font-semibold tracking-tight">Grapevine</span>
           <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold border border-primary/30 text-primary bg-primary/5">
-            <FlaskConical className="h-3 w-3" />
-            BETA
+            <FlaskConical className="h-3 w-3" /> BETA
           </span>
         </div>
         <div className="flex items-center gap-4 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.5s]">
-          <button
-            onClick={() => navigate("/discover")}
-            className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex"
-          >
+          <button onClick={() => navigate("/discover")} className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex">
             Platform
           </button>
-          <button
-            onClick={() => navigate("/auth")}
-            className="text-xs font-medium text-foreground bg-primary/10 hover:bg-primary/20 border border-primary/20 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1"
-          >
-            <Lock className="h-3 w-3" />
-            Beta Login
+          <button onClick={() => navigate("/auth")}
+            className="text-xs font-medium text-foreground bg-primary/10 hover:bg-primary/20 border border-primary/20 px-3 py-1.5 rounded-md transition-colors flex items-center gap-1">
+            <Lock className="h-3 w-3" /> Beta Login
           </button>
         </div>
       </nav>
 
-      {/* HERO SECTION */}
+      {/* ── HERO ── */}
       <section className="relative z-10 flex flex-col items-center px-6 pt-28 pb-16 max-w-3xl mx-auto text-center">
         <motion.div initial="hidden" animate="visible" className="space-y-8 flex flex-col items-center">
-          {/* Logo mark */}
           <motion.div custom={0} variants={fadeUp}>
             <div className="relative">
               <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-[hsl(var(--brand-purple))] flex items-center justify-center shadow-2xl shadow-[hsl(var(--brand-purple)/0.4)]">
@@ -178,24 +180,36 @@ const Landing = () => {
             </div>
           </motion.div>
 
-          {/* Headline */}
           <motion.div custom={1} variants={fadeUp} className="space-y-4">
             <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter leading-[0.9]">
               The system where<br />
               <span className="text-glow text-primary">capital gets deployed.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              From signal to signed wire. One platform. The private markets operating system for PE firms, family offices, and CRE acquirers.
+              From signal to signed wire. One platform for the entire capital lifecycle.
+              The private markets operating system for PE firms, family offices, and CRE acquirers.
             </p>
           </motion.div>
 
-          {/* Live platform metrics */}
-          <motion.div custom={2} variants={fadeUp} className="w-full max-w-lg">
+          {/* Lifecycle breadcrumb */}
+          <motion.div custom={2} variants={fadeUp} className="w-full max-w-xl">
+            <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
+              {LIFECYCLE_STEPS.map((step, i) => (
+                <div key={step.verb} className="flex items-center gap-1 sm:gap-2">
+                  <span className="text-xs sm:text-sm font-semibold" style={{ color: step.color }}>{step.verb}</span>
+                  {i < LIFECYCLE_STEPS.length - 1 && <ArrowRight className="h-3 w-3 text-muted-foreground/40" />}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Live metrics */}
+          <motion.div custom={3} variants={fadeUp} className="w-full max-w-lg">
             <div className="grid grid-cols-4 gap-3">
               {[
-                { value: formatCurrency(metrics?.totalDealValue ?? 0), label: "Total Deal Value", icon: BarChart3 },
-                { value: String(liveCounts?.companiesCount ?? 0), label: "Companies Tracked", icon: Building },
-                { value: String(liveCounts?.distressedCount ?? 0), label: "Distressed Alerts", icon: AlertTriangle },
+                { value: formatCurrency(metrics?.totalDealValue ?? 0), label: "Deal Flow Tracked", icon: BarChart3 },
+                { value: String(liveCounts?.companiesCount ?? 0), label: "Companies", icon: Building },
+                { value: String(liveCounts?.distressedCount ?? 0), label: "Active Signals", icon: AlertTriangle },
                 { value: String(metrics?.totalRounds ?? 0), label: "Funding Rounds", icon: Briefcase },
               ].map((s) => (
                 <div key={s.label} className="rounded-lg border border-border/40 bg-card/40 backdrop-blur-sm p-3 text-center space-y-1">
@@ -207,15 +221,7 @@ const Landing = () => {
             </div>
           </motion.div>
 
-          {/* CTA Badge */}
-          <motion.div custom={3} variants={fadeUp}>
-            <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border border-[hsl(var(--brand-purple)/0.3)] text-[hsl(var(--brand-purple))] bg-[hsl(var(--brand-purple)/0.06)] backdrop-blur-sm shadow-lg shadow-[hsl(var(--brand-purple)/0.1)]">
-              <FlaskConical className="h-4 w-4" />
-              Your Unfair Advantage — Now in Private Beta
-            </span>
-          </motion.div>
-
-          {/* Waitlist form */}
+          {/* Waitlist */}
           <motion.div custom={4} variants={fadeUp} className="w-full max-w-sm">
             {submitted ? (
               <div className="rounded-2xl border border-primary/30 bg-card/80 backdrop-blur-sm p-8 text-center space-y-3 shadow-xl shadow-primary/5">
@@ -228,49 +234,17 @@ const Landing = () => {
             ) : (
               <form onSubmit={handleSubmit} className="rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm p-6 space-y-3 text-left shadow-xl">
                 <p className="text-sm font-semibold text-foreground text-center mb-2">Request Early Access</p>
-                <Input
-                  placeholder="Your name *"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  required
-                  className="bg-background/60 border-border/60"
-                />
-                <Input
-                  type="email"
-                  placeholder="you@firm.com *"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  required
-                  className="bg-background/60 border-border/60"
-                />
-                <Input
-                  placeholder="Firm (optional)"
-                  value={form.firm}
-                  onChange={(e) => setForm({ ...form, firm: e.target.value })}
-                  className="bg-background/60 border-border/60"
-                />
+                <Input placeholder="Your name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className="bg-background/60 border-border/60" />
+                <Input type="email" placeholder="you@firm.com *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required className="bg-background/60 border-border/60" />
+                <Input placeholder="Firm (optional)" value={form.firm} onChange={(e) => setForm({ ...form, firm: e.target.value })} className="bg-background/60 border-border/60" />
                 <Select value={form.interest} onValueChange={(v) => setForm({ ...form, interest: v })}>
-                  <SelectTrigger className="bg-background/60 border-border/60">
-                    <SelectValue placeholder="Primary interest (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INTERESTS.map((i) => (
-                      <SelectItem key={i} value={i}>{i}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger className="bg-background/60 border-border/60"><SelectValue placeholder="Primary interest (optional)" /></SelectTrigger>
+                  <SelectContent>{INTERESTS.map((i) => <SelectItem key={i} value={i}>{i}</SelectItem>)}</SelectContent>
                 </Select>
-                <button
-                  type="submit"
-                  className="w-full h-11 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[hsl(var(--brand-purple)/0.25)] hover:shadow-xl hover:shadow-[hsl(var(--brand-purple)/0.35)]"
-                  disabled={loading || !form.name || !form.email}
-                >
+                <button type="submit" disabled={loading || !form.name || !form.email}
+                  className="w-full h-11 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[hsl(var(--brand-purple)/0.25)] hover:shadow-xl hover:shadow-[hsl(var(--brand-purple)/0.35)]">
                   <Mail className="h-4 w-4" />
-                  {loading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Joining...
-                    </>
-                  ) : "Join the Waitlist"}
+                  {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Joining...</> : "Join the Waitlist"}
                 </button>
               </form>
             )}
@@ -278,66 +252,116 @@ const Landing = () => {
         </motion.div>
       </section>
 
-      {/* CAPABILITIES SECTION */}
+      {/* ── CAPITAL LIFECYCLE ── */}
       <section className="relative z-10 px-6 py-20 max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-80px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-12"
-        >
-          <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-semibold mb-2">Platform Capabilities</p>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.6 }} className="text-center mb-14">
+          <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-semibold mb-2">The Capital Lifecycle</p>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Discover → Diligence → Coordinate → Allocate → Report
+            Five verbs. One system.
           </h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            Replace your fragmented stack of Excel, email, and Dropbox with one capital lifecycle operating system.
+          <p className="text-sm text-muted-foreground mt-2 max-w-lg mx-auto">
+            Replace your fragmented stack of Excel, email, and Dropbox with one operating system that owns the decision from first signal to final wire.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {CAPABILITIES.map((cap, i) => (
-            <motion.div
-              key={cap.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-40px" }}
-              transition={{ delay: i * 0.08, duration: 0.5 }}
-              className="group rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5 space-y-3 hover:border-primary/30 hover:bg-card/80 transition-all duration-300"
-            >
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
-                <cap.icon className="h-5 w-5 text-primary" />
+        <div className="space-y-4">
+          {LIFECYCLE_STEPS.map((step, i) => (
+            <motion.div key={step.verb} initial={{ opacity: 0, x: i % 2 === 0 ? -20 : 20 }} whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, margin: "-40px" }} transition={{ delay: i * 0.08, duration: 0.5 }}
+              className="group rounded-xl border border-border/60 bg-card/60 backdrop-blur-sm p-5 sm:p-6 hover:border-primary/30 hover:bg-card/80 transition-all duration-300 flex items-start gap-5">
+              <div className="h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-colors" style={{ background: `${step.color}15`, border: `1px solid ${step.color}30` }}>
+                <step.icon className="h-5 w-5" style={{ color: step.color }} />
               </div>
-              <h3 className="text-sm font-semibold text-foreground">{cap.title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{cap.description}</p>
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider" style={{ color: step.color }}>{step.verb}</span>
+                  <span className="h-px flex-1 bg-border/40" />
+                </div>
+                <h3 className="text-sm font-semibold text-foreground">{step.title}</h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+              </div>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* DATA SOURCES SECTION */}
+      {/* ── DIFFERENTIATORS ── */}
+      <section className="relative z-10 px-6 py-16 max-w-5xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Why firms switch to Grapevine</h2>
+          <p className="text-sm text-muted-foreground mt-1">The infrastructure your existing tools can't replicate</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {DIFFERENTIATORS.map((d, i) => (
+            <motion.div key={d.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+              className="rounded-xl border border-border/60 bg-card/60 p-5 space-y-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <d.icon className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-sm font-semibold text-foreground">{d.title}</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">{d.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── WHO IT'S FOR ── */}
+      <section className="relative z-10 px-6 py-16 max-w-5xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-10">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Built for dealmakers</h2>
+          <p className="text-sm text-muted-foreground mt-1">PE partners, family office analysts, and growth equity VPs</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            {
+              persona: "PE Partner",
+              pain: "40% of my week goes to sourcing instead of portfolio value creation",
+              solution: "AI Deal Matcher surfaces relevant opportunities weekly, pre-scored. The Deal Room handles diligence-to-wire in one workspace.",
+            },
+            {
+              persona: "Family Office Analyst",
+              pain: "I juggle 6 tools for screening, research, and due diligence",
+              solution: "One workspace: discover → diligence → valuation → IC vote → allocation. Every decision logged. Every thesis tracked.",
+            },
+            {
+              persona: "Growth Equity VP",
+              pain: "Our institutional memory lives in email threads and partner recollections",
+              solution: "Decision journal with every stage change, vote, and rationale. Pattern recognition across your entire deal history, not just the wins.",
+            },
+          ].map((p, i) => (
+            <motion.div key={p.persona} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+              className="rounded-xl border border-border/60 bg-card/60 p-5 space-y-3">
+              <p className="text-xs font-semibold text-primary uppercase tracking-wider">{p.persona}</p>
+              <p className="text-sm text-foreground font-medium leading-relaxed">"{p.pain}"</p>
+              <div className="flex items-start gap-2">
+                <ChevronRight className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">{p.solution}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── DATA PROVENANCE ── */}
       <section className="relative z-10 px-6 py-16 max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-8 text-center space-y-6"
-        >
+        <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+          className="rounded-2xl border border-border/40 bg-card/40 backdrop-blur-sm p-8 text-center space-y-6">
           <div className="space-y-2">
             <Shield className="h-6 w-6 text-primary mx-auto" />
             <h3 className="text-lg font-bold text-foreground">Institutional-Grade Data Provenance</h3>
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Every data point is traced to its source with confidence scoring, verification status, and freshness tracking. No black boxes.
+              Every data point traced to source with confidence scoring, verification status, and freshness tracking. No black boxes.
             </p>
           </div>
-
           <div className="flex items-center justify-center gap-4 flex-wrap">
             {["SEC EDGAR", "FRED", "FMP", "Firecrawl", "User Uploads"].map((src) => (
               <span key={src} className="text-[11px] font-mono text-primary/60 border border-primary/20 rounded-md px-3 py-1.5 bg-primary/5">{src}</span>
             ))}
           </div>
-
           <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto text-center">
             {[
               { label: "Source Types", value: "5" },
@@ -353,77 +377,19 @@ const Landing = () => {
         </motion.div>
       </section>
 
-      {/* WHO IT'S FOR */}
-      <section className="relative z-10 px-6 py-16 max-w-5xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-10"
-        >
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Built for dealmakers</h2>
-          <p className="text-sm text-muted-foreground mt-1">PE partners, family office analysts, and growth equity VPs</p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            {
-              persona: "PE Partner",
-              pain: "Spending 40% of time on deal sourcing instead of portfolio value creation",
-              solution: "AI Deal Matcher surfaces 50+ relevant opportunities weekly, pre-scored and benchmarked",
-            },
-            {
-              persona: "Family Office Analyst",
-              pain: "Juggling 6 separate tools for screening, research, and due diligence",
-              solution: "One command center: screen → research → memo → pipeline in a single workflow",
-            },
-            {
-              persona: "Growth Equity VP",
-              pain: "Missing off-market deals because intelligence is trapped in email threads",
-              solution: "Real-time alerts, morning briefings, and collaborative deal workspaces for the team",
-            },
-          ].map((p, i) => (
-            <motion.div
-              key={p.persona}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-              className="rounded-xl border border-border/60 bg-card/60 p-5 space-y-3"
-            >
-              <p className="text-xs font-semibold text-primary uppercase tracking-wider">{p.persona}</p>
-              <p className="text-sm text-foreground font-medium leading-relaxed">"{p.pain}"</p>
-              <div className="flex items-start gap-2">
-                <ChevronRight className="h-3.5 w-3.5 text-primary mt-0.5 shrink-0" />
-                <p className="text-xs text-muted-foreground leading-relaxed">{p.solution}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* FINAL CTA */}
+      {/* ── FINAL CTA ── */}
       <section className="relative z-10 px-6 py-20 text-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="max-w-md mx-auto space-y-4"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="max-w-md mx-auto space-y-4">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Stop chasing deals.<br />
             <span className="text-primary">Start deploying capital.</span>
           </h2>
           <p className="text-sm text-muted-foreground">
-            The private markets operating system. Limited beta spots for Q1 2026.
+            The private markets operating system. Limited beta spots remaining.
           </p>
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-[hsl(var(--brand-purple)/0.25)]"
-          >
-            <Mail className="h-4 w-4" />
-            Request Access
-            <ArrowRight className="h-4 w-4" />
+          <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-[hsl(var(--brand-purple))] to-primary text-white text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-[hsl(var(--brand-purple)/0.25)]">
+            <Mail className="h-4 w-4" /> Request Access <ArrowRight className="h-4 w-4" />
           </button>
         </motion.div>
       </section>
@@ -442,12 +408,7 @@ const Landing = () => {
         </div>
       </footer>
 
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-      `}</style>
+      <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
     </div>
   );
 };
