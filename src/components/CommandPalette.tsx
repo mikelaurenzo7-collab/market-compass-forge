@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFullTextSearch } from "@/hooks/useFullTextSearch";
+import { useDealIntelligenceSearch } from "@/hooks/useDealIntelligenceSearch";
 import { supabase } from "@/integrations/supabase/client";
-import { Building2, Search, FileText, Newspaper, AlertTriangle, Radio, Compass, Handshake, Briefcase } from "lucide-react";
+import { Building2, Search, FileText, Newspaper, AlertTriangle, Radio, Compass, Handshake, Briefcase, Brain, BookOpen } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -31,6 +32,7 @@ const CommandPalette = () => {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const { data: results } = useFullTextSearch(query);
+  const { data: dealResults } = useDealIntelligenceSearch(query);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "k") {
@@ -48,7 +50,6 @@ const CommandPalette = () => {
     setOpen(false);
     setQuery("");
     if (type === "company") {
-      // Try to find or create a deal pipeline entry, then navigate to the Deal Room
       try {
         const { data: existing } = await supabase
           .from("deal_pipeline")
@@ -58,7 +59,6 @@ const CommandPalette = () => {
         if (existing) {
           navigate(`/deals/${existing.id}`);
         } else {
-          // Navigate to discover with the company context — don't auto-create deals from search
           navigate(`/discover`);
         }
       } catch {
@@ -83,10 +83,16 @@ const CommandPalette = () => {
     return acc;
   }, {});
 
+  // Deduplicate deal intelligence results by deal_id
+  const uniqueDeals = (dealResults ?? []).reduce<typeof dealResults>((acc, r) => {
+    if (!acc!.find((d) => d.deal_id === r.deal_id)) acc!.push(r);
+    return acc;
+  }, []);
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder="Search companies, news, signals..."
+        placeholder="Search companies, deals, rationale, diligence..."
         value={query}
         onValueChange={setQuery}
       />
@@ -127,6 +133,28 @@ const CommandPalette = () => {
             </CommandGroup>
           );
         })}
+
+        {/* Cross-Deal Intelligence Results */}
+        {uniqueDeals && uniqueDeals.length > 0 && (
+          <CommandGroup heading="Deal Intelligence">
+            {uniqueDeals.map((d) => (
+              <CommandItem
+                key={d.deal_id}
+                onSelect={() => goTo(`/deals/${d.deal_id}`)}
+                value={`${d.company_name} ${d.match_text}`}
+              >
+                <Brain className="mr-2 h-4 w-4 text-primary/70" />
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-sm truncate">{d.company_name}</span>
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    {d.match_source === "thesis" ? "Thesis" : "Decision"} · {d.company_sector ?? d.stage}
+                  </span>
+                </div>
+                <BookOpen className="ml-auto h-3 w-3 text-muted-foreground shrink-0" />
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
       </CommandList>
     </CommandDialog>
   );

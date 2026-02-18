@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import MetricItem from "./MetricItem";
 import ValuationRangesSection from "./ValuationRangesSection";
 import RelationshipGraph from "@/components/RelationshipGraph";
+import HistoricalPrecedent from "./HistoricalPrecedent";
 import AssetKPIs from "./AssetKPIs";
 import DealTasksPanel from "./DealTasksPanel";
 import { STAGE_LABELS } from "./types";
@@ -252,6 +253,9 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
 
         {/* Stage Tasks */}
         {dealId && <DealTasksPanel dealId={dealId} currentStage={deal.stage} />}
+
+        {/* Historical Precedent */}
+        {companyId && dealId && <HistoricalPrecedent companyId={companyId} dealId={dealId} />}
 
         {decisions && decisions.length > 0 && (
           <div className="rounded-lg border border-border bg-card p-4">

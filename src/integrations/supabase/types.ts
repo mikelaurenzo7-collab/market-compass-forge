@@ -4297,6 +4297,22 @@ export type Database = {
         Args: { _feature_key: string; _user_id: string }
         Returns: Json
       }
+      find_similar_deals: {
+        Args: {
+          result_limit?: number
+          target_company_id: string
+          target_deal_id: string
+        }
+        Returns: {
+          company_name: string
+          company_sector: string
+          created_at: string
+          deal_id: string
+          similarity_reason: string
+          stage: string
+          thesis: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -4353,6 +4369,19 @@ export type Database = {
           name: string
           rank: number
           subtitle: string
+        }[]
+      }
+      search_deals_intelligence: {
+        Args: { result_limit?: number; search_query: string }
+        Returns: {
+          company_name: string
+          company_sector: string
+          deal_id: string
+          match_source: string
+          match_text: string
+          rank: number
+          stage: string
+          thesis: string
         }[]
       }
     }
