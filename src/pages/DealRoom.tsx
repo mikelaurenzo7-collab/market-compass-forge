@@ -20,6 +20,7 @@ import TimelineTab from "@/components/deal-room/TimelineTab";
 import AllocationTab from "@/components/deal-room/AllocationTab";
 import UpdatesTab from "@/components/deal-room/UpdatesTab";
 import DealTeamSidebar from "@/components/deal-room/DealTeamSidebar";
+import GrapevineScore from "@/components/deal-room/GrapevineScore";
 import { useDealTeam } from "@/hooks/useDealTeam";
 
 const TABS = [
@@ -304,6 +305,13 @@ const DealRoom = () => {
                 </div>
               </div>
             </div>
+            <GrapevineScore
+              dealTasks={dealTasks ?? []}
+              votes={votes ?? []}
+              documents={documents ?? []}
+              latestFinancial={financials?.[0] ?? null}
+              latestFunding={fundingRounds?.[0] ?? null}
+            />
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
                 <Timer className="h-3 w-3" /> {dealAge}d in pipeline
