@@ -1,129 +1,176 @@
 
 
-# Data Upload Hub + High-Value PE Features
+# The Private Markets Operating System Pivot
 
-## Part 1: User Data Upload Hub
+## Vision
 
-The existing `DataIngestion` component (in Settings > Data Import) only supports CSV company imports. We will build a dedicated **Data Room / Upload Hub** page that serves as a central place for users to upload their proprietary data across multiple entity types, with full storage integration and import history tracking.
+Grapevine becomes **the system where capital gets deployed** -- not a terminal, not a CRM, not a data room. A capital lifecycle OS built around five verbs:
 
-### New Page: `/data-room`
+**Discover --> Diligence --> Coordinate --> Allocate --> Report**
 
-A full page (not buried in Settings) with tabs for different upload types:
+Every feature maps to one of these verbs. The Deal Room is the atomic unit of the product.
 
-| Upload Type | Target Table | Mappable Fields |
-|---|---|---|
-| Companies | `companies` | name, sector, stage, hq_country, domain, employee_count, founded_year, description |
-| Financials | `financials` | company_name (resolved to company_id), period, revenue, arr, ebitda, gross_margin, burn_rate |
-| Deals/Transactions | `deal_transactions` | company_name, deal_type, value, date, buyer, seller |
-| Portfolio Positions | `portfolio_positions` | company_name, shares, entry_price, entry_date, notes |
-| Contacts/People | `key_personnel` | name, title, company_name, email, phone, linkedin_url |
+---
 
-**Key features:**
-- Drag-and-drop CSV upload with intelligent column auto-mapping
-- Preview first 5 rows before import
-- Import history log (new `import_history` table) showing date, file name, row count, status
-- Ability to download a template CSV for each entity type
-- File stored in Supabase Storage (`document-uploads` bucket) for auditability
-- Progress bar for large imports (batched inserts)
+## What Changes
 
-### Database Changes
-```sql
-CREATE TABLE public.import_history (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  file_name text NOT NULL,
-  entity_type text NOT NULL,        -- 'companies', 'financials', 'deals', etc.
-  row_count integer NOT NULL DEFAULT 0,
-  success_count integer NOT NULL DEFAULT 0,
-  error_count integer NOT NULL DEFAULT 0,
-  status text NOT NULL DEFAULT 'processing',  -- processing, complete, failed
-  errors jsonb DEFAULT '[]',
-  storage_path text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
+### 1. Navigation: The Five Pillars
 
-ALTER TABLE public.import_history ENABLE ROW LEVEL SECURITY;
+Replace current sidebar (Deals / Rooms / Portfolio / Intelligence) with the capital lifecycle spine:
 
-CREATE POLICY "Users can manage own imports"
-  ON public.import_history FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+```text
+SIDEBAR
+--------------------------
+[GV] Grapevine
+
+  Discover        /discover
+  Deals           /deals
+  Portfolio        /portfolio
+
+  ─── utility ───
+  Alerts           /alerts
+  Settings         /settings
+  Help             /help
+  [Admin]          /admin
+  Sign Out
 ```
 
-### Navigation
-- Add "Data Room" to sidebar under a new "Workspace" nav group (between Deal Engine and Intelligence), with the `Upload` icon
+**Why only 3 main items instead of 5?** Diligence, Coordinate, and Allocate all live *inside* the Deal Room (`/deals/:id`). They are not top-level pages -- they are tabs within a deal. This keeps the sidebar ultra-clean while the Deal Room itself embodies the full lifecycle.
+
+- **Discover** = current Intelligence page, reimagined as "Surface rooms worth opening" -- the AI matcher, signal feed, and market intel all unified under one verb
+- **Deals** = the pipeline (overview + flow + individual deal rooms with all lifecycle tabs)  
+- **Portfolio** = the report phase -- performance vs. thesis, institutional memory
+
+The "Rooms" concept merges into Deal Rooms. Every deal IS a room.
+
+### 2. Deal Room: The Product's Center of Gravity
+
+The existing `/deals/:id` DealRoom page gets upgraded from 6 tabs to a true lifecycle workspace. New tab structure:
+
+| Tab | Verb | What It Does |
+|-----|------|-------------|
+| Summary | -- | High-signal overview with key metrics, thesis, and quick stats |
+| Diligence | Diligence | Documents, AI extraction, risk flags, comparable analysis. Embeds the existing DataRoom CSV importer scoped to this deal |
+| Valuation | Diligence | Embeds the existing Valuation toolkit (DCF, comps, football field) scoped to this deal |
+| Discussion | Coordinate | Threaded comments (already working), IC notes |
+| Timeline | Coordinate | Decision journal filtered to this deal (reuses existing Decisions component logic) |
+| Allocation | Allocate | Capital stack: equity, debt, commitments, check size, ownership %. New lightweight form |
+| Updates | Report | Memos, KPI updates, performance vs. original thesis |
+
+### 3. Discover Page (replaces Intelligence)
+
+Route: `/discover` (redirect `/intelligence` to `/discover`)
+
+Transform the current Intelligence hub from a grid of "coming soon" cards into a live discovery engine:
+- **AI Deal Matcher** embedded directly (currently at `/deals/recommended`)
+- **Signal Feed** section showing latest alerts/notifications  
+- **Buy Box Filters** for surfacing opportunities matching the firm's criteria
+- Each discovered opportunity has a "Open Room" CTA that creates a deal and navigates to `/deals/:id`
+
+### 4. Landing Page Reframe
+
+Update copy from "AI-powered private market intelligence" to the OS positioning:
+- Headline: "The system where capital gets deployed"
+- Subline: "From signal to signed wire. One platform."
+- Capabilities section maps to the 5 verbs instead of generic features
+- Remove "AI terminal" language; replace with "operating system" language
+
+### 5. Deals Overview Upgrade
+
+The `/deals` page gets a new section: **Lifecycle Progress** -- a visual showing how many deals are in each verb stage (Discover/Diligence/Coordinate/Allocate), giving the GP/Partner a single-glance view of firm activity.
+
+### 6. Portfolio as "Report" Phase
+
+Add a "Thesis vs. Actuals" card to Portfolio positions that links back to the original Deal Room, showing:
+- Original IC memo (if exists)
+- Entry thesis / rationale from decision log
+- Current performance metrics
+
+### 7. Cleanup: Dead References and Orphaned Code
+
+Files and references to fix:
+- **`src/pages/Index.tsx`**: Currently the old dashboard with references to `/companies`, `/distressed`, etc. Replace with a redirect to `/deals` (the dashboard IS DealsOverview now)
+- **`src/pages/Rooms.tsx`**: Delete -- rooms are now Deal Rooms
+- **`src/pages/Intelligence.tsx`**: Delete -- replaced by Discover
+- **`src/components/CommandPalette.tsx`**: Fix `navigate("/distressed")` to `/discover`
+- **`src/pages/DealMatcher.tsx`**: Fix `navigate("/distressed")` and `navigate("/global")` to `/discover`
+- **`src/pages/Portfolio.tsx`**: Fix `navigate("/companies")` to `/discover`
+- **`src/pages/Decisions.tsx`**: Fix `navigate("/companies/...")` to `/deals/...`
+- **`src/components/CompanyTable.tsx`**: Fix `navigate("/companies")` to `/discover`
+- **`src/pages/Landing.tsx`**: Fix `navigate("/data-coverage")` to `/discover`, update all copy
+- **`src/hooks/useHotkeys.ts`**: Update SIDEBAR_ROUTES to match new nav
+- **`src/components/QuickActions.tsx`**: Update actions to new routes
+
+### 8. Route Map (Final)
+
+```text
+AUTHENTICATED ROUTES
+  /deals                    DealsOverview (home after auth)
+  /deals/flow               DealFlow (Kanban pipeline)  
+  /deals/recommended        DealMatcher (AI matching)
+  /deals/:id                DealRoom (lifecycle workspace)
+  /discover                 Discover (signals + matcher + intel)
+  /portfolio                Portfolio (reporting + tracking)
+  /alerts                   Alerts
+  /settings                 Settings
+  /help                     Help
+  /admin                    AdminDashboard
+
+LEGACY TOOLS (accessible, not in nav)
+  /valuations               Valuations (standalone)
+  /decisions                Decisions (standalone journal)
+  /data-room                DataRoom (standalone importer)
+
+REDIRECTS
+  /dashboard --> /deals
+  /intelligence --> /discover
+  /rooms --> /deals
+  /companies/* --> /discover
+  /distressed --> /discover
+  /global --> /discover
+  /research --> /discover
+  /fund-intelligence --> /discover
+  /real-estate --> /discover
+  /sector-pulse --> /discover
+  ... (all other legacy paths)
+```
 
 ---
 
-## Part 2: High-Usefulness PE Features (score > 7/10)
+## Technical Implementation Order
 
-After analyzing the platform against PE/FO workflow needs, here are features that score 8+ and are currently missing:
+### Step 1: Sidebar + Routes + Cleanup
+- Rewrite `AppSidebar.tsx` with 3 main nav items (Discover, Deals, Portfolio)
+- Update `App.tsx` routes: add `/discover`, redirect `/intelligence` and `/rooms`
+- Delete `src/pages/Rooms.tsx` and `src/pages/Intelligence.tsx`
+- Fix all stale `navigate()` calls across the codebase
+- Update `useHotkeys.ts` and `QuickActions.tsx`
+- Route `/dashboard` and old Index to `/deals`
 
-### Feature A: Portfolio Tracker in Sidebar (Usefulness: 9/10)
+### Step 2: Discover Page
+- Create `src/pages/Discover.tsx` -- unified signal + matcher + buy-box hub
+- Embed the AI Deal Matcher as the hero action
+- Add a "Recent Signals" feed from `alert_notifications`
+- Each result card has "Open Room" CTA
 
-**Problem:** Portfolio is currently hidden behind a redirect (`/portfolio` -> `/deals`). PE firms and family offices track active positions constantly. This is a core workflow.
+### Step 3: Deal Room Lifecycle Upgrade
+- Add Diligence tab (embed deal-scoped file upload + AI extraction placeholder)
+- Add Valuation tab (embed existing `ValuationFootballField` + `DCFCalculator` + `CompTableBuilder`)
+- Upgrade Allocation tab from placeholder to a lightweight capital stack form (equity amount, debt source, ownership %, commitment date) -- stored in a new `deal_allocations` table
+- Upgrade Updates tab to show decision log entries for this deal + memo attachment placeholder
+- Improve Summary tab with a "Thesis" editable field
 
-**Solution:**
-- Un-hide the `/portfolio` route (remove the redirect, use the existing `Portfolio.tsx` page directly)
-- Add "Portfolio" to the sidebar under "Deal Engine" group
-- The existing Portfolio page with P&L tracking, sector allocation pie chart, and benchmark tab is already fully built
+### Step 4: Database Migration
+- Create `deal_allocations` table: `id, deal_id, allocation_type (equity/debt/mezzanine), amount, source_name, ownership_pct, commitment_date, notes, created_at, user_id`
+- Add `thesis` column to `deal_pipeline` table for storing the investment thesis
+- RLS policies scoped to authenticated users
 
-### Feature B: Decision Journal / IC Memo Trail (Usefulness: 8/10)
+### Step 5: Landing Page Reframe
+- Update headline, subline, and capabilities to reflect the OS positioning
+- Map capabilities to the 5 verbs (Discover, Diligence, Coordinate, Allocate, Report)
+- Remove "terminal" and "command center" language
 
-**Problem:** The `decision_log` table exists and is written to, but there is no dedicated page to browse, search, and reflect on past investment decisions across all deals. PE firms do post-mortems and need a decision audit trail.
-
-**Solution:** New page `/decisions` that aggregates the decision log across all deals with:
-- Timeline view of all decisions (stage changes, pass/commit rationale, votes)
-- Filter by deal, decision type, user, date range
-- Export to CSV for IC reporting
-- Links back to deal workspace
-
-### Feature C: Watchlist Alerts Summary Widget (Usefulness: 8/10)
-
-**Problem:** Users can create watchlists and alerts, but there's no at-a-glance "what changed on my watchlists" view. Family office analysts check this daily.
-
-**Solution:** Already partially covered by the Alpha Signals widget and Alerts page. Instead of a new page, enhance the existing Morning Briefing to include a "Watchlist Activity" section showing companies from the user's watchlists that had recent news, funding, or data changes. This is a modification to the existing `morning-briefing` edge function and `MorningBriefing.tsx` component. **Deferred to a follow-up** since it requires edge function changes and is more complex.
-
----
-
-## Implementation Plan
-
-### Files to Create
-| File | Purpose |
-|---|---|
-| `src/pages/DataRoom.tsx` | Full data upload hub page with multi-entity CSV import, templates, and import history |
-| `src/pages/Decisions.tsx` | Decision journal / IC audit trail page |
-
-### Files to Modify
-| File | Change |
-|---|---|
-| `src/App.tsx` | Add `/data-room` and `/decisions` routes; remove `/portfolio` redirect |
-| `src/components/AppSidebar.tsx` | Add "Data Room", "Portfolio", and "Decisions" nav items |
-
-### Database Migration
-- Create `import_history` table with RLS
-- Enable realtime on `import_history` for live progress updates
-
-### Component Architecture
-
-**DataRoom.tsx** will be structured as:
-1. Tab bar: Companies | Financials | Deals | Portfolio | Contacts | History
-2. Each tab shows a reusable `<CSVImporter>` component (refactored from `DataIngestion`) with:
-   - Entity-specific field maps and DB target tables
-   - Template download button
-   - Preview table
-   - Import button with progress
-3. History tab queries `import_history` for the user
-
-**Decisions.tsx** will:
-1. Query `decision_log` joined with `deal_pipeline` and `companies` for context
-2. Render as a reverse-chronological timeline
-3. Include filters for decision_type, date range, and company search
-4. Export button for CSV
-
-### What We Are NOT Adding (scored below 7)
-- Capital call management (too niche, requires complex fund admin logic)
-- LP reporting portal (would need a separate app/portal)
-- Full fund accounting (out of scope for an intelligence platform)
-- Co-investment tracking (covered adequately by deal pipeline)
+### Step 6: Portfolio "Report" Enhancement
+- Add "Thesis vs. Actuals" linking back to Deal Room
+- Show original entry rationale from `decision_log`
 
