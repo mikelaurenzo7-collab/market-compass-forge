@@ -7,6 +7,7 @@ import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import MetricItem from "./MetricItem";
 import ValuationRangesSection from "./ValuationRangesSection";
+import RelationshipGraph from "@/components/RelationshipGraph";
 import { STAGE_LABELS } from "./types";
 
 interface SummaryTabProps {
@@ -147,7 +148,10 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
           </div>
         </div>
 
-        {/* Funding history */}
+        {/* Relationship Graph */}
+        {companyId && (
+          <RelationshipGraph companyId={companyId} companyName={company?.name ?? "Company"} />
+        )}
         {fundingRounds && fundingRounds.length > 0 && (
           <div className="rounded-lg border border-border bg-card p-4">
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
