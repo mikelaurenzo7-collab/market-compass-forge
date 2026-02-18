@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Lock, AlertCircle, Loader2, Check, X, ArrowLeft, ShieldCheck } from "lucide-react";
 import { z } from "zod";
 import { motion } from "framer-motion";
+import grapeLogo from "@/assets/grape-logo.png";
 
 const passwordSchema = z.string().min(8, "Password must be at least 8 characters");
 
@@ -139,8 +140,8 @@ const ResetPassword = () => {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
-          <div className="h-12 w-12 rounded-xl bg-[hsl(var(--brand-purple))] flex items-center justify-center mx-auto shadow-[0_0_20px_-5px_hsl(var(--brand-purple)/0.4)]">
-            <span className="text-lg font-bold text-white">GV</span>
+          <div className="h-12 w-12 rounded-xl bg-[hsl(var(--brand-purple))] flex items-center justify-center mx-auto shadow-[0_0_20px_-5px_hsl(var(--brand-purple)/0.4)] overflow-hidden">
+            <img src={grapeLogo} alt="Grapevine" className="h-8 w-8 object-contain" />
           </div>
           <h1 className="text-xl font-semibold text-foreground">Set New Password</h1>
           <p className="text-sm text-muted-foreground">Choose a strong password for your account</p>
