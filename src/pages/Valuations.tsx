@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import CompTableBuilder from "./CompTableBuilder";
+import CompTableBuilder from "@/components/CompTableBuilder";
 import PrecedentTransactions from "@/components/PrecedentTransactions";
 import DCFCalculator from "@/components/DCFCalculator";
 import ValuationFootballField from "@/components/ValuationFootballField";

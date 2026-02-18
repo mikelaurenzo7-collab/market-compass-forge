@@ -91,13 +91,12 @@ export const useTableNavigation = (
 
 export const SIDEBAR_ROUTES = [
   "/dashboard",
-  "/companies",
-  "/global",
   "/deals",
+  "/portfolio",
   "/deal-matcher",
   "/valuations",
-  "/research",
-  "/intelligence",
+  "/decisions",
+  "/data-room",
 ];
 
 export const GLOBAL_HOTKEYS_HELP = [

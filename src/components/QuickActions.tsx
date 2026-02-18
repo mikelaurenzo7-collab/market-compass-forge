@@ -1,37 +1,37 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Brain, FileText, FileSearch, Handshake, Building } from "lucide-react";
+import { Sparkles, Handshake, DollarSign, Upload, BookOpen } from "lucide-react";
 
 const actions = [
   {
-    icon: Brain,
-    label: "AI Research",
-    description: "Deep-dive any company",
-    path: "/research?tab=chat",
-  },
-  {
-    icon: FileText,
-    label: "Generate Memo",
-    description: "IC-ready in minutes",
-    path: "/research?tab=memo",
-  },
-  {
-    icon: FileSearch,
-    label: "Analyze Document",
-    description: "Extract key metrics",
-    path: "/research?tab=documents",
-  },
-  {
     icon: Handshake,
-    label: "Match Deals",
+    label: "Deal Flow",
+    description: "Manage your pipeline",
+    path: "/deals",
+  },
+  {
+    icon: Sparkles,
+    label: "AI Deal Matcher",
     description: "AI-powered matching",
     path: "/deal-matcher",
   },
   {
-    icon: Building,
-    label: "Screen Companies",
-    description: "800+ private cos",
-    path: "/companies",
+    icon: DollarSign,
+    label: "Valuations",
+    description: "DCF & comps analysis",
+    path: "/valuations",
+  },
+  {
+    icon: Upload,
+    label: "Data Room",
+    description: "Upload & analyze docs",
+    path: "/data-room",
+  },
+  {
+    icon: BookOpen,
+    label: "Decisions",
+    description: "IC decision log",
+    path: "/decisions",
   },
 ];
 
