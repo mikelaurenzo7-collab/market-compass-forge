@@ -46,7 +46,7 @@ const CompanyTable = () => {
     <div className="rounded-lg border border-border overflow-hidden animate-fade-in">
       <div className="px-4 py-3 border-b border-border bg-card flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Top Companies by Valuation</h3>
-        <button onClick={() => navigate("/companies")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">
+        <button onClick={() => navigate("/discover")} className="text-[10px] font-mono text-primary uppercase tracking-wider hover:underline">
           View All
         </button>
       </div>
@@ -66,7 +66,7 @@ const CompanyTable = () => {
             {top.map((c) => (
               <tr
                 key={c.id}
-                onClick={() => navigate(`/companies/${c.id}`)}
+                onClick={() => navigate(`/discover`)}
                 className="border-b border-border/50 hover:bg-secondary/50 cursor-pointer transition-colors"
               >
                 <td className="px-3 sm:px-4 py-2.5">

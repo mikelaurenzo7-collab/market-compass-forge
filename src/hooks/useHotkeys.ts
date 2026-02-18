@@ -19,7 +19,6 @@ export const useHotkeys = (hotkeys: HotkeyConfig[]) => {
         const ctrlMatch = hk.ctrl ? e.ctrlKey : !e.ctrlKey;
         const shiftMatch = hk.shift ? e.shiftKey : !e.shiftKey;
 
-        // Support Cmd/Ctrl interchangeably
         const modMatch = (hk.meta || hk.ctrl)
           ? (e.metaKey || e.ctrlKey) && (hk.shift ? e.shiftKey : true)
           : metaMatch && ctrlMatch && shiftMatch;
@@ -40,7 +39,6 @@ export const useHotkeys = (hotkeys: HotkeyConfig[]) => {
   }, [handleKeyDown]);
 };
 
-// Arrow key navigation for tables
 export const useTableNavigation = (
   rowCount: number,
   onSelect: (index: number) => void,
@@ -90,19 +88,16 @@ export const useTableNavigation = (
 };
 
 export const SIDEBAR_ROUTES = [
+  "/discover",
   "/deals",
-  "/rooms",
   "/portfolio",
-  "/intelligence",
 ];
 
 export const GLOBAL_HOTKEYS_HELP = [
   { keys: "⌘K", description: "Search / Command palette" },
   { keys: "? or ⌘/", description: "Show keyboard shortcuts" },
-  { keys: "⌘⇧C", description: "Compare mode" },
-  { keys: "⌘⇧D", description: "Toggle dashboard customization" },
   { keys: "⌘J", description: "AI Copilot" },
-  { keys: "⌘1-9", description: "Navigate sidebar sections" },
+  { keys: "⌘1-3", description: "Navigate sidebar sections" },
   { keys: "↑↓", description: "Navigate table rows" },
   { keys: "Enter", description: "Open selected item" },
   { keys: "Esc", description: "Close modal / deselect" },

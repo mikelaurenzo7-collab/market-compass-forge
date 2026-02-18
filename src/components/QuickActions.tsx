@@ -1,8 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Handshake, Sparkles, Briefcase, Folder, Brain } from "lucide-react";
+import { Compass, Handshake, Sparkles, Briefcase } from "lucide-react";
 
 const actions = [
+  {
+    icon: Compass,
+    label: "Discover",
+    description: "Signals & opportunities",
+    path: "/discover",
+  },
   {
     icon: Handshake,
     label: "Deal Flow",
@@ -16,22 +22,10 @@ const actions = [
     path: "/deals/recommended",
   },
   {
-    icon: Folder,
-    label: "Rooms",
-    description: "Secure deal rooms",
-    path: "/rooms",
-  },
-  {
     icon: Briefcase,
     label: "Portfolio",
     description: "Track investments",
     path: "/portfolio",
-  },
-  {
-    icon: Brain,
-    label: "Intelligence",
-    description: "Market signals & data",
-    path: "/intelligence",
   },
 ];
 
@@ -43,7 +37,7 @@ export default function QuickActions() {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-      className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3"
+      className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3"
     >
       {actions.map((a) => (
         <button

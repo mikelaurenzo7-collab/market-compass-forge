@@ -145,9 +145,7 @@ const DealMatchCard = ({ m, i, navigate }: { m: DealMatch; i: number; navigate: 
                   className="gap-1.5 text-xs"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (m.type === "distressed") navigate("/distressed");
-                    else if (m.type === "global") navigate("/global");
-                    else navigate("/deals");
+                    navigate("/discover");
                   }}
                 >
                   View Details <ArrowRight className="h-3 w-3" />

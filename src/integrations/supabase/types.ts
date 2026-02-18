@@ -826,6 +826,53 @@ export type Database = {
           },
         ]
       }
+      deal_allocations: {
+        Row: {
+          allocation_type: string
+          amount: number | null
+          commitment_date: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          notes: string | null
+          ownership_pct: number | null
+          source_name: string | null
+          user_id: string
+        }
+        Insert: {
+          allocation_type?: string
+          amount?: number | null
+          commitment_date?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          notes?: string | null
+          ownership_pct?: number | null
+          source_name?: string | null
+          user_id: string
+        }
+        Update: {
+          allocation_type?: string
+          amount?: number | null
+          commitment_date?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          notes?: string | null
+          ownership_pct?: number | null
+          source_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_allocations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_assignments: {
         Row: {
           assigned_by: string
@@ -914,6 +961,7 @@ export type Database = {
           notes: string | null
           priority: string | null
           stage: string
+          thesis: string | null
           updated_at: string
           user_id: string
         }
@@ -924,6 +972,7 @@ export type Database = {
           notes?: string | null
           priority?: string | null
           stage?: string
+          thesis?: string | null
           updated_at?: string
           user_id: string
         }
@@ -934,6 +983,7 @@ export type Database = {
           notes?: string | null
           priority?: string | null
           stage?: string
+          thesis?: string | null
           updated_at?: string
           user_id?: string
         }

@@ -1,10 +1,9 @@
 import { useState, useMemo } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  Compass,
   Handshake,
-  Folder,
   Briefcase,
-  Brain,
   Bell,
   Settings,
   ShieldCheck,
@@ -12,7 +11,6 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
-  User,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -24,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface NavItem {
   id: string;
   label: string;
-  icon: typeof Handshake;
+  icon: typeof Compass;
   path: string;
   badge?: number;
 }
@@ -48,15 +46,14 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const isAdminOrPartner = userRole === "admin" || userRole === "partner";
 
   const mainNav: NavItem[] = useMemo(() => [
+    { id: "discover", label: "Discover", icon: Compass, path: "/discover" },
     { id: "deals", label: "Deals", icon: Handshake, path: "/deals" },
-    { id: "rooms", label: "Rooms", icon: Folder, path: "/rooms" },
     { id: "portfolio", label: "Portfolio", icon: Briefcase, path: "/portfolio" },
-    { id: "intelligence", label: "Intelligence", icon: Brain, path: "/intelligence" },
   ], []);
 
   const bottomNav: NavItem[] = useMemo(() => [
     { id: "alerts", label: "Alerts", icon: Bell, path: "/alerts", badge: unreadCount ?? 0 },
-    { id: "account", label: "Account", icon: User, path: "/settings" },
+    { id: "settings", label: "Settings", icon: Settings, path: "/settings" },
     { id: "help", label: "Help", icon: HelpCircle, path: "/help" },
     ...(isAdminOrPartner ? [{ id: "admin", label: "Admin", icon: ShieldCheck, path: "/admin" }] : []),
   ], [unreadCount, isAdminOrPartner]);
@@ -64,6 +61,7 @@ const AppSidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const isActive = (path: string) => {
     if (path === "/deals") return location.pathname === "/deals" || location.pathname.startsWith("/deals/");
     if (path === "/settings") return location.pathname === "/settings" || location.pathname === "/account";
+    if (path === "/discover") return location.pathname === "/discover";
     return location.pathname.startsWith(path);
   };
 

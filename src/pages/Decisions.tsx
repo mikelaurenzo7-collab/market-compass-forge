@@ -194,7 +194,7 @@ const Decisions = () => {
                             {config.label}
                           </span>
                           <button
-                            onClick={() => navigate(`/companies/${d.deal_pipeline?.companies?.id}`)}
+                            onClick={() => navigate(`/deals/${d.deal_id}`)}
                             className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate"
                           >
                             {companyName}

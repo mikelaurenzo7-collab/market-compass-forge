@@ -186,8 +186,8 @@ const Portfolio = () => {
               <button onClick={handleCreatePortfolio} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-2">
                 <Plus className="h-4 w-4" /> Create Portfolio
               </button>
-              <button onClick={() => navigate("/companies")} className="h-9 px-4 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
-                Browse Companies
+              <button onClick={() => navigate("/discover")} className="h-9 px-4 rounded-md border border-border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                Discover Opportunities
               </button>
             </div>
             <p className="text-[10px] text-muted-foreground/60 mt-3">Supports public equities + private market positions</p>
@@ -295,7 +295,7 @@ const Portfolio = () => {
                       return (
                         <tr key={pos.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
                           <td className="px-4 py-3">
-                            <button onClick={() => navigate(`/companies/${pos.company_id}`)} className="text-foreground hover:text-primary transition-colors font-medium text-left">
+                            <button onClick={() => navigate(`/discover`)} className="text-foreground hover:text-primary transition-colors font-medium text-left">
                               {pos.companies?.name ?? "Unknown"}
                             </button>
                             <div className="flex items-center gap-1.5 mt-0.5">

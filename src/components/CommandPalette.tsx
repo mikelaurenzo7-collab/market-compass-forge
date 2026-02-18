@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFullTextSearch } from "@/hooks/useFullTextSearch";
-import { Building2, Users, Search, FileText, Newspaper, AlertTriangle, Radio } from "lucide-react";
+import { Building2, Search, FileText, Newspaper, AlertTriangle, Radio, Compass, Handshake, Briefcase } from "lucide-react";
 import {
   CommandDialog,
   CommandInput,
@@ -46,10 +46,10 @@ const CommandPalette = () => {
   const selectResult = (type: string, id: string) => {
     setOpen(false);
     setQuery("");
-    if (type === "company") navigate(`/companies/${id}`);
-    else if (type === "news") navigate("/intelligence");
-    else if (type === "signal") navigate("/intelligence");
-    else if (type === "distressed") navigate("/distressed");
+    if (type === "company") navigate(`/discover`);
+    else if (type === "news") navigate("/discover");
+    else if (type === "signal") navigate("/discover");
+    else if (type === "distressed") navigate("/discover");
   };
 
   const goTo = (path: string) => {
@@ -58,7 +58,6 @@ const CommandPalette = () => {
     navigate(path);
   };
 
-  // Group results by entity type
   const grouped = (results ?? []).reduce<Record<string, typeof results>>((acc, r) => {
     if (!acc[r.entity_type]) acc[r.entity_type] = [];
     acc[r.entity_type]!.push(r);
@@ -68,7 +67,7 @@ const CommandPalette = () => {
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput
-        placeholder="Search companies, news, signals, distressed assets..."
+        placeholder="Search companies, news, signals..."
         value={query}
         onValueChange={setQuery}
       />
@@ -77,23 +76,20 @@ const CommandPalette = () => {
 
         {!query && (
           <CommandGroup heading="Navigate">
-            <CommandItem onSelect={() => goTo("/")}>
-              <FileText className="mr-2 h-4 w-4" /> Dashboard
-            </CommandItem>
-            <CommandItem onSelect={() => goTo("/companies")}>
-              <Building2 className="mr-2 h-4 w-4" /> Companies
+            <CommandItem onSelect={() => goTo("/discover")}>
+              <Compass className="mr-2 h-4 w-4" /> Discover
             </CommandItem>
             <CommandItem onSelect={() => goTo("/deals")}>
+              <Handshake className="mr-2 h-4 w-4" /> Deals
+            </CommandItem>
+            <CommandItem onSelect={() => goTo("/deals/flow")}>
               <Search className="mr-2 h-4 w-4" /> Deal Pipeline
             </CommandItem>
-            <CommandItem onSelect={() => goTo("/analytics")}>
-              <FileText className="mr-2 h-4 w-4" /> Analytics
+            <CommandItem onSelect={() => goTo("/portfolio")}>
+              <Briefcase className="mr-2 h-4 w-4" /> Portfolio
             </CommandItem>
-            <CommandItem onSelect={() => goTo("/intelligence")}>
-              <Radio className="mr-2 h-4 w-4" /> Intelligence Feed
-            </CommandItem>
-            <CommandItem onSelect={() => goTo("/distressed")}>
-              <AlertTriangle className="mr-2 h-4 w-4" /> Distressed Assets
+            <CommandItem onSelect={() => goTo("/deals/recommended")}>
+              <Radio className="mr-2 h-4 w-4" /> AI Deal Matcher
             </CommandItem>
           </CommandGroup>
         )}
