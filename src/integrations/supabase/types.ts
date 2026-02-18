@@ -1073,6 +1073,7 @@ export type Database = {
       deal_votes: {
         Row: {
           comment: string | null
+          conviction_score: number | null
           created_at: string
           id: string
           pipeline_deal_id: string
@@ -1081,6 +1082,7 @@ export type Database = {
         }
         Insert: {
           comment?: string | null
+          conviction_score?: number | null
           created_at?: string
           id?: string
           pipeline_deal_id: string
@@ -1089,6 +1091,7 @@ export type Database = {
         }
         Update: {
           comment?: string | null
+          conviction_score?: number | null
           created_at?: string
           id?: string
           pipeline_deal_id?: string

@@ -116,3 +116,6 @@ verify_jwt = false
 
 [functions.email-inbound]
 verify_jwt = false
+
+[functions.ai-premortem]
+verify_jwt = false

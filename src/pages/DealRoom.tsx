@@ -336,7 +336,7 @@ const DealRoom = () => {
             )}
             {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} />}
             {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} dealId={id} />}
-            {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} />}
+            {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} thesis={(deal as any).thesis ?? ""} financials={financials?.[0]} companyName={company?.name} sector={company?.sector} stage={company?.stage} />}
             {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
             {activeTab === "allocation" && <AllocationTab allocations={allocations ?? []} dealId={id!} />}
             {activeTab === "updates" && <UpdatesTab decisions={decisions ?? []} dealId={id!} />}
