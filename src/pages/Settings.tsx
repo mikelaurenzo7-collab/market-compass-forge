@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubscription } from "@/hooks/useSubscription";
-import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity, Receipt, Bot, Plug } from "lucide-react";
+import { User, Shield, Users, Loader2, Save, Monitor, Upload, Key, Mail, LogOut, CreditCard, Activity, Receipt, Bot, Plug, ScrollText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import ApiKeyManager from "@/components/ApiKeyManager";
@@ -17,6 +17,7 @@ import PageTransition from "@/components/PageTransition";
 import { AnimatedTabContent } from "@/components/AnimatedTabs";
 import ChatGPTSetup from "@/components/ChatGPTSetup";
 import IntegrationSettings from "@/components/IntegrationSettings";
+import AuditTrail from "@/components/AuditTrail";
 
 const ROLE_LABELS: Record<string, string> = {
   analyst: "Analyst",
@@ -37,7 +38,7 @@ const Settings = () => {
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [density, setDensity] = useState(() => localStorage.getItem("ui-density") ?? "comfortable");
-  const [activeTab, setActiveTab] = useState<"profile" | "billing" | "usage" | "briefing" | "api" | "chatgpt" | "integrations" | "data" | "sources" | "team">(() => {
+  const [activeTab, setActiveTab] = useState<"profile" | "billing" | "usage" | "briefing" | "api" | "chatgpt" | "integrations" | "data" | "sources" | "team" | "audit">(() => {
     const params = new URLSearchParams(window.location.search);
     return (params.get("tab") as any) || "profile";
   });
@@ -115,6 +116,7 @@ const Settings = () => {
     { id: "data" as const, label: "Data Import", icon: Upload },
     { id: "sources" as const, label: "Data Sources", icon: Monitor },
     { id: "team" as const, label: "Team", icon: Users },
+    ...((role === "admin" || role === "partner") ? [{ id: "audit" as const, label: "Audit Trail", icon: ScrollText }] : []),
   ];
 
   return (
@@ -290,6 +292,8 @@ const Settings = () => {
       {activeTab === "sources" && <DataSourcesPanel />}
 
       {activeTab === "team" && <TeamManager />}
+
+      {activeTab === "audit" && (role === "admin" || role === "partner") && <AuditTrail />}
       </AnimatedTabContent>
     </div>
     </PageTransition>
