@@ -10,49 +10,49 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const steps = [
   {
-    id: "screen",
+    id: "discover",
     icon: Search,
-    title: "Screen your first deal",
-    description: "Browse 800+ private companies. Filter by sector, stage, and revenue — then save what catches your eye.",
-    cta: "Browse Companies",
-    path: "/companies",
+    title: "Discover your first opportunity",
+    description: "Search private companies by sector, stage, and geography. Filter by revenue, valuation, and funding — then add what matches your thesis.",
+    cta: "Open Discover",
+    path: "/discover",
     benefit: "Most users find 3-5 actionable targets in their first session",
   },
   {
-    id: "watchlist",
+    id: "dealroom",
     icon: List,
-    title: "Build a watchlist",
-    description: "Group companies by sector or theme. Get real-time alerts when new intel surfaces on any of them.",
-    cta: "Go to Companies",
-    path: "/companies",
-    benefit: "Watchlists drive 4x faster deal response times",
+    title: "Open a Deal Room",
+    description: "Every opportunity gets its own workspace with diligence, valuation, IC discussion, and allocation — all in one place.",
+    cta: "Go to Deals",
+    path: "/deals",
+    benefit: "One room replaces 12 tabs and 3 spreadsheets",
   },
   {
-    id: "briefing",
+    id: "thesis",
     icon: Brain,
-    title: "Generate your AI briefing",
-    description: "Get an AI-synthesized daily digest of pipeline changes, news sentiment, and macro shifts — delivered to your command center.",
-    cta: "View Briefing",
-    path: "/dashboard",
-    benefit: "Save 45 min/day on market monitoring",
-  },
-  {
-    id: "memo",
-    icon: FileText,
-    title: "Write an investment memo",
-    description: "Pick any company and generate a full investment memo — complete with risk factors, valuation comps, and thesis.",
-    cta: "Try AI Research",
-    path: "/research",
-    benefit: "Generate IC-ready memos in under 2 minutes",
+    title: "Document your thesis",
+    description: "Write your investment rationale, upload a CIM, and let AI extract key metrics and risk flags automatically.",
+    cta: "Start Diligence",
+    path: "/deals",
+    benefit: "AI extraction saves 2+ hours per deal",
   },
   {
     id: "alerts",
     icon: Bell,
     title: "Set up alerts",
-    description: "Configure alerts by sector, funding stage, or keywords so you never miss a deal that matches your investment thesis.",
+    description: "Configure alerts by sector, funding stage, or keywords so you never miss a deal that matches your mandate.",
     cta: "Configure Alerts",
     path: "/alerts",
     benefit: "Avg alert-to-action time: 12 minutes",
+  },
+  {
+    id: "portfolio",
+    icon: FileText,
+    title: "Track your portfolio",
+    description: "Monitor live positions with thesis-vs-actuals, sector allocation, and performance metrics across your entire book.",
+    cta: "View Portfolio",
+    path: "/portfolio",
+    benefit: "Institutional-grade reporting from day one",
   },
 ];
 
@@ -166,12 +166,12 @@ export default function OnboardingFlow() {
           </motion.div>
           <h2 className="text-base font-bold text-foreground">You're all set!</h2>
           <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-            Your Grapevine workspace is configured. Start sourcing deals, generating memos, and tracking your pipeline from the command center.
+            Your Grapevine workspace is configured. Start discovering opportunities, opening Deal Rooms, and deploying capital.
           </p>
           <div className="flex gap-2 justify-center pt-2">
             <Button size="sm" onClick={handleDismiss} className="gap-1.5">
               <Rocket className="h-3.5 w-3.5" />
-              Launch Command Center
+              Go to Deals
             </Button>
             <Button size="sm" variant="outline" onClick={() => { handleDismiss(); navigate("/settings"); }}>
               Open Settings

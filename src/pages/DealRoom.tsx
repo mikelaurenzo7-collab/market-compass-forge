@@ -1,12 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ArrowLeft, FileText, MessageSquare, Clock, PieChart, Bell, LayoutDashboard, ChevronRight, Scale, BookOpen, Plus, Trash2, DollarSign, Upload, AlertTriangle, TrendingUp, BarChart3, Timer, CheckCircle, XCircle, Send, Edit3, Link } from "lucide-react";
+import { ArrowLeft, FileText, MessageSquare, Clock, PieChart, Bell, LayoutDashboard, ChevronRight, Scale, BookOpen, Plus, Trash2, DollarSign, Upload, AlertTriangle, TrendingUp, BarChart3, Timer, CheckCircle, XCircle, Send, Edit3, Link, Loader2 } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
+import DCFCalculator from "@/components/DCFCalculator";
+import CompTableBuilder from "@/components/CompTableBuilder";
 import { toast } from "sonner";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -83,6 +85,23 @@ const DealRoom = () => {
       return data;
     },
     enabled: !!id,
+  });
+
+  // Fetch profiles for display names
+  const { data: profiles } = useQuery({
+    queryKey: ["deal-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, display_name")
+        .limit(200);
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      data?.forEach((p: any) => { if (p.display_name) map[p.user_id] = p.display_name; });
+      return map;
+    },
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: allocations } = useQuery({
@@ -277,7 +296,8 @@ const DealRoom = () => {
               <select
                 value={deal.stage}
                 onChange={(e) => updateStage.mutate(e.target.value)}
-                className="h-8 px-3 rounded-md border border-border bg-background text-xs text-foreground"
+                disabled={updateStage.isPending}
+                className="h-8 px-3 rounded-md border border-border bg-background text-xs text-foreground disabled:opacity-50"
               >
                 {Object.entries(STAGE_LABELS).map(([key, label]) => (
                   <option key={key} value={key}>{label}</option>
@@ -323,9 +343,9 @@ const DealRoom = () => {
             {activeTab === "summary" && (
               <SummaryTab company={company} deal={deal} decisions={decisions} comments={comments} financials={financials} fundingRounds={fundingRounds} documents={documents} allocations={allocations} enrichments={enrichments} votes={votes} onSaveThesis={(t: string) => updateThesis.mutate(t)} />
             )}
-            {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} />}
-            {activeTab === "valuation" && <ValuationTab navigate={navigate} financials={financials ?? []} fundingRounds={fundingRounds ?? []} />}
-            {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} />}
+            {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} />}
+            {activeTab === "valuation" && <ValuationTab navigate={navigate} financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} />}
+            {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} />}
             {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
             {activeTab === "allocation" && <AllocationTab allocations={allocations ?? []} dealId={id!} />}
             {activeTab === "updates" && <UpdatesTab decisions={decisions ?? []} dealId={id!} />}
@@ -497,7 +517,40 @@ const MetricItem = ({ label, value, highlight }: { label: string; value: string;
 );
 
 /* ── Diligence Tab ── */
-const DiligenceTab = ({ documents, financials, enrichments, companyName }: { documents: any[]; financials: any[]; enrichments: any[]; companyName?: string }) => (
+const DiligenceTab = ({ documents, financials, enrichments, companyName, companyId }: { documents: any[]; financials: any[]; enrichments: any[]; companyName?: string; companyId?: string }) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !companyId) return;
+    setUploading(true);
+    try {
+      const filePath = `${user.id}/${companyId}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from("document-uploads").upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("document-uploads").getPublicUrl(filePath);
+      const { error: insertError } = await supabase.from("company_documents").insert({
+        company_id: companyId,
+        file_name: file.name,
+        file_url: urlData.publicUrl,
+        document_type: file.name.endsWith(".pdf") ? "cim" : "financial_statement",
+        uploaded_by: user.id,
+      });
+      if (insertError) throw insertError;
+      queryClient.invalidateQueries({ queryKey: ["deal-documents", companyId] });
+      toast.success("Document uploaded");
+    } catch (err: any) {
+      toast.error(err.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  return (
   <div className="max-w-4xl space-y-6">
     {/* Documents section */}
     <div className="rounded-lg border border-border bg-card">
@@ -505,8 +558,13 @@ const DiligenceTab = ({ documents, financials, enrichments, companyName }: { doc
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <FileText className="h-4 w-4 text-primary" /> Documents ({documents.length})
         </h3>
-        <button className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5">
-          <Upload className="h-3 w-3" /> Upload
+        <input ref={fileInputRef} type="file" accept=".pdf,.xlsx,.xls,.doc,.docx,.csv" onChange={handleUpload} className="hidden" />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="h-7 px-3 rounded-md border border-border text-[11px] text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors flex items-center gap-1.5 disabled:opacity-50"
+        >
+          {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />} {uploading ? "Uploading..." : "Upload"}
         </button>
       </div>
       {documents.length === 0 ? (
@@ -619,69 +677,82 @@ const DiligenceTab = ({ documents, financials, enrichments, companyName }: { doc
       <p className="text-xs text-muted-foreground">AI risk analysis will populate automatically as documents are uploaded and analyzed.</p>
     </div>
   </div>
-);
+  );
+};
 
 /* ── Valuation Tab ── */
-const ValuationTab = ({ navigate, financials, fundingRounds }: { navigate: any; financials: any[]; fundingRounds: any[] }) => (
-  <div className="max-w-4xl space-y-6">
-    {fundingRounds.length > 0 && (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Valuation History</h3>
-        <div className="space-y-2">
-          {fundingRounds.map((r: any) => (
-            <div key={r.id} className="flex items-center justify-between text-xs border-b border-border/30 pb-2 last:border-0">
-              <div className="flex items-center gap-3">
-                <span className="font-medium text-foreground">{r.round_type}</span>
-                {r.date && <span className="text-muted-foreground">{format(new Date(r.date), "MMM yyyy")}</span>}
-              </div>
-              <div className="flex items-center gap-4">
-                {r.amount && <span className="font-mono text-foreground">${(r.amount / 1e6).toFixed(1)}M raised</span>}
-                {r.valuation_pre && <span className="text-muted-foreground">Pre: ${(r.valuation_pre / 1e6).toFixed(0)}M</span>}
-                {r.valuation_post && <span className="text-primary font-mono font-medium">Post: ${(r.valuation_post / 1e6).toFixed(0)}M</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
+const ValuationTab = ({ financials, fundingRounds, companyName, companyId }: { navigate: any; financials: any[]; fundingRounds: any[]; companyName?: string; companyId?: string }) => {
+  const latestFinancial = financials?.[0];
+  const initialRevenue = latestFinancial?.revenue ? latestFinancial.revenue / 1e6 : undefined;
+  const initialGrowth = undefined; // Let DCF calculate from history
+  const initialMargin = latestFinancial?.ebitda && latestFinancial?.revenue ? Math.round((latestFinancial.ebitda / latestFinancial.revenue) * 100) : undefined;
 
-    {financials.length > 0 && fundingRounds.length > 0 && (
-      <div className="rounded-lg border border-border bg-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Implied Multiples</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {(() => {
-            const latestVal = fundingRounds[0]?.valuation_post;
-            const latestRev = financials[0]?.revenue;
-            const latestEbitda = financials[0]?.ebitda;
-            const latestArr = financials[0]?.arr;
-            return (
-              <>
-                {latestVal && latestRev && <MetricItem label="EV/Revenue" value={`${(latestVal / latestRev).toFixed(1)}x`} />}
-                {latestVal && latestEbitda && latestEbitda > 0 && <MetricItem label="EV/EBITDA" value={`${(latestVal / latestEbitda).toFixed(1)}x`} />}
-                {latestVal && latestArr && <MetricItem label="EV/ARR" value={`${(latestVal / latestArr).toFixed(1)}x`} />}
-                {latestVal && <MetricItem label="Last Valuation" value={`$${(latestVal / 1e6).toFixed(0)}M`} />}
-              </>
-            );
-          })()}
+  return (
+    <div className="max-w-5xl space-y-6">
+      {fundingRounds.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Valuation History</h3>
+          <div className="space-y-2">
+            {fundingRounds.map((r: any) => (
+              <div key={r.id} className="flex items-center justify-between text-xs border-b border-border/30 pb-2 last:border-0">
+                <div className="flex items-center gap-3">
+                  <span className="font-medium text-foreground">{r.round_type}</span>
+                  {r.date && <span className="text-muted-foreground">{format(new Date(r.date), "MMM yyyy")}</span>}
+                </div>
+                <div className="flex items-center gap-4">
+                  {r.amount && <span className="font-mono text-foreground">${(r.amount / 1e6).toFixed(1)}M raised</span>}
+                  {r.valuation_pre && <span className="text-muted-foreground">Pre: ${(r.valuation_pre / 1e6).toFixed(0)}M</span>}
+                  {r.valuation_post && <span className="text-primary font-mono font-medium">Post: ${(r.valuation_post / 1e6).toFixed(0)}M</span>}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    <div className="rounded-lg border border-border bg-card p-6 text-center space-y-3">
-      <Scale className="h-10 w-10 text-primary/40 mx-auto" />
-      <h3 className="text-sm font-semibold text-foreground">Advanced Valuation Toolkit</h3>
-      <p className="text-xs text-muted-foreground leading-relaxed max-w-md mx-auto">
-        DCF models, comparable analysis, and football field visualizations.
-      </p>
-      <button onClick={() => navigate("/valuations")} className="h-8 px-4 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors">
-        Open Valuation Tools
-      </button>
+      {financials.length > 0 && fundingRounds.length > 0 && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Implied Multiples</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {(() => {
+              const latestVal = fundingRounds[0]?.valuation_post;
+              const latestRev = financials[0]?.revenue;
+              const latestEbitda = financials[0]?.ebitda;
+              const latestArr = financials[0]?.arr;
+              return (
+                <>
+                  {latestVal && latestRev && <MetricItem label="EV/Revenue" value={`${(latestVal / latestRev).toFixed(1)}x`} />}
+                  {latestVal && latestEbitda && latestEbitda > 0 && <MetricItem label="EV/EBITDA" value={`${(latestVal / latestEbitda).toFixed(1)}x`} />}
+                  {latestVal && latestArr && <MetricItem label="EV/ARR" value={`${(latestVal / latestArr).toFixed(1)}x`} />}
+                  {latestVal && <MetricItem label="Last Valuation" value={`$${(latestVal / 1e6).toFixed(0)}M`} />}
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Embedded DCF Calculator */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <Scale className="h-4 w-4 text-primary" /> DCF Model
+        </h3>
+        <DCFCalculator initialRevenue={initialRevenue} initialMargin={initialMargin} companyName={companyName} companyId={companyId} />
+      </div>
+
+      {/* Embedded Comp Table */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" /> Comparable Analysis
+        </h3>
+        <CompTableBuilder embedded />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* ── Discussion Tab with IC Voting ── */
-const DiscussionTab = ({ comments, dealId, votes }: { comments: any[]; dealId: string; votes: any[] }) => {
+const DiscussionTab = ({ comments, dealId, votes, profiles }: { comments: any[]; dealId: string; votes: any[]; profiles: Record<string, string> }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState("");
@@ -727,15 +798,17 @@ const DiscussionTab = ({ comments, dealId, votes }: { comments: any[]; dealId: s
         <div className="flex items-center gap-3">
           <button
             onClick={() => castVote.mutate("yes")}
-            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${myVote === "yes" ? "bg-success text-success-foreground" : "border border-border text-muted-foreground hover:text-success hover:border-success/30 hover:bg-success/5"}`}
+            disabled={castVote.isPending}
+            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 ${myVote === "yes" ? "bg-success text-success-foreground" : "border border-border text-muted-foreground hover:text-success hover:border-success/30 hover:bg-success/5"}`}
           >
-            <CheckCircle className="h-4 w-4" /> Proceed ({yesVotes})
+            {castVote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />} Proceed ({yesVotes})
           </button>
           <button
             onClick={() => castVote.mutate("no")}
-            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 ${myVote === "no" ? "bg-destructive text-destructive-foreground" : "border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5"}`}
+            disabled={castVote.isPending}
+            className={`h-9 px-4 rounded-md text-sm font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50 ${myVote === "no" ? "bg-destructive text-destructive-foreground" : "border border-border text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5"}`}
           >
-            <XCircle className="h-4 w-4" /> Pass ({noVotes})
+            {castVote.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />} Pass ({noVotes})
           </button>
         </div>
       </div>
@@ -743,11 +816,11 @@ const DiscussionTab = ({ comments, dealId, votes }: { comments: any[]; dealId: s
       {/* Comment input */}
       <div className="flex gap-2">
         <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addComment.mutate()}
+          onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && !addComment.isPending && addComment.mutate()}
           placeholder="Add a comment or IC note..."
           className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary" />
-        <button onClick={() => addComment.mutate()} disabled={!newComment.trim()} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1.5">
-          <Send className="h-3.5 w-3.5" /> Post
+        <button onClick={() => addComment.mutate()} disabled={!newComment.trim() || addComment.isPending} className="h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center gap-1.5">
+          {addComment.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} Post
         </button>
       </div>
       {comments.length === 0 ? (
@@ -761,7 +834,7 @@ const DiscussionTab = ({ comments, dealId, votes }: { comments: any[]; dealId: s
           {comments.map((c: any) => (
             <div key={c.id} className="rounded-lg border border-border bg-card p-3">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-mono text-muted-foreground">{c.user_id.slice(0, 8)}</span>
+                <span className="text-xs font-medium text-foreground">{profiles[c.user_id] ?? c.user_id.slice(0, 8)}</span>
                 <span className="text-[10px] text-muted-foreground/60">{formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}</span>
               </div>
               <p className="text-sm text-foreground">{c.content}</p>

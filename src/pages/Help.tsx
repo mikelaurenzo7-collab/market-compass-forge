@@ -16,35 +16,35 @@ const contactSchema = z.object({
 const FAQ_ITEMS = [
   {
     q: "What is Grapevine?",
-    a: "Grapevine is an AI-powered private market intelligence platform for PE firms, family offices, and growth equity teams. It combines company screening, AI research, valuation tools, and deal pipeline management in one command center.",
+    a: "Grapevine is a Private Markets Operating System for PE firms, family offices, and CRE investors. It covers the entire capital lifecycle — Discover, Diligence, Coordinate, Allocate, and Report — in a single workspace called the Deal Room.",
+  },
+  {
+    q: "What is a Deal Room?",
+    a: "A Deal Room is the atomic unit of Grapevine. Every opportunity gets its own room with seven tabs: Summary (thesis & metrics), Diligence (documents & AI extraction), Valuation (DCF & comps), Discussion (IC notes & voting), Timeline (decision journal), Allocation (capital stack), and Updates (KPI reporting).",
   },
   {
     q: "Where does the data come from?",
-    a: "Our data is sourced from SEC EDGAR filings, FRED economic data, Financial Modeling Prep, Firecrawl web intelligence, and user-contributed information. Every data point is tracked with full provenance — source, confidence score, and verification status.",
+    a: "Data is sourced from SEC EDGAR filings, FRED economic indicators, Financial Modeling Prep, Firecrawl web intelligence, and user-contributed information. Every data point carries full provenance — source, confidence score, and verification status.",
   },
   {
-    q: "What AI features are available?",
-    a: "AI Research Chat for company Q&A, Investment Memo generation, Document Analysis (upload CIMs, PPMs, financials), and AI Deal Matching that scores opportunities against your criteria.",
+    q: "What AI capabilities are included?",
+    a: "AI-powered document analysis extracts metrics and risk flags from CIMs and PPMs. AI deal matching scores opportunities against your criteria. Investment memo generation compiles deal data into IC-ready documents.",
   },
   {
-    q: "How does the deal pipeline work?",
-    a: "Add any company to your pipeline from the Companies page. Track deals through stages: Sourced → Screening → Due Diligence → IC Review → Term Sheet → Closed. Add notes, collaborate with team members, and log decisions.",
+    q: "How does the capital lifecycle work?",
+    a: "Discover opportunities in the market → run Diligence with uploaded documents and AI extraction → Coordinate with your team via IC votes and threaded notes → Allocate capital across equity, debt, and mezzanine → Report on portfolio performance with thesis-vs-actuals tracking.",
   },
   {
     q: "Is my data secure?",
-    a: "Yes. All data is encrypted in transit and at rest. Row-level security ensures you can only access your own pipeline, watchlists, and alerts. We never share your proprietary data with other users.",
+    a: "Yes. All data is encrypted in transit and at rest. Row-level security ensures you only access your own deals, pipeline, and documents. Uploaded files are restricted to the original uploader via signed URLs.",
   },
   {
     q: "What subscription plans are available?",
     a: "We offer Essential (free trial), Professional, and Institutional tiers. Each tier unlocks additional features like increased API access, team collaboration, and priority data coverage. Visit Settings → Billing for details.",
   },
   {
-    q: "Can I access data via API?",
-    a: "Yes. Professional and Institutional plans include REST API access. Generate API keys in Settings → API Keys. Full documentation is available in the Developers section.",
-  },
-  {
-    q: "How do alerts and briefings work?",
-    a: "Create custom alerts based on sectors, funding rounds, or keywords. Get notified when matching events occur. Morning briefings summarize overnight activity across your watchlists and portfolio.",
+    q: "How do alerts work?",
+    a: "Configure alerts by sector, funding stage, or keywords. Get notified when matching events occur across your pipeline and watchlists. Morning briefings summarize overnight activity.",
   },
 ];
 
