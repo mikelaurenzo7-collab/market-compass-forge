@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Slider } from "@/components/ui/slider";
 import { motion } from "framer-motion";
+import EmptyState from "@/components/EmptyState";
 
 interface DiscussionTabProps {
   comments: any[];
@@ -260,11 +261,11 @@ const DiscussionTab = ({ comments, dealId, votes, profiles, thesis, financials, 
       </div>
 
       {comments.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
-          <MessageSquare className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No comments yet</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Start the IC conversation about this deal</p>
-        </div>
+        <EmptyState
+          icon={MessageSquare}
+          title="No Comments Yet"
+          description="Start the conversation with your deal team. IC notes, questions, and strategic observations belong here."
+        />
       ) : (
         <div className="space-y-3">
           {comments.map((c: any) => (

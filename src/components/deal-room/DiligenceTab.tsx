@@ -6,6 +6,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { FileText, Upload, AlertTriangle, TrendingUp, BarChart3, Link, Loader2, ExternalLink, Copy, Check, Clock, X } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
+import { formatCurrencyCompact, formatPercent } from "@/lib/format";
+import EmptyState from "@/components/EmptyState";
 import InspectionGallery from "./InspectionGallery";
 import FieldMode from "./FieldMode";
 
@@ -241,11 +243,13 @@ const DiligenceTab = ({ documents, financials, enrichments, companyName, company
           </button>
         </div>
         {documents.length === 0 ? (
-          <div className="p-8 text-center">
-            <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Upload CIMs, financials, rent rolls, and other diligence materials</p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="No Diligence Documents Found"
+            description="Upload your first PDF to begin extraction. CIMs, financials, rent rolls, and other diligence materials will be analyzed automatically."
+            actionLabel="Upload Document"
+            onAction={() => fileInputRef.current?.click()}
+          />
         ) : (
           <div className="divide-y divide-border/50">
             {documents.map((doc: any) => (
@@ -330,10 +334,10 @@ const DiligenceTab = ({ documents, financials, enrichments, companyName, company
                 {financials.map((f: any) => (
                   <tr key={f.id} className="border-b border-border/50">
                     <td className="px-4 py-2 font-medium text-foreground">{f.period}</td>
-                    <td className="text-right px-4 py-2 font-mono text-foreground">{f.revenue ? `$${(f.revenue / 1e6).toFixed(1)}M` : "—"}</td>
-                    <td className="text-right px-4 py-2 font-mono text-foreground">{f.ebitda ? `$${(f.ebitda / 1e6).toFixed(1)}M` : "—"}</td>
-                    <td className="text-right px-4 py-2 font-mono text-foreground">{f.gross_margin ? `${(f.gross_margin * 100).toFixed(1)}%` : "—"}</td>
-                    <td className="text-right px-4 py-2 font-mono text-foreground">{f.arr ? `$${(f.arr / 1e6).toFixed(1)}M` : "—"}</td>
+                    <td className="text-right px-4 py-2 font-mono tabular-nums text-foreground">{formatCurrencyCompact(f.revenue)}</td>
+                    <td className="text-right px-4 py-2 font-mono tabular-nums text-foreground">{formatCurrencyCompact(f.ebitda)}</td>
+                    <td className="text-right px-4 py-2 font-mono tabular-nums text-foreground">{f.gross_margin ? formatPercent(f.gross_margin * 100, 1) : "—"}</td>
+                    <td className="text-right px-4 py-2 font-mono tabular-nums text-foreground">{formatCurrencyCompact(f.arr)}</td>
                   </tr>
                 ))}
               </tbody>

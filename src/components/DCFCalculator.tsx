@@ -515,7 +515,16 @@ const DCFCalculator = (props: DCFCompanyProps) => {
         <TabsTrigger value="dcf" className="text-xs">DCF Model</TabsTrigger>
         <TabsTrigger value="lbo" className="text-xs">LBO Model</TabsTrigger>
       </TabsList>
-      <TabsContent value="dcf"><DCFTab {...props} /></TabsContent>
+      <TabsContent value="dcf">
+        {/* DCF Formula Reference */}
+        <div className="rounded-lg border border-border bg-secondary/30 p-3 mb-4">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-1.5">Model Formula</p>
+          <p className="text-xs font-mono text-muted-foreground leading-relaxed">
+            EV = Σ(FCFₜ / (1 + WACC)ᵗ) + TV / (1 + WACC)ⁿ &nbsp;|&nbsp; TV = FCFₙ × (1 + g) / (WACC − g) &nbsp;|&nbsp; WACC = Rf + β × ERP
+          </p>
+        </div>
+        <DCFTab {...props} />
+      </TabsContent>
       <TabsContent value="lbo"><LBOTab {...props} /></TabsContent>
     </Tabs>
   );
