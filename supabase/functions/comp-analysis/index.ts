@@ -30,6 +30,17 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Server-side entitlement check
+    const { data: entitlement } = await supabase.rpc('check_entitlement', {
+      _user_id: user.id,
+      _feature_key: 'comp_analysis'
+    });
+    if (!entitlement?.allowed) {
+      return new Response(JSON.stringify({ error: entitlement?.reason || 'Daily comp analysis limit reached. Upgrade for more.' }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { company_ids } = await req.json();
     if (!company_ids || !Array.isArray(company_ids) || company_ids.length < 2) {
       return new Response(JSON.stringify({ error: "At least 2 company_ids required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

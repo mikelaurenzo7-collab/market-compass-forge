@@ -22,6 +22,17 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!).auth.getUser(token);
     if (authError || !user) throw new Error("Unauthorized");
 
+    // Server-side entitlement check
+    const { data: entitlement } = await supabase.rpc('check_entitlement', {
+      _user_id: user.id,
+      _feature_key: 'deal_matcher'
+    });
+    if (!entitlement?.allowed) {
+      return new Response(JSON.stringify({ error: entitlement?.reason || 'Daily deal matcher limit reached. Upgrade for more.' }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get user's pipeline companies
     const { data: pipeline } = await supabase
       .from("deal_pipeline")
