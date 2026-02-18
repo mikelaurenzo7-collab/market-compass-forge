@@ -110,7 +110,7 @@ const TeamManager = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("team_activity")
-        .select("*, profiles:user_id(display_name)")
+        .select("*")
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
