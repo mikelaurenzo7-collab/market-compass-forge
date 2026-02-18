@@ -31,7 +31,7 @@ const ExternalPortal = lazy(() => import("./pages/ExternalPortal"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
-const Demo = lazy(() => import("./pages/Demo"));
+
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[60vh]">
@@ -70,7 +70,7 @@ const App = () => (
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/external-portal" element={<ExternalPortal />} />
-              <Route path="/demo" element={<Demo />} />
+              
 
               {/* Authenticated */}
               <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
