@@ -1,6 +1,7 @@
 import { Clock, MapPin, Mic } from "lucide-react";
 import { format } from "date-fns";
 import { STAGE_LABELS } from "./types";
+import EmptyState from "@/components/EmptyState";
 
 interface TimelineTabProps {
   decisions: any[];
@@ -9,11 +10,11 @@ interface TimelineTabProps {
 const TimelineTab = ({ decisions }: TimelineTabProps) => {
   if (decisions.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card p-8 text-center max-w-lg mx-auto">
-        <Clock className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">No timeline events yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Stage changes, votes, and notes will appear here</p>
-      </div>
+      <EmptyState
+        icon={Clock}
+        title="No Activity Recorded"
+        description="Stage changes, IC votes, and decision notes will appear here as the deal progresses through the pipeline."
+      />
     );
   }
 

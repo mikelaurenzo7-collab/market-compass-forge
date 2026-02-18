@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { useCompaniesWithFinancials, formatCurrency } from "@/hooks/useData";
+import { useCompaniesWithFinancials } from "@/hooks/useData";
+import { formatCurrencyCompact } from "@/lib/format";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import CompanyHoverCard from "@/components/CompanyHoverCard";
 import Sparkline from "@/components/Sparkline";
@@ -89,8 +90,8 @@ const CompanyTable = () => {
                   </CompanyHoverCard>
                 </td>
                 <td className="px-3 sm:px-4 py-2.5 text-muted-foreground hidden sm:table-cell">{c.sector ?? "—"}</td>
-                <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-medium font-mono">{formatCurrency(c.latestRound?.valuation_post ?? null)}</td>
-                <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-mono hidden md:table-cell">{formatCurrency(c.latestFinancials?.arr ?? null)}</td>
+                <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-medium font-mono tabular-nums">{formatCurrencyCompact(c.latestRound?.valuation_post)}</td>
+                <td className="px-3 sm:px-4 py-2.5 text-right text-foreground font-mono tabular-nums hidden md:table-cell">{formatCurrencyCompact(c.latestFinancials?.arr)}</td>
                 <td className="px-3 sm:px-4 py-2.5 hidden lg:table-cell">
                   <div className="flex justify-center">
                   {sparklines?.[c.id]?.length ? (

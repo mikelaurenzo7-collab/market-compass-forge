@@ -164,9 +164,12 @@ const GrapevineScore = (props: GrapevineScoreProps) => {
               <span className={`text-sm font-black font-mono ${score.color}`}>{score.overall}/100 ({score.grade})</span>
             </div>
           </div>
-          <div className="px-3 pb-2">
-            <p className="text-[9px] text-muted-foreground/60">
-              Weighted: Diligence 30% · Conviction 30% · Valuation 40%. Risk flags penalize {RISK_PENALTY_PER_FLAG}pts each.
+          <div className="px-3 pb-2 space-y-1">
+            <p className="text-[9px] font-mono text-muted-foreground/70">
+              GV = 0.3 × Diligence + 0.3 × Conviction + 0.4 × Valuation − (n × {RISK_PENALTY_PER_FLAG})
+            </p>
+            <p className="text-[9px] text-muted-foreground/50">
+              where n = number of document risk flags
             </p>
           </div>
         </TooltipContent>

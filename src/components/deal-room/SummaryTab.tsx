@@ -199,8 +199,8 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
                     {r.lead_investors?.length > 0 && <span className="text-muted-foreground ml-2">· Led by {r.lead_investors[0]}</span>}
                   </div>
                   <div className="text-right">
-                    {r.amount && <span className="font-mono text-foreground">${(r.amount / 1e6).toFixed(1)}M</span>}
-                    {r.valuation_post && <span className="text-muted-foreground ml-2">@ ${(r.valuation_post / 1e6).toFixed(0)}M</span>}
+                    {r.amount && <span className="font-mono tabular-nums text-foreground">{formatCurrencyCompact(r.amount)}</span>}
+                    {r.valuation_post && <span className="text-muted-foreground ml-2">@ {formatCurrencyCompact(r.valuation_post)}</span>}
                   </div>
                 </div>
               ))}
