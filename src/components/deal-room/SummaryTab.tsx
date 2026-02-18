@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Edit3, BarChart3, TrendingUp, Clock, CheckCircle, XCircle, FileText, Loader2 } from "lucide-react";
+import { Edit3, BarChart3, TrendingUp, Clock, CheckCircle, XCircle, FileText, Loader2, Building2, ToggleLeft, ToggleRight } from "lucide-react";
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import MetricItem from "./MetricItem";
 import ValuationRangesSection from "./ValuationRangesSection";
 import RelationshipGraph from "@/components/RelationshipGraph";
+import AssetKPIs from "./AssetKPIs";
 import { STAGE_LABELS } from "./types";
 
 interface SummaryTabProps {
@@ -24,9 +25,11 @@ interface SummaryTabProps {
   onSaveThesis: (thesis: string) => void;
   companyId?: string;
   dealId?: string;
+  dealMode: string;
+  onToggleDealMode: (mode: string) => void;
 }
 
-const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRounds, documents, allocations, enrichments, votes, onSaveThesis, companyId, dealId }: SummaryTabProps) => {
+const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRounds, documents, allocations, enrichments, votes, onSaveThesis, companyId, dealId, dealMode, onToggleDealMode }: SummaryTabProps) => {
   const { user } = useAuth();
   const [editingThesis, setEditingThesis] = useState(false);
   const [thesis, setThesis] = useState((deal as any).thesis ?? "");
@@ -58,6 +61,31 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-5xl">
       <div className="lg:col-span-2 space-y-5">
+        {/* Deal Mode Toggle */}
+        <div className="rounded-lg border border-border bg-card p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-foreground">Deal Type</span>
+          </div>
+          <div className="flex items-center gap-1 bg-secondary/50 rounded-md p-0.5">
+            <button
+              onClick={() => onToggleDealMode("enterprise")}
+              className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors ${dealMode === "enterprise" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Enterprise
+            </button>
+            <button
+              onClick={() => onToggleDealMode("asset")}
+              className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors ${dealMode === "asset" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Asset / Real Estate
+            </button>
+          </div>
+        </div>
+
+        {/* Asset KPIs (Real Estate mode) */}
+        {dealMode === "asset" && <AssetKPIs />}
+
         {/* Thesis */}
         <div className="rounded-lg border border-border bg-card p-4 space-y-3">
           <div className="flex items-center justify-between">

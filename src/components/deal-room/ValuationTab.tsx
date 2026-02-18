@@ -9,15 +9,18 @@ import SensitivityPanel from "./SensitivityPanel";
 import type { SensitivityInputs } from "./SensitivityPanel";
 import MetricItem from "./MetricItem";
 
+import SalesComparison from "./SalesComparison";
+
 interface ValuationTabProps {
   financials: any[];
   fundingRounds: any[];
   companyName?: string;
   companyId?: string;
   dealId?: string;
+  dealMode?: string;
 }
 
-const ValuationTab = ({ financials, fundingRounds, companyName, companyId, dealId }: ValuationTabProps) => {
+const ValuationTab = ({ financials, fundingRounds, companyName, companyId, dealId, dealMode }: ValuationTabProps) => {
   const latestFinancial = financials?.[0];
   const initialRevenue = latestFinancial?.revenue ? latestFinancial.revenue / 1e6 : undefined;
   const initialMargin = latestFinancial?.ebitda && latestFinancial?.revenue ? Math.round((latestFinancial.ebitda / latestFinancial.revenue) * 100) : undefined;
@@ -78,6 +81,10 @@ const ValuationTab = ({ financials, fundingRounds, companyName, companyId, dealI
 
   return (
     <div className="max-w-5xl space-y-6">
+      {/* Sales Comparison (Asset/RE mode) */}
+      {dealMode === "asset" && dealId && (
+        <SalesComparison dealId={dealId} />
+      )}
       {/* Dynamic Sensitivity Panel */}
       <SensitivityPanel
         dealId={dealId}

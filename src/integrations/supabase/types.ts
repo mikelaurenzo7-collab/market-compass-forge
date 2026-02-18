@@ -957,6 +957,7 @@ export type Database = {
         Row: {
           company_id: string
           created_at: string
+          deal_mode: string
           id: string
           notes: string | null
           priority: string | null
@@ -968,6 +969,7 @@ export type Database = {
         Insert: {
           company_id: string
           created_at?: string
+          deal_mode?: string
           id?: string
           notes?: string | null
           priority?: string | null
@@ -979,6 +981,7 @@ export type Database = {
         Update: {
           company_id?: string
           created_at?: string
+          deal_mode?: string
           id?: string
           notes?: string | null
           priority?: string | null
@@ -2835,6 +2838,67 @@ export type Database = {
         }
         Relationships: []
       }
+      property_photos: {
+        Row: {
+          caption: string | null
+          company_id: string
+          created_at: string
+          deal_id: string
+          file_name: string
+          file_url: string
+          id: string
+          photo_type: string
+          sort_order: number | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          caption?: string | null
+          company_id: string
+          created_at?: string
+          deal_id: string
+          file_name: string
+          file_url: string
+          id?: string
+          photo_type?: string
+          sort_order?: number | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          caption?: string | null
+          company_id?: string
+          created_at?: string
+          deal_id?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          photo_type?: string
+          sort_order?: number | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_photos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_photos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "property_photos_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_market_data: {
         Row: {
           beta: number | null
@@ -3178,6 +3242,71 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sales_comparisons: {
+        Row: {
+          adj_age: number | null
+          adj_amenities: number | null
+          adj_condition: number | null
+          adj_location: number | null
+          adj_size: number | null
+          adjusted_price_per_sqft: number | null
+          comp_name: string
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          id: string
+          notes: string | null
+          price_per_sqft: number | null
+          sale_date: string | null
+          sale_price: number | null
+          sqft: number | null
+        }
+        Insert: {
+          adj_age?: number | null
+          adj_amenities?: number | null
+          adj_condition?: number | null
+          adj_location?: number | null
+          adj_size?: number | null
+          adjusted_price_per_sqft?: number | null
+          comp_name: string
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          id?: string
+          notes?: string | null
+          price_per_sqft?: number | null
+          sale_date?: string | null
+          sale_price?: number | null
+          sqft?: number | null
+        }
+        Update: {
+          adj_age?: number | null
+          adj_amenities?: number | null
+          adj_condition?: number | null
+          adj_location?: number | null
+          adj_size?: number | null
+          adjusted_price_per_sqft?: number | null
+          comp_name?: string
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          id?: string
+          notes?: string | null
+          price_per_sqft?: number | null
+          sale_date?: string | null
+          sale_price?: number | null
+          sqft?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_comparisons_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_screens: {
         Row: {

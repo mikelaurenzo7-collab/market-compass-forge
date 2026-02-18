@@ -332,10 +332,10 @@ const DealRoom = () => {
         <div className="flex-1 overflow-y-auto">
           <div role="tabpanel" id={`panel-${activeTab}`} className="p-4 sm:p-6">
             {activeTab === "summary" && (
-              <SummaryTab company={company} deal={deal} decisions={decisions ?? null} comments={comments ?? null} financials={financials ?? null} fundingRounds={fundingRounds ?? null} documents={documents ?? null} allocations={allocations ?? null} enrichments={enrichments ?? null} votes={votes ?? null} onSaveThesis={(t: string) => updateThesis.mutate(t)} companyId={companyId} dealId={id} />
+              <SummaryTab company={company} deal={deal} decisions={decisions ?? null} comments={comments ?? null} financials={financials ?? null} fundingRounds={fundingRounds ?? null} documents={documents ?? null} allocations={allocations ?? null} enrichments={enrichments ?? null} votes={votes ?? null} onSaveThesis={(t: string) => updateThesis.mutate(t)} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} onToggleDealMode={(mode: string) => { supabase.from("deal_pipeline").update({ deal_mode: mode } as any).eq("id", id!).then(() => queryClient.invalidateQueries({ queryKey: ["deal-room", id] })); }} />
             )}
-            {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} />}
-            {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} dealId={id} />}
+            {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} />}
+            {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} />}
             {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} thesis={(deal as any).thesis ?? ""} financials={financials?.[0]} companyName={company?.name} sector={company?.sector} stage={company?.stage} />}
             {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
             {activeTab === "allocation" && <AllocationTab allocations={allocations ?? []} dealId={id!} />}
