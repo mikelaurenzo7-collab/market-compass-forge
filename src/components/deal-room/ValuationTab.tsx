@@ -1,7 +1,12 @@
+import { useState, useCallback } from "react";
 import { Scale, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import DCFCalculator from "@/components/DCFCalculator";
 import CompTableBuilder from "@/components/CompTableBuilder";
+import ValuationFootballField from "@/components/ValuationFootballField";
+import type { FootballFieldCompanyData } from "@/components/ValuationFootballField";
+import SensitivityPanel from "./SensitivityPanel";
+import type { SensitivityInputs } from "./SensitivityPanel";
 import MetricItem from "./MetricItem";
 
 interface ValuationTabProps {
@@ -9,15 +14,85 @@ interface ValuationTabProps {
   fundingRounds: any[];
   companyName?: string;
   companyId?: string;
+  dealId?: string;
 }
 
-const ValuationTab = ({ financials, fundingRounds, companyName, companyId }: ValuationTabProps) => {
+const ValuationTab = ({ financials, fundingRounds, companyName, companyId, dealId }: ValuationTabProps) => {
   const latestFinancial = financials?.[0];
   const initialRevenue = latestFinancial?.revenue ? latestFinancial.revenue / 1e6 : undefined;
   const initialMargin = latestFinancial?.ebitda && latestFinancial?.revenue ? Math.round((latestFinancial.ebitda / latestFinancial.revenue) * 100) : undefined;
 
+  // Sensitivity overrides that drive the football field in real-time
+  const [sensitivityOverrides, setSensitivityOverrides] = useState<SensitivityInputs | null>(null);
+
+  const handleSensitivityChange = useCallback((inputs: SensitivityInputs) => {
+    setSensitivityOverrides(inputs);
+  }, []);
+
+  // Build company data for football field, with sensitivity overrides applied
+  const footballFieldData: FootballFieldCompanyData | undefined = latestFinancial ? {
+    revenue: latestFinancial.revenue,
+    ebitda: latestFinancial.ebitda,
+    growthRate: sensitivityOverrides ? sensitivityOverrides.revenueGrowth / 100 : (latestFinancial.revenue && financials?.[1]?.revenue ? (latestFinancial.revenue / financials[1].revenue - 1) : 0.15),
+    grossMargin: latestFinancial.gross_margin,
+    stage: undefined,
+    sector: undefined,
+  } : undefined;
+
+  // Override football field ranges when sensitivity is active
+  const sensitivityRanges = sensitivityOverrides && latestFinancial ? (() => {
+    const rev = (latestFinancial.revenue ?? 0) / 1e6;
+    const ebitdaM = latestFinancial.ebitda ? latestFinancial.ebitda / 1e6 : rev * 0.2;
+    const { wacc, exitMultiple, revenueGrowth } = sensitivityOverrides;
+    const waccDec = wacc / 100;
+    const growthDec = revenueGrowth / 100;
+
+    // DCF with sensitivity
+    const projectedFCFs = Array.from({ length: 5 }, (_, yr) => {
+      const projEbitda = ebitdaM * Math.pow(1 + growthDec, yr + 1);
+      return (projEbitda * 0.75) / Math.pow(1 + waccDec, yr + 1);
+    });
+    const pvFCF = projectedFCFs.reduce((s, v) => s + v, 0);
+    const termY5 = ebitdaM * Math.pow(1 + growthDec, 5);
+    const tv = (termY5 * exitMultiple) / Math.pow(1 + waccDec, 5);
+    const dcfMid = Math.round(pvFCF + tv);
+
+    // Comps with growth-adjusted multiple
+    const growthMultiplier = 1 + (revenueGrowth - 15) * 0.05;
+    const compMid = Math.round(rev * 5 * Math.max(0.5, growthMultiplier));
+
+    // Precedent txns
+    const ptMid = Math.round(compMid * 1.15);
+
+    // LBO
+    const exitEV = termY5 * exitMultiple;
+    const lboMid = Math.round(exitEV * 0.65);
+
+    return [
+      { method: "DCF Analysis", low: Math.round(dcfMid * 0.7), mid: dcfMid, high: Math.round(dcfMid * 1.35), color: "hsl(var(--primary))" },
+      { method: "Comp Companies", low: Math.round(compMid * 0.7), mid: compMid, high: Math.round(compMid * 1.4), color: "hsl(var(--chart-1))" },
+      { method: "Precedent Txns", low: Math.round(ptMid * 0.75), mid: ptMid, high: Math.round(ptMid * 1.3), color: "hsl(var(--chart-2))" },
+      { method: "LBO Analysis", low: Math.round(lboMid * 0.7), mid: lboMid, high: Math.round(lboMid * 1.4), color: "hsl(var(--chart-4))" },
+    ];
+  })() : undefined;
+
   return (
     <div className="max-w-5xl space-y-6">
+      {/* Dynamic Sensitivity Panel */}
+      <SensitivityPanel
+        dealId={dealId}
+        companyId={companyId}
+        baseRevenue={initialRevenue ?? 100}
+        baseEbitdaMargin={initialMargin ?? 25}
+        onChange={handleSensitivityChange}
+      />
+
+      {/* Football Field — reacts to sliders */}
+      <ValuationFootballField
+        ranges={sensitivityRanges}
+        companyData={!sensitivityRanges ? footballFieldData : undefined}
+      />
+
       {fundingRounds.length > 0 && (
         <div className="rounded-lg border border-border bg-card p-4">
           <h3 className="text-sm font-semibold text-foreground mb-3">Valuation History</h3>
