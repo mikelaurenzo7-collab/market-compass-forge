@@ -156,11 +156,22 @@ const Decisions = () => {
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center rounded-lg border border-border bg-card">
-          <BookOpen className="h-8 w-8 text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">No decisions found</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
-            {decisions?.length ? "Try adjusting your filters" : "Stage changes and IC votes will appear here as you work through your deal pipeline"}
+          <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 ring-1 ring-primary/20">
+            <BookOpen className="h-7 w-7 text-primary" />
+          </div>
+          <p className="text-sm font-medium text-foreground">
+            {decisions?.length ? "No decisions match your filters" : "No decisions recorded yet"}
           </p>
+          <p className="text-xs text-muted-foreground mt-1 max-w-sm leading-relaxed">
+            {decisions?.length
+              ? "Try adjusting your filters or date range to find the entries you're looking for."
+              : "As you move deals through your pipeline — voting, changing stages, committing capital — every decision will be logged here automatically."}
+          </p>
+          {!decisions?.length && (
+            <button onClick={() => navigate("/deals")} className="mt-4 h-9 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+              <ArrowRight className="h-4 w-4" /> Go to Deal Flow
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-1">
