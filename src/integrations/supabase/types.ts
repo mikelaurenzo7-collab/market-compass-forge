@@ -3882,6 +3882,73 @@ export type Database = {
         }
         Relationships: []
       }
+      valuation_scenarios: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          deal_id: string | null
+          exit_multiple: number
+          id: string
+          implied_valuation: number | null
+          notes: string | null
+          revenue_growth: number
+          scenario_type: string
+          updated_at: string
+          user_id: string
+          wacc: number
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          exit_multiple: number
+          id?: string
+          implied_valuation?: number | null
+          notes?: string | null
+          revenue_growth: number
+          scenario_type: string
+          updated_at?: string
+          user_id: string
+          wacc: number
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          exit_multiple?: number
+          id?: string
+          implied_valuation?: number | null
+          notes?: string | null
+          revenue_growth?: number
+          scenario_type?: string
+          updated_at?: string
+          user_id?: string
+          wacc?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "valuation_scenarios_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "valuation_scenarios_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "mv_company_scores"
+            referencedColumns: ["company_id"]
+          },
+          {
+            foreignKeyName: "valuation_scenarios_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       waitlist_signups: {
         Row: {
           created_at: string

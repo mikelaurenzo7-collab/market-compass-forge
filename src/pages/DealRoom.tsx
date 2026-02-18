@@ -332,10 +332,10 @@ const DealRoom = () => {
         <div className="flex-1 overflow-y-auto">
           <div role="tabpanel" id={`panel-${activeTab}`} className="p-4 sm:p-6">
             {activeTab === "summary" && (
-              <SummaryTab company={company} deal={deal} decisions={decisions ?? null} comments={comments ?? null} financials={financials ?? null} fundingRounds={fundingRounds ?? null} documents={documents ?? null} allocations={allocations ?? null} enrichments={enrichments ?? null} votes={votes ?? null} onSaveThesis={(t: string) => updateThesis.mutate(t)} companyId={companyId} />
+              <SummaryTab company={company} deal={deal} decisions={decisions ?? null} comments={comments ?? null} financials={financials ?? null} fundingRounds={fundingRounds ?? null} documents={documents ?? null} allocations={allocations ?? null} enrichments={enrichments ?? null} votes={votes ?? null} onSaveThesis={(t: string) => updateThesis.mutate(t)} companyId={companyId} dealId={id} />
             )}
             {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} />}
-            {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} />}
+            {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} dealId={id} />}
             {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} />}
             {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
             {activeTab === "allocation" && <AllocationTab allocations={allocations ?? []} dealId={id!} />}

@@ -6,6 +6,7 @@ import { Edit3, BarChart3, TrendingUp, Clock, CheckCircle, XCircle, FileText, Lo
 import { format, formatDistanceToNow, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import MetricItem from "./MetricItem";
+import ValuationRangesSection from "./ValuationRangesSection";
 import { STAGE_LABELS } from "./types";
 
 interface SummaryTabProps {
@@ -21,9 +22,10 @@ interface SummaryTabProps {
   votes: any[] | null;
   onSaveThesis: (thesis: string) => void;
   companyId?: string;
+  dealId?: string;
 }
 
-const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRounds, documents, allocations, enrichments, votes, onSaveThesis, companyId }: SummaryTabProps) => {
+const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRounds, documents, allocations, enrichments, votes, onSaveThesis, companyId, dealId }: SummaryTabProps) => {
   const { user } = useAuth();
   const [editingThesis, setEditingThesis] = useState(false);
   const [thesis, setThesis] = useState((deal as any).thesis ?? "");
@@ -211,6 +213,9 @@ const SummaryTab = ({ company, deal, decisions, comments, financials, fundingRou
             <div className="flex justify-between"><span className="text-muted-foreground">Enrichments</span><span className="font-mono text-foreground">{enrichments?.length ?? 0}</span></div>
           </div>
         </div>
+
+        {/* Valuation Ranges from Sensitivity Analysis */}
+        <ValuationRangesSection dealId={dealId} />
 
         {decisions && decisions.length > 0 && (
           <div className="rounded-lg border border-border bg-card p-4">
