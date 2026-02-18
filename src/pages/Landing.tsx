@@ -39,33 +39,33 @@ const INTERESTS = [
 const CAPABILITIES = [
   {
     icon: Brain,
-    title: "AI Deal Intelligence",
-    description: "AI-synthesized company profiles, investment memos, and deal matching across 800+ private companies.",
-  },
-  {
-    icon: BarChart3,
-    title: "Valuation Toolkit",
-    description: "DCF, comps, and football field analysis with sector-adjusted benchmarks and forward multiples.",
-  },
-  {
-    icon: Shield,
-    title: "Data Provenance",
-    description: "Every data point tracked to source — SEC EDGAR, web intelligence, or manual entry. Full audit trail.",
+    title: "Discover",
+    description: "AI-sourced signals across distressed, CRE, and PE opportunities. Surface rooms worth opening.",
   },
   {
     icon: FileText,
-    title: "Document Analyzer",
-    description: "Upload CIMs, PPMs, and financial statements. Extract key metrics, risk factors, and valuation indicators.",
+    title: "Diligence",
+    description: "Upload docs, extract metrics, flag risks. Every deal gets a structured underwriting package.",
+  },
+  {
+    icon: BarChart3,
+    title: "Coordinate",
+    description: "IC notes, decision journal, threaded comments. No more email chains — everything lives in the room.",
   },
   {
     icon: Globe,
-    title: "Multi-Asset Coverage",
-    description: "Private equity, distressed debt, off-market real estate, and global opportunities in one platform.",
+    title: "Allocate",
+    description: "Track equity, debt, and commitments. When capital is wired, it gets logged. That is gravity.",
+  },
+  {
+    icon: Shield,
+    title: "Report",
+    description: "Thesis vs. actuals. Original IC memo linked to current performance. The memory layer of the firm.",
   },
   {
     icon: Zap,
-    title: "REST API & Webhooks",
-    description: "Programmatic access to deal flow, company intelligence, and fund data. Build your own integrations.",
+    title: "API & Integrations",
+    description: "Programmatic access to deal flow, company intelligence, and fund data. Build your own workflows.",
   },
 ];
 
@@ -150,10 +150,10 @@ const Landing = () => {
         </div>
         <div className="flex items-center gap-4 opacity-0 animate-[fadeIn_0.6s_ease_forwards_0.5s]">
           <button
-            onClick={() => navigate("/data-coverage")}
+            onClick={() => navigate("/discover")}
             className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:inline-flex"
           >
-            Data Coverage
+            Platform
           </button>
           <button
             onClick={() => navigate("/auth")}
@@ -181,11 +181,11 @@ const Landing = () => {
           {/* Headline */}
           <motion.div custom={1} variants={fadeUp} className="space-y-4">
             <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tighter leading-[0.9]">
-              See the deal<br />
-              <span className="text-glow text-primary">before the market.</span>
+              The system where<br />
+              <span className="text-glow text-primary">capital gets deployed.</span>
             </h1>
             <p className="text-base sm:text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              AI-powered private market intelligence for PE firms and family offices. Source deals, generate memos, and track your pipeline — all from one command center.
+              From signal to signed wire. One platform. The private markets operating system for PE firms, family offices, and CRE acquirers.
             </p>
           </motion.div>
 
@@ -289,10 +289,10 @@ const Landing = () => {
         >
           <p className="text-[10px] text-primary uppercase tracking-[0.2em] font-semibold mb-2">Platform Capabilities</p>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Everything you need to move faster
+            Discover → Diligence → Coordinate → Allocate → Report
           </h2>
           <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            Replace your fragmented stack of Excel, email, and legacy databases with one AI-native command center.
+            Replace your fragmented stack of Excel, email, and Dropbox with one capital lifecycle operating system.
           </p>
         </motion.div>
 
@@ -412,10 +412,10 @@ const Landing = () => {
         >
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Stop chasing deals.<br />
-            <span className="text-primary">Start catching them.</span>
+            <span className="text-primary">Start deploying capital.</span>
           </h2>
           <p className="text-sm text-muted-foreground">
-            Join the private beta. Limited spots for Q1 2026.
+            The private markets operating system. Limited beta spots for Q1 2026.
           </p>
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
@@ -431,9 +431,9 @@ const Landing = () => {
       {/* Footer */}
       <footer className="relative z-10 px-6 py-8 border-t border-border/30">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-[10px] text-muted-foreground/40">
-          <span>© {new Date().getFullYear()} Grapevine · Private Market Intelligence</span>
+          <span>© {new Date().getFullYear()} Grapevine · Private Markets Operating System</span>
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate("/data-coverage")} className="hover:text-muted-foreground transition-colors">Data Coverage</button>
+            <button onClick={() => navigate("/discover")} className="hover:text-muted-foreground transition-colors">Platform</button>
             <button onClick={() => navigate("/terms")} className="hover:text-muted-foreground transition-colors">Terms</button>
             <button onClick={() => navigate("/privacy")} className="hover:text-muted-foreground transition-colors">Privacy</button>
             <button onClick={() => navigate("/help")} className="hover:text-muted-foreground transition-colors">Help</button>

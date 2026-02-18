@@ -12,12 +12,11 @@ import DealsOverview from "./pages/DealsOverview";
 import DealFlow from "./pages/DealFlow";
 import DealRoom from "./pages/DealRoom";
 import DealMatcher from "./pages/DealMatcher";
-import Rooms from "./pages/Rooms";
+import Discover from "./pages/Discover";
 import Portfolio from "./pages/Portfolio";
 import Valuations from "./pages/Valuations";
 import Decisions from "./pages/Decisions";
 import DataRoom from "./pages/DataRoom";
-import Intelligence from "./pages/Intelligence";
 import Alerts from "./pages/Alerts";
 import Settings from "./pages/Settings";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -60,57 +59,55 @@ const App = () => (
 
             {/* Authenticated */}
             <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              {/* Deals — primary */}
+              {/* Discover */}
+              <Route path="/discover" element={<Discover />} />
+
+              {/* Deals */}
               <Route path="/deals" element={<DealsOverview />} />
               <Route path="/deals/flow" element={<DealFlow />} />
               <Route path="/deals/recommended" element={<DealMatcher />} />
               <Route path="/deals/:id" element={<DealRoom />} />
 
-              {/* Rooms */}
-              <Route path="/rooms" element={<Rooms />} />
-
               {/* Portfolio */}
               <Route path="/portfolio" element={<Portfolio />} />
 
-              {/* Intelligence */}
-              <Route path="/intelligence" element={<Intelligence />} />
-
-              {/* Utility / Settings */}
+              {/* Utility */}
               <Route path="/alerts" element={<Alerts />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/account" element={<Navigate to="/settings" replace />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/help" element={<Help />} />
 
-              {/* Legacy tools accessible via deep links */}
+              {/* Legacy tools (accessible, not in nav) */}
               <Route path="/valuations" element={<Valuations />} />
               <Route path="/decisions" element={<Decisions />} />
               <Route path="/data-room" element={<DataRoom />} />
 
-              {/* Legacy redirects */}
+              {/* All legacy redirects → new routes */}
               <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
+              <Route path="/intelligence" element={<Navigate to="/discover" replace />} />
+              <Route path="/rooms" element={<Navigate to="/deals" replace />} />
               <Route path="/deal-matcher" element={<Navigate to="/deals/recommended" replace />} />
-              <Route path="/companies/*" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/fund-intelligence" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/real-estate" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/global" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/sector-pulse" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/research" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/distressed" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/screening" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/data-coverage" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/document-analyzer" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/companies/*" element={<Navigate to="/discover" replace />} />
+              <Route path="/fund-intelligence" element={<Navigate to="/discover" replace />} />
+              <Route path="/real-estate" element={<Navigate to="/discover" replace />} />
+              <Route path="/global" element={<Navigate to="/discover" replace />} />
+              <Route path="/sector-pulse" element={<Navigate to="/discover" replace />} />
+              <Route path="/research" element={<Navigate to="/discover" replace />} />
+              <Route path="/distressed" element={<Navigate to="/discover" replace />} />
+              <Route path="/screening" element={<Navigate to="/discover" replace />} />
+              <Route path="/data-coverage" element={<Navigate to="/discover" replace />} />
+              <Route path="/document-analyzer" element={<Navigate to="/discover" replace />} />
               <Route path="/developers" element={<Navigate to="/settings" replace />} />
-              <Route path="/discover" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/competitive-intel" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/sector-momentum" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/analytics" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/people" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/competitive-intel" element={<Navigate to="/discover" replace />} />
+              <Route path="/sector-momentum" element={<Navigate to="/discover" replace />} />
+              <Route path="/analytics" element={<Navigate to="/discover" replace />} />
+              <Route path="/people" element={<Navigate to="/discover" replace />} />
               <Route path="/comps" element={<Navigate to="/valuations" replace />} />
               <Route path="/compare" element={<Navigate to="/valuations" replace />} />
               <Route path="/network" element={<Navigate to="/deals" replace />} />
-              <Route path="/markets/*" element={<Navigate to="/intelligence" replace />} />
-              <Route path="/watchlists" element={<Navigate to="/intelligence" replace />} />
+              <Route path="/markets/*" element={<Navigate to="/discover" replace />} />
+              <Route path="/watchlists" element={<Navigate to="/discover" replace />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
