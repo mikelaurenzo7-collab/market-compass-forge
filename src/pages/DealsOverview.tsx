@@ -3,7 +3,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign, AlertTriangle, Zap, Timer, Eye, Radio, ChevronRight, Activity, Skull, BarChart3 } from "lucide-react";
+import { Handshake, Sparkles, ArrowRight, Clock, TrendingUp, Briefcase, Plus, Compass, FileText, MessageSquare, DollarSign, AlertTriangle, Zap, Timer, Eye, Radio, ChevronRight, Activity, Skull, BarChart3, Loader2 } from "lucide-react";
+import { MetricsSkeleton, CardSkeleton, TableSkeleton } from "@/components/SkeletonLoaders";
+import { formatCurrencyCompact } from "@/lib/format";
 import { formatDistanceToNow, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import CompanyAvatar from "@/components/CompanyAvatar";
@@ -268,9 +270,13 @@ const DealsOverview = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <PageTransition>
+        <div className="p-4 sm:p-6 space-y-6 max-w-6xl">
+          <MetricsSkeleton count={4} />
+          <CardSkeleton />
+          <TableSkeleton rows={4} cols={4} />
+        </div>
+      </PageTransition>
     );
   }
 
@@ -320,27 +326,27 @@ const DealsOverview = () => {
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}
                   className="rounded-lg border border-success/20 bg-success/5 p-4">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Allocated</p>
-                  <p className="text-xl font-black font-mono text-success">
-                    ${pulseMetrics.totalAllocated >= 1e6 ? `${(pulseMetrics.totalAllocated / 1e6).toFixed(1)}M` : pulseMetrics.totalAllocated.toLocaleString()}
+                  <p className="text-xl font-black font-mono tabular-nums text-success">
+                    {formatCurrencyCompact(pulseMetrics.totalAllocated)}
                   </p>
                 </motion.div>
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
                   className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Avg Time to Close</p>
-                  <p className="text-xl font-black font-mono text-primary">{pulseMetrics.avgTimeToClose}d</p>
+                  <p className="text-xl font-black font-mono tabular-nums text-primary">{pulseMetrics.avgTimeToClose}d</p>
                 </motion.div>
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                   className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1">
                     <Skull className="h-3 w-3" /> Kill Rate
                   </p>
-                  <p className="text-xl font-black font-mono text-destructive">{pulseMetrics.killRate}%</p>
+                  <p className="text-xl font-black font-mono tabular-nums text-destructive">{pulseMetrics.killRate}%</p>
                 </motion.div>
                 <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
                   className="rounded-lg border border-chart-4/20 bg-chart-4/5 p-4">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Yield Velocity</p>
-                  <p className="text-xl font-black font-mono text-chart-4">
-                    ${pulseMetrics.yieldVelocity >= 1e6 ? `${(pulseMetrics.yieldVelocity / 1e6).toFixed(1)}M` : pulseMetrics.yieldVelocity >= 1e3 ? `${(pulseMetrics.yieldVelocity / 1e3).toFixed(0)}K` : pulseMetrics.yieldVelocity.toFixed(0)}<span className="text-xs font-normal text-muted-foreground">/day</span>
+                  <p className="text-xl font-black font-mono tabular-nums text-chart-4">
+                    {formatCurrencyCompact(pulseMetrics.yieldVelocity)}<span className="text-xs font-normal text-muted-foreground">/day</span>
                   </p>
                 </motion.div>
               </div>
@@ -517,7 +523,8 @@ const DealsOverview = () => {
                         disabled={activateWatched.isPending}
                         className="h-7 px-3 rounded-md bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <Plus className="h-3 w-3" /> Activate
+                        {activateWatched.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        {activateWatched.isPending ? "Activating..." : "Activate"}
                         <ChevronRight className="h-3 w-3" />
                       </button>
                     </div>
