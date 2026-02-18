@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { ChevronRight, Link, Timer, CheckCircle, XCircle, LayoutDashboard, FileText, Scale, MessageSquare, Clock, PieChart, Bell, ShieldAlert } from "lucide-react";
+import { ChevronRight, Link, Timer, CheckCircle, XCircle, LayoutDashboard, FileText, Scale, MessageSquare, Clock, PieChart, Bell, ShieldAlert, Users } from "lucide-react";
 import { differenceInDays } from "date-fns";
 import CompanyAvatar from "@/components/CompanyAvatar";
 import PageTransition from "@/components/PageTransition";
@@ -19,6 +19,8 @@ import DiscussionTab from "@/components/deal-room/DiscussionTab";
 import TimelineTab from "@/components/deal-room/TimelineTab";
 import AllocationTab from "@/components/deal-room/AllocationTab";
 import UpdatesTab from "@/components/deal-room/UpdatesTab";
+import DealTeamSidebar from "@/components/deal-room/DealTeamSidebar";
+import { useDealTeam } from "@/hooks/useDealTeam";
 
 const TABS = [
   { id: "summary" as TabId, label: "Summary", icon: LayoutDashboard },
@@ -36,6 +38,7 @@ const DealRoom = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabId>("summary");
+  const { canViewAllocation, effectiveRole } = useDealTeam(id);
 
   const { data: deal, isLoading } = useQuery({
     queryKey: ["deal-room", id],
@@ -347,7 +350,7 @@ const DealRoom = () => {
 
           {/* Tabs */}
           <div role="tablist" aria-label="Deal room tabs" className="flex items-center gap-1 mt-4 -mb-px overflow-x-auto" onKeyDown={handleKeyDown}>
-            {TABS.map((tab) => {
+            {TABS.filter((tab) => tab.id !== "allocation" || canViewAllocation).map((tab) => {
               const isActive = activeTab === tab.id;
               let badge: number | null = null;
               if (tab.id === "discussion") badge = comments?.length ?? 0;
@@ -378,16 +381,29 @@ const DealRoom = () => {
 
         {/* Tab panels */}
         <div className="flex-1 overflow-y-auto">
-          <div role="tabpanel" id={`panel-${activeTab}`} className="p-4 sm:p-6">
-            {activeTab === "summary" && (
-              <SummaryTab company={company} deal={deal} decisions={decisions ?? null} comments={comments ?? null} financials={financials ?? null} fundingRounds={fundingRounds ?? null} documents={documents ?? null} allocations={allocations ?? null} enrichments={enrichments ?? null} votes={votes ?? null} onSaveThesis={(t: string) => updateThesis.mutate(t)} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} onToggleDealMode={(mode: string) => { supabase.from("deal_pipeline").update({ deal_mode: mode } as any).eq("id", id!).then(() => queryClient.invalidateQueries({ queryKey: ["deal-room", id] })); }} />
-            )}
-            {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} />}
-            {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} />}
-            {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} thesis={(deal as any).thesis ?? ""} financials={financials?.[0]} companyName={company?.name} sector={company?.sector} stage={company?.stage} />}
-            {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
-            {activeTab === "allocation" && <AllocationTab allocations={allocations ?? []} dealId={id!} />}
-            {activeTab === "updates" && <UpdatesTab decisions={decisions ?? []} dealId={id!} />}
+          <div className="flex gap-6">
+            <div role="tabpanel" id={`panel-${activeTab}`} className="flex-1 p-4 sm:p-6 min-w-0">
+              {activeTab === "summary" && (
+                <SummaryTab company={company} deal={deal} decisions={decisions ?? null} comments={comments ?? null} financials={financials ?? null} fundingRounds={fundingRounds ?? null} documents={documents ?? null} allocations={allocations ?? null} enrichments={enrichments ?? null} votes={votes ?? null} onSaveThesis={(t: string) => updateThesis.mutate(t)} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} onToggleDealMode={(mode: string) => { supabase.from("deal_pipeline").update({ deal_mode: mode } as any).eq("id", id!).then(() => queryClient.invalidateQueries({ queryKey: ["deal-room", id] })); }} />
+              )}
+              {activeTab === "diligence" && <DiligenceTab documents={documents ?? []} financials={financials ?? []} enrichments={enrichments ?? []} companyName={company?.name} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} />}
+              {activeTab === "valuation" && <ValuationTab financials={financials ?? []} fundingRounds={fundingRounds ?? []} companyName={company?.name} companyId={companyId} dealId={id} dealMode={(deal as any).deal_mode ?? "enterprise"} />}
+              {activeTab === "discussion" && <DiscussionTab comments={comments ?? []} dealId={id!} votes={votes ?? []} profiles={profiles ?? {}} thesis={(deal as any).thesis ?? ""} financials={financials?.[0]} companyName={company?.name} sector={company?.sector} stage={company?.stage} />}
+              {activeTab === "timeline" && <TimelineTab decisions={decisions ?? []} />}
+              {activeTab === "allocation" && canViewAllocation && <AllocationTab allocations={allocations ?? []} dealId={id!} />}
+              {activeTab === "updates" && <UpdatesTab decisions={decisions ?? []} dealId={id!} />}
+            </div>
+            {/* Team Sidebar */}
+            <div className="hidden lg:block w-64 shrink-0 pr-6 pt-6">
+              <div className="sticky top-6 space-y-4">
+                <DealTeamSidebar dealId={id!} profiles={profiles ?? {}} />
+                <div className="rounded-lg border border-border bg-card px-3 py-2">
+                  <p className="text-[10px] text-muted-foreground">
+                    Your role: <span className="font-semibold text-foreground capitalize">{effectiveRole}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
