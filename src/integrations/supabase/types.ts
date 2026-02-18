@@ -1057,6 +1057,41 @@ export type Database = {
           },
         ]
       }
+      deal_team: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          deal_id: string
+          id: string
+          role: Database["public"]["Enums"]["deal_role"]
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          deal_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["deal_role"]
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          deal_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["deal_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_team_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_pipeline"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_transactions: {
         Row: {
           acquirer_investor: string | null
@@ -4313,6 +4348,10 @@ export type Database = {
           thesis: string
         }[]
       }
+      get_deal_role: {
+        Args: { _deal_id: string; _user_id: string }
+        Returns: string
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -4360,6 +4399,10 @@ export type Database = {
           total_count: number
         }[]
       }
+      is_deal_owner: {
+        Args: { _deal_id: string; _user_id: string }
+        Returns: boolean
+      }
       refresh_materialized_views: { Args: never; Returns: undefined }
       search_all: {
         Args: { result_limit?: number; search_query: string }
@@ -4387,6 +4430,7 @@ export type Database = {
     }
     Enums: {
       app_role: "analyst" | "associate" | "partner" | "admin"
+      deal_role: "viewer" | "contributor" | "lead" | "approver"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4515,6 +4559,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["analyst", "associate", "partner", "admin"],
+      deal_role: ["viewer", "contributor", "lead", "approver"],
     },
   },
 } as const
