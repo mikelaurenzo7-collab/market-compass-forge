@@ -38,6 +38,17 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Server-side entitlement check
+    const { data: entitlement } = await supabase.rpc('check_entitlement', {
+      _user_id: user.id,
+      _feature_key: 'morning_briefing'
+    });
+    if (!entitlement?.allowed) {
+      return new Response(JSON.stringify({ error: entitlement?.reason || 'Daily briefing limit reached. Upgrade for more.' }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Gather context for the briefing in parallel
     const yesterday = new Date(Date.now() - 86400_000).toISOString();
     const weekAgo = new Date(Date.now() - 86400_000 * 7).toISOString();
