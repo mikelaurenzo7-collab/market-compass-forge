@@ -1,36 +1,22 @@
-import { TopBar } from "@/components/layout/top-bar";
+"use client";
 
-/**
- * Command Center — Kanban deal pipeline.
- * Phase 4 will build the full drag-and-drop Kanban board here.
- */
+import { TopBar } from "@/components/layout/top-bar";
+import { KanbanBoard } from "@/components/command-center/kanban-board";
+import { PipelineStats } from "@/components/command-center/pipeline-stats";
+import { CreateDealDialog } from "@/components/command-center/create-deal-dialog";
+
 export default function CommandCenterPage() {
   return (
     <>
-      <TopBar
-        title="Command Center"
-        description="Deal pipeline at a glance"
-      />
+      <TopBar title="Command Center" description="Deal pipeline at a glance" />
       <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-4 gap-4">
-          {(["Teaser", "Diligence", "LOI", "Closed"] as const).map(
-            (status) => (
-              <div
-                key={status}
-                className="flex flex-col rounded-lg border border-border bg-card p-4"
-              >
-                <h2 className="mb-3 text-sm font-semibold text-foreground">
-                  {status}
-                </h2>
-                <div className="flex-1 space-y-2">
-                  <div className="rounded-md border border-dashed border-border p-8 text-center text-xs text-muted-foreground">
-                    Kanban cards will render here
-                  </div>
-                </div>
-              </div>
-            )
-          )}
+        <div className="mb-6 flex items-center justify-between">
+          <PipelineStats />
+          <div className="ml-4 shrink-0">
+            <CreateDealDialog />
+          </div>
         </div>
+        <KanbanBoard />
       </div>
     </>
   );
