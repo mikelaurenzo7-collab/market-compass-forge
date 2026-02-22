@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+
+function parseBoundedInt(value: string | null, fallback: number, min: number, max: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (Number.isNaN(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
 async function hashKey(key: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(key);
@@ -14,7 +21,7 @@ async function hashKey(key: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function checkRateLimit(supabase: any, userId: string, tier: string): Promise<{ allowed: boolean; remaining: number }> {
+async function checkRateLimit(supabase: any, userId: string, tier: string): Promise<{ allowed: boolean; remaining: number; limit: number; used: number }> {
   const todayStart = new Date();
   todayStart.setUTCHours(0, 0, 0, 0);
 
@@ -25,11 +32,87 @@ async function checkRateLimit(supabase: any, userId: string, tier: string): Prom
     .eq("action", "api_request")
     .gte("created_at", todayStart.toISOString());
 
-  const limits: Record<string, number> = { free: 500, professional: 10000, pro: 10000, enterprise: 1000000 };
+  const limits: Record<string, number> = {
+    free: 500,
+    analyst: 500,
+    essential: 500,
+    professional: 10000,
+    pro: 10000,
+    enterprise: 1000000,
+    institutional: 1000000,
+  };
   const limit = limits[tier] ?? limits.free;
   const used = count ?? 0;
 
-  return { allowed: used < limit, remaining: Math.max(0, limit - used) };
+  return { allowed: used < limit, remaining: Math.max(0, limit - used), limit, used };
+}
+
+
+async function trackRateWindow(supabase: any, userId: string, endpoint: string): Promise<number> {
+  const now = new Date();
+  const windowStart = new Date(now);
+  windowStart.setUTCMinutes(0, 0, 0);
+
+  const { data: existing, error: readError } = await supabase
+    .from("rate_limits")
+    .select("id, request_count")
+    .eq("identifier", userId)
+    .eq("endpoint", endpoint)
+    .eq("window_start", windowStart.toISOString())
+    .maybeSingle();
+
+  if (readError) {
+    console.warn("rate limit read failed", readError);
+    return 0;
+  }
+
+  if (!existing) {
+    const { error: insertError } = await supabase.from("rate_limits").insert({
+      identifier: userId,
+      endpoint,
+      window_start: windowStart.toISOString(),
+      request_count: 1,
+    });
+    if (insertError) {
+      console.warn("rate limit insert failed", insertError);
+      return 0;
+    }
+    return 1;
+  }
+
+  const nextCount = (existing.request_count ?? 0) + 1;
+  const { error: updateError } = await supabase
+    .from("rate_limits")
+    .update({ request_count: nextCount })
+    .eq("id", existing.id);
+
+  if (updateError) {
+    console.warn("rate limit update failed", updateError);
+    return existing.request_count ?? 0;
+  }
+
+  return nextCount;
+}
+
+async function logTelemetry(supabase: any, payload: {
+  statusCode: number;
+  latencyMs: number;
+  userId?: string;
+  errorMessage?: string;
+  metadata?: Record<string, unknown>;
+  method?: string;
+}) {
+  const { error } = await supabase.from("api_telemetry").insert({
+    function_name: "api-access",
+    method: payload.method ?? "GET",
+    status_code: payload.statusCode,
+    latency_ms: payload.latencyMs,
+    user_id: payload.userId ?? null,
+    error_message: payload.errorMessage ?? null,
+    metadata: payload.metadata ?? {},
+  });
+
+  if (error) console.warn("telemetry insert failed", error);
 }
 
 serve(async (req) => {
@@ -37,9 +120,23 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  const requestStart = Date.now();
+  let telemetryUserId: string | undefined;
+
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer lpi_")) {
+      await logTelemetry(supabase, {
+        statusCode: 401,
+        latencyMs: Date.now() - requestStart,
+        errorMessage: "Invalid API key format",
+        metadata: { endpoint: "api-access" },
+      });
+
       return new Response(JSON.stringify({
         error: "Invalid API key format. Keys must start with lpi_",
         docs: "See /developers for API documentation",
@@ -49,10 +146,6 @@ serve(async (req) => {
     const apiKey = authHeader.replace("Bearer ", "");
     const keyHash = await hashKey(apiKey);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
-
     // Verify API key
     const { data: secretRecord, error: secretError } = await supabase
       .from("api_key_secrets")
@@ -61,6 +154,13 @@ serve(async (req) => {
       .single();
 
     if (secretError || !secretRecord) {
+      await logTelemetry(supabase, {
+        statusCode: 401,
+        latencyMs: Date.now() - requestStart,
+        errorMessage: "Invalid or inactive API key",
+        metadata: { endpoint: "api-access" },
+      });
+
       return new Response(JSON.stringify({ error: "Invalid or inactive API key" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -74,12 +174,27 @@ serve(async (req) => {
       .single();
 
     if (keyError || !keyRecord) {
+      await logTelemetry(supabase, {
+        statusCode: 401,
+        latencyMs: Date.now() - requestStart,
+        errorMessage: "Invalid or inactive API key",
+        metadata: { endpoint: "api-access" },
+      });
+
       return new Response(JSON.stringify({ error: "Invalid or inactive API key" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (keyRecord.expires_at && new Date(keyRecord.expires_at) < new Date()) {
+      await logTelemetry(supabase, {
+        statusCode: 401,
+        latencyMs: Date.now() - requestStart,
+        userId: keyRecord.user_id,
+        errorMessage: "API key has expired",
+        metadata: { endpoint: "api-access" },
+      });
+
       return new Response(JSON.stringify({ error: "API key has expired" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -93,15 +208,25 @@ serve(async (req) => {
       .single();
 
     const tier = tierData?.tier ?? "free";
+    telemetryUserId = keyRecord.user_id;
 
     // Rate limit check
-    const { allowed, remaining } = await checkRateLimit(supabase, keyRecord.user_id, tier);
+    const { allowed, remaining, limit: tierLimit, used } = await checkRateLimit(supabase, keyRecord.user_id, tier);
     const rateLimitHeaders = {
       "X-RateLimit-Remaining": String(remaining),
       "X-RateLimit-Tier": tier,
+      "X-RateLimit-Limit": String(tierLimit),
     };
 
     if (!allowed) {
+      await logTelemetry(supabase, {
+        statusCode: 429,
+        latencyMs: Date.now() - requestStart,
+        userId: keyRecord.user_id,
+        errorMessage: "Rate limit exceeded",
+        metadata: { tier, tierLimit, used, endpoint: "api-access" },
+      });
+
       return new Response(JSON.stringify({
         error: "Rate limit exceeded",
         tier,
@@ -112,17 +237,20 @@ serve(async (req) => {
       });
     }
 
-    // Track usage + update last_used_at
+    // Track usage + update last_used_at + hourly rate window
+    const hourlyCountPromise = trackRateWindow(supabase, keyRecord.user_id, "api-access");
     await Promise.all([
       supabase.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", keyRecord.id),
       supabase.from("usage_tracking").insert({ user_id: keyRecord.user_id, action: "api_request" }),
+      hourlyCountPromise,
     ]);
+    const currentHourRequests = await hourlyCountPromise;
 
     // Parse request
     const url = new URL(req.url);
     const action = url.searchParams.get("action") ?? "companies";
-    const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50"), 500);
-    const offset = parseInt(url.searchParams.get("offset") ?? "0");
+    const limit = parseBoundedInt(url.searchParams.get("limit"), 50, 1, 500);
+    const offset = parseBoundedInt(url.searchParams.get("offset"), 0, 0, 1_000_000);
 
     let data: any = null;
     let count: number | null = null;
@@ -429,6 +557,14 @@ serve(async (req) => {
       }
 
       default:
+        await logTelemetry(supabase, {
+          statusCode: 400,
+          latencyMs: Date.now() - requestStart,
+          userId: keyRecord.user_id,
+          errorMessage: `Unknown action: ${action}`,
+          metadata: { action },
+        });
+
         return new Response(JSON.stringify({
           error: `Unknown action: ${action}`,
           available_actions: [
@@ -437,12 +573,19 @@ serve(async (req) => {
             "distressed", "deals", "funds", "global-opportunities",
             "real-estate", "signals", "precedent-transactions"
           ],
-        }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" } });
     }
+
+    await logTelemetry(supabase, {
+      statusCode: 200,
+      latencyMs: Date.now() - requestStart,
+      userId: keyRecord.user_id,
+      metadata: { action, limit, offset, tier, total: count ?? 0, currentHourRequests },
+    });
 
     return new Response(JSON.stringify({
       data,
-      meta: { total: count, limit, offset, action, tier },
+      meta: { total: count, limit, offset, action, tier, current_hour_requests: currentHourRequests },
     }), {
       status: 200,
       headers: { ...corsHeaders, ...rateLimitHeaders, "Content-Type": "application/json" },
@@ -450,6 +593,22 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("API access error:", error);
+
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, serviceRoleKey);
+      await logTelemetry(supabase, {
+        statusCode: 500,
+        latencyMs: Date.now() - requestStart,
+        userId: telemetryUserId,
+        errorMessage: (error as Error).message ?? "Internal server error",
+        metadata: { endpoint: "api-access" },
+      });
+    } catch (telemetryError) {
+      console.error("Failed to log telemetry", telemetryError);
+    }
+
     return new Response(JSON.stringify({ error: (error as Error).message ?? "Internal server error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
