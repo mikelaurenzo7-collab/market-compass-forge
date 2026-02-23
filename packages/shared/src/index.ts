@@ -179,4 +179,40 @@ export class ApiClient {
   async getGraphCentrality(): Promise<any[]> {
     return this.fetch("/graph/insights/centrality");
   }
+
+  async runContagion(params: {
+    nodes: { id: string; label?: string; type?: string }[];
+    edges: { source: string; target: string; weight?: number }[];
+    shocked_nodes: string[];
+    shock_size?: number;
+    decay?: number;
+    steps?: number;
+  }): Promise<any> {
+    return this.fetch("/contagion/simulate", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  async scoreDeal(params: {
+    deal_size?: number;
+    entry_multiple?: number;
+    revenue_growth?: number;
+    leverage?: number;
+    hold_period_years?: number;
+    sector?: string;
+  }): Promise<any> {
+    return this.fetch("/deal-score", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  async getEngineHealth(): Promise<any> {
+    return this.fetch("/engine/health");
+  }
+
+  async getBenchmarks(): Promise<any> {
+    return this.fetch("/benchmarks/latest");
+  }
 }

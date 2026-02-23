@@ -1,6 +1,9 @@
 """Engine API - REST wrapper. No auth in MVP."""
+import json
+import os
 import uuid
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -70,13 +73,17 @@ class SimulationStatusResponse(BaseModel):
     error_message: str | None
     created_at: str
     completed_at: str | None
+    percent_complete: int = 0
+    processed_trials: int = 0
+    total_trials: int = 0
 
 
 # --- Routes ---
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "engine-api"}
+    backend = os.environ.get("COMPUTE_BACKEND", "numpy")
+    return {"status": "ok", "service": "engine-api", "compute_backend": backend}
 
 
 @app.get("/v1/scenarios/templates")
@@ -137,4 +144,86 @@ def get_simulation_job(simulation_id: str, db: Session = Depends(get_db)):
         error_message=job.error_message,
         created_at=job.created_at.isoformat() if job.created_at else "",
         completed_at=job.completed_at.isoformat() if job.completed_at else None,
+        percent_complete=getattr(job, "percent_complete", 0) or 0,
+        processed_trials=getattr(job, "processed_trials", 0) or 0,
+        total_trials=getattr(job, "total_trials", 0) or job.n_trials or 0,
     )
+
+
+# --- Contagion ---
+
+class ContagionRequest(BaseModel):
+    nodes: list[dict]
+    edges: list[dict]
+    shocked_nodes: list[str]
+    shock_size: float = 1.0
+    decay: float = 0.5
+    steps: int = 5
+
+
+@app.post("/v1/contagion/simulate")
+def run_contagion_simulation(req: ContagionRequest):
+    from engine.graph.in_memory_graph import InMemoryGraph
+    from engine.graph.contagion import GraphSimulationEngine
+
+    g = InMemoryGraph()
+    for n in req.nodes:
+        g.add_node(n.get("id", ""), n.get("label", ""), n.get("type", "default"))
+    for e in req.edges:
+        g.add_edge(e["source"], e["target"], e.get("weight", 1.0), e.get("type", "default"))
+    engine = GraphSimulationEngine()
+    result = engine.simulate_liquidity_shock(
+        g, set(req.shocked_nodes), req.shock_size, req.decay, req.steps
+    )
+    return {
+        "per_node_risk": result.per_node_risk,
+        "top_impacted_nodes": [{"node_id": n, "risk": r} for n, r in result.top_impacted_nodes],
+        "total_risk": result.total_risk,
+        "num_impacted": result.num_impacted,
+    }
+
+
+# --- Deal Scoring ---
+
+class DealScoreRequest(BaseModel):
+    deal_size: float | None = None
+    entry_multiple: float | None = None
+    revenue_growth: float | None = None
+    leverage: float | None = None
+    hold_period_years: float | None = None
+    sector: str | None = None
+
+
+@app.post("/v1/deal-score")
+def score_deal(req: DealScoreRequest):
+    from engine.scoring.inference import PyTorchModelScorer
+
+    deal = {
+        "deal_size": req.deal_size or 10,
+        "entry_multiple": req.entry_multiple or 8,
+        "revenue_growth": req.revenue_growth or 0.15,
+        "leverage": req.leverage or 0.5,
+        "hold_period_years": req.hold_period_years or 5,
+        "sector": req.sector or "",
+    }
+    scorer = PyTorchModelScorer()
+    return scorer.score(deal)
+
+
+@app.get("/v1/benchmarks/latest")
+def get_latest_benchmark():
+    import json
+    bench_path = Path(__file__).resolve().parent.parent.parent / "engine" / "benchmarks" / "results" / "latest.json"
+    if not bench_path.exists():
+        return {"benchmarks": {}, "message": "Run engine/benchmarks/run_sim_bench.py first"}
+    return json.loads(bench_path.read_text())
+
+
+@app.post("/v1/models/train")
+def train_deal_model():
+    from engine.scoring.train import train_model
+    import random
+    X = [{"deal_size": 10 + i * 5, "entry_multiple": 7 + i % 3, "revenue_growth": 0.1 + i * 0.02, "leverage": 0.3 + i * 0.1, "hold_period_years": 5, "sector": ["tech", "healthcare", "financials"][i % 3]} for i in range(100)]
+    y = [1 if random.random() < 0.6 else 0 for _ in range(100)]
+    metrics = train_model(X, y, epochs=30)
+    return {"status": "completed", "metrics": metrics}

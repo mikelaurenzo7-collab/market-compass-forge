@@ -11,7 +11,7 @@ RUN pip install --no-cache-dir numpy
 
 COPY services/engine_api/ /app/services/engine_api/
 
-ENV PYTHONPATH=/app:/app/services/engine_api
+ENV PYTHONPATH=/app:/app/engine:/app/services/engine_api
 ENV PYTHONUNBUFFERED=1
 
 EXPOSE 8001

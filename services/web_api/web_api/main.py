@@ -264,6 +264,41 @@ def list_scenario_templates(user: User = Depends(get_current_user)):
         return r.json()
 
 
+@app.post("/contagion/simulate")
+def run_contagion(
+    req: dict,
+    user: User = Depends(get_current_user),
+):
+    with httpx.Client() as client:
+        r = client.post(f"{settings.engine_api_url}/v1/contagion/simulate", json=req, timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+
+@app.post("/deal-score")
+def score_deal(req: dict, user: User = Depends(get_current_user)):
+    with httpx.Client() as client:
+        r = client.post(f"{settings.engine_api_url}/v1/deal-score", json=req, timeout=10)
+        r.raise_for_status()
+        return r.json()
+
+
+@app.get("/engine/health")
+def engine_health(user: User = Depends(get_current_user)):
+    with httpx.Client() as client:
+        r = client.get(f"{settings.engine_api_url}/health", timeout=5)
+        r.raise_for_status()
+        return r.json()
+
+
+@app.get("/benchmarks/latest")
+def get_benchmarks(user: User = Depends(get_current_user)):
+    with httpx.Client() as client:
+        r = client.get(f"{settings.engine_api_url}/v1/benchmarks/latest", timeout=5)
+        r.raise_for_status()
+        return r.json()
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "web-api"}

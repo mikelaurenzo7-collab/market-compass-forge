@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir numpy
 COPY services/engine_api/ /app/services/engine_api/
 COPY services/engine_worker/ /app/services/engine_worker/
 
-ENV PYTHONPATH=/app:/app/services/engine_api:/app/services/engine_worker
+ENV PYTHONPATH=/app:/app/engine:/app/services/engine_api:/app/services/engine_worker
 ENV PYTHONUNBUFFERED=1
 
 CMD ["celery", "-A", "engine_worker.celery_app", "worker", "-l", "info"]

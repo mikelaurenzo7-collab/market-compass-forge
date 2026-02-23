@@ -7,6 +7,9 @@ import { useAuth } from "./AuthContext";
 const navItems = [
   { href: "/portfolios", label: "Portfolios" },
   { href: "/simulations", label: "Simulation Lab" },
+  { href: "/graph", label: "Graph Explorer" },
+  { href: "/deals", label: "Deal Scoring" },
+  { href: "/engine-status", label: "Engine Status" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

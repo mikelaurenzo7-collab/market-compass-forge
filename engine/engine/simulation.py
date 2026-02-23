@@ -1,6 +1,9 @@
-"""Monte Carlo portfolio simulation. Pure numpy - swappable to cupy/numba-cuda later."""
+"""Monte Carlo portfolio simulation. Vectorized, GPU-ready via ComputeBackend."""
 from dataclasses import dataclass, field
-import numpy as np
+from typing import Any
+
+from engine.compute.backend import ComputeBackend
+from engine.compute.config import get_backend
 
 
 @dataclass
@@ -19,28 +22,46 @@ class ScenarioParams:
     multiple_compression: float = 0
     exit_delay_years: float = 0
     sector_overrides: dict[str, dict] = field(default_factory=dict)
+    # Correlation: NxN matrix (N=positions or sectors). If None, uncorrelated.
+    correlation_matrix: list[list[float]] | None = None
+    # Fat tails: df for Student-t. If None, use normal.
+    student_t_df: float | None = None
+    # Regime switching
+    p_crisis: float = 0
+    crisis_vol_mult: float = 1.5
+    crisis_correlation_mult: float = 1.2
+    crisis_multiple_compression_extra: float = -0.1
+    # Exit horizon: (mean, std) for lognormal exit years. If None, use fixed.
+    exit_horizon_lognormal: tuple[float, float] | None = None
 
 
 @dataclass
 class SimulationResult:
-    """Simulation output."""
-    irr_distribution: list[float]
-    moic_distribution: list[float]
-    time_to_exit_distribution: list[float]
+    """Simulation output - JSON-serializable distribution summaries."""
+    irr_quantiles: dict[str, float]
+    moic_quantiles: dict[str, float]
+    time_to_exit_quantiles: dict[str, float]
     var_95: float
     cvar_95: float
     downside_prob_below_threshold: float
     threshold_irr: float
     mean_irr: float
-    median_irr: float
+    std_irr: float
     mean_moic: float
-    median_moic: float
+    std_moic: float
+    drawdown_proxy: float
+    exposure_by_sector: dict[str, float]
     n_trials: int
     seed: int | None
+    irr_samples: list[float] | None = None
+    moic_samples: list[float] | None = None
+    time_to_exit_samples: list[float] | None = None
 
 
 class SimulationEngine:
-    """Monte Carlo simulation. Isolate numeric kernels for GPU swap (numpy -> cupy/numba)."""
+    """Monte Carlo simulation. Vectorized, uses ComputeBackend for GPU swap."""
+
+    QUANTILES = [0.01, 0.05, 0.25, 0.50, 0.75, 0.95, 0.99]
 
     def run(
         self,
@@ -48,8 +69,10 @@ class SimulationEngine:
         scenario: ScenarioParams,
         n_trials: int = 10000,
         seed: int | None = None,
+        backend: ComputeBackend | None = None,
+        return_samples: bool = False,
     ) -> SimulationResult:
-        rng = np.random.default_rng(seed)
+        be = backend or get_backend()
         n_positions = len(portfolio.positions)
         if n_positions == 0:
             return self._empty_result(n_trials, seed)
@@ -58,86 +81,199 @@ class SimulationEngine:
         if total_cost <= 0:
             total_cost = sum(p.get("cost_basis", 0) or 0 for p in portfolio.positions)
 
-        irrs = np.zeros(n_trials)
-        moics = np.zeros(n_trials)
-        exit_times = np.zeros(n_trials)
+        # Extract position arrays (vectorized)
+        costs = be.array([float(p.get("cost_basis", 0) or 0) for p in portfolio.positions])
+        current_vals = be.array([
+            float(p.get("current_value") or p.get("cost_basis") or 0)
+            for p in portfolio.positions
+        ])
+        exit_years_base = be.array([float(p.get("expected_exit_years", 5) or 5) for p in portfolio.positions])
+        rev_growth = be.array([float(p.get("revenue_growth", 0.1) or 0.1) for p in portfolio.positions])
+        leverage = be.array([float(p.get("leverage", 0) or 0) for p in portfolio.positions])
+        sectors = [p.get("sector", "default") for p in portfolio.positions]
 
-        for i in range(n_trials):
-            trial_values = []
-            trial_exits = []
+        n = n_positions
+        exit_delay = scenario.exit_delay_years
+        mult_shock = 1 + scenario.multiple_compression
+        rev_shock = 1 + scenario.gdp_delta
+        rev_growth_adj = rev_growth * rev_shock
+        current_adj = current_vals * mult_shock
 
-            for pos in portfolio.positions:
-                cost = float(pos.get("cost_basis", 0) or 0)
-                current_val = float(pos.get("current_value", cost) or cost)
-                exit_years = float(pos.get("expected_exit_years", 5) or 5)
-                rev_growth = float(pos.get("revenue_growth", 0.1) or 0.1)
-                leverage = float(pos.get("leverage", 0) or 0)
+        # Correlation matrix
+        if scenario.correlation_matrix and len(scenario.correlation_matrix) >= n:
+            corr = be.array([row[:n] for row in scenario.correlation_matrix[:n]])
+            L = be.cholesky(corr)
+        else:
+            L = None
 
-                exit_years += scenario.exit_delay_years
-                mult_shock = 1 + scenario.multiple_compression
-                rev_shock = 1 + scenario.gdp_delta
-                rev_growth_adj = rev_growth * rev_shock
-                current_val_adj = current_val * mult_shock
+        if scenario.student_t_df:
+            Z = be.random_student_t(scenario.student_t_df, (n_trials, n), seed=seed)
+        else:
+            Z = be.random_normal((n_trials, n), seed=seed)
 
-                sigma = 0.3 + leverage * 0.1
-                exit_value = current_val_adj * np.exp(
-                    (rev_growth_adj - 0.5 * sigma**2) * exit_years
-                    + sigma * np.sqrt(exit_years) * rng.standard_normal()
-                )
-                exit_value = max(exit_value, cost * 0.1)
+        if L is not None:
+            Z = be.matmul(Z, L.T)
 
-                trial_values.append(exit_value)
-                trial_exits.append(exit_years + rng.uniform(-0.5, 0.5))
+        if scenario.p_crisis > 0:
+            crisis = be.random_uniform(0, 1, (n_trials, 1), seed=seed + 1 if seed else None)
+            crisis_np = be.as_numpy(crisis)
+            is_crisis = be.array((crisis_np < scenario.p_crisis).astype(float))
+            vol_mult = be.ones((n_trials, 1)) + (scenario.crisis_vol_mult - 1) * is_crisis
+            mult_extra = scenario.crisis_multiple_compression_extra * is_crisis
+        else:
+            vol_mult = be.ones((n_trials, 1))
+            mult_extra = be.zeros((n_trials, 1))
 
-            total_exit = sum(trial_values)
-            if total_cost > 0:
-                avg_exit_years = np.mean(trial_exits)
-                portfolio_irr = (total_exit / total_cost) ** (1 / avg_exit_years) - 1
-                portfolio_moic = total_exit / total_cost
-            else:
-                portfolio_irr = 0
-                portfolio_moic = 1
+        if scenario.exit_horizon_lognormal:
+            mu, sig = scenario.exit_horizon_lognormal
+            log_exit = be.random_normal((n_trials, n), mean=mu, std=sig, seed=seed + 2 if seed else None)
+            exit_years = be.exp(be.clip(log_exit, -5, 10)) + exit_delay
+        else:
+            base_exit = be.reshape(exit_years_base + exit_delay, (1, n))
+            exit_years = base_exit + be.random_uniform(-0.5, 0.5, (n_trials, n), seed=seed + 2 if seed else None)
 
-            irrs[i] = portfolio_irr
-            moics[i] = portfolio_moic
-            exit_times[i] = np.mean(trial_exits)
+        sigma_base = be.reshape(0.3 + leverage * 0.1, (1, n))
+        sigma = sigma_base * vol_mult
+        drift = be.reshape(rev_growth_adj - 0.5 * sigma_base**2, (1, n))
+        diffusion = sigma * be.sqrt(exit_years)
+        shocks = Z * diffusion
+        current_expanded = be.reshape(current_adj, (1, n))
+        costs_expanded = be.reshape(costs, (1, n))
+        exit_values = current_expanded * be.exp(drift * exit_years + shocks) * (1 + mult_extra)
+        exit_values = be.clip(exit_values, costs_expanded * 0.1, None)
 
-        sorted_irrs = np.sort(irrs)
-        var_idx = int(0.05 * n_trials)
-        var_95 = float(sorted_irrs[var_idx])
-        cvar_95 = float(np.mean(sorted_irrs[: var_idx + 1]))
+        # Portfolio-level
+        total_exit = be.sum(exit_values, axis=1)
+        avg_exit_years = be.sum(exit_years, axis=1) / n
+        irrs = (total_exit / total_cost) ** (1 / be.clip(avg_exit_years, 0.1, 20)) - 1
+        moics = total_exit / total_cost
+        irrs = be.clip(irrs, -0.99, 10)
+        time_to_exit = be.sum(exit_years, axis=1) / n
+
+        # Drawdown proxy: simulate value path, get max drawdown
+        # Simplified: use (min_irr - max_irr) of sorted as proxy
+        sorted_irr = be.sort(irrs)
+        drawdown_proxy = float(be.mean(sorted_irr[: max(1, n_trials // 20)]) - be.mean(sorted_irr[-max(1, n_trials // 20):]))
+
+        # Exposure by sector
+        exposure_by_sector: dict[str, float] = {}
+        for i, sec in enumerate(sectors):
+            sec_exit = be.sum(exit_values[:, i : i + 1], axis=0)
+            exposure_by_sector[sec] = float(be.mean(sec_exit))
+
+        irr_q = {f"p{int(q*100)}": float(be.quantile(irrs, q)) for q in self.QUANTILES}
+        moic_q = {f"p{int(q*100)}": float(be.quantile(moics, q)) for q in self.QUANTILES}
+        tte_q = {f"p{int(q*100)}": float(be.quantile(time_to_exit, q)) for q in self.QUANTILES}
+
+        sorted_irr = be.sort(irrs)
+        sorted_np = be.as_numpy(sorted_irr)
+        var_idx = max(0, int(0.05 * n_trials) - 1)
+        var_95 = float(sorted_np[var_idx])
+        cvar_95 = float(float(sorted_np[: var_idx + 1].mean()))
         threshold = 0.10
-        downside_prob = float(np.mean(irrs < threshold))
+        downside_prob = be.proportion_less_than(irrs, threshold)
+
+        irr_samples = be.tolist(irrs) if return_samples else None
+        moic_samples = be.tolist(moics) if return_samples else None
+        tte_samples = be.tolist(time_to_exit) if return_samples else None
 
         return SimulationResult(
-            irr_distribution=irrs.tolist(),
-            moic_distribution=moics.tolist(),
-            time_to_exit_distribution=exit_times.tolist(),
+            irr_quantiles=irr_q,
+            moic_quantiles=moic_q,
+            time_to_exit_quantiles=tte_q,
             var_95=var_95,
             cvar_95=cvar_95,
             downside_prob_below_threshold=downside_prob,
             threshold_irr=threshold,
-            mean_irr=float(np.mean(irrs)),
-            median_irr=float(np.median(irrs)),
-            mean_moic=float(np.mean(moics)),
-            median_moic=float(np.median(moics)),
+            mean_irr=float(be.mean(irrs)),
+            std_irr=float(be.std(irrs)),
+            mean_moic=float(be.mean(moics)),
+            std_moic=float(be.std(moics)),
+            drawdown_proxy=drawdown_proxy,
+            exposure_by_sector=exposure_by_sector,
             n_trials=n_trials,
             seed=seed,
+            irr_samples=irr_samples,
+            moic_samples=moic_samples,
+            time_to_exit_samples=tte_samples,
+        )
+
+    @staticmethod
+    def aggregate_chunk_results(
+        chunk_results: list[SimulationResult],
+        backend: ComputeBackend | None = None,
+    ) -> SimulationResult:
+        """Aggregate results from chunked runs. Chunks must have return_samples=True."""
+        if not chunk_results:
+            return SimulationEngine()._empty_result(0, None)
+        be = backend or get_backend()
+        all_irr = []
+        all_moic = []
+        all_tte = []
+        for r in chunk_results:
+            if r.irr_samples:
+                all_irr.extend(r.irr_samples)
+            if r.moic_samples:
+                all_moic.extend(r.moic_samples)
+            if r.time_to_exit_samples:
+                all_tte.extend(r.time_to_exit_samples)
+        if not all_irr:
+            return chunk_results[0]
+        irrs = be.array(all_irr)
+        moics = be.array(all_moic) if all_moic else be.ones(len(all_irr))
+        n_trials = len(all_irr)
+        irr_q = {f"p{int(q*100)}": float(be.quantile(irrs, q)) for q in SimulationEngine.QUANTILES}
+        moic_q = {f"p{int(q*100)}": float(be.quantile(moics, q)) for q in SimulationEngine.QUANTILES}
+        tte = be.array(all_tte) if all_tte else None
+        tte_q = {f"p{int(q*100)}": float(be.quantile(tte, q)) for q in SimulationEngine.QUANTILES} if tte is not None else chunk_results[0].time_to_exit_quantiles
+        sorted_irr = be.sort(irrs)
+        var_idx = max(0, int(0.05 * n_trials) - 1)
+        sorted_np = be.as_numpy(sorted_irr)
+        var_95 = float(sorted_np[var_idx])
+        cvar_95 = float(float(sorted_np[: var_idx + 1].mean()))
+        threshold = 0.10
+        downside_prob = be.proportion_less_than(irrs, threshold)
+        exposure = chunk_results[0].exposure_by_sector if chunk_results else {}
+        return SimulationResult(
+            irr_quantiles=irr_q,
+            moic_quantiles=moic_q,
+            time_to_exit_quantiles=tte_q,
+            var_95=var_95,
+            cvar_95=cvar_95,
+            downside_prob_below_threshold=downside_prob,
+            threshold_irr=threshold,
+            mean_irr=float(be.mean(irrs)),
+            std_irr=float(be.std(irrs)),
+            mean_moic=float(be.mean(moics)),
+            std_moic=float(be.std(moics)),
+            drawdown_proxy=chunk_results[0].drawdown_proxy if chunk_results else 0,
+            exposure_by_sector=exposure,
+            n_trials=n_trials,
+            seed=chunk_results[0].seed if chunk_results else None,
+            irr_samples=None,
+            moic_samples=None,
+            time_to_exit_samples=None,
         )
 
     def _empty_result(self, n_trials: int, seed: int | None) -> SimulationResult:
+        q = {f"p{int(x*100)}": 0.0 for x in self.QUANTILES}
         return SimulationResult(
-            irr_distribution=[],
-            moic_distribution=[],
-            time_to_exit_distribution=[],
+            irr_quantiles=q,
+            moic_quantiles={**q, "p50": 1.0},
+            time_to_exit_quantiles=q,
             var_95=0,
             cvar_95=0,
             downside_prob_below_threshold=0,
             threshold_irr=0.10,
             mean_irr=0,
-            median_irr=0,
+            std_irr=0,
             mean_moic=1,
-            median_moic=1,
+            std_moic=0,
+            drawdown_proxy=0,
+            exposure_by_sector={},
             n_trials=n_trials,
             seed=seed,
+            irr_samples=None,
+            moic_samples=None,
+            time_to_exit_samples=None,
         )

@@ -44,3 +44,5 @@ playwright-report/
 # Misc
 *.lockb
 .env
+engine/benchmarks/results/
+engine/models/

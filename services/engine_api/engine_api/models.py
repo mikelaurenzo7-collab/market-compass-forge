@@ -21,6 +21,10 @@ class SimulationJob(Base):
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
+    percent_complete = Column(Integer, default=0)
+    processed_trials = Column(Integer, default=0)
+    total_trials = Column(Integer, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ScenarioTemplateModel(Base):

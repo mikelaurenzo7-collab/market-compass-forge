@@ -70,6 +70,9 @@ export default function SimulationsPage() {
         n_trials: form.n_trials,
       });
       setSelectedSimId(res.simulation_id);
+      if (typeof window !== "undefined") {
+        window.location.href = `/simulations/${res.simulation_id}`;
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -78,17 +81,11 @@ export default function SimulationsPage() {
   };
 
   const results = simDetail?.results;
-  const irrData = results?.irr_distribution
-    ? (() => {
-        const buckets: Record<string, number> = {};
-        for (const v of results.irr_distribution) {
-          const b = Math.floor(v * 20) / 20;
-          buckets[b] = (buckets[b] || 0) + 1;
-        }
-        return Object.entries(buckets)
-          .map(([k, v]) => ({ irr: parseFloat(k), count: v }))
-          .sort((a, b) => a.irr - b.irr);
-      })()
+  const irrData = results?.irr_quantiles
+    ? Object.entries(results.irr_quantiles).map(([p, v]) => ({
+        quantile: p,
+        irr: typeof v === "number" ? v * 100 : 0,
+      }))
     : [];
 
   return (
@@ -174,7 +171,7 @@ export default function SimulationsPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 bg-slate-50 rounded">
                   <p className="text-sm text-slate-600">Mean IRR</p>
-                  <p className="text-xl font-semibold">{(results.mean_irr * 100).toFixed(1)}%</p>
+                  <p className="text-xl font-semibold">{((results.mean_irr ?? 0) * 100).toFixed(1)}%</p>
                 </div>
                 <div className="p-4 bg-slate-50 rounded">
                   <p className="text-sm text-slate-600">VaR 95%</p>
@@ -194,18 +191,11 @@ export default function SimulationsPage() {
               {irrData.length > 0 && (
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={irrData}>
-                      <XAxis dataKey="irr" tickFormatter={(v) => `${(v * 100).toFixed(0)}%`} />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(v: number) => [v, "Count"]}
-                        labelFormatter={(v) => `IRR: ${(parseFloat(v) * 100).toFixed(1)}%`}
-                      />
-                      <Bar dataKey="count" fill="#334155">
-                        {irrData.map((_, i) => (
-                          <Cell key={i} fill="#64748b" />
-                        ))}
-                      </Bar>
+                    <BarChart data={irrData} layout="vertical" margin={{ left: 40 }}>
+                      <XAxis type="number" tickFormatter={(v) => `${v}%`} />
+                      <YAxis type="category" dataKey="quantile" width={40} />
+                      <Tooltip formatter={(v: number) => [`${v?.toFixed(1)}%`, "IRR"]} />
+                      <Bar dataKey="irr" fill="#64748b" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
