@@ -43,3 +43,31 @@ test("activity feed shows events", async ({ page }) => {
   await page.goto("/activity");
   await expect(page.getByText("Activity Feed")).toBeVisible();
 });
+
+test("system page shows compute backend", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel(/email/i).first().fill("demo@grapevine.io");
+  await page.getByLabel(/password/i).fill("demo123");
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.goto("/system");
+  await expect(page.getByText("System")).toBeVisible();
+  await expect(page.getByText(/Compute|numpy|GPU/i)).toBeVisible();
+});
+
+test("benchmarks page renders", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel(/email/i).first().fill("demo@grapevine.io");
+  await page.getByLabel(/password/i).fill("demo123");
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.goto("/benchmarks");
+  await expect(page.getByText("Benchmarks")).toBeVisible();
+});
+
+test("roadmap gpu page renders", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel(/email/i).first().fill("demo@grapevine.io");
+  await page.getByLabel(/password/i).fill("demo123");
+  await page.getByRole("button", { name: /sign in/i }).click();
+  await page.goto("/roadmap/gpu");
+  await expect(page.getByText(/GPU|Roadmap|CuPy|RAPIDS/i)).toBeVisible();
+});

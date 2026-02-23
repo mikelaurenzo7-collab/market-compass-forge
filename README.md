@@ -96,6 +96,22 @@ cd engine && python benchmarks/run_scale_suite.py
 - **PDF/CSV exports**: `/tmp/grapevine_exports/` (or `EXPORTS_DIR` env)
 - **Benchmark JSON**: `engine/benchmarks/results/latest.json`
 
+## Commands Summary
+
+```bash
+make dev          # Build, boot, seed, print URLs
+make reset        # Wipe volumes, reseed (dev only)
+make test         # Boundary check + engine tests
+make e2e          # Playwright (requires stack running)
+./tools/demo_verify.sh   # Run before recording demo
+```
+
+## Seeded Credentials
+
+- **Email**: demo@grapevine.io
+- **Password**: demo123
+- **URLs**: Web http://localhost:3000 | API http://localhost:8000 | Engine http://localhost:8001
+
 ## NVIDIA Demo (90-Second Script)
 
 1. **Start**: `docker compose up --build` → wait for healthy

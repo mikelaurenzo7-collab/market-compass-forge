@@ -38,6 +38,12 @@ services:
       CORS_ORIGINS: http://localhost:3000,http://web:3000
     ports:
       - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     depends_on:
       postgres:
         condition: service_healthy
@@ -68,11 +74,17 @@ services:
       CORS_ORIGINS: http://localhost:3000,http://web:3000
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     depends_on:
       postgres:
         condition: service_healthy
       engine_api:
-        condition: service_started
+        condition: service_healthy
 
   web:
     build:

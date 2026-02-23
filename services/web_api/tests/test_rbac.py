@@ -3,7 +3,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from web_api.main import app
-from web_api.database import SessionLocal
 from web_api.models import User, Organization, UserOrganization, Portfolio, Role
 from web_api.auth import get_password_hash, create_token
 
@@ -12,6 +11,7 @@ client = TestClient(app)
 
 @pytest.fixture
 def db():
+    from web_api.database import SessionLocal
     return SessionLocal()
 
 
@@ -25,7 +25,7 @@ def org(db):
 
 
 @pytest.fixture
-def user(db, org):
+def analyst_user(db, org):
     u = User(email="analyst@test.com", hashed_password=get_password_hash("pass"))
     db.add(u)
     db.commit()
@@ -37,8 +37,8 @@ def user(db, org):
 
 
 @pytest.fixture
-def token(user):
-    return create_token({"sub": str(user.id)})
+def analyst_token(analyst_user):
+    return create_token({"sub": str(analyst_user.id)})
 
 
 def test_viewer_cannot_create_portfolio(db, org):
@@ -54,12 +54,17 @@ def test_viewer_cannot_create_portfolio(db, org):
     assert r.status_code == 403
 
 
-def test_org_isolation(db, org, user, token):
+def test_org_isolation(db, org, analyst_user, analyst_token):
     other_org = Organization(name="Other")
     db.add(other_org)
     db.commit()
     p = Portfolio(org_id=other_org.id, name="Other Portfolio")
     db.add(p)
     db.commit()
-    r = client.get(f"/portfolios/{p.id}", headers={"Authorization": f"Bearer {token}"})
+    r = client.get(f"/portfolios/{p.id}", headers={"Authorization": f"Bearer {analyst_token}"})
     assert r.status_code == 404
+
+
+def test_analyst_can_create_portfolio(analyst_token):
+    r = client.post("/portfolios", json={"name": "New"}, headers={"Authorization": f"Bearer {analyst_token}"})
+    assert r.status_code == 200
