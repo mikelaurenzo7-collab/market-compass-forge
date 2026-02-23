@@ -1,4 +1,6 @@
 """Celery tasks - run engine simulation with chunked execution + progress."""
+# Import demo task so Celery discovers it
+from engine_worker.demo_task import run_demo_task  # noqa: F401
 from datetime import datetime
 from uuid import UUID
 
@@ -93,6 +95,10 @@ def run_simulation_task(self, simulation_id: str):
             "drawdown_proxy": result.drawdown_proxy,
             "exposure_by_sector": result.exposure_by_sector,
             "n_trials": result.n_trials,
+            "compute_backend_used": getattr(result, "compute_backend_used", "numpy"),
+            "torch_device_used": getattr(result, "torch_device_used", "cpu"),
+            "runtime_ms": getattr(result, "runtime_ms", 0),
+            "trials_per_sec": getattr(result, "trials_per_sec", 0),
         }
         job.percent_complete = 100
         job.processed_trials = n_trials

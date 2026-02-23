@@ -1,9 +1,13 @@
 """Monte Carlo portfolio simulation. Vectorized, GPU-ready via ComputeBackend."""
+import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from engine.compute.backend import ComputeBackend
-from engine.compute.config import get_backend
+from engine.compute.config import get_backend, get_torch_device
+from engine.kernels.shocks import correlated_shocks, regime_switching_sampler
+from engine.kernels.summary import quantile_summary
+from engine.utils.hardware import get_compute_backend_name
 
 
 @dataclass
@@ -56,6 +60,11 @@ class SimulationResult:
     irr_samples: list[float] | None = None
     moic_samples: list[float] | None = None
     time_to_exit_samples: list[float] | None = None
+    compute_backend_used: str = "numpy"
+    torch_device_used: str = "cpu"
+    runtime_ms: float = 0
+    trials_per_sec: float = 0
+    timeseries_percentiles: dict[str, list[dict[str, float]]] | None = None
 
 
 class SimulationEngine:
@@ -72,7 +81,10 @@ class SimulationEngine:
         backend: ComputeBackend | None = None,
         return_samples: bool = False,
     ) -> SimulationResult:
+        t0 = time.perf_counter()
         be = backend or get_backend()
+        backend_name = get_compute_backend_name()
+        torch_dev = get_torch_device()
         n_positions = len(portfolio.positions)
         if n_positions == 0:
             return self._empty_result(n_trials, seed)
@@ -99,30 +111,19 @@ class SimulationEngine:
         rev_growth_adj = rev_growth * rev_shock
         current_adj = current_vals * mult_shock
 
-        # Correlation matrix
-        if scenario.correlation_matrix and len(scenario.correlation_matrix) >= n:
-            corr = be.array([row[:n] for row in scenario.correlation_matrix[:n]])
-            L = be.cholesky(corr)
-        else:
-            L = None
-
         if scenario.student_t_df:
-            Z = be.random_student_t(scenario.student_t_df, (n_trials, n), seed=seed)
+            Z_raw = be.random_student_t(scenario.student_t_df, (n_trials, n), seed=seed)
+            if scenario.correlation_matrix and len(scenario.correlation_matrix) >= n:
+                L = be.cholesky(be.array([row[:n] for row in scenario.correlation_matrix[:n]]))
+                Z = be.matmul(Z_raw, L.T)
+            else:
+                Z = Z_raw
         else:
-            Z = be.random_normal((n_trials, n), seed=seed)
-
-        if L is not None:
-            Z = be.matmul(Z, L.T)
-
-        if scenario.p_crisis > 0:
-            crisis = be.random_uniform(0, 1, (n_trials, 1), seed=seed + 1 if seed else None)
-            crisis_np = be.as_numpy(crisis)
-            is_crisis = be.array((crisis_np < scenario.p_crisis).astype(float))
-            vol_mult = be.ones((n_trials, 1)) + (scenario.crisis_vol_mult - 1) * is_crisis
-            mult_extra = scenario.crisis_multiple_compression_extra * is_crisis
-        else:
-            vol_mult = be.ones((n_trials, 1))
-            mult_extra = be.zeros((n_trials, 1))
+            Z = correlated_shocks(be, n_trials, n, scenario.correlation_matrix, seed)
+        vol_mult, mult_extra = regime_switching_sampler(
+            be, n_trials, scenario.p_crisis, scenario.crisis_vol_mult,
+            scenario.crisis_multiple_compression_extra, seed=seed + 1 if seed else None
+        )
 
         if scenario.exit_horizon_lognormal:
             mu, sig = scenario.exit_horizon_lognormal
@@ -177,6 +178,9 @@ class SimulationEngine:
         moic_samples = be.tolist(moics) if return_samples else None
         tte_samples = be.tolist(time_to_exit) if return_samples else None
 
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        trials_per_sec = n_trials / (elapsed_ms / 1000) if elapsed_ms > 0 else 0
+
         return SimulationResult(
             irr_quantiles=irr_q,
             moic_quantiles=moic_q,
@@ -196,6 +200,10 @@ class SimulationEngine:
             irr_samples=irr_samples,
             moic_samples=moic_samples,
             time_to_exit_samples=tte_samples,
+            compute_backend_used=backend_name,
+            torch_device_used=torch_dev,
+            runtime_ms=round(elapsed_ms, 2),
+            trials_per_sec=round(trials_per_sec, 1),
         )
 
     @staticmethod
@@ -253,6 +261,117 @@ class SimulationEngine:
             irr_samples=None,
             moic_samples=None,
             time_to_exit_samples=None,
+            compute_backend_used=get_compute_backend_name(),
+            torch_device_used=get_torch_device(),
+            runtime_ms=0,
+            trials_per_sec=0,
+            timeseries_percentiles=None,
+        )
+
+    def run_with_timeline(
+        self,
+        portfolio: PortfolioInput,
+        scenario: ScenarioParams,
+        n_trials: int = 10000,
+        months: int = 60,
+        seed: int | None = None,
+        backend: ComputeBackend | None = None,
+    ) -> SimulationResult:
+        """Digital Twin: monthly portfolio value + liquidity percentiles (p5, p50, p95)."""
+        t0 = time.perf_counter()
+        be = backend or get_backend()
+        backend_name = get_compute_backend_name()
+        torch_dev = get_torch_device()
+        n_positions = len(portfolio.positions)
+        if n_positions == 0:
+            return self._empty_result(n_trials, seed)
+
+        total_cost = portfolio.total_cost or sum(p.get("cost_basis", 0) or 0 for p in portfolio.positions)
+        costs = be.array([float(p.get("cost_basis", 0) or 0) for p in portfolio.positions])
+        current_vals = be.array([float(p.get("current_value") or p.get("cost_basis") or 0) for p in portfolio.positions])
+        exit_years_base = be.array([float(p.get("expected_exit_years", 5) or 5) for p in portfolio.positions])
+        rev_growth = be.array([float(p.get("revenue_growth", 0.1) or 0.1) for p in portfolio.positions])
+        leverage = be.array([float(p.get("leverage", 0) or 0) for p in portfolio.positions])
+        sectors = [p.get("sector", "default") for p in portfolio.positions]
+        n = n_positions
+
+        mult_shock = 1 + scenario.multiple_compression
+        rev_shock = 1 + scenario.gdp_delta
+        rev_growth_adj = rev_growth * rev_shock
+        current_adj = current_vals * mult_shock
+        sigma_base = be.reshape(0.3 + leverage * 0.1, (1, n))
+        drift = be.reshape(rev_growth_adj - 0.5 * sigma_base**2, (1, n))
+
+        Z = correlated_shocks(be, n_trials * months, n, scenario.correlation_matrix, seed)
+        Z = be.reshape(Z, (n_trials, months, n))
+        dt = 1 / 12
+        sigma = be.reshape(sigma_base * be.sqrt(dt), (1, 1, n))
+        shocks = Z * sigma
+        drift_dt = be.reshape(drift * dt, (1, 1, n))
+        log_returns = drift_dt + shocks
+        current_expanded = be.reshape(current_adj, (1, 1, n))
+        values = current_expanded * be.exp(be.cumsum(log_returns, axis=1))
+        portfolio_values = be.sum(values, axis=2)
+        liquidity = portfolio_values
+
+        value_ts = []
+        liquidity_ts = []
+        for t in range(months):
+            value_ts.append({
+                "month": t + 1,
+                "p5": float(be.quantile(portfolio_values[:, t], 0.05)),
+                "p50": float(be.quantile(portfolio_values[:, t], 0.50)),
+                "p95": float(be.quantile(portfolio_values[:, t], 0.95)),
+            })
+            liquidity_ts.append({
+                "month": t + 1,
+                "p5": float(be.quantile(liquidity[:, t], 0.05)),
+                "p50": float(be.quantile(liquidity[:, t], 0.50)),
+                "p95": float(be.quantile(liquidity[:, t], 0.95)),
+            })
+
+        exit_values = values[:, -1, :]
+        total_exit = be.sum(exit_values, axis=1)
+        exit_years = exit_years_base + scenario.exit_delay_years
+        avg_exit = float(be.mean(exit_years))
+        irrs = (total_exit / total_cost) ** (1 / max(avg_exit, 0.1)) - 1
+        moics = total_exit / total_cost
+        irrs = be.clip(irrs, -0.99, 10)
+
+        irr_q = quantile_summary(be, irrs)
+        moic_q = quantile_summary(be, moics)
+        sorted_irr = be.sort(irrs)
+        sorted_np = be.as_numpy(sorted_irr)
+        var_idx = max(0, int(0.05 * n_trials) - 1)
+        var_95 = float(sorted_np[var_idx])
+        cvar_95 = float(float(sorted_np[: var_idx + 1].mean()))
+        exposure = {s: float(be.mean(be.sum(exit_values[:, i:i+1], axis=0))) for i, s in enumerate(sectors)}
+
+        elapsed_ms = (time.perf_counter() - t0) * 1000
+        return SimulationResult(
+            irr_quantiles=irr_q,
+            moic_quantiles=moic_q,
+            time_to_exit_quantiles={"p50": avg_exit},
+            var_95=var_95,
+            cvar_95=cvar_95,
+            downside_prob_below_threshold=be.proportion_less_than(irrs, 0.10),
+            threshold_irr=0.10,
+            mean_irr=float(be.mean(irrs)),
+            std_irr=float(be.std(irrs)),
+            mean_moic=float(be.mean(moics)),
+            std_moic=float(be.std(moics)),
+            drawdown_proxy=0,
+            exposure_by_sector=exposure,
+            n_trials=n_trials,
+            seed=seed,
+            compute_backend_used=backend_name,
+            torch_device_used=torch_dev,
+            runtime_ms=round(elapsed_ms, 2),
+            trials_per_sec=round(n_trials / (elapsed_ms / 1000), 1) if elapsed_ms > 0 else 0,
+            timeseries_percentiles={
+                "portfolio_value": value_ts,
+                "liquidity": liquidity_ts,
+            },
         )
 
     def _empty_result(self, n_trials: int, seed: int | None) -> SimulationResult:
@@ -276,4 +395,9 @@ class SimulationEngine:
             irr_samples=None,
             moic_samples=None,
             time_to_exit_samples=None,
+            compute_backend_used=get_compute_backend_name(),
+            torch_device_used=get_torch_device(),
+            runtime_ms=0,
+            trials_per_sec=0,
+            timeseries_percentiles=None,
         )

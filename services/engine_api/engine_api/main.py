@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from engine_api.config import settings
 from engine_api.database import get_db, engine, Base
 from engine_api.seed_templates import ensure_templates
-from engine_api.models import SimulationJob, ScenarioTemplateModel
+from engine_api.models import SimulationJob, ScenarioTemplateModel, DemoRun
 
 # Import engine library - pure Python, no FastAPI
 from engine.simulation import SimulationEngine, PortfolioInput, ScenarioParams
@@ -83,7 +83,8 @@ class SimulationStatusResponse(BaseModel):
 @app.get("/health")
 def health():
     backend = os.environ.get("COMPUTE_BACKEND", "numpy")
-    return {"status": "ok", "service": "engine-api", "compute_backend": backend}
+    torch_dev = os.environ.get("TORCH_DEVICE", "cpu")
+    return {"status": "ok", "service": "engine-api", "compute_backend": backend, "torch_device": torch_dev}
 
 
 @app.get("/v1/scenarios/templates")
@@ -212,11 +213,79 @@ def score_deal(req: DealScoreRequest):
 
 @app.get("/v1/benchmarks/latest")
 def get_latest_benchmark():
-    import json
     bench_path = Path(__file__).resolve().parent.parent.parent / "engine" / "benchmarks" / "results" / "latest.json"
     if not bench_path.exists():
-        return {"benchmarks": {}, "message": "Run engine/benchmarks/run_sim_bench.py first"}
+        return {"benchmarks": {}, "message": "Run engine/benchmarks/run_all.py or POST /v1/benchmarks/run first"}
     return json.loads(bench_path.read_text())
+
+
+class BenchmarkRunResponse(BaseModel):
+    job_id: str
+    status: str
+
+
+@app.post("/v1/benchmarks/run", response_model=BenchmarkRunResponse)
+def run_benchmarks():
+    try:
+        from celery import Celery
+        celery_app = Celery(broker=settings.celery_broker_url)
+        task = celery_app.send_task("engine_worker.benchmark_task.run_benchmark_task")
+        return BenchmarkRunResponse(job_id=task.id or "", status="queued")
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+# --- Demo Run ---
+
+class DemoRunResponse(BaseModel):
+    demo_id: str
+    job_id: str
+    status: str
+
+
+class DemoStatusResponse(BaseModel):
+    id: str
+    status: str
+    percent_complete: int
+    milestone: str | None
+    report: dict | None
+    created_at: str
+    completed_at: str | None
+
+
+@app.post("/v1/demo/run", response_model=DemoRunResponse)
+def run_demo(db: Session = Depends(get_db)):
+    run = DemoRun(status="pending", params_json={})
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    try:
+        from celery import Celery
+        celery_app = Celery(broker=settings.celery_broker_url)
+        task = celery_app.send_task("engine_worker.demo_task.run_demo_task", args=[str(run.id)])
+        run.job_id = task.id
+        db.commit()
+    except Exception as e:
+        run.status = "failed"
+        run.milestone = str(e)
+        db.commit()
+    return DemoRunResponse(demo_id=str(run.id), job_id=run.job_id or "", status=run.status)
+
+
+@app.get("/v1/demo/{demo_id}", response_model=DemoStatusResponse)
+def get_demo_status(demo_id: str, db: Session = Depends(get_db)):
+    run = db.query(DemoRun).filter(DemoRun.id == demo_id).first()
+    if not run:
+        raise HTTPException(404, "Demo run not found")
+    return DemoStatusResponse(
+        id=str(run.id),
+        status=run.status,
+        percent_complete=run.percent_complete or 0,
+        milestone=run.milestone,
+        report=run.report_json,
+        created_at=run.created_at.isoformat() if run.created_at else "",
+        completed_at=run.completed_at.isoformat() if run.completed_at else None,
+    )
 
 
 @app.post("/v1/models/train")

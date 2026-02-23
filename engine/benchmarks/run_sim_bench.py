@@ -5,7 +5,7 @@ import sys
 import time
 from pathlib import Path
 
-# Add engine project root (parent of benchmarks/) so engine package is found
+# Engine project root (parent of benchmarks/)
 _root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_root))
 

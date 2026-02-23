@@ -7,8 +7,10 @@ import { useAuth } from "./AuthContext";
 const navItems = [
   { href: "/portfolios", label: "Portfolios" },
   { href: "/simulations", label: "Simulation Lab" },
+  { href: "/demo", label: "NVIDIA Demo" },
   { href: "/graph", label: "Graph Explorer" },
   { href: "/deals", label: "Deal Scoring" },
+  { href: "/benchmarks", label: "Benchmarks" },
   { href: "/engine-status", label: "Engine Status" },
 ];
 

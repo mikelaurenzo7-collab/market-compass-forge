@@ -86,6 +86,10 @@ class ComputeBackend(Protocol):
         """Reshape array."""
         ...
 
+    def cumsum(self, a: Any, axis: int | None = None) -> Any:
+        """Cumulative sum along axis."""
+        ...
+
     def as_numpy(self, a: Any) -> NDArray:
         """Convert to numpy for serialization. Must return numpy array."""
         ...

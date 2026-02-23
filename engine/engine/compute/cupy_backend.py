@@ -86,6 +86,9 @@ class CupyBackend:
     def reshape(self, a: Any, shape: tuple[int, ...]) -> Any:
         return self._cp.reshape(a, shape)
 
+    def cumsum(self, a: Any, axis: int | None = None) -> Any:
+        return self._cp.cumsum(a, axis=axis)
+
     def as_numpy(self, a: Any):
         import numpy as np
         return np.asarray(a.get())

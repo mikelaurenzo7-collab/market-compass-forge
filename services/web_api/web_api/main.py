@@ -299,6 +299,30 @@ def get_benchmarks(user: User = Depends(get_current_user)):
         return r.json()
 
 
+@app.post("/benchmarks/run")
+def run_benchmarks(user: User = Depends(get_current_user)):
+    with httpx.Client() as client:
+        r = client.post(f"{settings.engine_api_url}/v1/benchmarks/run", timeout=10)
+        r.raise_for_status()
+        return r.json()
+
+
+@app.post("/demo/run")
+def run_demo(user: User = Depends(get_current_user)):
+    with httpx.Client() as client:
+        r = client.post(f"{settings.engine_api_url}/v1/demo/run", timeout=10)
+        r.raise_for_status()
+        return r.json()
+
+
+@app.get("/demo/{demo_id}")
+def get_demo_status(demo_id: str, user: User = Depends(get_current_user)):
+    with httpx.Client() as client:
+        r = client.get(f"{settings.engine_api_url}/v1/demo/{demo_id}", timeout=10)
+        r.raise_for_status()
+        return r.json()
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "web-api"}

@@ -70,6 +70,9 @@ class NumpyBackend:
     def reshape(self, a: Any, shape: tuple[int, ...]) -> NDArray:
         return np.reshape(a, shape)
 
+    def cumsum(self, a: Any, axis: int | None = None) -> NDArray:
+        return np.cumsum(a, axis=axis)
+
     def as_numpy(self, a: Any) -> NDArray:
         return np.asarray(a) if not isinstance(a, np.ndarray) else a
 

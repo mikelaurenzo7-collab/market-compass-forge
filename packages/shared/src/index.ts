@@ -215,4 +215,24 @@ export class ApiClient {
   async getBenchmarks(): Promise<any> {
     return this.fetch("/benchmarks/latest");
   }
+
+  async runBenchmarks(): Promise<{ job_id: string; status: string }> {
+    return this.fetch("/benchmarks/run", { method: "POST" });
+  }
+
+  async runDemo(): Promise<{ demo_id: string; job_id: string; status: string }> {
+    return this.fetch("/demo/run", { method: "POST" });
+  }
+
+  async getDemoStatus(demoId: string): Promise<{
+    id: string;
+    status: string;
+    percent_complete: number;
+    milestone: string | null;
+    report: any;
+    created_at: string;
+    completed_at: string | null;
+  }> {
+    return this.fetch(`/demo/${demoId}`);
+  }
 }

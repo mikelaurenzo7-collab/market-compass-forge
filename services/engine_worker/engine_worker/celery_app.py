@@ -5,7 +5,7 @@ celery_app = Celery(
     "grapevine_engine",
     broker=settings.celery_broker_url,
     backend=settings.celery_broker_url,
-    include=["engine_worker.tasks"],
+    include=["engine_worker.tasks", "engine_worker.demo_task", "engine_worker.benchmark_task"],
 )
 celery_app.conf.update(
     task_serializer="json",

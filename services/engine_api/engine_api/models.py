@@ -35,3 +35,18 @@ class ScenarioTemplateModel(Base):
     slug = Column(String(100), nullable=False, unique=True)
     description = Column(Text, nullable=True)
     params = Column(JSONB, default=dict)
+
+
+class DemoRun(Base):
+    __tablename__ = "demo_runs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(String(255), nullable=True)
+    status = Column(String(50), default="pending")
+    params_json = Column(JSONB, default=dict)
+    report_json = Column(JSONB, nullable=True)
+    job_id = Column(String(255), nullable=True)
+    percent_complete = Column(Integer, default=0)
+    milestone = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    completed_at = Column(DateTime, nullable=True)
