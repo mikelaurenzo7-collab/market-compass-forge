@@ -12,7 +12,8 @@ const navItems = [
   { href: "/deals", label: "Deal Scoring" },
   { href: "/activity", label: "Activity" },
   { href: "/benchmarks", label: "Benchmarks" },
-  { href: "/engine-status", label: "Engine Status" },
+  { href: "/system", label: "System" },
+  { href: "/roadmap/gpu", label: "GPU Roadmap" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

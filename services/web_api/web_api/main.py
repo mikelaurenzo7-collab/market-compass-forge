@@ -482,6 +482,14 @@ def engine_health(user: User = Depends(get_current_user)):
         return r.json()
 
 
+@app.get("/engine/system/hardware")
+def engine_system_hardware(user: User = Depends(get_current_user)):
+    with httpx.Client() as client:
+        r = client.get(f"{settings.engine_api_url}/system/hardware", timeout=5)
+        r.raise_for_status()
+        return r.json()
+
+
 @app.get("/benchmarks/latest")
 def get_benchmarks(user: User = Depends(get_current_user)):
     with httpx.Client() as client:

@@ -80,6 +80,13 @@ export default function SimulationDetailPage() {
         )}
       </div>
 
+      {sim?.status === "failed" && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="font-medium text-red-800">Simulation failed</p>
+          <p className="text-sm text-red-600 mt-1">{sim?.error_message ?? "Unknown error"}</p>
+          <Link href="/simulations" className="text-sm text-red-700 hover:underline mt-2 inline-block">← Back to Simulation Lab</Link>
+        </div>
+      )}
       {results && (
         <div className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

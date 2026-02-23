@@ -31,7 +31,7 @@ export default function BenchmarksPage() {
 
   const hw = benchmarks?.hardware ?? {};
   const sim = benchmarks?.simulation ?? benchmarks?.benchmarks ?? {};
-  const contagion = benchmarks?.contagion ?? {};
+  const graph = benchmarks?.graph ?? benchmarks?.contagion ?? {};
   const dealScoring = benchmarks?.deal_scoring ?? {};
 
   return (
@@ -85,8 +85,8 @@ export default function BenchmarksPage() {
               <tbody>
                 {Object.entries(sim).map(([k, v]: [string, any]) => (
                   <tr key={k} className="border-b">
-                    <td className="py-2">{v?.n_trials ?? k}</td>
-                    <td className="py-2">{v?.elapsed_sec ?? "—"}</td>
+                    <td className="py-2">{v?.n_trials ? `${v.n_companies ?? "—"} cos, ${v.n_trials} trials` : k}</td>
+                    <td className="py-2">{v?.runtime_ms ?? v?.elapsed_sec ?? "—"}</td>
                     <td className="py-2 font-mono">{v?.trials_per_sec ?? "—"}</td>
                     <td className="py-2">{v?.backend ?? "—"}</td>
                   </tr>
@@ -98,22 +98,22 @@ export default function BenchmarksPage() {
         </div>
 
         <div className="bg-white rounded-lg border p-6">
-          <h2 className="font-medium mb-4">Contagion</h2>
+          <h2 className="font-medium mb-4">Graph / Contagion</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-2">Size</th>
-                  <th className="text-left py-2">Nodes</th>
-                  <th className="text-left py-2">Elapsed (s)</th>
+                  <th className="text-left py-2">Nodes / Edges</th>
+                  <th className="text-left py-2">Runtime (ms)</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(contagion).map(([k, v]: [string, any]) => (
+                {Object.entries(graph).map(([k, v]: [string, any]) => (
                   <tr key={k} className="border-b">
-                    <td className="py-2">{v?.graph_size ?? k}</td>
-                    <td className="py-2">{v?.nodes ?? "—"}</td>
-                    <td className="py-2">{v?.elapsed_sec ?? "—"}</td>
+                    <td className="py-2">{v?.label ?? k}</td>
+                    <td className="py-2">{v?.n_nodes ? `${v.n_nodes} / ${v.n_edges}` : v?.nodes ?? "—"}</td>
+                    <td className="py-2">{v?.runtime_ms ?? v?.elapsed_sec ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -135,9 +135,9 @@ export default function BenchmarksPage() {
               <tbody>
                 {Object.entries(dealScoring).map(([k, v]: [string, any]) => (
                   <tr key={k} className="border-b">
-                    <td className="py-2">{v?.n_requests ?? k}</td>
-                    <td className="py-2">{v?.elapsed_sec ?? "—"}</td>
-                    <td className="py-2 font-mono">{v?.requests_per_sec ?? "—"}</td>
+                    <td className="py-2">{v?.n_inferences ?? v?.n_requests ?? k}</td>
+                    <td className="py-2">{v?.runtime_ms ?? v?.elapsed_sec ?? "—"}</td>
+                    <td className="py-2 font-mono">{v?.inferences_per_sec ?? v?.requests_per_sec ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

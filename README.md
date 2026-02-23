@@ -74,13 +74,27 @@ docker compose up --build   # Start all services
 make seed                   # demo@grapevine.io / demo123
 make test                   # engine unit tests
 
-# NVIDIA Demo (one-button workflow)
+# Run demo
 # UI: /demo → Run NVIDIA Demo → wait for completion → Download Report JSON
 
-# Benchmarks
-cd engine && python benchmarks/run_all.py   # simulation + contagion + deal scoring
+# GPU smoke test
+cd engine && python scripts/gpu_smoke_test.py
+
+# Scale benchmarks
+cd engine && python benchmarks/run_scale_suite.py
 # Or: POST /v1/benchmarks/run (async via Celery)
 ```
+
+## How to Switch Compute Backends
+
+- **CPU (default)**: `COMPUTE_BACKEND=numpy` `TORCH_DEVICE=cpu`
+- **GPU**: `COMPUTE_BACKEND=cupy` `TORCH_DEVICE=cuda` (requires `pip install cupy-cuda12x` and CUDA)
+- Graceful fallback: If CuPy/CUDA unavailable, automatically falls back to NumPy; metadata records `numpy(fallback)`
+
+## Where Outputs Live
+
+- **PDF/CSV exports**: `/tmp/grapevine_exports/` (or `EXPORTS_DIR` env)
+- **Benchmark JSON**: `engine/benchmarks/results/latest.json`
 
 ## NVIDIA Demo (90-Second Script)
 

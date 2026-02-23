@@ -106,6 +106,23 @@ def health():
     return {"status": "ok", "service": "engine-api", "compute_backend": backend, "torch_device": torch_dev}
 
 
+@app.get("/health/db")
+def health_db(db: Session = Depends(get_db)):
+    """Verify DB connectivity. Tables created via Base.metadata.create_all at startup."""
+    from sqlalchemy import text
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return {"status": "error", "database": str(e)}
+
+
+@app.get("/system/hardware")
+def system_hardware():
+    from engine.utils.hardware import get_hardware_summary
+    return get_hardware_summary()
+
+
 @app.get("/metrics")
 def metrics():
     return {

@@ -65,19 +65,42 @@ export default function DemoPage() {
       </div>
 
       {!demoId ? (
-        <div className="bg-white rounded-lg border p-8 text-center">
-          <p className="text-slate-600 mb-6">Run the full NVIDIA proof workflow: 100k simulation, contagion baseline + mitigation, deal scoring.</p>
-          <button
-            onClick={() => runDemo.mutate()}
-            disabled={runDemo.isPending}
-            className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 disabled:opacity-50"
-          >
-            {runDemo.isPending ? "Starting…" : "Run NVIDIA Demo"}
-          </button>
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg border p-8 text-center">
+            <p className="text-slate-600 mb-6">Run the full NVIDIA proof workflow: 100k simulation, contagion baseline + mitigation, deal scoring.</p>
+            <button
+              onClick={() => runDemo.mutate()}
+              disabled={runDemo.isPending}
+              className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 disabled:opacity-50"
+            >
+              {runDemo.isPending ? "Starting…" : "Run NVIDIA Demo"}
+            </button>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <h2 className="font-medium mb-4">Demo Mode Checklist</h2>
+            <ul className="space-y-2 text-sm text-slate-600">
+              <li>☐ Run 100k simulation (correlated + regime switching)</li>
+              <li>☐ View IRR quantiles chart</li>
+              <li>☐ View timeline bands (portfolio value p5/p50/p95)</li>
+              <li>☐ Run contagion baseline + mitigation</li>
+              <li>☐ Export PDF report</li>
+              <li>☐ View benchmarks at /benchmarks</li>
+            </ul>
+            <p className="text-xs text-slate-500 mt-4">Use seeded portfolio (Growth Fund I) for smooth demo path.</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-6">
           <div className="bg-white rounded-lg border p-6">
+            <h2 className="font-medium mb-4">Demo Mode Checklist</h2>
+            <ul className="space-y-2 text-sm text-slate-600 mb-6">
+              <li>{demo?.percent_complete >= 40 ? "✓" : "☐"} Run 100k simulation</li>
+              <li>{isComplete ? "✓" : "☐"} View IRR quantiles</li>
+              <li>{isComplete ? "✓" : "☐"} View timeline bands</li>
+              <li>{demo?.percent_complete >= 85 ? "✓" : "☐"} Contagion baseline + mitigation</li>
+              <li>{isComplete ? "✓" : "☐"} Export PDF (from Simulation Lab)</li>
+              <li>{isComplete ? "✓" : "☐"} View benchmarks</li>
+            </ul>
             <h2 className="font-medium mb-4">Progress</h2>
             <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
               <div

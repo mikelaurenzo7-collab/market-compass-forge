@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/1"
     cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
     simulation_chunk_size: int = 20000
+    env: str = "dev"
+    rate_limit_simulations: int = 10
+    rate_limit_benchmarks: int = 2
 
 
 settings = Settings()

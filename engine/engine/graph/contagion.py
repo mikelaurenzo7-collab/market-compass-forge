@@ -5,7 +5,7 @@ from typing import Any
 
 from engine.graph.graph_repository import GraphRepository
 from engine.graph.analytics import exposure_propagation
-from engine.utils.hardware import get_compute_backend_name, get_torch_device
+from engine.utils.hardware import get_effective_compute_backend, get_effective_torch_device
 
 
 @dataclass
@@ -61,8 +61,8 @@ class GraphSimulationEngine:
             top_impacted_nodes=top_impacted,
             total_risk=total_risk,
             num_impacted=num_impacted,
-            compute_backend_used=get_compute_backend_name(),
-            torch_device_used=get_torch_device(),
+            compute_backend_used=get_effective_compute_backend(),
+            torch_device_used=get_effective_torch_device(),
             runtime_ms=round(elapsed_ms, 2),
         )
 

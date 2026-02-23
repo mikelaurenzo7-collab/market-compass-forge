@@ -212,6 +212,10 @@ export class ApiClient {
     return this.fetch("/engine/health");
   }
 
+  async getEngineSystemHardware(): Promise<any> {
+    return this.fetch("/engine/system/hardware");
+  }
+
   async getBenchmarks(): Promise<any> {
     return this.fetch("/benchmarks/latest");
   }

@@ -1,17 +1,23 @@
 """Hardware detection and device configuration."""
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 
 def detect_gpu() -> bool:
-    """Return True if a CUDA GPU is available."""
+    """Return True if a CUDA GPU is available (CuPy or PyTorch)."""
     try:
-        import torch
-        return torch.cuda.is_available()
+        import cupy
+        try:
+            return cupy.cuda.runtime.getDeviceCount() > 0
+        except Exception:
+            return True
     except ImportError:
         pass
     try:
-        import cupy
-        return True
+        import torch
+        return torch.cuda.is_available()
     except ImportError:
         pass
     return False
@@ -32,6 +38,55 @@ def get_torch_device() -> str:
                 return "cuda"
         except ImportError:
             pass
+    return "cpu"
+
+
+def get_hardware_summary() -> dict:
+    """Full hardware summary for /system/hardware endpoint."""
+    info = get_hardware_info()
+    info["compute_backend_effective"] = _get_effective_backend()
+    info["torch_device_effective"] = _get_effective_torch_device()
+    return info
+
+
+def get_effective_compute_backend() -> str:
+    """Backend actually in use (may be fallback). Use in result metadata."""
+    return _get_effective_backend()
+
+
+def _get_effective_backend() -> str:
+    """Backend actually in use (may be fallback)."""
+    requested = os.environ.get("COMPUTE_BACKEND", "numpy").lower()
+    if requested == "cupy":
+        try:
+            import cupy
+            if not detect_gpu():
+                logger.warning("COMPUTE_BACKEND=cupy but no CUDA device; falling back to numpy")
+                return "numpy(fallback)"
+            return "cupy"
+        except ImportError:
+            logger.warning("COMPUTE_BACKEND=cupy but cupy not installed; falling back to numpy")
+            return "numpy(fallback)"
+    return "numpy"
+
+
+def get_effective_torch_device() -> str:
+    """Torch device actually in use (may be fallback). Use in result metadata."""
+    return _get_effective_torch_device()
+
+
+def _get_effective_torch_device() -> str:
+    """Torch device actually in use (may be fallback)."""
+    requested = os.environ.get("TORCH_DEVICE", "cpu").lower()
+    if requested == "cuda":
+        try:
+            import torch
+            if not torch.cuda.is_available():
+                logger.warning("TORCH_DEVICE=cuda but not available; falling back to cpu")
+                return "cpu(fallback)"
+            return "cuda"
+        except ImportError:
+            return "cpu(fallback)"
     return "cpu"
 
 
@@ -60,4 +115,12 @@ def get_hardware_info() -> dict:
             info["cuda_device_name"] = None
     except ImportError:
         info["cuda_device_name"] = None
+    try:
+        import cupy
+        if detect_gpu():
+            info["cupy_available"] = True
+        else:
+            info["cupy_available"] = False
+    except ImportError:
+        info["cupy_available"] = False
     return info

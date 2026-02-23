@@ -4,10 +4,10 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from engine.compute.backend import ComputeBackend
-from engine.compute.config import get_backend, get_torch_device
+from engine.compute.config import get_backend
 from engine.kernels.shocks import correlated_shocks, regime_switching_sampler
 from engine.kernels.summary import quantile_summary
-from engine.utils.hardware import get_compute_backend_name
+from engine.utils.hardware import get_effective_compute_backend, get_effective_torch_device
 
 
 @dataclass
@@ -83,8 +83,8 @@ class SimulationEngine:
     ) -> SimulationResult:
         t0 = time.perf_counter()
         be = backend or get_backend()
-        backend_name = get_compute_backend_name()
-        torch_dev = get_torch_device()
+        backend_name = get_effective_compute_backend()
+        torch_dev = get_effective_torch_device()
         n_positions = len(portfolio.positions)
         if n_positions == 0:
             return self._empty_result(n_trials, seed)
@@ -261,8 +261,8 @@ class SimulationEngine:
             irr_samples=None,
             moic_samples=None,
             time_to_exit_samples=None,
-            compute_backend_used=get_compute_backend_name(),
-            torch_device_used=get_torch_device(),
+            compute_backend_used=get_effective_compute_backend(),
+            torch_device_used=get_effective_torch_device(),
             runtime_ms=0,
             trials_per_sec=0,
             timeseries_percentiles=None,
@@ -280,8 +280,8 @@ class SimulationEngine:
         """Digital Twin: monthly portfolio value + liquidity percentiles (p5, p50, p95)."""
         t0 = time.perf_counter()
         be = backend or get_backend()
-        backend_name = get_compute_backend_name()
-        torch_dev = get_torch_device()
+        backend_name = get_effective_compute_backend()
+        torch_dev = get_effective_torch_device()
         n_positions = len(portfolio.positions)
         if n_positions == 0:
             return self._empty_result(n_trials, seed)
@@ -395,8 +395,8 @@ class SimulationEngine:
             irr_samples=None,
             moic_samples=None,
             time_to_exit_samples=None,
-            compute_backend_used=get_compute_backend_name(),
-            torch_device_used=get_torch_device(),
+            compute_backend_used=get_effective_compute_backend(),
+            torch_device_used=get_effective_torch_device(),
             runtime_ms=0,
             trials_per_sec=0,
             timeseries_percentiles=None,
