@@ -22,7 +22,10 @@ export default function DemoPage() {
     queryKey: ["demo", demoId],
     queryFn: () => api.getDemoStatus(demoId!),
     enabled: !!user && !!demoId,
-    refetchInterval: (d) => (d?.status === "pending" || d?.status === "running" ? 1500 : false),
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      return d?.status === "pending" || d?.status === "running" ? 1500 : false;
+    },
   });
 
   const report = demo?.report;

@@ -26,27 +26,32 @@ export interface Portfolio {
 }
 
 export interface SimulationResult {
-  irr_distribution: number[];
-  moic_distribution: number[];
+  irr_distribution?: number[];
+  moic_distribution?: number[];
+  irr_quantiles?: Record<string, number>;
+  moic_quantiles?: Record<string, number>;
   var_95: number;
   cvar_95: number;
   mean_irr: number;
-  median_irr: number;
+  median_irr?: number;
   mean_moic: number;
-  median_moic: number;
+  median_moic?: number;
   downside_prob_below_threshold: number;
   n_trials: number;
 }
 
 export interface Simulation {
   id: string;
-  portfolio_id: string;
+  portfolio_id?: string;
   status: string;
-  n_trials: number;
+  n_trials?: number;
   results?: SimulationResult;
   error_message?: string;
   created_at?: string;
   completed_at?: string;
+  percent_complete?: number;
+  processed_trials?: number;
+  total_trials?: number;
 }
 
 export interface ScenarioTemplate {

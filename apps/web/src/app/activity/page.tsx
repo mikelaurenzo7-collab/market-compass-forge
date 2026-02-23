@@ -39,7 +39,7 @@ export default function ActivityPage() {
             <p className="text-muted-foreground">No activity yet</p>
           </div>
         )}
-        {events?.length > 0 && (
+        {events && events.length > 0 && (
           <ul className="divide-y divide-white/10">
             {events.map((e: any, i: number) => (
               <motion.li

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthContext";
@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recha
 import { motion } from "framer-motion";
 import { FlaskConical, Play } from "lucide-react";
 
-export default function SimulationsPage() {
+function SimulationsContent() {
   const searchParams = useSearchParams();
   const portfolioId = searchParams.get("portfolio");
   const { api, user } = useAuth();
@@ -32,8 +32,10 @@ export default function SimulationsPage() {
     queryKey: ["simulation", selectedSimId],
     queryFn: () => api.getSimulation(selectedSimId!),
     enabled: !!user && !!selectedSimId,
-    refetchInterval: (data) =>
-      data?.status === "pending" || data?.status === "running" ? 2000 : false,
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      return d?.status === "pending" || d?.status === "running" ? 2000 : false;
+    },
   });
 
   const [form, setForm] = useState({
@@ -216,5 +218,13 @@ export default function SimulationsPage() {
         </motion.div>
       )}
     </Layout>
+  );
+}
+
+export default function SimulationsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading...</div>}>
+      <SimulationsContent />
+    </Suspense>
   );
 }

@@ -22,7 +22,10 @@ export default function SimulationDetailPage() {
     queryKey: ["simulation", id],
     queryFn: () => api.getSimulation(id),
     enabled: !!user && !!id,
-    refetchInterval: (d) => (d?.status === "pending" || d?.status === "running" ? 2000 : false),
+    refetchInterval: (query) => {
+      const d = query.state.data;
+      return d?.status === "pending" || d?.status === "running" ? 2000 : false;
+    },
   });
 
   const exportMutation = useMutation({
