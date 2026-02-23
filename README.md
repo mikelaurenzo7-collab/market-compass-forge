@@ -1,73 +1,82 @@
-# Welcome to your Lovable project
+# Grapevine - Split Architecture
 
-## Project info
+Two distinct products with strict boundaries:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 1. Grapevine Engine (compute backend)
+- **Purpose**: Monte Carlo simulation, scenario evaluation, graph analytics, deal scoring
+- **Structure**:
+  - `/engine` - Pure Python library (no FastAPI in core logic)
+  - `/services/engine_api` - FastAPI REST wrapper
+  - `/services/engine_worker` - Celery workers
 
-## How can I edit this code?
+## 2. Grapevine Web (product UI)
+- **Purpose**: Multi-tenant institutional web app
+- **Structure**: `/apps/web` - Next.js + TypeScript + Tailwind
+- **Owns**: Auth, orgs, RBAC, portfolios CRUD, job monitoring UI
+- **Never imports** the engine package. Talks to engine via APIs only.
 
-There are several ways of editing your application.
+## File Tree
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```
+grapevine/
+├── engine/                    # Pure Python library
+│   ├── engine/
+│   │   ├── simulation.py      # SimulationEngine
+│   │   ├── scenarios.py       # Scenario, ScenarioTemplate
+│   │   ├── graph.py           # GraphRepository interface
+│   │   └── scoring.py         # ModelScorer, ModelTrainer
+│   └── tests/
+├── services/
+│   ├── engine_api/            # FastAPI wrapper
+│   │   ├── engine_api/
+│   │   └── Dockerfile
+│   ├── engine_worker/         # Celery workers
+│   │   ├── engine_worker/
+│   │   └── Dockerfile
+│   └── web_api/               # Auth, portfolios, proxies to engine
+│       ├── web_api/
+│       └── Dockerfile
+├── apps/
+│   └── web/                   # Next.js frontend
+├── packages/
+│   └── shared/                # Typed API client
+├── docker-compose.yml
+├── init-db.sh
+└── Makefile
 ```
 
-**Edit a file directly in GitHub**
+## Commands
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```bash
+# Start all services
+make dev
+# or: docker-compose up --build
 
-**Use GitHub Codespaces**
+# Seed demo data (org, user, portfolio with 10 companies)
+make seed
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Run engine unit tests
+make test
+```
 
-## What technologies are used for this project?
+## Services
 
-This project is built with:
+| Service       | Port | Purpose                    |
+|---------------|------|----------------------------|
+| web           | 3000 | Next.js frontend           |
+| web_api       | 8000 | Auth, portfolios, proxy    |
+| engine_api    | 8001 | Simulation jobs, scenarios |
+| postgres      | 5432 | grapevine_engine, grapevine_web |
+| redis         | 6379 | Celery broker              |
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## UI Click-Path (Vertical Slice)
 
-## How can I deploy this project?
+1. **Login**: http://localhost:3000/login → demo@grapevine.io / demo123
+2. **Portfolios**: Click "Portfolios" → See "Growth Fund I" (from seed)
+3. **Portfolio detail**: Click portfolio → See 10 positions
+4. **Run simulation**: Click "Simulation Lab" → Select portfolio + scenario (e.g. "Recession") → Run Simulation
+5. **View results**: Poll until status=completed → See IRR chart, VaR, CVaR
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Database Setup
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Postgres creates `grapevine_engine` and `grapevine_web` on first run via init-db.sh.

@@ -1,0 +1,89 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-grapevine}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grapevine}
+      POSTGRES_DB: ${POSTGRES_DB:-grapevine}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grapevine"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  engine_api:
+    build:
+      context: .
+      dockerfile: services/engine_api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grapevine}:${POSTGRES_PASSWORD:-grapevine}@postgres:5432/grapevine_engine
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CORS_ORIGINS: http://localhost:3000,http://web:3000
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  engine_worker:
+    build:
+      context: .
+      dockerfile: services/engine_worker/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grapevine}:${POSTGRES_PASSWORD:-grapevine}@postgres:5432/grapevine_engine
+      CELERY_BROKER_URL: redis://redis:6379/1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web_api:
+    build:
+      context: .
+      dockerfile: services/web_api/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-grapevine}:${POSTGRES_PASSWORD:-grapevine}@postgres:5432/grapevine_web
+      ENGINE_API_URL: http://engine_api:8001
+      SECRET_KEY: ${SECRET_KEY:-dev-secret}
+      CORS_ORIGINS: http://localhost:3000,http://web:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      engine_api:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - web_api
+
+volumes:
+  postgres_data:
