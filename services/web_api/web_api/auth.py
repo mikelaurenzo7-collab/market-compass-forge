@@ -49,6 +49,16 @@ def get_current_user(
     return user
 
 
+def get_user_role(user: User, org_id: str, db: Session):
+    uo = db.query(UserOrganization).filter(
+        UserOrganization.user_id == user.id,
+        UserOrganization.org_id == org_id,
+    ).first()
+    if not uo:
+        raise HTTPException(403, "Not a member of this organization")
+    return uo.role
+
+
 def get_org_id(user: User, db: Session, x_org_id: str | None) -> str:
     if x_org_id:
         uo = db.query(UserOrganization).filter(
@@ -57,7 +67,7 @@ def get_org_id(user: User, db: Session, x_org_id: str | None) -> str:
         ).first()
         if not uo:
             raise HTTPException(403, "Not a member of this organization")
-        return x_org_id
+        return str(x_org_id) if hasattr(x_org_id, '__str__') else x_org_id
     uo = db.query(UserOrganization).filter(UserOrganization.user_id == user.id).first()
     if not uo:
         raise HTTPException(403, "No organization")

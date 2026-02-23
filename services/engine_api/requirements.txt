@@ -10,3 +10,4 @@ redis>=5.0.0
 httpx>=0.26.0
 torch>=2.0.0
 numpy>=1.26.0
+reportlab>=4.0.0

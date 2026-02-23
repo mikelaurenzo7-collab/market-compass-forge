@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthContext";
 import { Layout } from "@/components/Layout";
 import Link from "next/link";
@@ -11,12 +12,22 @@ export default function SimulationDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const { api, user } = useAuth();
+  const [exporting, setExporting] = useState<string | null>(null);
 
   const { data: sim } = useQuery({
     queryKey: ["simulation", id],
     queryFn: () => api.getSimulation(id),
     enabled: !!user && !!id,
     refetchInterval: (d) => (d?.status === "pending" || d?.status === "running" ? 2000 : false),
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: async (type: "pdf" | "csv") => {
+      const res = await api.createExport(id, type);
+      await api.downloadExport(res.export_id, `simulation_report.${type}`);
+    },
+    onMutate: (type) => setExporting(type),
+    onSettled: () => setExporting(null),
   });
 
   if (!user) {
@@ -34,8 +45,26 @@ export default function SimulationDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <Link href="/simulations" className="text-sm text-slate-600 hover:text-slate-900">← Back</Link>
+        {sim?.status === "completed" && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => exportMutation.mutate("pdf")}
+              disabled={exportMutation.isPending}
+              className="px-3 py-1.5 text-sm bg-slate-900 text-white rounded hover:bg-slate-800 disabled:opacity-50"
+            >
+              {exporting === "pdf" ? "Generating..." : "Export PDF"}
+            </button>
+            <button
+              onClick={() => exportMutation.mutate("csv")}
+              disabled={exportMutation.isPending}
+              className="px-3 py-1.5 text-sm bg-slate-100 text-slate-800 rounded hover:bg-slate-200 disabled:opacity-50"
+            >
+              {exporting === "csv" ? "Generating..." : "Export CSV"}
+            </button>
+          </div>
+        )}
       </div>
       <h1 className="text-2xl font-semibold text-slate-900 mb-6">
         Simulation {id?.slice(0, 8)}...

@@ -72,3 +72,82 @@ class Position(Base):
 
     portfolio = relationship("Portfolio", backref="positions")
     company = relationship("Company", backref="positions")
+
+
+class ApiKey(Base):
+    __tablename__ = "api_keys"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    key_hash = Column(String(255), nullable=False)
+    key_prefix = Column(String(16), nullable=False)
+    permission_level = Column(Enum(Role), default=Role.analyst)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    revoked_at = Column(DateTime, nullable=True)
+
+
+class ApiKeyLastUsed(Base):
+    __tablename__ = "api_key_last_used"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=False)
+    last_used_at = Column(DateTime, default=datetime.utcnow)
+
+
+class AuditEvent(Base):
+    __tablename__ = "audit_events"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    actor_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    actor_api_key_id = Column(UUID(as_uuid=True), ForeignKey("api_keys.id"), nullable=True)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    event_type = Column(String(100), nullable=False)
+    entity_type = Column(String(50), nullable=True)
+    entity_id = Column(String(255), nullable=True)
+    metadata_json = Column(JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Scenario(Base):
+    __tablename__ = "scenarios"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    params = Column(JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class PortfolioUpload(Base):
+    __tablename__ = "portfolio_uploads"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    portfolio_id = Column(UUID(as_uuid=True), ForeignKey("portfolios.id"), nullable=True)
+    filename = Column(String(255), nullable=False)
+    raw_content = Column(Text, nullable=True)
+    parsed_rows = Column(JSONB, default=list)
+    quality_report = Column(JSONB, default=dict)
+    status = Column(String(50), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Deal(Base):
+    __tablename__ = "deals"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    name = Column(String(255), nullable=False)
+    deal_size = Column(Numeric(20, 2), nullable=True)
+    entry_multiple = Column(Numeric(10, 2), nullable=True)
+    sector = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DealDocument(Base):
+    __tablename__ = "deal_documents"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    deal_id = Column(UUID(as_uuid=True), ForeignKey("deals.id"), nullable=False)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    content_type = Column(String(100), nullable=True)
+    extracted_text = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)

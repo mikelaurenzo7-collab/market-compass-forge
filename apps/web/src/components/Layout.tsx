@@ -10,6 +10,7 @@ const navItems = [
   { href: "/demo", label: "NVIDIA Demo" },
   { href: "/graph", label: "Graph Explorer" },
   { href: "/deals", label: "Deal Scoring" },
+  { href: "/activity", label: "Activity" },
   { href: "/benchmarks", label: "Benchmarks" },
   { href: "/engine-status", label: "Engine Status" },
 ];

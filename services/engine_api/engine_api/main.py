@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from engine_api.config import settings
 from engine_api.database import get_db, engine, Base
 from engine_api.seed_templates import ensure_templates
-from engine_api.models import SimulationJob, ScenarioTemplateModel, DemoRun
+from engine_api.models import SimulationJob, ScenarioTemplateModel, DemoRun, ExportRecord
 
 # Import engine library - pure Python, no FastAPI
 from engine.simulation import SimulationEngine, PortfolioInput, ScenarioParams
@@ -58,6 +58,8 @@ class SimulationRequest(BaseModel):
     scenario_params: dict | None = None
     n_trials: int = 10000
     seed: int | None = None
+    org_id: str | None = None
+    force_rerun: bool = False
 
 
 class SimulationJobResponse(BaseModel):
@@ -80,11 +82,37 @@ class SimulationStatusResponse(BaseModel):
 
 # --- Routes ---
 
+_simulations_started = 0
+_simulations_completed = 0
+_avg_runtime_ms = 0.0
+
+
+def _inc_sim_started():
+    global _simulations_started
+    _simulations_started += 1
+
+
+def _inc_sim_completed(runtime_ms: float):
+    global _simulations_completed, _avg_runtime_ms
+    _simulations_completed += 1
+    _avg_runtime_ms = (_avg_runtime_ms * (_simulations_completed - 1) + runtime_ms) / _simulations_completed
+
+
 @app.get("/health")
+@app.get("/healthz")
 def health():
     backend = os.environ.get("COMPUTE_BACKEND", "numpy")
     torch_dev = os.environ.get("TORCH_DEVICE", "cpu")
     return {"status": "ok", "service": "engine-api", "compute_backend": backend, "torch_device": torch_dev}
+
+
+@app.get("/metrics")
+def metrics():
+    return {
+        "simulations_started": _simulations_started,
+        "simulations_completed": _simulations_completed,
+        "avg_runtime_ms": _avg_runtime_ms,
+    }
 
 
 @app.get("/v1/scenarios/templates")
@@ -95,6 +123,7 @@ def list_scenario_templates(db: Session = Depends(get_db)):
 
 @app.post("/v1/jobs/simulations", response_model=SimulationJobResponse)
 def create_simulation_job(req: SimulationRequest, db: Session = Depends(get_db)):
+    import hashlib
     total_cost = sum(p.get("cost_basis", 0) or 0 for p in req.portfolio)
     total_value = sum(p.get("current_value", p.get("cost_basis", 0)) or 0 for p in req.portfolio)
 
@@ -104,7 +133,21 @@ def create_simulation_job(req: SimulationRequest, db: Session = Depends(get_db))
         if t:
             scenario_params = {**t.params, **(req.scenario_params or {})}
 
+    request_hash = hashlib.sha256(
+        f"{json.dumps(req.portfolio, sort_keys=True)}|{req.scenario_template_id or ''}|{json.dumps(scenario_params, sort_keys=True)}|{req.n_trials}|{req.seed}".encode()
+    ).hexdigest()
+
+    if not req.force_rerun:
+        existing = db.query(SimulationJob).filter(
+            SimulationJob.request_hash == request_hash,
+            SimulationJob.org_id == (req.org_id or ""),
+        ).first()
+        if existing and existing.status in ("pending", "running", "completed"):
+            return SimulationJobResponse(job_id=existing.job_id or "", simulation_id=str(existing.id), status=existing.status)
+
     job = SimulationJob(
+        org_id=req.org_id,
+        request_hash=request_hash,
         portfolio_input={"positions": req.portfolio, "total_cost": total_cost, "total_value": total_value},
         scenario_params=scenario_params,
         n_trials=req.n_trials,
@@ -114,6 +157,7 @@ def create_simulation_job(req: SimulationRequest, db: Session = Depends(get_db))
     db.add(job)
     db.commit()
     db.refresh(job)
+    _inc_sim_started()
 
     try:
         from celery import Celery
@@ -131,6 +175,53 @@ def create_simulation_job(req: SimulationRequest, db: Session = Depends(get_db))
         simulation_id=str(job.id),
         status=job.status,
     )
+
+
+class ExportRequest(BaseModel):
+    type: str
+
+
+class ExportResponse(BaseModel):
+    export_id: str
+
+
+@app.post("/v1/simulations/{simulation_id}/export", response_model=ExportResponse)
+def create_export(simulation_id: str, req: ExportRequest, db: Session = Depends(get_db)):
+    job = db.query(SimulationJob).filter(SimulationJob.id == simulation_id).first()
+    if not job:
+        raise HTTPException(404, "Simulation not found")
+    if job.status != "completed" or not job.results:
+        raise HTTPException(400, "Simulation not completed")
+    from engine.reports import build_simulation_report
+    from engine_api.exports import generate_pdf, generate_csv, save_export
+    portfolio = job.portfolio_input or {}
+    scenario = job.scenario_params or {}
+    report_data = build_simulation_report(job.results, portfolio, scenario)
+    if req.type == "pdf":
+        content = generate_pdf(report_data)
+    elif req.type == "csv":
+        content = generate_csv(report_data)
+    else:
+        raise HTTPException(400, "type must be pdf or csv")
+    file_path = save_export(req.type, content, str(simulation_id))
+    rec = ExportRecord(simulation_id=simulation_id, export_type=req.type, file_path=file_path)
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return ExportResponse(export_id=str(rec.id))
+
+
+@app.get("/v1/exports/{export_id}/download")
+def download_export(export_id: str, db: Session = Depends(get_db)):
+    rec = db.query(ExportRecord).filter(ExportRecord.id == export_id).first()
+    if not rec:
+        raise HTTPException(404, "Export not found")
+    from fastapi.responses import FileResponse
+    import os
+    if not rec.file_path or not os.path.exists(rec.file_path):
+        raise HTTPException(404, "Export file not found")
+    ext = "pdf" if rec.export_type == "pdf" else "csv"
+    return FileResponse(rec.file_path, filename=f"simulation_report.{ext}", media_type="application/pdf" if ext == "pdf" else "text/csv")
 
 
 @app.get("/v1/jobs/simulations/{simulation_id}", response_model=SimulationStatusResponse)

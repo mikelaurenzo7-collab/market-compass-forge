@@ -224,6 +224,59 @@ export class ApiClient {
     return this.fetch("/demo/run", { method: "POST" });
   }
 
+  async uploadPortfolioCsv(file: File): Promise<{ upload_id: string; rows: any[]; quality_report: any }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = this.getToken();
+    const orgId = this.getOrgId();
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (orgId) headers["X-Org-Id"] = orgId;
+    const res = await fetch(`${this.baseUrl}/portfolios/upload-csv`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async createPortfolioFromCsv(params: { name: string; description?: string; create_from_upload_id: string }): Promise<any> {
+    return this.fetch("/portfolios/from-csv", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  async createExport(simulationId: string, type: "pdf" | "csv"): Promise<{ export_id: string }> {
+    return this.fetch(`/simulations/${simulationId}/export`, {
+      method: "POST",
+      body: JSON.stringify({ type }),
+    });
+  }
+
+  async downloadExport(exportId: string, filename?: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/exports/${exportId}/download`, {
+      headers: {
+        Authorization: `Bearer ${this.getToken()}`,
+        "X-Org-Id": this.getOrgId() || "",
+      },
+    });
+    if (!res.ok) throw new Error("Export download failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename || "simulation_report.pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async getAuditEvents(limit?: number): Promise<any[]> {
+    const q = limit ? `?limit=${limit}` : "";
+    return this.fetch(`/audit/events${q}`);
+  }
+
   async getDemoStatus(demoId: string): Promise<{
     id: string;
     status: string;
