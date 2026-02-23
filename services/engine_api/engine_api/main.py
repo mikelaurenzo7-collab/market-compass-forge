@@ -123,6 +123,12 @@ def system_hardware():
     return get_hardware_summary()
 
 
+@app.get("/system/gpu-roadmap")
+def system_gpu_roadmap():
+    from engine.utils.hardware import get_gpu_roadmap
+    return get_gpu_roadmap()
+
+
 @app.get("/metrics")
 def metrics():
     return {
@@ -289,6 +295,32 @@ def run_contagion_simulation(req: ContagionRequest):
         "top_impacted_nodes": [{"node_id": n, "risk": r} for n, r in result.top_impacted_nodes],
         "total_risk": result.total_risk,
         "num_impacted": result.num_impacted,
+    }
+
+
+# --- Multi-Portfolio Optimization ---
+
+class OptimizationRequest(BaseModel):
+    scenario_returns: list[list[float]]
+    alpha: float = 0.05
+    method: str = "cvar_min"
+
+
+@app.post("/v1/optimization/robust")
+def run_robust_optimization(req: OptimizationRequest):
+    """Robust portfolio allocation - CVaR minimization. GPU-ready."""
+    from engine.optimization import robust_portfolio_allocation
+    result = robust_portfolio_allocation(
+        scenario_returns=req.scenario_returns,
+        alpha=req.alpha,
+        method=req.method,
+    )
+    return {
+        "weights": result.weights,
+        "objective_value": result.objective_value,
+        "method": result.method,
+        "n_scenarios": result.n_scenarios,
+        "metadata": result.metadata,
     }
 
 

@@ -292,4 +292,37 @@ export class ApiClient {
   }> {
     return this.fetch(`/demo/${demoId}`);
   }
+
+  async listConnectorTypes(): Promise<{ id: string; name: string }[]> {
+    return this.fetch("/connectors/types");
+  }
+
+  async fetchFromConnector(connectorType: string): Promise<{ success: boolean; data: any[]; error?: string; row_count: number }> {
+    return this.fetch(`/connectors/${connectorType}/fetch`, { method: "POST" });
+  }
+
+  async draftDealMemo(params: { deal_name: string; deal_context: Record<string, any>; document_summaries: string[] }): Promise<{ memo: string }> {
+    return this.fetch("/copilots/deal-memo/draft", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  async copilotQa(params: { question: string; document_chunks: string[] }): Promise<{ answer: string }> {
+    return this.fetch("/copilots/qa", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  async runRobustOptimization(params: { scenario_returns: number[][]; alpha?: number; method?: string }): Promise<any> {
+    return this.fetch("/optimization/robust", {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+  }
+
+  async getComplianceStatus(): Promise<{ sso_enabled: boolean; audit_retention_days: number; encryption_at_rest: boolean; secrets_vault: string; dlp: string }> {
+    return this.fetch("/system/compliance");
+  }
 }

@@ -151,3 +151,15 @@ class DealDocument(Base):
     content_type = Column(String(100), nullable=True)
     extracted_text = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DataConnectorCredential(Base):
+    """OAuth/API credentials for external data connectors (Dropbox, Drive, etc.)."""
+    __tablename__ = "data_connector_credentials"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id = Column(UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False)
+    connector_type = Column(String(50), nullable=False)  # dropbox, google_drive, quickbooks, carta
+    encrypted_tokens = Column(Text, nullable=True)  # encrypted OAuth tokens (use secrets vault)
+    metadata_json = Column(JSONB, default=dict)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

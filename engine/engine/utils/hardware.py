@@ -123,4 +123,21 @@ def get_hardware_info() -> dict:
             info["cupy_available"] = False
     except ImportError:
         info["cupy_available"] = False
+    info["rapids_cugraph"] = os.environ.get("RAPIDS_CUGRAPH", "").lower() == "1"
     return info
+
+
+def get_gpu_roadmap() -> dict:
+    """GPU acceleration roadmap for /system/gpu-roadmap endpoint."""
+    return {
+        "current": {
+            "compute": "numpy (CPU) or CuPy (GPU)",
+            "graph": "in-memory Python",
+            "scoring": "PyTorch (CPU/CUDA)",
+        },
+        "roadmap": [
+            "CuPy in production: set COMPUTE_BACKEND=cupy",
+            "RAPIDS cuGraph: graph analytics on GPU (future)",
+            "Multi-GPU distributed: Dask + CuPy (future)",
+        ],
+    }

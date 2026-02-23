@@ -11,6 +11,7 @@ from web_api.database import get_db, engine, Base
 from web_api.models import (
     Organization, User, UserOrganization, Portfolio, Position, Company,
     Role, ApiKey, AuditEvent, PortfolioUpload, Deal, DealDocument,
+    DataConnectorCredential,
 )
 from web_api.auth import (
     get_password_hash, verify_password, create_token, get_current_user, get_org_id, get_user_role,
@@ -393,6 +394,15 @@ def list_scenario_templates(user: User = Depends(get_current_user)):
         return r.json()
 
 
+@app.post("/optimization/robust")
+def run_robust_optimization(req: dict, user: User = Depends(get_current_user)):
+    """Robust portfolio optimization - CVaR minimization. GPU-ready."""
+    with httpx.Client() as client:
+        r = client.post(f"{settings.engine_api_url}/v1/optimization/robust", json=req, timeout=30)
+        r.raise_for_status()
+        return r.json()
+
+
 @app.post("/contagion/simulate")
 def run_contagion(
     req: dict,
@@ -464,6 +474,42 @@ def list_deal_documents(
     org_id = get_org_id(user, db, x_org_id)
     docs = db.query(DealDocument).filter(DealDocument.deal_id == deal_id, DealDocument.org_id == UUID(org_id)).all()
     return [{"id": str(d.id), "filename": d.filename} for d in docs]
+
+
+# --- Data Connectors ---
+
+
+@app.get("/connectors/types")
+def list_connector_types(user: User = Depends(get_current_user)):
+    """List available connector types (file, dropbox, google_drive, etc.)."""
+    from web_api.connectors.base import ConnectorType
+    return [{"id": t.value, "name": t.value.replace("_", " ").title()} for t in ConnectorType]
+
+
+@app.post("/connectors/{connector_type}/fetch")
+def fetch_from_connector(
+    connector_type: str,
+    x_org_id: str | None = Header(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Fetch portfolio data from a connector. Use connector_type=file for local file connector."""
+    org_id = get_org_id(user, db, x_org_id)
+    verify_permission(user, org_id, Permission.CREATE_PORTFOLIO, db)
+    from web_api.connectors.base import ConnectorType
+    from web_api.connectors.registry import get_connector
+    try:
+        ct = ConnectorType(connector_type)
+    except ValueError:
+        raise HTTPException(400, f"Unknown connector type: {connector_type}")
+    cred = db.query(DataConnectorCredential).filter(
+        DataConnectorCredential.org_id == UUID(org_id),
+        DataConnectorCredential.connector_type == connector_type,
+    ).first()
+    access_token = cred.encrypted_tokens if cred and cred.encrypted_tokens else None
+    connector = get_connector(ct, access_token=access_token) if ct in (ConnectorType.DROPBOX, ConnectorType.GOOGLE_DRIVE) else get_connector(ct)
+    result = connector.fetch_portfolio_data(org_id)
+    return {"success": result.success, "data": result.data, "error": result.error, "row_count": result.row_count}
 
 
 @app.post("/deal-score")
@@ -551,6 +597,85 @@ def download_export(export_id: str, user: User = Depends(get_current_user)):
         ct = r.headers.get("content-type", "application/octet-stream")
         cd = r.headers.get("content-disposition", "attachment; filename=simulation_report.pdf")
         return Response(content=r.content, media_type=ct, headers={"Content-Disposition": cd})
+
+
+# --- LLM Copilots ---
+
+
+@app.post("/copilots/deal-memo/draft")
+def draft_deal_memo_endpoint(
+    req: dict,
+    x_org_id: str | None = Header(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Draft a deal memo from deal context and document summaries. Supports on-prem/VPC via env."""
+    org_id = get_org_id(user, db, x_org_id)
+    verify_permission(user, org_id, Permission.CREATE_PORTFOLIO, db)
+    from web_api.copilots import draft_deal_memo
+    from web_api.copilots.base import CopilotConfig, LLMProvider
+    try:
+        provider = LLMProvider(settings.llm_provider) if settings.llm_provider else LLMProvider.OPENAI
+    except ValueError:
+        provider = LLMProvider.OPENAI
+    cfg = CopilotConfig(
+        provider=provider,
+        model=settings.llm_model,
+        api_key=settings.llm_api_key or None,
+        base_url=settings.llm_base_url or None,
+        vpc_mode=bool(settings.llm_base_url),
+    )
+    memo = draft_deal_memo(
+        deal_name=req.get("deal_name", "Deal"),
+        deal_context=req.get("deal_context", {}),
+        document_summaries=req.get("document_summaries", []),
+        config=cfg,
+    )
+    return {"memo": memo}
+
+
+@app.post("/copilots/qa")
+def copilot_qa(
+    req: dict,
+    x_org_id: str | None = Header(None),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Q&A over deal documents. Supports on-prem/VPC via env."""
+    org_id = get_org_id(user, db, x_org_id)
+    verify_permission(user, org_id, Permission.READ_DASHBOARDS, db)
+    from web_api.copilots import answer_question_over_docs
+    from web_api.copilots.base import CopilotConfig, LLMProvider
+    try:
+        provider = LLMProvider(settings.llm_provider) if settings.llm_provider else LLMProvider.OPENAI
+    except ValueError:
+        provider = LLMProvider.OPENAI
+    cfg = CopilotConfig(
+        provider=provider,
+        model=settings.llm_model,
+        api_key=settings.llm_api_key or None,
+        base_url=settings.llm_base_url or None,
+        vpc_mode=bool(settings.llm_base_url),
+    )
+    answer = answer_question_over_docs(
+        question=req.get("question", ""),
+        document_chunks=req.get("document_chunks", []),
+        config=cfg,
+    )
+    return {"answer": answer}
+
+
+@app.get("/system/compliance")
+def compliance_status(user: User = Depends(get_current_user)):
+    """SOC2 readiness status - SSO, audit retention, encryption, DLP."""
+    from web_api.security.sso import is_sso_enabled
+    return {
+        "sso_enabled": is_sso_enabled() or settings.sso_enabled,
+        "audit_retention_days": settings.audit_retention_days,
+        "encryption_at_rest": settings.encryption_at_rest,
+        "secrets_vault": "stub",
+        "dlp": "placeholder",
+    }
 
 
 @app.get("/health")
