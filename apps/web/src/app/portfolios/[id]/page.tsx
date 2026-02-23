@@ -6,6 +6,8 @@ import { useAuth } from "@/components/AuthContext";
 import { Layout } from "@/components/Layout";
 import Link from "next/link";
 import { useState } from "react";
+import { motion } from "framer-motion";
+import { ArrowLeft, Plus, Play, Wallet } from "lucide-react";
 
 export default function PortfolioDetailPage() {
   const params = useParams();
@@ -71,60 +73,72 @@ export default function PortfolioDetailPage() {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <Link href="/portfolios" className="text-sm text-slate-600 hover:text-slate-900">
-          ← Back to Portfolios
+      <div className="mb-8">
+        <Link href="/portfolios" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Portfolios
         </Link>
       </div>
-      {isLoading && <p>Loading...</p>}
+      {isLoading && <div className="glass-card p-8 animate-pulse h-32" />}
       {portfolio && (
         <>
-          <div className="flex justify-between items-start mb-8">
+          <div className="flex justify-between items-start mb-10">
             <div>
-              <h1 className="text-2xl font-semibold text-slate-900">{portfolio.name}</h1>
+              <h1 className="text-3xl font-bold text-foreground">{portfolio.name}</h1>
               {portfolio.description && (
-                <p className="text-slate-600 mt-1">{portfolio.description}</p>
+                <p className="text-muted-foreground mt-1">{portfolio.description}</p>
               )}
             </div>
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <button
                 onClick={() => setShowAddPosition(!showAddPosition)}
-                className="px-4 py-2 border border-slate-300 rounded-md hover:bg-slate-50 text-sm font-medium"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-card hover:border-primary/30 transition-all font-medium"
               >
+                <Plus className="w-4 h-4" />
                 Add Position
               </button>
               <Link
                 href={`/simulations?portfolio=${id}`}
-                className="px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-800 text-sm font-medium"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90"
               >
+                <Play className="w-4 h-4" />
                 Run Simulation
               </Link>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-white rounded-lg border border-slate-200 p-4">
-              <p className="text-sm text-slate-600">Total Cost</p>
-              <p className="text-xl font-semibold">
-                ${(portfolio.total_cost || 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-white rounded-lg border border-slate-200 p-4">
-              <p className="text-sm text-slate-600">Total Value</p>
-              <p className="text-xl font-semibold">
-                ${(portfolio.total_value || 0).toLocaleString()}
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-4 mb-10">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-card p-6"
+            >
+              <p className="text-sm text-muted-foreground">Total Cost</p>
+              <p className="text-2xl font-bold text-primary mt-1">${(portfolio.total_cost || 0).toLocaleString()}</p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="glass-card p-6"
+            >
+              <p className="text-sm text-muted-foreground">Total Value</p>
+              <p className="text-2xl font-bold text-primary mt-1">${(portfolio.total_value || 0).toLocaleString()}</p>
+            </motion.div>
           </div>
           {showAddPosition && (
-            <div className="mb-6 p-4 bg-white rounded-lg border border-slate-200">
-              <h3 className="font-medium mb-3">Add Position</h3>
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="mb-8 glass-card p-6"
+            >
+              <h3 className="font-semibold text-foreground mb-4">Add Position</h3>
               <div className="flex gap-4 flex-wrap items-end">
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">Company</label>
+                  <label className="block text-sm text-muted-foreground mb-2">Company</label>
                   <select
                     value={addForm.company_id}
                     onChange={(e) => setAddForm((f) => ({ ...f, company_id: e.target.value }))}
-                    className="px-3 py-2 border rounded-md"
+                    className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   >
                     <option value="">Select</option>
                     {companies?.map((c: any) => (
@@ -133,63 +147,69 @@ export default function PortfolioDetailPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">Cost ($)</label>
+                  <label className="block text-sm text-muted-foreground mb-2">Cost ($)</label>
                   <input
                     type="number"
                     value={addForm.cost_basis}
                     onChange={(e) => setAddForm((f) => ({ ...f, cost_basis: parseFloat(e.target.value) || 0 }))}
-                    className="px-3 py-2 border rounded-md w-24"
+                    className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground w-28 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">Exit (yrs)</label>
+                  <label className="block text-sm text-muted-foreground mb-2">Exit (yrs)</label>
                   <input
                     type="number"
                     value={addForm.expected_exit_years}
                     onChange={(e) => setAddForm((f) => ({ ...f, expected_exit_years: parseFloat(e.target.value) || 5 }))}
-                    className="px-3 py-2 border rounded-md w-20"
+                    className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground w-24 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
                 <button
                   onClick={() => addPositionMutation.mutate()}
                   disabled={!addForm.company_id || addPositionMutation.isPending}
-                  className="px-4 py-2 bg-slate-900 text-white rounded-md hover:bg-slate-800 disabled:opacity-50"
+                  className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50"
                 >
                   Add
                 </button>
               </div>
-            </div>
+            </motion.div>
           )}
 
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <h2 className="px-6 py-4 font-medium text-slate-900 border-b border-slate-200">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="glass-card overflow-hidden"
+          >
+            <h2 className="px-6 py-4 font-semibold text-foreground border-b border-white/10 flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-primary" />
               Positions
             </h2>
             {portfolio.positions?.length === 0 ? (
-              <p className="p-6 text-slate-600">No positions. Add companies to run simulations.</p>
+              <p className="p-8 text-muted-foreground text-center">No positions. Add companies to run simulations.</p>
             ) : (
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200 bg-slate-50">
-                    <th className="text-left px-6 py-3 text-sm font-medium text-slate-700">Company</th>
-                    <th className="text-right px-6 py-3 text-sm font-medium text-slate-700">Cost</th>
-                    <th className="text-right px-6 py-3 text-sm font-medium text-slate-700">Value</th>
-                    <th className="text-right px-6 py-3 text-sm font-medium text-slate-700">Exit (yrs)</th>
+                  <tr className="border-b border-white/10 bg-white/[0.02]">
+                    <th className="text-left px-6 py-3 text-sm font-medium text-muted-foreground">Company</th>
+                    <th className="text-right px-6 py-3 text-sm font-medium text-muted-foreground">Cost</th>
+                    <th className="text-right px-6 py-3 text-sm font-medium text-muted-foreground">Value</th>
+                    <th className="text-right px-6 py-3 text-sm font-medium text-muted-foreground">Exit (yrs)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {portfolio.positions?.map((pos: any) => (
-                    <tr key={pos.id} className="border-b border-slate-100">
-                      <td className="px-6 py-3">{pos.company_name || "—"}</td>
-                      <td className="px-6 py-3 text-right">${pos.cost_basis?.toLocaleString()}</td>
-                      <td className="px-6 py-3 text-right">${pos.current_value?.toLocaleString()}</td>
-                      <td className="px-6 py-3 text-right">{pos.expected_exit_years}</td>
+                    <tr key={pos.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                      <td className="px-6 py-4 font-medium">{pos.company_name || "—"}</td>
+                      <td className="px-6 py-4 text-right">${pos.cost_basis?.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right">${pos.current_value?.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right">{pos.expected_exit_years}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )}
-          </div>
+          </motion.div>
         </>
       )}
     </Layout>

@@ -1,20 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/AuthContext";
 import { Layout } from "@/components/Layout";
 import Link from "next/link";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { motion } from "framer-motion";
+import { FlaskConical, Play } from "lucide-react";
 
 export default function SimulationsPage() {
   const searchParams = useSearchParams();
@@ -42,7 +36,6 @@ export default function SimulationsPage() {
       data?.status === "pending" || data?.status === "running" ? 2000 : false,
   });
 
-
   const [form, setForm] = useState({
     portfolio_id: portfolioId || "",
     scenario_template_id: "",
@@ -52,11 +45,11 @@ export default function SimulationsPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Link href="/login" className="text-slate-900 font-medium">
+      <Layout>
+        <Link href="/login" className="text-primary font-medium hover:underline">
           Sign in to continue
         </Link>
-      </div>
+      </Layout>
     );
   }
 
@@ -70,9 +63,7 @@ export default function SimulationsPage() {
         n_trials: form.n_trials,
       });
       setSelectedSimId(res.simulation_id);
-      if (typeof window !== "undefined") {
-        window.location.href = `/simulations/${res.simulation_id}`;
-      }
+      window.location.href = `/simulations/${res.simulation_id}`;
     } catch (e) {
       console.error(e);
     } finally {
@@ -90,119 +81,139 @@ export default function SimulationsPage() {
 
   return (
     <Layout>
-      <h1 className="text-2xl font-semibold text-slate-900 mb-6">Simulation Lab</h1>
+      <h1 className="text-3xl font-bold text-foreground mb-2">Simulation Lab</h1>
+      <p className="text-muted-foreground mb-10">Monte Carlo stress testing for portfolio scenarios</p>
 
       <div className="grid lg:grid-cols-2 gap-8">
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h2 className="font-medium text-slate-900 mb-4">Run Simulation</h2>
-          <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-6"
+        >
+          <h2 className="font-semibold text-foreground mb-6 flex items-center gap-2">
+            <FlaskConical className="w-5 h-5 text-primary" />
+            Run Simulation
+          </h2>
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Portfolio</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Portfolio</label>
               <select
                 value={form.portfolio_id}
                 onChange={(e) => setForm((f) => ({ ...f, portfolio_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-md"
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="">Select portfolio</option>
                 {portfolios?.map((p: any) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Scenario</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Scenario</label>
               <select
                 value={form.scenario_template_id}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, scenario_template_id: e.target.value }))
-                }
-                className="w-full px-3 py-2 border border-slate-300 rounded-md"
+                onChange={(e) => setForm((f) => ({ ...f, scenario_template_id: e.target.value }))}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="">Select scenario</option>
                 {templates?.map((t: any) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Trials</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Trials</label>
               <input
                 type="number"
                 value={form.n_trials}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, n_trials: parseInt(e.target.value) || 10000 }))
-                }
-                className="w-full px-3 py-2 border border-slate-300 rounded-md"
+                onChange={(e) => setForm((f) => ({ ...f, n_trials: parseInt(e.target.value) || 10000 }))}
+                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
             <button
               onClick={runSimulation}
               disabled={running || !form.portfolio_id || !form.scenario_template_id}
-              className="w-full py-2 bg-slate-900 text-white rounded-md hover:bg-slate-800 disabled:opacity-50"
+              className="w-full py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
             >
+              <Play className="w-4 h-4" />
               {running ? "Starting..." : "Run Simulation"}
             </button>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="bg-white rounded-lg border border-slate-200 p-6">
-          <h2 className="font-medium text-slate-900 mb-4">Simulation</h2>
-          <p className="text-sm text-slate-600">
-            Select portfolio and scenario, then run. Results appear below when complete.
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-card p-6"
+        >
+          <h2 className="font-semibold text-foreground mb-4">How it works</h2>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            Select a portfolio and scenario template, then run. Monte Carlo simulations use correlated shocks,
+            regime switching, and fat tails. Results appear when complete—view IRR/MOIC quantiles,
+            VaR/CVaR, and timeline bands.
           </p>
-        </div>
+        </motion.div>
       </div>
 
       {selectedSimId && simDetail && (
-        <div className="mt-8 bg-white rounded-lg border border-slate-200 p-6">
-          <h2 className="font-medium text-slate-900 mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-10 glass-card p-6"
+        >
+          <h2 className="font-semibold text-foreground mb-4">
             Simulation {simDetail.id?.slice(0, 8)}... — {simDetail.status}
           </h2>
           {simDetail.status === "pending" || simDetail.status === "running" ? (
-            <p className="text-slate-600">Running Monte Carlo simulation... This may take a minute.</p>
+            <div>
+              <div className="h-2 rounded-full bg-white/10 overflow-hidden mb-2">
+                <motion.div
+                  className="h-full bg-primary rounded-full"
+                  animate={{ width: [`${simDetail.percent_complete ?? 0}%`, `${(simDetail.percent_complete ?? 0) + 5}%`] }}
+                  transition={{ repeat: Infinity, duration: 1 }}
+                />
+              </div>
+              <p className="text-muted-foreground text-sm">Running Monte Carlo simulation...</p>
+            </div>
           ) : simDetail.status === "failed" ? (
-            <p className="text-red-600">{simDetail.error_message}</p>
+            <p className="text-destructive">{simDetail.error_message}</p>
           ) : results ? (
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="p-4 bg-slate-50 rounded">
-                  <p className="text-sm text-slate-600">Mean IRR</p>
-                  <p className="text-xl font-semibold">{((results.mean_irr ?? 0) * 100).toFixed(1)}%</p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded">
-                  <p className="text-sm text-slate-600">VaR 95%</p>
-                  <p className="text-xl font-semibold">{(results.var_95 * 100).toFixed(1)}%</p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded">
-                  <p className="text-sm text-slate-600">CVaR 95%</p>
-                  <p className="text-xl font-semibold">{(results.cvar_95 * 100).toFixed(1)}%</p>
-                </div>
-                <div className="p-4 bg-slate-50 rounded">
-                  <p className="text-sm text-slate-600">Downside (&lt;10% IRR)</p>
-                  <p className="text-xl font-semibold">
-                    {(results.downside_prob_below_threshold * 100).toFixed(1)}%
-                  </p>
-                </div>
+                {[
+                  { label: "Mean IRR", value: ((results.mean_irr ?? 0) * 100).toFixed(1) },
+                  { label: "VaR 95%", value: ((results.var_95 ?? 0) * 100).toFixed(1) },
+                  { label: "CVaR 95%", value: ((results.cvar_95 ?? 0) * 100).toFixed(1) },
+                  { label: "Downside", value: ((results.downside_prob_below_threshold ?? 0) * 100).toFixed(1) },
+                ].map((m) => (
+                  <div key={m.label} className="glass-card p-4">
+                    <p className="text-sm text-muted-foreground">{m.label}</p>
+                    <p className="text-xl font-bold text-primary">{m.value}%</p>
+                  </div>
+                ))}
               </div>
               {irrData.length > 0 && (
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={irrData} layout="vertical" margin={{ left: 40 }}>
-                      <XAxis type="number" tickFormatter={(v) => `${v}%`} />
-                      <YAxis type="category" dataKey="quantile" width={40} />
-                      <Tooltip formatter={(v: number) => [`${v?.toFixed(1)}%`, "IRR"]} />
-                      <Bar dataKey="irr" fill="#64748b" />
+                      <XAxis type="number" tickFormatter={(v) => `${v}%`} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis type="category" dataKey="quantile" width={40} stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px" }} />
+                      <Bar dataKey="irr" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
+              <Link
+                href={`/simulations/${selectedSimId}`}
+                className="inline-block text-primary font-medium hover:underline"
+              >
+                View full results →
+              </Link>
             </div>
           ) : null}
-        </div>
+        </motion.div>
       )}
     </Layout>
   );

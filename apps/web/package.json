@@ -19,7 +19,11 @@
     "lucide-react": "^0.303.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "framer-motion": "^11.0.0",
+    "@react-three/fiber": "^8.15.0",
+    "@react-three/drei": "^9.92.0",
+    "three": "^0.160.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
