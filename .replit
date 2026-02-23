@@ -1,0 +1,16 @@
+# Grapevine Intelligence Engine - Replit Configuration
+# See REPLIT.md for setup instructions
+
+[run]
+# Full stack: web + APIs. Add PostgreSQL in Replit Tools for APIs.
+command = "bash scripts/replit-start.sh"
+
+[env]
+NEXT_PUBLIC_API_URL = "http://localhost:8000"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "cd apps/web && npm run build && npm run start"]
+deploymentTarget = "cloudrun"

@@ -182,16 +182,22 @@ def create_simulation_job(req: SimulationRequest, db: Session = Depends(get_db))
     db.refresh(job)
     _inc_sim_started()
 
-    try:
-        from celery import Celery
-        celery_app = Celery(broker=settings.celery_broker_url)
-        task = celery_app.send_task("engine_worker.tasks.run_simulation_task", args=[str(job.id)])
-        job.job_id = task.id
-        db.commit()
-    except Exception as e:
-        job.status = "failed"
-        job.error_message = str(e)
-        db.commit()
+    use_sync = not getattr(settings, "celery_broker_url", None) or not settings.celery_broker_url.strip()
+    if use_sync:
+        from engine_api.sync_runner import run_simulation_sync
+        run_simulation_sync(str(job.id), db)
+        db.refresh(job)
+    else:
+        try:
+            from celery import Celery
+            celery_app = Celery(broker=settings.celery_broker_url)
+            task = celery_app.send_task("engine_worker.tasks.run_simulation_task", args=[str(job.id)])
+            job.job_id = task.id
+            db.commit()
+        except Exception as e:
+            from engine_api.sync_runner import run_simulation_sync
+            run_simulation_sync(str(job.id), db)
+            db.refresh(job)
 
     return SimulationJobResponse(
         job_id=job.job_id or "",

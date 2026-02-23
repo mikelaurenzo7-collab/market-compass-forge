@@ -2,6 +2,16 @@
 
 GPU-ready private markets simulation + graph analytics infrastructure. **NVIDIA Inception-ready.**
 
+## Quick Start
+
+| Environment | Command |
+|-------------|---------|
+| **Replit** | Import repo → Add PostgreSQL → Run. See [REPLIT.md](REPLIT.md) |
+| **Docker** | `docker compose up --build` then `make seed` |
+| **Local** | `make dev` (builds, boots, seeds) |
+
+**Login**: demo@grapevine.io / demo123
+
 ## Why GPUs Matter Here
 
 - **Stress simulation**: 100k+ Monte Carlo trials with correlated shocks, regime switching, and timeline percentiles — vectorized ops map naturally to CUDA.
@@ -34,11 +44,24 @@ COMPUTE_BACKEND=cupy python -m engine.benchmarks.run_sim_bench
 - `COMPUTE_BACKEND=numpy|cupy` — numeric backend
 - `TORCH_DEVICE=cpu|cuda` — PyTorch device (graceful fallback to CPU if CUDA unavailable)
 
+## Repo Structure (Engine vs Website)
+
+Clear separation for Replit and other imports:
+
+| Path | Type | Purpose |
+|------|------|---------|
+| `engine/` | Python | Pure compute (simulation, graph, scoring). No web. |
+| `apps/web/` | Next.js | Website UI. Calls APIs only. |
+| `services/engine_api/` | FastAPI | Engine REST API |
+| `services/web_api/` | FastAPI | Auth, portfolios, proxy |
+| `services/engine_worker/` | Celery | Async jobs (optional; needs Redis) |
+| `packages/shared/` | TypeScript | Typed API client |
+
 ## File Tree
 
 ```
 grapevine/
-├── engine/                      # Pure Python library
+├── engine/                      # Pure Python library (COMPUTE ONLY)
 │   ├── engine/
 │   │   ├── compute/             # Backend abstraction
 │   │   │   ├── backend.py, numpy_backend.py, cupy_backend.py
@@ -138,6 +161,15 @@ make e2e          # Playwright (requires stack running)
 4. **Contagion** → Graph Explorer → Shocked nodes: a → Run Contagion → See top impacted nodes
 5. **Deal scoring** → Deals → Enter params → Score Deal → See exit probability + risk bucket
 6. **Benchmarks** → /benchmarks → Run Benchmarks → View results
+
+## Replit Import
+
+1. Import: [replit.com/import](https://replit.com/import) or `replit.com/github.com/ORG/REPO`
+2. Add PostgreSQL (Tools → Database)
+3. Run → Web at :3000, APIs at :8000, :8001
+4. Login: demo@grapevine.io / demo123
+
+Without Redis, simulations run synchronously. See [REPLIT.md](REPLIT.md) for details.
 
 ## Future: RAPIDS/cuGraph
 

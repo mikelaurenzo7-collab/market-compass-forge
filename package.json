@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "docker-compose up --build",
     "build": "npm run build --workspace=apps/web",
-    "seed": "docker-compose run --rm api python -m apps.api.seed"
+    "seed": "docker compose run --rm web_api python -m web_api.seed",
+    "dev:replit": "bash scripts/replit-start.sh"
   }
 }

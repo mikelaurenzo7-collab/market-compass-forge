@@ -78,10 +78,10 @@ export class ApiClient {
 
     const res = await fetch(`${this.baseUrl}${path}`, { ...options, headers });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const err = (await res.json().catch(() => ({ detail: res.statusText }))) as { detail?: string };
       throw new Error(err.detail || JSON.stringify(err));
     }
-    return res.json();
+    return res.json() as Promise<T>;
   }
 
   async login(email: string, password: string): Promise<LoginResponse> {
@@ -146,13 +146,6 @@ export class ApiClient {
 
   async listDeals(): Promise<any[]> {
     return this.fetch("/deals");
-  }
-
-  async scoreDeal(dealId?: string, data?: Record<string, any>): Promise<any> {
-    return this.fetch("/deals/score", {
-      method: "POST",
-      body: JSON.stringify({ deal_id: dealId, ...data }),
-    });
   }
 
   async listScenarios(): Promise<any[]> {
@@ -242,7 +235,7 @@ export class ApiClient {
       body: formData,
     });
     if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    return res.json() as Promise<{ upload_id: string; rows: any[]; quality_report: any }>;
   }
 
   async createPortfolioFromCsv(params: { name: string; description?: string; create_from_upload_id: string }): Promise<any> {
