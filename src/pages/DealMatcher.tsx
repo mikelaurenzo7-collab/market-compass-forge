@@ -164,6 +164,7 @@ const DealMatcher = () => {
   const [matches, setMatches] = useState<DealMatch[]>([]);
   const [meta, setMeta] = useState<{ pipelineCount?: number; sectorsAnalyzed?: string[] }>({});
   const { checkAndTrack, showUpgrade, blockedAction, dismissUpgrade } = useUsageTracking();
+  const [elapsed, setElapsed] = useState(0);
 
   const runMatcher = useMutation({
     mutationFn: async () => {
@@ -189,6 +190,11 @@ const DealMatcher = () => {
 
       return resp.json();
     },
+    onMutate: () => {
+      setElapsed(0);
+      const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+      return { intervalId: id };
+    },
     onSuccess: (data) => {
       setMatches(data.matches ?? []);
       setMeta({ pipelineCount: data.pipelineCount, sectorsAnalyzed: data.sectorsAnalyzed });
@@ -200,6 +206,9 @@ const DealMatcher = () => {
     },
     onError: (err: any) => {
       if (err.message !== "__LIMIT__") toast.error(err.message);
+    },
+    onSettled: (_d, _e, _v, ctx: any) => {
+      if (ctx?.intervalId) clearInterval(ctx.intervalId);
     },
   });
 
@@ -294,8 +303,8 @@ const DealMatcher = () => {
       {runMatcher.isPending && (
         <div className="rounded-lg border border-border bg-card p-12 text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Scanning distressed assets, global opportunities, and deal comps…</p>
-          <p className="text-xs text-muted-foreground/60">This typically takes 10–20 seconds</p>
+          <p className="text-sm text-muted-foreground">Scanning distressed assets, global opportunities, and deal comps… {elapsed > 0 && <span className="font-mono font-medium text-foreground">{elapsed}s</span>}</p>
+          <p className="text-xs text-muted-foreground/60">This typically takes 5–15 seconds</p>
         </div>
       )}
 
