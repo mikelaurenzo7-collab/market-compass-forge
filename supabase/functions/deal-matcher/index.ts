@@ -15,11 +15,11 @@ serve(async (req) => {
     const lovableKey = Deno.env.get("LOVABLE_API_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Get auth user
+    // Auth via service client (no extra anon client needed)
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!).auth.getUser(token);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Unauthorized");
 
     // Server-side entitlement check
@@ -33,7 +33,7 @@ serve(async (req) => {
       });
     }
 
-    // Get user's pipeline companies
+    // Get user's pipeline companies (only needed fields)
     const { data: pipeline } = await supabase
       .from("deal_pipeline")
       .select("company_id, stage, priority, companies(id, name, sector, sub_sector, description, stage, hq_country)")
@@ -45,80 +45,44 @@ serve(async (req) => {
       });
     }
 
-    // Extract sectors and characteristics
     const sectors = [...new Set(pipeline.map((p: any) => p.companies?.sector).filter(Boolean))];
-    const companyNames = pipeline.map((p: any) => p.companies?.name).filter(Boolean);
+    const sectorFilter = sectors.length > 0 ? sectors : ["Technology"];
 
-    // Fetch potential matches in parallel
+    // Fetch only needed columns with tighter limits
     const [distressed, globalOpps, dealTxns, alphaSignals] = await Promise.all([
-      supabase.from("distressed_assets").select("*").in("sector", sectors.length > 0 ? sectors : ["Technology"]).eq("status", "active").limit(30),
-      supabase.from("global_opportunities").select("*").in("sector", sectors.length > 0 ? sectors : ["Technology"]).eq("status", "active").limit(30),
-      supabase.from("deal_transactions").select("*").order("announced_date", { ascending: false }).limit(30),
-      supabase.from("alpha_signals").select("*").in("sector", sectors.length > 0 ? sectors : ["Technology"]).order("generated_at", { ascending: false }).limit(10),
+      supabase.from("distressed_assets")
+        .select("id, name, sector, asking_price, estimated_value, discount_pct, distress_type, location_city, location_state")
+        .in("sector", sectorFilter).eq("status", "active").limit(15),
+      supabase.from("global_opportunities")
+        .select("id, name, sector, country, region, deal_value_usd, opportunity_type, risk_rating")
+        .in("sector", sectorFilter).eq("status", "active").limit(15),
+      supabase.from("deal_transactions")
+        .select("id, target_company, target_industry, deal_value, deal_type, ev_revenue, ev_ebitda")
+        .order("announced_date", { ascending: false }).limit(10),
+      supabase.from("alpha_signals")
+        .select("sector, direction, magnitude_pct, confidence")
+        .in("sector", sectorFilter).order("generated_at", { ascending: false }).limit(5),
     ]);
 
-    // Build context for AI
-    const pipelineContext = pipeline.slice(0, 10).map((p: any) => ({
-      name: p.companies?.name,
-      sector: p.companies?.sector,
-      subSector: p.companies?.sub_sector,
-      stage: p.stage,
-      priority: p.priority,
-      country: p.companies?.hq_country,
+    // Build compact context
+    const pipelineCtx = pipeline.slice(0, 10).map((p: any) => ({
+      name: p.companies?.name, sector: p.companies?.sector, subSector: p.companies?.sub_sector,
+      stage: p.stage, priority: p.priority, country: p.companies?.hq_country,
     }));
 
-    const candidateContext = {
-      distressed: (distressed.data ?? []).slice(0, 15).map((d: any) => ({
-        id: d.id, name: d.name, sector: d.sector, askingPrice: d.asking_price,
-        estimatedValue: d.estimated_value, discountPct: d.discount_pct,
-        distressType: d.distress_type, location: `${d.location_city}, ${d.location_state}`,
-      })),
-      globalOpps: (globalOpps.data ?? []).slice(0, 15).map((g: any) => ({
-        id: g.id, name: g.name, sector: g.sector, country: g.country,
-        region: g.region, dealValueUsd: g.deal_value_usd,
-        opportunityType: g.opportunity_type, riskRating: g.risk_rating,
-      })),
-      recentDeals: (dealTxns.data ?? []).slice(0, 10).map((d: any) => ({
-        id: d.id, target: d.target_company, industry: d.target_industry,
-        dealValue: d.deal_value, dealType: d.deal_type,
-        evRevenue: d.ev_revenue, evEbitda: d.ev_ebitda,
-      })),
-      signals: (alphaSignals.data ?? []).slice(0, 5).map((s: any) => ({
-        sector: s.sector, direction: s.direction, magnitude: s.magnitude_pct, confidence: s.confidence,
-      })),
-    };
+    const prompt = `You are a PE/VC deal origination AI. Match the user's pipeline with opportunities.
 
-    const prompt = `You are an elite PE/VC deal origination AI. Analyze the user's pipeline and match them with the best opportunities.
+PIPELINE: ${JSON.stringify(pipelineCtx)}
 
-USER'S PIPELINE:
-${JSON.stringify(pipelineContext, null, 2)}
+DISTRESSED: ${JSON.stringify(distressed.data ?? [])}
 
-AVAILABLE OPPORTUNITIES:
+GLOBAL OPPS: ${JSON.stringify(globalOpps.data ?? [])}
 
-DISTRESSED ASSETS:
-${JSON.stringify(candidateContext.distressed, null, 2)}
+RECENT DEALS: ${JSON.stringify(dealTxns.data ?? [])}
 
-GLOBAL OPPORTUNITIES:
-${JSON.stringify(candidateContext.globalOpps, null, 2)}
+SIGNALS: ${JSON.stringify(alphaSignals.data ?? [])}
 
-RECENT COMPARABLE DEALS:
-${JSON.stringify(candidateContext.recentDeals, null, 2)}
-
-SECTOR SIGNALS:
-${JSON.stringify(candidateContext.signals, null, 2)}
-
-Return EXACTLY a JSON array of your top 8-12 matches. Each match must have:
-- "type": "distressed" | "global" | "deal_comp"
-- "id": the ID from the candidate data
-- "name": company/asset name
-- "matchScore": 0-100 integer
-- "matchReason": one-sentence explanation of strategic fit (max 30 words)
-- "valuationInsight": one-sentence valuation angle (max 25 words)
-- "riskFlag": one key risk to watch (max 15 words)
-- "sector": the sector
-- "actionRecommendation": "investigate" | "fast_track" | "monitor" | "pass"
-
-Sort by matchScore descending. Only return the JSON array, no other text.`;
+Return a JSON array of top 8-12 matches sorted by matchScore desc. Each: {"type":"distressed"|"global"|"deal_comp","id":"...","name":"...","matchScore":0-100,"matchReason":"max 30 words","valuationInsight":"max 25 words","riskFlag":"max 15 words","sector":"...","actionRecommendation":"investigate"|"fast_track"|"monitor"|"pass"}. Only JSON array, no other text.`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -127,9 +91,9 @@ Sort by matchScore descending. Only return the JSON array, no other text.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
-          { role: "system", content: "You are a deal matching AI for institutional investors. Return only valid JSON arrays." },
+          { role: "system", content: "Return only valid JSON arrays." },
           { role: "user", content: prompt },
         ],
       }),
@@ -152,10 +116,8 @@ Sort by matchScore descending. Only return the JSON array, no other text.`;
 
     const aiData = await aiResponse.json();
     let content = aiData.choices?.[0]?.message?.content ?? "[]";
-    
-    // Strip markdown fences if present
     content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    
+
     let matches = [];
     try {
       matches = JSON.parse(content);
