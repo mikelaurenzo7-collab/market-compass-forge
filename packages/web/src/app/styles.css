@@ -1,8 +1,36 @@
 :root { color-scheme: dark; }
 body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #080a14; color: #f7f8ff; }
-.shell { max-width: 860px; margin: 0 auto; padding: 3rem 1rem; }
+.shell { max-width: 960px; margin: 0 auto; padding: 3rem 1rem; }
+
+/* Hero */
+.hero { margin-bottom: 2rem; }
 h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
-.subhead { color: #95a3c4; }
-section { margin-top: 1.5rem; background: #11162b; padding: 1rem; border-radius: 12px; border: 1px solid #222a47; }
-h2 { margin: 0 0 0.75rem; }
-ul { margin: 0; padding-left: 1rem; }
+.subhead { color: #95a3c4; font-size: 1.1rem; margin: 0; }
+
+/* Sections */
+.section { margin-top: 2rem; background: #11162b; padding: 1.5rem; border-radius: 12px; border: 1px solid #222a47; }
+h2 { margin: 0 0 1rem; font-size: 1.5rem; }
+h3 { margin: 1rem 0 0.5rem; font-size: 1rem; color: #95a3c4; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Integration list */
+.integration-group { margin-top: 1rem; }
+.integration-list { list-style: none; margin: 0; padding: 0; }
+.integration-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid #1c243f; }
+.integration-item:last-child { border-bottom: none; }
+.integration-name { flex: 1; font-size: 0.95rem; }
+
+/* Status badges */
+.badge { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em; }
+.badge--ga { background: #0d3b26; color: #3ddc84; border: 1px solid #1a6642; }
+.badge--beta { background: #1a2e5a; color: #6ea8ff; border: 1px solid #2a4a8a; }
+.badge--planned { background: #2a1f40; color: #b48cff; border: 1px solid #4a3070; }
+
+/* Pricing */
+.pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 0.5rem; }
+.pricing-family { background: #0e1223; border-radius: 8px; border: 1px solid #1c243f; padding: 1rem; }
+.pricing-list { list-style: none; margin: 0; padding: 0; }
+.pricing-item { padding: 0.5rem 0; border-bottom: 1px solid #1c243f; }
+.pricing-item:last-child { border-bottom: none; }
+.pricing-tier { display: block; font-weight: 600; font-size: 0.9rem; }
+.pricing-price { display: block; font-size: 1.1rem; color: #3ddc84; font-weight: 700; margin: 0.15rem 0; }
+.pricing-usage { display: block; font-size: 0.75rem; color: #95a3c4; }
