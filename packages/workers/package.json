@@ -1,0 +1,13 @@
+{
+  "name": "@beastbots/workers",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@beastbots/shared": "0.1.0"
+  }
+}

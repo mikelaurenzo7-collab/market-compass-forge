@@ -1,0 +1,13 @@
+{
+  "name": "@beastbots/mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@beastbots/shared": "0.1.0"
+  }
+}

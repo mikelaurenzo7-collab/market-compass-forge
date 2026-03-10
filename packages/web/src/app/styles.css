@@ -1,0 +1,8 @@
+:root { color-scheme: dark; }
+body { margin: 0; font-family: Inter, system-ui, sans-serif; background: #080a14; color: #f7f8ff; }
+.shell { max-width: 860px; margin: 0 auto; padding: 3rem 1rem; }
+h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.subhead { color: #95a3c4; }
+section { margin-top: 1.5rem; background: #11162b; padding: 1rem; border-radius: 12px; border: 1px solid #222a47; }
+h2 { margin: 0 0 0.75rem; }
+ul { margin: 0; padding-left: 1rem; }
