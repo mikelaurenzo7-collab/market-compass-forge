@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth.js';
 import { approvalsRouter } from './routes/approvals.js';
 import { governanceRouter } from './routes/governance.js';
 import { billingRouter } from './routes/billing.js';
+import { botsRouter } from './routes/bots.js';
 import { internalError } from './lib/errors.js';
 
 export const app = new Hono();
@@ -34,6 +35,7 @@ app.route('/api/pricing', pricingRouter);
 app.route('/api/approvals', approvalsRouter);
 app.route('/api/governance', governanceRouter);
 app.route('/api/billing', billingRouter);
+app.route('/api/bots', botsRouter);
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
   const port = Number(process.env.PORT ?? 4000);

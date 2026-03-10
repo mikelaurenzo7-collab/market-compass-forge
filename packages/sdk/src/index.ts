@@ -1,6 +1,28 @@
-import type { BotFamily, PricingTier, IntegrationCategory, IntegrationStatus } from '@beastbots/shared';
+import type {
+  BotFamily,
+  PricingTier,
+  IntegrationCategory,
+  IntegrationStatus,
+  BotSubtype,
+  BotStrategy,
+  UserRiskProfile,
+  BotInstanceConfig,
+  RiskLevel,
+  AutonomyLevel,
+} from '@beastbots/shared';
 
-export type { BotFamily, PricingTier, IntegrationCategory, IntegrationStatus };
+export type {
+  BotFamily,
+  PricingTier,
+  IntegrationCategory,
+  IntegrationStatus,
+  BotSubtype,
+  BotStrategy,
+  UserRiskProfile,
+  BotInstanceConfig,
+  RiskLevel,
+  AutonomyLevel,
+};
 
 export interface BotManifest {
   id: string;
@@ -121,5 +143,64 @@ export class BeastBotsClient {
 
   async getAuditLog() {
     return this.request('GET', '/api/governance/audit-log');
+  }
+
+  // ── Bots ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Create a new bot instance.
+   * This is how a user connects a bot so it starts producing.
+   * The bot is created in a disabled state — call `startBot` to activate.
+   */
+  async createBot(config: {
+    name: string;
+    family: 'trading' | 'store' | 'social';
+    subtype: BotSubtype;
+    strategies: BotStrategy[];
+    riskProfile: UserRiskProfile;
+  }): Promise<BotInstanceConfig> {
+    return this.request('POST', '/api/bots', config);
+  }
+
+  /** List all bot instances for the authenticated tenant. */
+  async listBots(): Promise<BotInstanceConfig[]> {
+    return this.request('GET', '/api/bots');
+  }
+
+  /** Get a specific bot instance by ID. */
+  async getBot(id: string): Promise<BotInstanceConfig> {
+    return this.request('GET', `/api/bots/${id}`);
+  }
+
+  /**
+   * Update name, strategies, or risk profile for a bot.
+   * The user is always the boss — risk guardrails can be tightened or relaxed
+   * at any time.
+   */
+  async updateBotConfig(
+    id: string,
+    updates: {
+      name?: string;
+      strategies?: BotStrategy[];
+      riskProfile?: Partial<UserRiskProfile>;
+    }
+  ): Promise<BotInstanceConfig> {
+    return this.request('PATCH', `/api/bots/${id}/config`, updates);
+  }
+
+  /**
+   * Start a bot — enables its autonomous strategy loop.
+   * Trading bots run 24/7; store and social bots run on their configured interval.
+   */
+  async startBot(id: string): Promise<BotInstanceConfig> {
+    return this.request('POST', `/api/bots/${id}/start`);
+  }
+
+  /**
+   * Stop a bot — halts all autonomous actions immediately.
+   * The user can restart at any time.
+   */
+  async stopBot(id: string): Promise<BotInstanceConfig> {
+    return this.request('POST', `/api/bots/${id}/stop`);
   }
 }

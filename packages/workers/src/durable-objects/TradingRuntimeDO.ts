@@ -1,7 +1,7 @@
-import type { BotRuntimeStatus, BotFamily } from '@beastbots/shared';
+import type { BotRuntimeStatus, BotFamily, TradingBotType, TradingStrategy, UserRiskProfile } from '@beastbots/shared';
 
 const DEFAULT_BUDGET_USD = 1000;
-const DAILY_LOSS_LIMIT_USD = 250;
+const DEFAULT_DAILY_LOSS_LIMIT_USD = 250;
 /** Milliseconds the circuit breaker stays open before auto-resetting (5 minutes). */
 const CIRCUIT_OPEN_COOLDOWN_MS = 5 * 60 * 1000;
 
@@ -9,7 +9,15 @@ export interface TradingConfig {
   botId: string;
   tenantId: string;
   family: BotFamily;
+  /** Elite trading sub-type: crypto, stocks, or predictions. */
+  tradingBotType?: TradingBotType;
+  /** Active trading strategies (e.g. dca, momentum). */
+  strategies?: TradingStrategy[];
+  /** Full user risk profile — overrides legacy budget/loss limit fields when provided. */
+  riskProfile?: UserRiskProfile;
+  /** @deprecated Use riskProfile.budgetUsd instead. */
   budgetUsd?: number;
+  /** @deprecated Use riskProfile.dailyLossLimitUsd instead. */
   dailyLossLimitUsd?: number;
 }
 
@@ -29,11 +37,18 @@ export class TradingRuntimeDO {
       tenantId: 'default',
       family: 'trading',
     };
-    this.budgetUsd = config?.budgetUsd ?? DEFAULT_BUDGET_USD;
-    this.dailyLossLimitUsd = config?.dailyLossLimitUsd ?? DAILY_LOSS_LIMIT_USD;
+    // riskProfile takes precedence over legacy scalar fields
+    this.budgetUsd =
+      config?.riskProfile?.budgetUsd ?? config?.budgetUsd ?? DEFAULT_BUDGET_USD;
+    this.dailyLossLimitUsd =
+      config?.riskProfile?.dailyLossLimitUsd ??
+      config?.dailyLossLimitUsd ??
+      DEFAULT_DAILY_LOSS_LIMIT_USD;
   }
 
-  /** Advance the trading loop by one tick. Returns status or throws if halted. */
+  /** Advance the trading loop by one tick. Returns status or throws if halted.
+   *  Trading bots run 24/7 via Cloudflare Durable Objects — this is called
+   *  every second from the DO alarm loop. */
   tick(): { ok: boolean; loopSeconds: number; message?: string } {
     // Auto-reset circuit breaker after cooldown
     if (this.circuitOpen && Date.now() - this.circuitOpenAt >= CIRCUIT_OPEN_COOLDOWN_MS) {
@@ -84,11 +99,13 @@ export class TradingRuntimeDO {
       botId: this.config.botId,
       tenantId: this.config.tenantId,
       family: this.config.family,
+      subtype: this.config.tradingBotType,
       running: this.running,
       loopSeconds: 1,
       circuitOpen: this.circuitOpen,
       budgetRemainingUsd: this.budgetUsd,
       lastHeartbeat: new Date(this.lastHeartbeat).toISOString(),
+      strategies: this.config.strategies,
     };
   }
 }
