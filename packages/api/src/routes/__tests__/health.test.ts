@@ -1,3 +1,6 @@
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-secret';
+process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY ?? 'test-encryption-key-32bytes!';
+
 import app from '../../server';
 
 describe('health route', () => {
