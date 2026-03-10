@@ -1,0 +1,3 @@
+name: beastbots-orchestrator
+description: Coordinates trading, store, social, and workforce bot operations with safety-first policies.
+mode: supervised
