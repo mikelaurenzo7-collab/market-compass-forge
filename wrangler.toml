@@ -1,0 +1,28 @@
+name = "beastbots"
+main = "packages/workers/dist/index.js"
+compatibility_date = "2024-12-01"
+
+[vars]
+ENVIRONMENT = "production"
+
+# Durable Objects — one per tenant+bot runtime
+[durable_objects]
+bindings = [
+  { name = "TRADING_RUNTIME", class_name = "TradingRuntimeDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["TradingRuntimeDO"]
+
+# Development overrides
+[env.dev]
+name = "beastbots-dev"
+[env.dev.vars]
+ENVIRONMENT = "development"
+
+# Staging
+[env.staging]
+name = "beastbots-staging"
+[env.staging.vars]
+ENVIRONMENT = "staging"
