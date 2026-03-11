@@ -629,6 +629,8 @@ export function createDefaultPolicies(family: BotFamily): PolicyRule[] {
 // ─── Re-exports ────────────────────────────────────────────────
 
 export * from './safety.js';
+export * from './llm.js';
+export * from './prompts.js';
 export * from './trading/indicators.js';
 export * from './trading/engine.js';
 export * from './trading/adapters.js';

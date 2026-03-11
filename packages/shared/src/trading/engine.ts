@@ -1,7 +1,8 @@
 import type { TradingPlatform, MarketData, TradeSignal, Position, TradingBotConfig, TickResult } from '../index';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess, recordSpend } from '../safety.js';
-import { promptLLM } from '../llm.js';
+import { promptLLM, promptWithTemplate } from '../llm.js';
+import { TRADING_INSIGHT_TEMPLATE } from '../prompts.js';
 import { computeIndicators, momentumSignal, meanReversionSignal, dcaSignal, gridSignal, arbitrageSignal, marketMakingSignal, eventProbabilitySignal } from './indicators.js';
 
 // ─── Platform Adapter Interface ───────────────────────────────
@@ -269,22 +270,37 @@ export async function executeTradingTick(
 
       const estimatedCost = signal.direction === 'buy' ? positionSize : 0;
 
-      // Optionally ask LLM for reasoning before running safety
+      // Optionally ask LLM for structured insight before running safety
       if (state.config.useLLM) {
         try {
-          const prompt = `Signal decision for ${state.config.platform} ${symbol}: direction=${signal.direction}, confidence=${signal.confidence}, indicators=${JSON.stringify(signal.indicators)}`;
-          const llmResp = await promptLLM(prompt);
+          const winRate = state.totalTrades > 0 ? state.winningTrades / state.totalTrades : 0.5;
+          const { result: insight, raw } = await promptWithTemplate(
+            TRADING_INSIGHT_TEMPLATE,
+            {
+              symbol,
+              platform: state.config.platform,
+              price: marketData.price,
+              change24h: marketData.change24hPercent / 100,
+              volume24h: marketData.volume24h,
+              direction: signal.direction,
+              confidence: signal.confidence,
+              indicators: signal.indicators as Record<string, number | undefined>,
+              strategy: state.config.strategy,
+              positionCount: positions.length,
+              winRate,
+            },
+          );
           logAuditEntry({
             tenantId: state.safety.tenantId,
             botId: state.safety.botId,
             platform: state.config.platform,
-            action: 'llm_prompt',
+            action: 'llm_trading_insight',
             result: 'success',
             riskLevel: 'low',
-            details: { prompt, response: llmResp },
+            details: { insight, raw },
           });
         } catch (err) {
-          console.warn('LLM error', err);
+          console.warn('LLM insight error', err);
         }
       }
 

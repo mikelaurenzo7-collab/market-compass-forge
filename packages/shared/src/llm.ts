@@ -13,9 +13,11 @@ export interface LLMOptions {
   redactKeys?: string[];
   maxPromptChars?: number;
   asJson?: boolean;
+  /** System prompt for the LLM (sets the assistant role/context) */
+  systemPrompt?: string;
 }
 
-const DEFAULT_OPTIONS: Required<Omit<LLMOptions, 'asJson'>> = {
+const DEFAULT_OPTIONS: Required<Omit<LLMOptions, 'asJson' | 'systemPrompt'>> = {
   model: process.env.LLM_MODEL ?? 'gpt-4o-mini',
   maxTokens: Number(process.env.LLM_MAX_TOKENS ?? 220),
   timeoutMs: Number(process.env.LLM_TIMEOUT_MS ?? 8000),
@@ -73,6 +75,7 @@ export async function promptLLM(prompt: string, options: LLMOptions = {}): Promi
     redactKeys: options.redactKeys ?? DEFAULT_OPTIONS.redactKeys,
     maxPromptChars: options.maxPromptChars ?? DEFAULT_OPTIONS.maxPromptChars,
     asJson: options.asJson ?? false,
+    systemPrompt: options.systemPrompt,
   };
 
   const safePrompt = redactText(sanitizePrompt(prompt, cfg.maxPromptChars), cfg.redactKeys);
@@ -95,7 +98,10 @@ export async function promptLLM(prompt: string, options: LLMOptions = {}): Promi
           },
           body: JSON.stringify({
             model: cfg.model,
-            messages: [{ role: 'user', content: safePrompt }],
+            messages: [
+              ...(cfg.systemPrompt ? [{ role: 'system', content: cfg.systemPrompt }] : []),
+              { role: 'user', content: safePrompt },
+            ],
             max_tokens: cfg.maxTokens,
             temperature: 0.2,
           }),
@@ -137,4 +143,32 @@ export async function promptLLM(prompt: string, options: LLMOptions = {}): Promi
 
   console.warn('LLM call failed after retries:', lastError);
   return `LLM_FALLBACK: ${safePrompt}`;
+}
+
+// ─── Template-based Prompt Execution ──────────────────────────
+
+import type { PromptTemplate } from './prompts.js';
+
+/**
+ * Execute a structured prompt template via the LLM.
+ * Returns the parsed typed output on success, or null if the LLM is
+ * unavailable or the response can't be parsed.
+ */
+export async function promptWithTemplate<TInput, TOutput>(
+  template: PromptTemplate<TInput, TOutput>,
+  input: TInput,
+  options: Omit<LLMOptions, 'systemPrompt' | 'asJson'> = {},
+): Promise<{ result: TOutput | null; raw: string; usage: LLMUsage }> {
+  const userPrompt = template.buildUserPrompt(input);
+  const raw = await promptLLM(userPrompt, {
+    ...options,
+    systemPrompt: template.system,
+    model: options.model ?? template.model,
+    maxTokens: options.maxTokens ?? template.maxTokens,
+    asJson: true,
+  });
+
+  const usage = estimateUsage(template.system + userPrompt, raw);
+  const result = template.parseResponse(raw);
+  return { result, raw, usage };
 }

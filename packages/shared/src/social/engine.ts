@@ -9,7 +9,10 @@ import type {
 } from '../index';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess } from '../safety.js';
-import { promptLLM } from '../llm.js';
+import { promptLLM, promptWithTemplate } from '../llm.js';
+import {
+  SOCIAL_CONTENT_TEMPLATE,
+} from '../prompts.js';
 import {
   SOCIAL_PLATFORM_STRATEGIES,
   generateContentCalendar,
@@ -82,19 +85,6 @@ export async function executeSocialTick(
 
     // ─── Content Calendar ─────────────────────────
     if (state.config.strategies.includes('content_calendar')) {
-      if (state.config.useLLM) {
-        const prompt = `Generate content ideas for platform ${state.config.platform} limited to ${state.config.maxPostsPerDay} posts/day`;
-        const resp = await promptLLM(prompt);
-        logAuditEntry({
-          tenantId: state.safety.tenantId,
-          botId: state.safety.botId,
-          platform: state.config.platform,
-          action: 'llm_prompt',
-          result: 'success',
-          riskLevel: 'low',
-          details: { prompt, response: resp },
-        });
-      }
       const now = new Date();
       const dayOfWeek = now.getUTCDay();
       const currentHour = now.getUTCHours();
@@ -123,14 +113,30 @@ export async function executeSocialTick(
         }
 
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          // build content (LLM if enabled)
+          // build content (LLM template if enabled)
           let contentText = `[${slot.pillar}] Scheduled content for ${slot.format} format`;
+          let suggestedHashtags: string[] = [];
           if (state.config.useLLM) {
-            const prompt = `Generate a ${slot.format} post for ${slot.platform} on the theme "${slot.pillar}" using brand voice: ${state.config.brandVoice || ''}. Keep within platform limits.`;
             try {
-              contentText = await promptLLM(prompt);
+              const { result } = await promptWithTemplate(
+                SOCIAL_CONTENT_TEMPLATE,
+                {
+                  platform: slot.platform,
+                  format: slot.format,
+                  pillar: slot.pillar,
+                  brandVoice: state.config.brandVoice || 'professional and engaging',
+                  brandDescription: state.config.brandDescription || '',
+                  recentTrends: newState.trendsActedOn.slice(-5),
+                  audienceSize: metrics.followers,
+                  engagementRate: metrics.engagementRate,
+                },
+              );
+              if (result) {
+                contentText = result.content;
+                suggestedHashtags = result.suggestedHashtags;
+              }
             } catch (e) {
-              console.warn('LLM failed, using template');
+              console.warn('LLM content generation failed, using template');
             }
           }
           // apply tiny platform-specific tweaks
@@ -140,7 +146,9 @@ export async function executeSocialTick(
           if (slot.platform === 'tiktok' && slot.format === 'video') {
             contentText = contentText + ' #ForYou';
           }
-          const hashtags = selectOptimalHashtags(metrics, slot.platform);
+          const hashtags = suggestedHashtags.length > 0
+            ? suggestedHashtags
+            : selectOptimalHashtags(metrics, slot.platform);
 
           const post: ScheduledPost = {
             id: `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

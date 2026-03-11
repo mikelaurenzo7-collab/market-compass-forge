@@ -6,7 +6,14 @@ import type {
 } from '../index';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess, recordSpend } from '../safety.js';
-import { promptLLM } from '../llm.js';
+import { promptLLM, promptWithTemplate } from '../llm.js';
+import {
+  SENTIMENT_ANALYSIS_TEMPLATE,
+  PRICING_INSIGHT_TEMPLATE,
+  batchKeywordSentiment,
+  type SentimentResult,
+  type PricingInsight,
+} from '../prompts.js';
 import {
   calculateDynamicPrice,
   forecastInventory,
@@ -75,19 +82,6 @@ export async function executeStoreTick(
 
     // ─── Dynamic Pricing ──────────────────────────
     if (state.config.strategies.includes('dynamic_pricing')) {
-      if (state.config.useLLM) {
-        const prompt = `Calculate dynamic price for product with current price placeholders`;
-        const resp = await promptLLM(prompt);
-        logAuditEntry({
-          tenantId: state.safety.tenantId,
-          botId: state.safety.botId,
-          platform: state.config.platform,
-          action: 'llm_prompt',
-          result: 'success',
-          riskLevel: 'low',
-          details: { prompt, response: resp },
-        });
-      }
       for (const product of activeProducts) {
         const [competitorPrices, salesHistory] = await Promise.all([
           adapter.getCompetitorPrices(product.id),
@@ -118,6 +112,35 @@ export async function executeStoreTick(
           state.config.minMarginPercent,
           state.config.platform
         );
+
+        // LLM pricing insight (non-blocking — enriches audit log)
+        if (state.config.useLLM) {
+          try {
+            const { result: insight, raw } = await promptWithTemplate(
+              PRICING_INSIGHT_TEMPLATE,
+              {
+                productTitle: product.title,
+                currentPrice: product.price,
+                competitorPrices,
+                demandScore,
+                inventoryDays: daysRemaining,
+                platform: state.config.platform,
+                costOfGoods: product.costOfGoods,
+              },
+            );
+            logAuditEntry({
+              tenantId: state.safety.tenantId,
+              botId: state.safety.botId,
+              platform: state.config.platform,
+              action: 'llm_pricing_insight',
+              result: 'success',
+              riskLevel: 'low',
+              details: { insight, raw },
+            });
+          } catch (e) {
+            // LLM failures never block pricing
+          }
+        }
 
         if (Math.abs(action.recommendedPrice - action.currentPrice) > 0.01) {
           const safetyResult = runSafetyPipeline(
@@ -215,30 +238,67 @@ export async function executeStoreTick(
       }
     }
 
-    // ─── Review Management ─────────────────────────
+    // ─── Review Management (LLM-enhanced sentiment) ──
     if (state.config.strategies.includes('review_management')) {
       try {
         const reviews: { id: string; rating: number; text: string }[] = await (adapter as any).getReviews?.() ?? [];
         if (reviews.length === 0) {
           actions.push('🛎️ Checked reviews: no new reviews');
-        }
-        for (const rev of reviews) {
-          const sentiment = analyzeReviewSentiment(rev.text);
-          if (sentiment.score < 0.4) {
-            actions.push(`🔻 Negative review detected (${rev.rating}★): ${rev.text}`);
-            if (
-              state.config.autoApplyPricing &&
-              !state.config.paperMode &&
-              (state.config.autonomyLevel ?? 'manual') === 'auto'
-            ) {
-              // auto-respond
-              const resp = `We're sorry to hear this. ${rev.text.substring(0, 80)}`;
-              await (adapter as any).respondToReview?.(rev.id, resp);
-              actions.push(`↩️ responded to review ${rev.id}`);
-            }
+        } else {
+          // Use LLM for batch sentiment or fall back to keyword analysis
+          let sentimentReport: SentimentResult;
+          if (state.config.useLLM) {
+            const { result } = await promptWithTemplate(
+              SENTIMENT_ANALYSIS_TEMPLATE,
+              { reviews, platform: state.config.platform },
+            );
+            sentimentReport = result ?? batchKeywordSentiment(reviews);
           } else {
-            actions.push(`✅ Positive review (${rev.rating}★)`);
+            sentimentReport = batchKeywordSentiment(reviews);
           }
+
+          actions.push(
+            `📊 Sentiment: ${sentimentReport.overallLabel} (${sentimentReport.overallScore.toFixed(2)}) across ${reviews.length} reviews`
+          );
+
+          // Act on negative reviews
+          for (const rs of sentimentReport.reviewSentiments) {
+            if (rs.score < -0.1) {
+              const rev = reviews.find(r => r.id === rs.id);
+              if (rev) {
+                actions.push(`🔻 Negative review (${rev.rating}★): ${rs.keyPhrases.join(', ')}`);
+                if (
+                  state.config.autoApplyPricing &&
+                  !state.config.paperMode &&
+                  (state.config.autonomyLevel ?? 'manual') === 'auto'
+                ) {
+                  const resp = `We appreciate your feedback and are working to address this.`;
+                  await (adapter as any).respondToReview?.(rev.id, resp);
+                  actions.push(`↩️ responded to review ${rev.id}`);
+                }
+              }
+            }
+          }
+
+          // Surface action items from sentiment analysis
+          for (const item of sentimentReport.actionItems) {
+            actions.push(`💡 ${item}`);
+          }
+
+          logAuditEntry({
+            tenantId: state.safety.tenantId,
+            botId: state.safety.botId,
+            platform: state.config.platform,
+            action: 'sentiment_analysis',
+            result: 'success',
+            riskLevel: 'low',
+            details: {
+              overallScore: sentimentReport.overallScore,
+              overallLabel: sentimentReport.overallLabel,
+              themes: sentimentReport.themes,
+              actionItems: sentimentReport.actionItems,
+            },
+          });
         }
       } catch (e) {
         actions.push('⚠️ Review fetch error');

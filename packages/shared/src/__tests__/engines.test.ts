@@ -328,9 +328,9 @@ describe('engine units', () => {
     };
     const { result } = await executeTradingTick(state, stubAdapter as any);
     expect(result.botId).toBe('bot5');
-    // verify audit log contains llm_prompt entry
+    // verify audit log contains llm trading insight entry
     const audit = getAuditLog('t1');
-    expect(audit.some((e) => e.action === 'llm_prompt')).toBe(true);
+    expect(audit.some((e) => e.action === 'llm_trading_insight')).toBe(true);
   });
 
   it('computeIndicators returns new additional fields', () => {
@@ -418,9 +418,9 @@ describe('engine units', () => {
       getPostsToday: async () => 0,
     };
     const { result } = await executeSocialTick(state, stubAdapter as any);
+    // Social engine with useLLM=true no longer logs llm_prompt for calendar ideas
+    // (LLM is now used per-post via template, which only fires in auto mode)
     expect(result.botId).toBe('bot6');
-    const audit = getAuditLog('t3');
-    expect(audit.some((e) => e.action === 'llm_prompt')).toBe(true);
   });
 
   it('social engine tick handles calendar when no slots due', async () => {
