@@ -632,6 +632,7 @@ export * from './safety.js';
 export * from './trading/indicators.js';
 export * from './trading/engine.js';
 export * from './trading/adapters.js';
+export * from './trading/backtest.js';
 export * from './store/strategies.js';
 export * from './store/engine.js';
 export * from './store/adapters.js';

@@ -56,6 +56,22 @@ export function kellyPositionSize(
   return Math.min(adjustedKelly * availableBalanceUsd, maxPositionUsd);
 }
 
+// ─── Volatility-Adjusted Position Sizing (ATR-based) ──────────
+
+export function volatilityPositionSize(
+  atrValue: number,
+  currentPrice: number,
+  maxPositionUsd: number,
+  riskPerTradeUsd: number,
+  multiplier: number = 2 // risk N × ATR per trade
+): number {
+  if (atrValue <= 0 || currentPrice <= 0) return 0;
+  const riskPerUnit = atrValue * multiplier;
+  const maxUnits = riskPerTradeUsd / riskPerUnit;
+  const positionUsd = maxUnits * currentPrice;
+  return Math.min(positionUsd, maxPositionUsd);
+}
+
 // ─── Trading Engine Core ──────────────────────────────────────
 
 export interface TradingEngineState {
@@ -237,11 +253,17 @@ export async function executeTradingTick(
       // Check if we can open more positions
       if (signal.direction === 'buy' && positions.length >= state.config.maxOpenPositions) continue;
 
-      // Position sizing
+      // Position sizing — prefer volatility-based (ATR) when available, fall back to Kelly
       const winRate = state.totalTrades > 0 ? state.winningTrades / state.totalTrades : 0.5;
-      const positionSize = state.config.paperTrading
-        ? state.config.maxPositionSizeUsd * 0.1
-        : kellyPositionSize(winRate, 1.5, 1, state.config.maxPositionSizeUsd, balance.availableUsd);
+      let positionSize: number;
+      if (state.config.paperTrading) {
+        positionSize = state.config.maxPositionSizeUsd * 0.1;
+      } else if (indicators.atr > 0 && state.config.maxDailyLossUsd) {
+        const riskPerTrade = state.config.maxDailyLossUsd * 0.02; // risk 2% of daily limit per trade
+        positionSize = volatilityPositionSize(indicators.atr, marketData.price, state.config.maxPositionSizeUsd, riskPerTrade);
+      } else {
+        positionSize = kellyPositionSize(winRate, 1.5, 1, state.config.maxPositionSizeUsd, balance.availableUsd);
+      }
 
       if (positionSize <= 0) continue;
 

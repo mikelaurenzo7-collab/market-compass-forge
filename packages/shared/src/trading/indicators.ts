@@ -113,17 +113,54 @@ export function obv(prices: number[], volumes: number[]): number {
 
 // ─── Additional Indicators for Phase 2 ─────────────────────────
 
-export function stochasticRsi(prices: number[], period: number = 14): number {
-  const r = rsi(prices, period);
-  // map RSI into stochastic %K using same window
-  if (r < 0) return 0;
-  if (r > 100) return 100;
-  return r; // placeholder: real stochRsi needs RSI series
+export function stochasticRsi(prices: number[], period: number = 14, stochPeriod: number = 14): number {
+  if (prices.length < period + stochPeriod + 1) return 50;
+  // Build an RSI series for the stochastic window
+  const rsiSeries: number[] = [];
+  for (let i = period + 1; i <= prices.length; i++) {
+    rsiSeries.push(rsi(prices.slice(0, i), period));
+  }
+  const recent = rsiSeries.slice(-stochPeriod);
+  const minRsi = Math.min(...recent);
+  const maxRsi = Math.max(...recent);
+  if (maxRsi === minRsi) return 50;
+  const currentRsi = recent[recent.length - 1];
+  return ((currentRsi - minRsi) / (maxRsi - minRsi)) * 100;
 }
 
 export function adx(highs: number[], lows: number[], closes: number[], period: number = 14): number {
-  // simplified ADX approximation: average true range over SMA
-  return atr(highs, lows, closes, period);
+  if (highs.length < period + 1) return 25; // neutral default
+  const plusDM: number[] = [];
+  const minusDM: number[] = [];
+  const trueRanges: number[] = [];
+  for (let i = 1; i < highs.length; i++) {
+    const upMove = highs[i] - highs[i - 1];
+    const downMove = lows[i - 1] - lows[i];
+    plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+    minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
+    trueRanges.push(Math.max(
+      highs[i] - lows[i],
+      Math.abs(highs[i] - closes[i - 1]),
+      Math.abs(lows[i] - closes[i - 1])
+    ));
+  }
+  if (trueRanges.length < period) return 25;
+  // Wilder's smoothed averages
+  let smoothTR = trueRanges.slice(0, period).reduce((a, b) => a + b, 0);
+  let smoothPlusDM = plusDM.slice(0, period).reduce((a, b) => a + b, 0);
+  let smoothMinusDM = minusDM.slice(0, period).reduce((a, b) => a + b, 0);
+  const dxValues: number[] = [];
+  for (let i = period; i < trueRanges.length; i++) {
+    smoothTR = smoothTR - smoothTR / period + trueRanges[i];
+    smoothPlusDM = smoothPlusDM - smoothPlusDM / period + plusDM[i];
+    smoothMinusDM = smoothMinusDM - smoothMinusDM / period + minusDM[i];
+    const plusDI = smoothTR > 0 ? (smoothPlusDM / smoothTR) * 100 : 0;
+    const minusDI = smoothTR > 0 ? (smoothMinusDM / smoothTR) * 100 : 0;
+    const diSum = plusDI + minusDI;
+    dxValues.push(diSum > 0 ? (Math.abs(plusDI - minusDI) / diSum) * 100 : 0);
+  }
+  if (dxValues.length === 0) return 25;
+  return dxValues.slice(-period).reduce((a, b) => a + b, 0) / Math.min(dxValues.length, period);
 }
 
 export function computeIchimoku(prices: number[], conversionPeriod = 9, basePeriod = 26, spanBPeriod = 52) {
@@ -208,47 +245,81 @@ export function momentumSignal(indicators: IndicatorValues, currentPrice: number
 
   // EMA crossover: fast > slow = bullish
   if (indicators.ema12 > indicators.ema26) {
-    score += 25;
+    score += 20;
     reasons.push('EMA12 > EMA26 (bullish crossover)');
   } else {
-    score -= 25;
+    score -= 20;
     reasons.push('EMA12 < EMA26 (bearish crossover)');
   }
 
   // RSI: oversold = buy, overbought = sell
   if (indicators.rsi < 30) {
-    score += 30;
+    score += 20;
     reasons.push(`RSI ${indicators.rsi.toFixed(1)} (oversold)`);
   } else if (indicators.rsi > 70) {
-    score -= 30;
+    score -= 20;
     reasons.push(`RSI ${indicators.rsi.toFixed(1)} (overbought)`);
   }
 
   // MACD histogram: positive = bullish momentum
   if (indicators.macd.histogram > 0) {
-    score += 20;
+    score += 15;
     reasons.push('MACD histogram positive');
   } else {
-    score -= 20;
+    score -= 15;
     reasons.push('MACD histogram negative');
   }
 
   // Price above VWAP = bullish
   if (currentPrice > indicators.vwap) {
-    score += 15;
+    score += 10;
     reasons.push('Price above VWAP');
   } else {
-    score -= 15;
+    score -= 10;
     reasons.push('Price below VWAP');
   }
 
   // Price relative to SMA50
   if (currentPrice > indicators.sma50) {
-    score += 10;
+    score += 5;
     reasons.push('Price above SMA50');
   } else {
-    score -= 10;
+    score -= 5;
     reasons.push('Price below SMA50');
+  }
+
+  // StochRSI: oversold/overbought confirmation
+  const stochRsi = indicators.stochRsi ?? 50;
+  if (stochRsi < 20) {
+    score += 10;
+    reasons.push(`StochRSI ${stochRsi.toFixed(1)} (oversold)`);
+  } else if (stochRsi > 80) {
+    score -= 10;
+    reasons.push(`StochRSI ${stochRsi.toFixed(1)} (overbought)`);
+  }
+
+  // ADX: trend strength filter — only trust signals during strong trends
+  const adxVal = indicators.adx ?? 25;
+  if (adxVal > 25) {
+    // strong trend: amplify score
+    score = Math.round(score * 1.3);
+    reasons.push(`ADX ${adxVal.toFixed(1)} (strong trend)`);
+  } else {
+    // weak trend: dampen score
+    score = Math.round(score * 0.7);
+    reasons.push(`ADX ${adxVal.toFixed(1)} (weak trend)`);
+  }
+
+  // Ichimoku cloud confirmation
+  if (indicators.ichimoku) {
+    const ichi = indicators.ichimoku;
+    if (currentPrice > ichi.spanA && currentPrice > ichi.spanB) {
+      score += 10;
+      reasons.push('Price above Ichimoku cloud (bullish)');
+    } else if (currentPrice < ichi.spanA && currentPrice < ichi.spanB) {
+      score -= 10;
+      reasons.push('Price below Ichimoku cloud (bearish)');
+    }
   }
 
   const confidence = Math.min(Math.abs(score), 100);
@@ -259,6 +330,8 @@ export function momentumSignal(indicators: IndicatorValues, currentPrice: number
     confidence,
     indicators: {
       rsi: indicators.rsi,
+      stochRsi: stochRsi,
+      adx: adxVal,
       ema12: indicators.ema12,
       ema26: indicators.ema26,
       macdHistogram: indicators.macd.histogram,
@@ -279,30 +352,65 @@ export function meanReversionSignal(indicators: IndicatorValues, currentPrice: n
   const bbPosition = (currentPrice - bb.lower) / (bb.upper - bb.lower);
 
   if (bbPosition < 0.1) {
-    score += 40;
+    score += 30;
     reasons.push(`Price near lower Bollinger Band (${(bbPosition * 100).toFixed(1)}%)`);
   } else if (bbPosition > 0.9) {
-    score -= 40;
+    score -= 30;
     reasons.push(`Price near upper Bollinger Band (${(bbPosition * 100).toFixed(1)}%)`);
   }
 
   // RSI extremes for mean reversion
   if (indicators.rsi < 25) {
-    score += 35;
+    score += 25;
     reasons.push(`RSI extremely oversold (${indicators.rsi.toFixed(1)})`);
   } else if (indicators.rsi > 75) {
-    score -= 35;
+    score -= 25;
     reasons.push(`RSI extremely overbought (${indicators.rsi.toFixed(1)})`);
   }
 
   // Distance from SMA20 (mean)
   const distanceFromMean = (currentPrice - indicators.sma20) / indicators.sma20;
   if (distanceFromMean < -0.03) {
-    score += 25;
+    score += 20;
     reasons.push(`Price ${(distanceFromMean * 100).toFixed(1)}% below SMA20`);
   } else if (distanceFromMean > 0.03) {
-    score -= 25;
+    score -= 20;
     reasons.push(`Price ${(distanceFromMean * 100).toFixed(1)}% above SMA20`);
+  }
+
+  // StochRSI confirmation for mean reversion
+  const stochRsi = indicators.stochRsi ?? 50;
+  if (stochRsi < 10) {
+    score += 10;
+    reasons.push(`StochRSI ${stochRsi.toFixed(1)} (extreme oversold)`);
+  } else if (stochRsi > 90) {
+    score -= 10;
+    reasons.push(`StochRSI ${stochRsi.toFixed(1)} (extreme overbought)`);
+  }
+
+  // Fibonacci support/resistance proximity
+  if (indicators.fibLevels && indicators.fibLevels.levels.length > 0) {
+    const levels = indicators.fibLevels.levels;
+    const nearestBelow = levels.filter(l => l <= currentPrice).pop();
+    const nearestAbove = levels.find(l => l > currentPrice);
+    if (nearestBelow && (currentPrice - nearestBelow) / currentPrice < 0.005) {
+      score += 10;
+      reasons.push(`Near Fib support $${nearestBelow.toFixed(2)}`);
+    }
+    if (nearestAbove && (nearestAbove - currentPrice) / currentPrice < 0.005) {
+      score -= 10;
+      reasons.push(`Near Fib resistance $${nearestAbove.toFixed(2)}`);
+    }
+  }
+
+  // ADX filter: mean reversion works best in LOW-trend environments
+  const adxVal = indicators.adx ?? 25;
+  if (adxVal < 20) {
+    score = Math.round(score * 1.2);
+    reasons.push(`ADX ${adxVal.toFixed(1)} (range-bound — ideal for mean reversion)`);
+  } else if (adxVal > 40) {
+    score = Math.round(score * 0.5);
+    reasons.push(`ADX ${adxVal.toFixed(1)} (strong trend — mean reversion risky)`);
   }
 
   const confidence = Math.min(Math.abs(score), 100);
@@ -314,6 +422,8 @@ export function meanReversionSignal(indicators: IndicatorValues, currentPrice: n
     indicators: {
       bbPosition,
       rsi: indicators.rsi,
+      stochRsi: stochRsi,
+      adx: adxVal,
       distanceFromMean,
       sma20: indicators.sma20,
     },

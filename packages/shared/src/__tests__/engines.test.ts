@@ -10,6 +10,7 @@ import {
   createTradingEngineState,
   executeTradingTick,
   generateStrategySignal,
+  volatilityPositionSize,
 } from '../trading/engine';
 import { momentumSignal, computeIndicators } from '../trading/indicators';
 import { createStoreEngineState, executeStoreTick } from '../store/engine';
@@ -362,6 +363,28 @@ describe('engine units', () => {
     const res = await backtest(config, safety, candles.slice());
     expect(res).toHaveProperty('totalReturnUsd');
     expect(typeof res.winRate).toBe('number');
+    expect(res).toHaveProperty('equityCurve');
+    expect(res).toHaveProperty('maxDrawdownPct');
+    expect(res).toHaveProperty('profitFactor');
+    expect(Array.isArray(res.equityCurve)).toBe(true);
+    expect(res.maxDrawdown).toBeGreaterThanOrEqual(0);
+    expect(res.maxDrawdownPct).toBeGreaterThanOrEqual(0);
+  });
+
+  it('volatilityPositionSize scales position by ATR', () => {
+    // ATR = 5, price = 100, maxPosUsd = 1000, riskPerTrade = 50, multiplier = 2
+    // riskPerUnit = 5 * 2 = 10, maxUnits = 50/10 = 5, posUsd = 5 * 100 = 500
+    const pos = volatilityPositionSize(5, 100, 1000, 50, 2);
+    expect(pos).toBeCloseTo(500, 0);
+  });
+
+  it('volatilityPositionSize caps at maxPositionUsd', () => {
+    const pos = volatilityPositionSize(0.1, 100, 200, 1000, 2);
+    expect(pos).toBeLessThanOrEqual(200);
+  });
+
+  it('volatilityPositionSize returns 0 for zero ATR', () => {
+    expect(volatilityPositionSize(0, 100, 1000, 50)).toBe(0);
   });
 
   it('social engine llm prompt logs when useLLM true', async () => {
