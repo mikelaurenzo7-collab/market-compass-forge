@@ -211,7 +211,7 @@ const MAX_TICK_HISTORY = 200;
 
 export type StateChangeCallback = (state: RuntimeState) => void;
 
-export class TradingRuntimeDO {
+export class BotRuntime {
   private state: RuntimeState | null = null;
   private lastHeartbeat = Date.now();
   private tickTimer: ReturnType<typeof setInterval> | null = null;

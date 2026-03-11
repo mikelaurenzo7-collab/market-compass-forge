@@ -18,12 +18,14 @@
     "build:mcp": "npm -w @beastbots/mcp run build",
     "build:workers": "npm -w @beastbots/workers run build",
     "build:sdk": "npm -w @beastbots/sdk run build",
-    "typecheck": "npm run typecheck:api && npm run typecheck:web",
+    "typecheck": "npm run typecheck:api && npm run typecheck:web && npm run typecheck:workers",
     "typecheck:api": "npm -w @beastbots/api run typecheck",
     "typecheck:web": "npm -w @beastbots/web run typecheck",
+    "typecheck:workers": "npm -w @beastbots/workers run typecheck",
     "test": "vitest run"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260310.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.1",
@@ -31,6 +33,7 @@
     "@types/react-dom": "^18.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^2.1.8",
+    "wrangler": "^4.72.0"
   }
 }
