@@ -4,7 +4,7 @@ import type {
   ScheduledPost,
   AudienceMetrics,
   TrendSignal,
-} from '../index.js';
+} from '../index';
 
 // ─── Platform-Specific Content Strategy ───────────────────────
 
@@ -183,6 +183,17 @@ export function scoreTrendRelevance(
     score: Math.round(score * 100) / 100,
     actionable,
   };
+}
+
+// ─── Hashtag Optimization ───────────────────────────────────
+
+export function selectOptimalHashtags(metrics: AudienceMetrics, platform: SocialPlatform, count?: number): string[] {
+  const strategy = SOCIAL_PLATFORM_STRATEGIES.find((s) => s.platform === platform);
+  const desired = count ?? (strategy?.platform === 'instagram' ? 15 : strategy?.platform === 'tiktok' ? 5 : 3);
+  // take top metrics hashtags, pad or trim
+  const tags = metrics.topHashtags.slice(0, desired);
+  while (tags.length < desired) tags.push('');
+  return tags.filter((t) => t);
 }
 
 // ─── Audience Timezone Optimization ───────────────────────────

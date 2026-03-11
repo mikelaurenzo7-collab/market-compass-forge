@@ -6,7 +6,7 @@ import type {
   SocialBotConfig,
   TickResult,
   ContentFormat,
-} from '../index.js';
+} from '../index';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess } from '../safety.js';
 import { promptLLM } from '../llm.js';
@@ -16,6 +16,7 @@ import {
   analyzeEngagement,
   scoreTrendRelevance,
   optimalPostTimes,
+  selectOptimalHashtags,
   type ContentSlot,
 } from './strategies.js';
 
@@ -28,6 +29,9 @@ export interface SocialAdapter {
   getTrending(): Promise<TrendSignal[]>;
   getScheduledPosts(): Promise<ScheduledPost[]>;
   getPostsToday(): Promise<number>;
+  engageWith?(postId: string, action: 'like' | 'reply' | 'repost', content?: string): Promise<{ success: boolean }>;
+  getComments?(): Promise<{ commentId: string; text: string; sentiment?: string }[]>;
+  replyToComment?(commentId: string, text: string): Promise<{ success: boolean }>;
 }
 
 // ─── Social Engine State ──────────────────────────────────────
@@ -119,12 +123,31 @@ export async function executeSocialTick(
         }
 
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
+          // build content (LLM if enabled)
+          let contentText = `[${slot.pillar}] Scheduled content for ${slot.format} format`;
+          if (state.config.useLLM) {
+            const prompt = `Generate a ${slot.format} post for ${slot.platform} on the theme "${slot.pillar}" using brand voice: ${state.config.brandVoice || ''}. Keep within platform limits.`;
+            try {
+              contentText = await promptLLM(prompt);
+            } catch (e) {
+              console.warn('LLM failed, using template');
+            }
+          }
+          // apply tiny platform-specific tweaks
+          if (slot.platform === 'x' && slot.format === 'thread') {
+            contentText = '🧵 ' + contentText;
+          }
+          if (slot.platform === 'tiktok' && slot.format === 'video') {
+            contentText = contentText + ' #ForYou';
+          }
+          const hashtags = selectOptimalHashtags(metrics, slot.platform);
+
           const post: ScheduledPost = {
             id: `post-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             platform: slot.platform,
-            content: `[${slot.pillar}] Scheduled content for ${slot.format} format`,
+            content: contentText,
             format: slot.format,
-            hashtags: metrics.topHashtags.slice(0, 3),
+            hashtags,
             scheduledAt: Date.now(),
             status: 'scheduled',
           };
@@ -190,6 +213,15 @@ export async function executeSocialTick(
     if (state.config.strategies.includes('engagement_automation')) {
       if (metrics.engagementRate < state.config.maxEngagementsPerHour) {
         actions.push(`📣 Engagement low (${metrics.engagementRate.toFixed(2)}%) — running boost routine`);
+        if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto' && adapter.engageWith) {
+          // attempt to like the 3 most recent posts
+          const recentPosts = scheduledPosts.slice(-3);
+          for (const p of recentPosts) {
+            await adapter.engageWith(p.id, 'like');
+          }
+          newState.engagementsToday += recentPosts.length;
+          actions.push(`💬 performed ${recentPosts.length} likes`);
+        }
       }
     }
 
@@ -197,6 +229,22 @@ export async function executeSocialTick(
     if (state.config.strategies.includes('hashtag_optimization')) {
       const topHashtags = metrics.topHashtags.slice(0, 5).join(', ');
       actions.push(`#️⃣ Top hashtags: ${topHashtags}`);
+    }
+
+    // ─── Comment Monitoring & Response ───────────────
+    if (state.config.strategies.includes('comment_monitoring')) {
+      if (adapter.getComments) {
+        const comments = await adapter.getComments();
+        for (const c of comments) {
+          if (/\?/i.test(c.text)) {
+            actions.push(`🗨️ Question detected: ${c.text}`);
+            if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto' && adapter.replyToComment) {
+              await adapter.replyToComment(c.commentId, 'Thanks for the question! We will follow up.');
+              actions.push(`Reply sent to comment ${c.commentId}`);
+            }
+          }
+        }
+      }
     }
 
     newState.safety = {

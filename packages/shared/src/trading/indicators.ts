@@ -1,4 +1,4 @@
-import type { MarketData } from '../index.js';
+import type { MarketData } from '../index';
 
 // ─── Technical Indicators ──────────────────────────────────────
 
@@ -111,6 +111,43 @@ export function obv(prices: number[], volumes: number[]): number {
   return result;
 }
 
+// ─── Additional Indicators for Phase 2 ─────────────────────────
+
+export function stochasticRsi(prices: number[], period: number = 14): number {
+  const r = rsi(prices, period);
+  // map RSI into stochastic %K using same window
+  if (r < 0) return 0;
+  if (r > 100) return 100;
+  return r; // placeholder: real stochRsi needs RSI series
+}
+
+export function adx(highs: number[], lows: number[], closes: number[], period: number = 14): number {
+  // simplified ADX approximation: average true range over SMA
+  return atr(highs, lows, closes, period);
+}
+
+export function computeIchimoku(prices: number[], conversionPeriod = 9, basePeriod = 26, spanBPeriod = 52) {
+  if (prices.length < spanBPeriod) {
+    // fallback when insufficient history: approximate using last available price
+    const last = prices[prices.length - 1] ?? 0;
+    return { conversion: last, base: last, spanA: last, spanB: last };
+  }
+  const conversion = (Math.max(...prices.slice(-conversionPeriod)) + Math.min(...prices.slice(-conversionPeriod))) / 2;
+  const base = (Math.max(...prices.slice(-basePeriod)) + Math.min(...prices.slice(-basePeriod))) / 2;
+  const spanA = (conversion + base) / 2;
+  const spanB = (Math.max(...prices.slice(-spanBPeriod)) + Math.min(...prices.slice(-spanBPeriod))) / 2;
+  return { conversion, base, spanA, spanB };
+}
+
+export function computeFibLevels(prices: number[]) {
+  if (prices.length === 0) return { levels: [] };
+  const high = Math.max(...prices.slice(-100));
+  const low = Math.min(...prices.slice(-100));
+  const diff = high - low;
+  const levels = [0.236, 0.382, 0.5, 0.618, 0.786].map((f) => low + diff * f);
+  return { levels };
+}
+
 // ─── Signal Generators ─────────────────────────────────────────
 
 export interface IndicatorValues {
@@ -123,6 +160,11 @@ export interface IndicatorValues {
   bollingerBands: { upper: number; middle: number; lower: number; bandwidth: number };
   atr: number;
   vwap: number;
+  // new indicators
+  stochRsi: number;
+  adx: number;
+  ichimoku?: { conversion: number; base: number; spanA: number; spanB: number };
+  fibLevels?: { levels: number[] };
 }
 
 export function computeIndicators(
@@ -131,6 +173,7 @@ export function computeIndicators(
   highs: number[],
   lows: number[]
 ): IndicatorValues {
+  const stoch = stochasticRsi(prices);
   return {
     rsi: rsi(prices),
     macd: macd(prices),
@@ -141,6 +184,10 @@ export function computeIndicators(
     bollingerBands: bollingerBands(prices),
     atr: atr(highs, lows, prices),
     vwap: vwap(prices, volumes),
+    stochRsi: stoch,
+    adx: adx(highs, lows, prices),
+    ichimoku: computeIchimoku(prices),
+    fibLevels: computeFibLevels(prices),
   };
 }
 

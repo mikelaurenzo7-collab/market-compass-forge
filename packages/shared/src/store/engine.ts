@@ -3,7 +3,7 @@ import type {
   Product,
   StoreBotConfig,
   TickResult,
-} from '../index.js';
+} from '../index';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess, recordSpend } from '../safety.js';
 import { promptLLM } from '../llm.js';
@@ -11,6 +11,7 @@ import {
   calculateDynamicPrice,
   forecastInventory,
   scoreListingQuality,
+  analyzeReviewSentiment,
   type PricingContext,
   type SalesHistory,
 } from './strategies.js';
@@ -24,6 +25,11 @@ export interface StoreAdapter {
   getCompetitorPrices(productId: string): Promise<number[]>;
   getSalesHistory(productId: string, days: number): Promise<SalesHistory[]>;
   updateInventory(productId: string, quantity: number): Promise<{ success: boolean }>;
+  // review support
+  getReviews?(): Promise<{ id: string; rating: number; text: string }[]>;
+  respondToReview?(reviewId: string, response: string): Promise<{ success: boolean }>;
+  // listing updates
+  updateListing?(productId: string, fields: Partial<{ title: string; description: string; tags: string[] }>): Promise<{ success: boolean }>;
 }
 
 // ─── Store Engine State ───────────────────────────────────────
@@ -35,6 +41,7 @@ export interface StoreEngineState {
   lastInventoryCheck: number;
   priceChangesApplied: number;
   inventoryAlertsSent: number;
+  competitorPriceHistory: Map<string, { timestamp: number; prices: number[] }[]>;
 }
 
 export function createStoreEngineState(
@@ -48,6 +55,7 @@ export function createStoreEngineState(
     lastInventoryCheck: 0,
     priceChangesApplied: 0,
     inventoryAlertsSent: 0,
+    competitorPriceHistory: new Map(),
   };
 }
 
@@ -85,6 +93,11 @@ export async function executeStoreTick(
           adapter.getCompetitorPrices(product.id),
           adapter.getSalesHistory(product.id, 30),
         ]);
+        // record competitor price history for trend analysis
+        const hist = newState.competitorPriceHistory.get(product.id) ?? [];
+        hist.push({ timestamp: Date.now(), prices: competitorPrices });
+        if (hist.length > 200) hist.shift();
+        newState.competitorPriceHistory.set(product.id, hist);
 
         const totalSold = salesHistory.reduce((s, d) => s + d.unitsSold, 0);
         const demandScore = Math.min(100, totalSold * 3);
@@ -102,7 +115,8 @@ export async function executeStoreTick(
         const action = calculateDynamicPrice(
           pricingCtx,
           state.config.maxPriceChangePercent,
-          state.config.minMarginPercent
+          state.config.minMarginPercent,
+          state.config.platform
         );
 
         if (Math.abs(action.recommendedPrice - action.currentPrice) > 0.01) {
@@ -174,6 +188,15 @@ export async function executeStoreTick(
           actions.push(
             `📝 ${product.title} listing score: ${score.overallScore}/100 — ${score.suggestions.join(', ')}`
           );
+          if (
+            state.config.autoApplyPricing &&
+            !state.config.paperMode &&
+            (state.config.autonomyLevel ?? 'manual') === 'auto'
+          ) {
+            // apply adjustments via adapter
+            await adapter.updateListing?.(product.id, { title: product.title, tags: product.tags });
+            actions.push(`✏️ updated listing ${product.title}`);
+          }
         }
       }
     }
@@ -194,9 +217,32 @@ export async function executeStoreTick(
 
     // ─── Review Management ─────────────────────────
     if (state.config.strategies.includes('review_management')) {
-      // stub: in a real integration we'd fetch reviews via API
-      // here we simulate by always saying "no new negative reviews"
-      actions.push('🛎️ Checked reviews: no negative mentions');
+      try {
+        const reviews: { id: string; rating: number; text: string }[] = await (adapter as any).getReviews?.() ?? [];
+        if (reviews.length === 0) {
+          actions.push('🛎️ Checked reviews: no new reviews');
+        }
+        for (const rev of reviews) {
+          const sentiment = analyzeReviewSentiment(rev.text);
+          if (sentiment.score < 0.4) {
+            actions.push(`🔻 Negative review detected (${rev.rating}★): ${rev.text}`);
+            if (
+              state.config.autoApplyPricing &&
+              !state.config.paperMode &&
+              (state.config.autonomyLevel ?? 'manual') === 'auto'
+            ) {
+              // auto-respond
+              const resp = `We're sorry to hear this. ${rev.text.substring(0, 80)}`;
+              await (adapter as any).respondToReview?.(rev.id, resp);
+              actions.push(`↩️ responded to review ${rev.id}`);
+            }
+          } else {
+            actions.push(`✅ Positive review (${rev.rating}★)`);
+          }
+        }
+      } catch (e) {
+        actions.push('⚠️ Review fetch error');
+      }
     }
 
     newState.safety = {

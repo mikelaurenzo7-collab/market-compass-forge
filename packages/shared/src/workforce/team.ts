@@ -1,6 +1,6 @@
 // ─── FILE: packages/shared/src/workforce/team.ts ───
 
-import type { WorkforceCategory } from '../index.js';
+import type { WorkforceCategory } from '../index';
 
 // ─── Industry Type ────────────────────────────────────────────
 

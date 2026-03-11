@@ -3,8 +3,8 @@
  * Each adapter implements SocialAdapter and wraps the platform's REST API.
  */
 
-import type { SocialPlatform, ScheduledPost, AudienceMetrics, TrendSignal } from '../index.js';
-import type { SocialAdapter } from './engine.js';
+import type { SocialPlatform, ScheduledPost, AudienceMetrics, TrendSignal } from '../index';
+import type { SocialAdapter } from './engine';
 
 interface SocialCredentials {
   apiKey: string;

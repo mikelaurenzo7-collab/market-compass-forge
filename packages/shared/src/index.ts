@@ -115,6 +115,23 @@ export interface Position {
   openedAt: number;
 }
 
+// engine-side representation to track high-water marks and order ids
+export interface OpenPosition {
+  platform: TradingPlatform;
+  symbol: string;
+  side: OrderSide;
+  entryPrice: number;
+  quantity: number;
+  entryTimestamp: number;
+  orderId?: string;
+  highWater?: number; // highest price seen since entry
+}
+
+export interface PriceSnapshot {
+  timestamp: number;
+  price: number;
+}
+
 export type AutonomyLevel = 'manual' | 'suggest' | 'auto';
 
 export interface EventProbabilityData {
@@ -136,10 +153,17 @@ export interface TradingBotConfig {
   maxOpenPositions: number;
   stopLossPercent: number;
   takeProfitPercent: number;
+  // optional trailing stop that moves with the position's high-water mark
+  trailingStopPercent?: number;
   cooldownAfterLossMs: number;
   paperTrading: boolean;
+  // enables LLM assistance for signal justification
   useLLM?: boolean;
+  // platform-specific overrides, e.g. different margin rules
+  platformConfig?: Record<string, unknown>;
   autonomyLevel?: AutonomyLevel;
+  // if true, require signals to also confirm on a secondary timeframe before execution
+  multiTimeframeConfirmation?: boolean;
   // optional strategy-specific parameters
   gridLevels?: number[];
   openOrders?: { price: number; side: 'buy' | 'sell' }[];
@@ -226,7 +250,9 @@ export type SocialStrategy =
   | 'trend_detection'
   | 'audience_analytics'
   | 'cross_post_optimization'
-  | 'hashtag_optimization';
+  | 'hashtag_optimization'
+  | 'comment_monitoring'
+  | 'trend_reactive';
 
 export type ContentFormat = 'text' | 'image' | 'video' | 'carousel' | 'story' | 'reel' | 'thread' | 'article';
 
@@ -270,9 +296,14 @@ export interface SocialBotConfig {
   contentApprovalRequired: boolean;
   sensitiveTopicKeywords: string[];
   brandVoiceGuidelines: string;
+  // additional prompt text or tags to shape LLM copy
+  brandVoice?: string;
+  brandDescription?: string;
   paperMode: boolean;
   useLLM?: boolean;
   autonomyLevel?: AutonomyLevel;
+  // per-platform overrides (e.g. X: threadDepth, TikTok: maxSoundLength)
+  platformConfig?: Record<string, unknown>;
 }
 
 // ─── Workforce Bot Types ───────────────────────────────────────

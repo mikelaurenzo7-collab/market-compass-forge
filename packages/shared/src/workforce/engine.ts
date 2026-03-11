@@ -4,7 +4,7 @@ import type {
   WorkforceTaskResult,
   WorkforceBotConfig,
   TickResult,
-} from '../index.js';
+} from '../index';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess, recordSpend } from '../safety.js';
 import { promptLLM } from '../llm.js';

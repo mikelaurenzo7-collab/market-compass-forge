@@ -5,7 +5,7 @@ import type {
   Platform,
   BudgetConfig,
   CircuitBreakerConfig,
-} from './index.js';
+} from './index';
 
 // ─── Layer 1: Policy Check ────────────────────────────────────
 

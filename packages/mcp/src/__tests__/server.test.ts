@@ -1,8 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { startMcpServer } from '../server.js';
+import { startMcpServer, startHttpServer } from '../server.js';
+// fetch is provided by Node 18+ globally in tests
+
 
 describe('MCP Server', () => {
   const mcp = startMcpServer();
+  let httpServer: any;
+
+  it('can start HTTP listener and respond to RPC', async () => {
+    httpServer = startHttpServer(5001);
+    const payload = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/list',
+    };
+    // global fetch available in Node
+    const resp = await fetch('http://localhost:5001/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await resp.json();
+    expect(json.result.tools.length).toBeGreaterThan(0);
+    httpServer.close();
+  });
 
   it('returns server metadata', () => {
     expect(mcp.name).toBe('beastbots-mcp');

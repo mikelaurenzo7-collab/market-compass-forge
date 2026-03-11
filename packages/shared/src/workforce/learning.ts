@@ -7,7 +7,7 @@ import type {
   WorkforceTask,
   WorkforceTaskResult,
   RiskLevel,
-} from '../index.js';
+} from '../index';
 
 // ─── Interfaces ───────────────────────────────────────────────
 

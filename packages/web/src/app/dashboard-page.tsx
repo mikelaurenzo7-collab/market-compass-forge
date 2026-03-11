@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { callMcp } from '../lib/mcp';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../lib/auth-context';
@@ -139,6 +140,20 @@ export default function DashboardPage() {
           <p className="page-subtitle">
             Your autonomous operators — trading, ecommerce, social, and workforce.
           </p>
+          <button
+            onClick={async () => {
+              try {
+                const resp = await callMcp({ name: 'operator_catalog' });
+                console.log('MCP operator catalog', resp);
+                alert(`Found ${resp.integrations.length} integrations (see console)`);
+              } catch (e) {
+                console.error('MCP call failed', e);
+              }
+            }}
+            style={{ marginTop: 'var(--space-md)', padding: 'var(--space-sm)' }}
+          >
+            Query Operator Catalog
+          </button>
         </div>
         <div className="page-actions">
           <Link href="/bots/create" className="btn btn-primary" style={{ textDecoration: 'none' }}>

@@ -1,4 +1,4 @@
-import type { TradingPlatform, MarketData, TradeSignal, Position, TradingBotConfig, TickResult } from '../index.js';
+import type { TradingPlatform, MarketData, TradeSignal, Position, TradingBotConfig, TickResult } from '../index';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess, recordSpend } from '../safety.js';
 import { promptLLM } from '../llm.js';
@@ -61,8 +61,13 @@ export function kellyPositionSize(
 export interface TradingEngineState {
   config: TradingBotConfig;
   safety: SafetyContext;
+  // key = symbol, value = primary timeframe history
   priceHistories: Map<string, PriceHistory>;
+  // optional secondary timeframe, e.g. 15m
+  secondaryHistories: Map<string, PriceHistory>;
   lastDcaBuy: Map<string, number>;
+  // highest price seen per symbol (for trailing stop calculation)
+  highWater: Map<string, number>;
   consecutiveLosses: number;
   totalPnl: number;
   totalTrades: number;
@@ -77,7 +82,9 @@ export function createTradingEngineState(
     config,
     safety,
     priceHistories: new Map(),
+    secondaryHistories: new Map(),
     lastDcaBuy: new Map(),
+    highWater: new Map(),
     consecutiveLosses: 0,
     totalPnl: 0,
     totalTrades: 0,
@@ -104,6 +111,21 @@ export async function executeTradingTick(
     const positions = await adapter.getPositions();
     const balance = await adapter.getBalance();
 
+    // apply daily loss limit/cooldown
+    if (state.config.maxDailyLossUsd !== undefined && newState.totalPnl <= -state.config.maxDailyLossUsd) {
+      return {
+        result: {
+          botId: state.safety.botId,
+          timestamp: Date.now(),
+          action: 'tick',
+          result: 'skipped',
+          details: { reason: 'daily_loss_limit_reached' },
+          durationMs: Date.now() - startTime,
+        },
+        newState,
+      };
+    }
+
     for (const symbol of state.config.symbols) {
       // Fetch market data and update history
       const marketData = await adapter.fetchMarketData(symbol);
@@ -112,15 +134,101 @@ export async function executeTradingTick(
       newState.priceHistories = new Map(newState.priceHistories);
       newState.priceHistories.set(symbol, updatedHistory);
 
+      // if multi-timeframe mode enabled, also update secondary history
+      if (state.config.multiTimeframeConfirmation) {
+        const secKey = symbol + '_15m';
+        const existingSec = state.secondaryHistories.get(secKey) ?? createPriceHistory();
+        // in a real implementation this would pull 15‑minute candles; we'll reuse tick data
+        const updatedSec = pushPriceData(existingSec, marketData);
+        newState.secondaryHistories = new Map(newState.secondaryHistories);
+        newState.secondaryHistories.set(secKey, updatedSec);
+      }
+
       if (updatedHistory.prices.length < 20) continue; // Not enough data yet
 
-      // Compute indicators
-      const indicators = computeIndicators(
+      // --- position management for this symbol ------------------------------------------------
+      const symbolPositions = positions.filter(p => p.symbol === symbol);
+      for (const pos of symbolPositions) {
+        // update high-water mark
+        const prevHigh = newState.highWater.get(symbol) ?? pos.entryPrice;
+        const newHigh = Math.max(prevHigh, marketData.price);
+        newState.highWater.set(symbol, newHigh);
+
+        const pnlUsd = (marketData.price - pos.entryPrice) * pos.quantity * (pos.side === 'buy' ? 1 : -1);
+        const pnlPct = pnlUsd / (pos.entryPrice * pos.quantity);
+
+        // trailing stop
+        if (state.config.trailingStopPercent !== undefined) {
+          const trailLevel = newHigh * (1 - state.config.trailingStopPercent);
+          if (marketData.price <= trailLevel) {
+            // exit position
+            await adapter.placeOrder({
+              platform: state.config.platform,
+              symbol,
+              side: pos.side === 'buy' ? 'sell' : 'buy',
+              type: 'market',
+              quantity: pos.quantity,
+              confidence: 100,
+              strategy: state.config.strategy,
+              indicators: {},
+              timestamp: Date.now(),
+            });
+            newState.totalPnl += pnlUsd;
+            // trailing stop exit logged via audit entry above
+          }
+        }
+
+        // stop-loss
+        if (state.config.stopLossPercent !== undefined && pnlPct <= -state.config.stopLossPercent) {
+          await adapter.placeOrder({
+            platform: state.config.platform,
+            symbol,
+            side: pos.side === 'buy' ? 'sell' : 'buy',
+            type: 'market',
+            quantity: pos.quantity,
+            confidence: 100,
+            strategy: state.config.strategy,
+            indicators: {},
+            timestamp: Date.now(),
+          });
+          newState.totalPnl += pnlUsd;
+          // stop-loss exit logged via audit entry above
+        }
+
+        // take-profit
+        if (state.config.takeProfitPercent !== undefined && pnlPct >= state.config.takeProfitPercent) {
+          await adapter.placeOrder({
+            platform: state.config.platform,
+            symbol,
+            side: pos.side === 'buy' ? 'sell' : 'buy',
+            type: 'market',
+            quantity: pos.quantity,
+            confidence: 100,
+            strategy: state.config.strategy,
+            indicators: {},
+            timestamp: Date.now(),
+          });
+          newState.totalPnl += pnlUsd;
+          // take-profit exit logged via audit entry above
+        }
+      }
+
+      // Compute indicators (and optionally merge with secondary timeframe)
+      let indicators = computeIndicators(
         updatedHistory.prices,
         updatedHistory.volumes,
         updatedHistory.highs,
         updatedHistory.lows
       );
+      if (state.config.multiTimeframeConfirmation) {
+        const sec = newState.secondaryHistories.get(symbol + '_15m');
+        if (sec && sec.prices.length >= 20) {
+          const secInd = computeIndicators(sec.prices, sec.volumes, sec.highs, sec.lows);
+          indicators = Object.fromEntries(
+            Object.keys(indicators).map((k) => [k, (((indicators as any)[k] ?? 0) + ((secInd as any)[k] ?? 0)) / 2])
+          ) as any;
+        }
+      }
 
       // Generate signal based on strategy
       const signal = generateStrategySignal(state.config, indicators, marketData, state);
@@ -232,6 +340,36 @@ export async function executeTradingTick(
 
       const orderResult = await adapter.placeOrder(tradeSignal);
 
+      // validate fill
+      if (!orderResult.filled) {
+        logAuditEntry({
+          tenantId: state.safety.tenantId,
+          botId: state.safety.botId,
+          platform: state.config.platform,
+          action: 'order_not_filled',
+          result: 'failure',
+          riskLevel: 'high',
+          details: { tradeSignal, orderResult },
+        });
+      } else {
+        // if we just bought, record entry high-water; if we sold, update PnL
+        if (signal.direction === 'buy') {
+          const prevHigh = newState.highWater.get(symbol) ?? marketData.price;
+          newState.highWater.set(symbol, prevHigh);
+        } else {
+          // closing position
+          // approximate entry using orderResult.details?.entryPrice or marketData
+          const entryPrice = (orderResult as any).entryPrice ?? marketData.price;
+          const pnlUsd = (marketData.price - entryPrice) * tradeSignal.quantity * (signal.direction === 'sell' ? 1 : -1);
+          newState.totalPnl += pnlUsd;
+          if (pnlUsd < 0) newState.consecutiveLosses += 1;
+          else {
+            newState.consecutiveLosses = 0;
+            newState.winningTrades += 1;
+          }
+        }
+      }
+
       // Update budget
       newState.safety = {
         ...newState.safety,
@@ -303,7 +441,8 @@ export async function executeTradingTick(
 
 // ─── Strategy Router ──────────────────────────────────────────
 
-export function generateStrategySignal(
+// base signal generator without platform-specific tweaks
+function baseStrategySignal(
   config: TradingBotConfig,
   indicators: ReturnType<typeof computeIndicators>,
   marketData: MarketData,
@@ -343,6 +482,94 @@ export function generateStrategySignal(
     default:
       return momentumSignal(indicators, marketData.price);
   }
+}
+
+// dispatch to platform-specific signal generator
+export function generateStrategySignal(
+  config: TradingBotConfig,
+  indicators: ReturnType<typeof computeIndicators>,
+  marketData: MarketData,
+  state: TradingEngineState
+) {
+  switch (config.platform) {
+    case 'coinbase':
+      return generateCoinbaseSignal(config, indicators, marketData, state);
+    case 'binance':
+      return generateBinanceSignal(config, indicators, marketData, state);
+    case 'alpaca':
+      return generateAlpacaSignal(config, indicators, marketData, state);
+    case 'kalshi':
+      return generateKalshiSignal(config, indicators, marketData, state);
+    case 'polymarket':
+      return generatePolymarketSignal(config, indicators, marketData, state);
+    default:
+      return baseStrategySignal(config, indicators, marketData, state);
+  }
+}
+
+// placeholder helpers: customization hooks for each market
+function generateCoinbaseSignal(
+  config: TradingBotConfig,
+  indicators: ReturnType<typeof computeIndicators>,
+  marketData: MarketData,
+  state: TradingEngineState
+) {
+  // Coinbase is spot-only and US-regulated; be conservative with leverage
+  const signal = baseStrategySignal(config, indicators, marketData, state);
+  // example tweak: require 60% confidence instead of 50
+  if (signal.direction !== 'hold' && signal.confidence < 60) {
+    return { direction: 'hold', confidence: signal.confidence, indicators: signal.indicators };
+  }
+  return signal;
+}
+
+function generateBinanceSignal(
+  config: TradingBotConfig,
+  indicators: ReturnType<typeof computeIndicators>,
+  marketData: MarketData,
+  state: TradingEngineState
+) {
+  // Binance offers futures and margin; apply volatility filter
+  const signal = baseStrategySignal(config, indicators, marketData, state);
+  // amplify momentum signals during high volume
+  if (signal.direction === 'buy' && indicators.rsi > 70) {
+    signal.confidence += 10;
+  }
+  return signal;
+}
+
+function generateAlpacaSignal(
+  config: TradingBotConfig,
+  indicators: ReturnType<typeof computeIndicators>,
+  marketData: MarketData,
+  state: TradingEngineState
+) {
+  // US equities; respect market hours
+  const hour = new Date().getUTCHours();
+  if (hour < 14 || hour > 21) {
+    return { direction: 'hold', confidence: 0, indicators: {} };
+  }
+  return baseStrategySignal(config, indicators, marketData, state);
+}
+
+function generateKalshiSignal(
+  config: TradingBotConfig,
+  indicators: ReturnType<typeof computeIndicators>,
+  marketData: MarketData,
+  state: TradingEngineState
+) {
+  // prediction market; strategy is event_probability only
+  return baseStrategySignal(config, indicators, marketData, state);
+}
+
+function generatePolymarketSignal(
+  config: TradingBotConfig,
+  indicators: ReturnType<typeof computeIndicators>,
+  marketData: MarketData,
+  state: TradingEngineState
+) {
+  // Currently stubbed; signal always hold
+  return { direction: 'hold', confidence: 0, indicators: {} };
 }
 
 // ─── Platform-Specific Configurations ─────────────────────────

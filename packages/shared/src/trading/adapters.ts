@@ -4,8 +4,8 @@
  * Credentials are injected at construction — no hardcoded keys.
  */
 
-import type { TradingPlatform, MarketData, TradeSignal, Position } from '../index.js';
-import type { TradingAdapter } from './engine.js';
+import type { TradingPlatform, MarketData, TradeSignal, Position } from '../index';
+import type { TradingAdapter } from './engine';
 import crypto from 'crypto';
 
 // ─── Signing helpers ─────────────────────────────────────────
@@ -128,18 +128,34 @@ export class CoinbaseAdapter implements TradingAdapter {
       headers: this.headers('GET', path),
     });
 
-    return (resp.accounts ?? [])
-      .filter((a: any) => parseFloat(a.available_balance?.value ?? '0') > 0 && a.currency !== 'USD')
-      .map((a: any) => ({
+    const positions: Position[] = [];
+    for (const a of resp.accounts ?? []) {
+      if (parseFloat(a.available_balance?.value ?? '0') <= 0) continue;
+      if (a.currency === 'USD') continue;
+      const symbol = `${a.currency}-USD`;
+      // attempt to get market price for the symbol
+      let entry = 0;
+      let curr = 0;
+      try {
+        const data = await this.fetchMarketData(symbol);
+        curr = data.price;
+        entry = data.price; // assume flat entry; better tracking requires order history
+      } catch (e) {
+        // ignore
+      }
+      const qty = parseFloat(a.available_balance?.value ?? '0');
+      positions.push({
         platform: 'coinbase' as TradingPlatform,
-        symbol: `${a.currency}-USD`,
-        side: 'buy' as const,
-        entryPrice: 0,
-        currentPrice: 0,
-        quantity: parseFloat(a.available_balance?.value ?? '0'),
-        unrealizedPnl: 0,
+        symbol,
+        side: 'buy',
+        entryPrice: entry,
+        currentPrice: curr,
+        quantity: qty,
+        unrealizedPnl: (curr - entry) * qty,
         openedAt: Date.now(),
-      }));
+      });
+    }
+    return positions;
   }
 
   async getBalance(): Promise<{ availableUsd: number; totalUsd: number }> {
@@ -225,18 +241,33 @@ export class BinanceAdapter implements TradingAdapter {
       headers: this.headers(),
     });
 
-    return (resp.balances ?? [])
-      .filter((b: any) => parseFloat(b.free) > 0 && b.asset !== 'USDT' && b.asset !== 'USD')
-      .map((b: any) => ({
+    const positions: Position[] = [];
+    for (const b of resp.balances ?? []) {
+      if (parseFloat(b.free) <= 0) continue;
+      if (b.asset === 'USDT' || b.asset === 'USD') continue;
+      const symbol = `${b.asset}USDT`;
+      let entry = 0;
+      let curr = 0;
+      try {
+        const data = await this.fetchMarketData(symbol);
+        curr = data.price;
+        entry = data.price;
+      } catch (e) {
+        // ignore
+      }
+      const qty = parseFloat(b.free);
+      positions.push({
         platform: 'binance' as TradingPlatform,
-        symbol: `${b.asset}USDT`,
-        side: 'buy' as const,
-        entryPrice: 0,
-        currentPrice: 0,
-        quantity: parseFloat(b.free),
-        unrealizedPnl: 0,
+        symbol,
+        side: 'buy',
+        entryPrice: entry,
+        currentPrice: curr,
+        quantity: qty,
+        unrealizedPnl: (curr - entry) * qty,
         openedAt: Date.now(),
-      }));
+      });
+    }
+    return positions;
   }
 
   async getBalance(): Promise<{ availableUsd: number; totalUsd: number }> {

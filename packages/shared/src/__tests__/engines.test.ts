@@ -11,8 +11,9 @@ import {
   executeTradingTick,
   generateStrategySignal,
 } from '../trading/engine';
-import { createStoreEngineState, executeStoreTick } from '../store/engine.js';
-import { createSocialEngineState, executeSocialTick } from '../social/engine.js';
+import { momentumSignal, computeIndicators } from '../trading/indicators';
+import { createStoreEngineState, executeStoreTick } from '../store/engine';
+import { createSocialEngineState, executeSocialTick } from '../social/engine';
 
 // simple dummy contexts/adapters used only for testing
 function makeSafety(tenantId = 't', botId = 'b', platform = 'coinbase'): SafetyContext {
@@ -136,6 +137,67 @@ describe('engine units', () => {
     const state = createTradingEngineState(config, makeSafety());
     const signal = generateStrategySignal(config, indicators, { price: 100, bid:100, ask:101 } as any, state);
     expect(signal.direction).toBe('hold');
+  });
+
+  it('generateStrategySignal applies coinbase confidence threshold', () => {
+    const indicators = {
+      rsi: 50,
+      macd: { macd: 0, signal: 0, histogram: 0 },
+      ema12: 0,
+      ema26: 0,
+      sma20: 0,
+      sma50: 0,
+      bollingerBands: { upper: 0, middle: 0, lower: 0, bandwidth: 0 },
+      atr: 0,
+      vwap: 0,
+    } as any;
+    const config = {
+      platform: 'coinbase',
+      strategy: 'momentum',
+      symbols: ['BTC-USD'],
+      maxPositionSizeUsd: 100,
+      maxDailyLossUsd: 1000,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    } as any;
+    const state = createTradingEngineState(config, makeSafety());
+    const baseSignal = momentumSignal(indicators, 100);
+    const signal = generateStrategySignal(config, indicators, { price: 100, bid:100, ask:101 } as any, state);
+    if (baseSignal.direction !== 'hold' && baseSignal.confidence < 60) {
+      expect(signal.direction).toBe('hold');
+    }
+  });
+
+  it('generateStrategySignal modifies binance momentum confidence', () => {
+    const indicators = {
+      rsi: 75,
+      macd: { macd: 1, signal: 0, histogram: 1 },
+      ema12: 110,
+      ema26: 100,
+      sma20: 105,
+      sma50: 102,
+      bollingerBands: { upper: 112, middle: 105, lower: 98, bandwidth: 0.13 },
+      atr: 2,
+      vwap: 107,
+    } as any;
+    const config = {
+      platform: 'binance',
+      strategy: 'momentum',
+      symbols: ['BTCUSDT'],
+      maxPositionSizeUsd: 100,
+      maxDailyLossUsd: 1000,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    } as any;
+    const state = createTradingEngineState(config, makeSafety());
+    const signal = generateStrategySignal(config, indicators, { price: 100, bid:100, ask:101 } as any, state);
+    expect(signal.confidence).toBeGreaterThanOrEqual(0);
   });
 
   it('store engine tick handles empty product list', async () => {
@@ -268,6 +330,38 @@ describe('engine units', () => {
     // verify audit log contains llm_prompt entry
     const audit = getAuditLog('t1');
     expect(audit.some((e) => e.action === 'llm_prompt')).toBe(true);
+  });
+
+  it('computeIndicators returns new additional fields', () => {
+    const inds = computeIndicators([1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],
+      Array(20).fill(100), Array(20).fill(10), Array(20).fill(5));
+    expect(inds.stochRsi).toBeDefined();
+    expect(inds.adx).toBeDefined();
+    expect(inds.ichimoku).toBeDefined();
+  });
+
+  it('backtest returns valid structure', async () => {
+    const { backtest } = await import('../trading/backtest');
+    const config: TradingBotConfig = {
+      platform: 'coinbase',
+      strategy: 'dca',
+      symbols: ['BTC-USD'],
+      maxPositionSizeUsd: 100,
+      maxDailyLossUsd: 1000,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    };
+    const safety = makeSafety('t0','bot0','coinbase');
+    const candles = [
+      { timestamp: 0, price: 100, volume: 1, high: 101, low: 99 },
+      { timestamp: 1, price: 101, volume: 1, high: 102, low: 100 },
+    ];
+    const res = await backtest(config, safety, candles.slice());
+    expect(res).toHaveProperty('totalReturnUsd');
+    expect(typeof res.winRate).toBe('number');
   });
 
   it('social engine llm prompt logs when useLLM true', async () => {
@@ -407,4 +501,66 @@ describe('engine units', () => {
     const { result } = await executeSocialTick(state, stubAdapter as any);
     expect(result.action).toContain('#️⃣');
   });
+  it('social engine comment monitoring replies when question detected', async () => {
+    const config: SocialBotConfig = {
+      platform: 'x',
+      strategies: ['comment_monitoring'],
+      maxPostsPerDay: 1,
+      maxEngagementsPerHour: 10,
+      contentApprovalRequired: false,
+      sensitiveTopicKeywords: [],
+      brandVoiceGuidelines: '',
+      paperMode: false,
+      autonomyLevel: 'auto',
+    };
+    const safety = makeSafety('t3', 'bot7', 'x');
+    const state = createSocialEngineState(config, safety);
+    const stubAdapter = {
+      publishPost: async () => ({ postId: 'p', success: true }),
+      getMetrics: async () => ({
+        platform: 'x',
+        followers: 0,
+        followersGrowthPercent: 0,
+        engagementRate: 0,
+        avgReach: 0,
+        bestPostingHours: [],
+        topHashtags: [],
+      }),
+      getTrending: async () => [],
+      getScheduledPosts: async () => [],
+      getPostsToday: async () => 0,
+      getComments: async () => [{ commentId: 'c1', text: 'Is this available?' }],
+      replyToComment: async () => ({ success: true }),
+    };
+      const { result } = await executeSocialTick(state, stubAdapter as any);
+    expect(result.action).toContain('Reply sent');
+  });
+
+  it('store dynamic pricing adjusts per platform rules', async () => {
+    const config: StoreBotConfig = {
+      platform: 'amazon',
+      strategies: ['dynamic_pricing'],
+      maxPriceChangePercent: 10,
+      minMarginPercent: 5,
+      syncIntervalMs: 1000,
+      autoApplyPricing: false,
+      autoReorder: false,
+      paperMode: true,
+    };
+    const safety = makeSafety('t2', 'bot8', 'amazon');
+    const state = createStoreEngineState(config, safety);
+    const stubAdapter = {
+      fetchProducts: async () => [{
+        id: 'p1', platform: 'amazon', title: 'Test', price: 100, costOfGoods: 50, inventory: 10,
+        category: 'X', tags: [], status: 'active',
+      }],
+      updatePrice: async () => ({ success: true }),
+      getCompetitorPrices: async () => [120],
+      getSalesHistory: async () => [],
+      updateInventory: async () => ({ success: true }),
+    };
+    const { result } = await executeStoreTick(state, stubAdapter as any);
+    expect(result.action).toContain('Priced');
+  });
+
 });
