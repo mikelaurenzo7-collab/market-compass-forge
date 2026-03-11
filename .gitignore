@@ -5,6 +5,9 @@ coverage
 *.log
 .env
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 packages/**/tsconfig.tsbuildinfo
 
 # Build artifacts

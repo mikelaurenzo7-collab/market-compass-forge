@@ -17,6 +17,8 @@ export interface PromptTemplate<TInput, TOutput> {
   model?: string;
   /** Max tokens for this template */
   maxTokens?: number;
+  /** Preferred LLM provider for this template */
+  provider?: 'openai' | 'anthropic' | 'grok';
 }
 
 // ─── Trading Insight Types ─────────────────────────────────────
@@ -108,6 +110,8 @@ export interface PricingInsight {
 
 export const TRADING_INSIGHT_TEMPLATE: PromptTemplate<TradingInsightInput, TradingInsight> = {
   id: 'trading_insight',
+  provider: 'anthropic',
+  model: 'claude-sonnet-4-20250514',
   system: `You are a quantitative trading analyst. Evaluate the given market signal and indicators, then provide a structured JSON assessment. Be objective, cite specific indicator values in your reasoning, and never recommend risking more than appropriate given the signal confidence. Always respond with valid JSON matching the schema.`,
   buildUserPrompt: (input) => {
     const indicatorStr = Object.entries(input.indicators)
@@ -147,6 +151,8 @@ Respond with JSON: { "summary": string, "marketContext": string, "riskAssessment
 
 export const SENTIMENT_ANALYSIS_TEMPLATE: PromptTemplate<SentimentInput, SentimentResult> = {
   id: 'sentiment_analysis',
+  provider: 'anthropic',
+  model: 'claude-sonnet-4-20250514',
   system: `You are a product review sentiment analyst. Analyze customer reviews to extract sentiment scores, key themes, and actionable insights. Score each review from -1 (very negative) to +1 (very positive). Identify recurring themes and suggest concrete improvements. Always respond with valid JSON.`,
   buildUserPrompt: (input) => {
     const reviewBlock = input.reviews
@@ -201,6 +207,8 @@ Respond with JSON:
 
 export const SOCIAL_CONTENT_TEMPLATE: PromptTemplate<SocialContentInput, SocialContentOutput> = {
   id: 'social_content',
+  provider: 'openai',
+  model: 'gpt-4o',
   system: `You are a social media content strategist. Create engaging, platform-appropriate content that aligns with the brand voice. Optimize for engagement while staying authentic. Include relevant hashtags and a clear call-to-action. Always respond with valid JSON.`,
   buildUserPrompt: (input) => {
     const trendsStr = input.recentTrends.length > 0
@@ -240,6 +248,8 @@ Respond with JSON:
 
 export const PRICING_INSIGHT_TEMPLATE: PromptTemplate<PricingInsightInput, PricingInsight> = {
   id: 'pricing_insight',
+  provider: 'openai',
+  model: 'gpt-4o-mini',
   system: `You are an e-commerce pricing strategist. Analyze competitive positioning, demand signals, and inventory levels to provide pricing recommendations. Be data-driven and cite specific numbers. Always respond with valid JSON.`,
   buildUserPrompt: (input) => {
     const compStr = input.competitorPrices.length > 0
