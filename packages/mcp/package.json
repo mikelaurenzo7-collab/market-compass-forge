@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "type": "module",
   "main": "dist/server.js",
+  "types": "src/server.ts",
+  "exports": {
+    ".": {
+      "types": "./src/server.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json"
