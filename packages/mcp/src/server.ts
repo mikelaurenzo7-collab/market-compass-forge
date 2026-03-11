@@ -4,11 +4,11 @@ import {
   createDefaultBudget,
   createDefaultCircuitBreaker,
   createDefaultPolicies,
+  TRADING_PLATFORM_CONFIGS,
+  STORE_PLATFORM_STRATEGIES,
+  SOCIAL_PLATFORM_STRATEGIES,
 } from '@beastbots/shared';
 import type { BotFamily, IntegrationCategory } from '@beastbots/shared';
-import { TRADING_PLATFORM_CONFIGS } from '@beastbots/shared/src/trading/engine.js';
-import { STORE_PLATFORM_STRATEGIES } from '@beastbots/shared/src/store/strategies.js';
-import { SOCIAL_PLATFORM_STRATEGIES } from '@beastbots/shared/src/social/strategies.js';
 
 // ─── MCP Tool Definitions ─────────────────────────────────────
 
@@ -156,6 +156,92 @@ const tools: McpTool[] = [
   },
 ];
 
+// ─── Stdio JSON-RPC Server ────────────────────────────────────
+
+interface JsonRpcRequest {
+  jsonrpc: '2.0';
+  id?: string | number;
+  method: string;
+  params?: Record<string, unknown>;
+}
+
+interface JsonRpcResponse {
+  jsonrpc: '2.0';
+  id: string | number | null;
+  result?: unknown;
+  error?: { code: number; message: string; data?: unknown };
+}
+
+function handleJsonRpc(request: JsonRpcRequest): JsonRpcResponse {
+  const { id, method, params } = request;
+
+  switch (method) {
+    case 'initialize':
+      return {
+        jsonrpc: '2.0',
+        id: id ?? null,
+        result: {
+          protocolVersion: '2024-11-05',
+          capabilities: { tools: { listChanged: false } },
+          serverInfo: { name: 'beastbots-mcp', version: '0.1.0' },
+        },
+      };
+
+    case 'tools/list':
+      return {
+        jsonrpc: '2.0',
+        id: id ?? null,
+        result: {
+          tools: tools.map((t) => ({
+            name: t.name,
+            description: t.description,
+            inputSchema: {
+              type: 'object',
+              properties: Object.fromEntries(
+                Object.entries(t.parameters).map(([k, v]) => [k, { type: v.type, description: v.description }])
+              ),
+              required: Object.entries(t.parameters).filter(([, v]) => v.required).map(([k]) => k),
+            },
+          })),
+        },
+      };
+
+    case 'tools/call': {
+      const toolName = (params?.name as string) ?? '';
+      const toolParams = (params?.arguments as Record<string, unknown>) ?? {};
+      const tool = tools.find((t) => t.name === toolName);
+      if (!tool) {
+        return {
+          jsonrpc: '2.0',
+          id: id ?? null,
+          result: {
+            content: [{ type: 'text', text: JSON.stringify({ error: `Unknown tool: ${toolName}` }) }],
+            isError: true,
+          },
+        };
+      }
+      const result = tool.handler(toolParams);
+      return {
+        jsonrpc: '2.0',
+        id: id ?? null,
+        result: {
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        },
+      };
+    }
+
+    case 'notifications/initialized':
+      return { jsonrpc: '2.0', id: id ?? null, result: {} };
+
+    default:
+      return {
+        jsonrpc: '2.0',
+        id: id ?? null,
+        error: { code: -32601, message: `Method not found: ${method}` },
+      };
+  }
+}
+
 // ─── Server Entrypoint ────────────────────────────────────────
 
 export function startMcpServer(): {
@@ -174,4 +260,38 @@ export function startMcpServer(): {
       return tool.handler(params);
     },
   };
+}
+
+// Stdio mode for MCP clients (Claude, etc.)
+export function startStdioServer(): void {
+  let buffer = '';
+
+  process.stdin.setEncoding('utf-8');
+  process.stdin.on('data', (chunk: string) => {
+    buffer += chunk;
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const request = JSON.parse(trimmed) as JsonRpcRequest;
+        if (request.method === 'notifications/initialized') continue;
+        const response = handleJsonRpc(request);
+        process.stdout.write(JSON.stringify(response) + '\n');
+      } catch {
+        const errorResponse: JsonRpcResponse = {
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32700, message: 'Parse error' },
+        };
+        process.stdout.write(JSON.stringify(errorResponse) + '\n');
+      }
+    }
+  });
+}
+
+// Auto-start in stdio mode when run directly
+if (process.argv[1] && (process.argv[1].endsWith('server.js') || process.argv[1].endsWith('server.ts'))) {
+  startStdioServer();
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../lib/auth-context';
@@ -16,17 +16,103 @@ interface Bot {
   createdAt: string;
 }
 
-const FAMILY_LABELS: Record<string, string> = {
-  trading: 'Trading Operators',
-  store: 'Store Operators',
-  social: 'Social Operators',
+const FAMILY_CONFIG: Record<string, { label: string; icon: string; color: string; emptyDesc: string }> = {
+  trading: {
+    label: 'Trading Operators',
+    icon: '📈',
+    color: 'var(--color-trading)',
+    emptyDesc: 'Deploy a trading bot on Coinbase, Binance, Alpaca, Kalshi, or Polymarket.',
+  },
+  store: {
+    label: 'Store Operators',
+    icon: '🛒',
+    color: 'var(--color-store)',
+    emptyDesc: 'Automate pricing, inventory, and listings on Shopify, Amazon, Etsy, and more.',
+  },
+  social: {
+    label: 'Social Operators',
+    icon: '📱',
+    color: 'var(--color-social)',
+    emptyDesc: 'Schedule content, track engagement, and grow your audience on every platform.',
+  },
+  workforce: {
+    label: 'Workforce Operators',
+    icon: '⚙️',
+    color: 'var(--color-workforce)',
+    emptyDesc: 'Automate team operations via Slack, Notion, Jira, Salesforce, and more.',
+  },
 };
 
 function StatusDot({ status }: { status: string }) {
   return <span className={`status-dot ${status}`} title={status} />;
 }
 
+function BotCard({ bot, onAction, onDelete }: {
+  bot: Bot;
+  onAction: (id: string, action: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const config = FAMILY_CONFIG[bot.family];
+  return (
+    <div className={`bot-card ${bot.family}`} style={{ display: 'flex', flexDirection: 'column' }}>
+      <div className="bot-card-header">
+        <div>
+          <Link href={`/bots/${bot.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div className="bot-name" style={{ marginBottom: 2 }}>{bot.name}</div>
+          </Link>
+          <div className="bot-platform">{bot.platform}</div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <StatusDot status={bot.status} />
+          <span style={{
+            fontSize: '0.65rem', fontWeight: 600,
+            color: bot.status === 'running' ? 'var(--green)' : bot.status === 'paused' ? 'var(--gold)' : 'var(--text-muted)',
+          }}>
+            {bot.status}
+          </span>
+        </div>
+      </div>
+      {(bot.strategies ?? []).length > 0 && (
+        <div className="bot-strategies">
+          {(bot.strategies ?? []).map((s) => (
+            <span key={s} className="strategy-tag">{s.replace(/_/g, ' ')}</span>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: 'auto', paddingTop: 'var(--space-md)', borderTop: '1px solid var(--border-subtle)', display: 'flex', gap: 4 }}>
+        {bot.status === 'running' ? (
+          <>
+            <button className="btn btn-secondary btn-sm" onClick={() => onAction(bot.id, 'pause')}>Pause</button>
+            <button className="btn btn-danger btn-sm" onClick={() => onAction(bot.id, 'stop')}>Stop</button>
+          </>
+        ) : bot.status === 'paused' ? (
+          <>
+            <button className="btn btn-primary btn-sm" onClick={() => onAction(bot.id, 'start')}>Resume</button>
+            <button className="btn btn-danger btn-sm" onClick={() => onAction(bot.id, 'stop')}>Stop</button>
+          </>
+        ) : (
+          <button className="btn btn-primary btn-sm" onClick={() => onAction(bot.id, 'start')}>Start</button>
+        )}
+        {bot.status !== 'running' && (
+          <button className="btn btn-danger btn-sm" onClick={() => onDelete(bot.id)}>Delete</button>
+        )}
+        <Link href={`/bots/${bot.id}`} className="btn btn-secondary btn-sm" style={{ textDecoration: 'none', marginLeft: 'auto' }}>
+          Details →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function BotsPage() {
+  return (
+    <Suspense>
+      <BotsPageContent />
+    </Suspense>
+  );
+}
+
+function BotsPageContent() {
   const { user, loading, apiFetch } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -66,13 +152,23 @@ export default function BotsPage() {
 
   if (loading || !user) return null;
 
-  const title = familyFilter ? (FAMILY_LABELS[familyFilter] ?? 'Bots') : 'All Bots';
+  const currentConfig = familyFilter ? FAMILY_CONFIG[familyFilter] : null;
+  const title = currentConfig ? currentConfig.label : 'All Bots';
+  const runningCount = bots.filter((b) => b.status === 'running').length;
 
   return (
     <AppShell>
       <div className="page-header-row">
         <div>
-          <h1 className="page-title">{title}</h1>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+            {currentConfig && <span>{currentConfig.icon}</span>}
+            {title}
+            {bots.length > 0 && (
+              <span className={`badge ${familyFilter ?? ''}`} style={{ fontSize: '0.75rem', padding: '3px 10px' }}>
+                {runningCount} running
+              </span>
+            )}
+          </h1>
           <p className="page-subtitle">{bots.length} bot{bots.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="page-actions">
@@ -83,11 +179,23 @@ export default function BotsPage() {
       </div>
 
       {/* Family filter tabs */}
-      <div style={{ display: 'flex', gap: 'var(--space-sm)', marginBottom: 'var(--space-xl)' }}>
-        <Link href="/bots" className={`btn ${!familyFilter ? 'btn-primary' : 'btn-secondary'}`} style={{ textDecoration: 'none' }}>All</Link>
-        <Link href="/bots?family=trading" className={`btn ${familyFilter === 'trading' ? 'btn-primary' : 'btn-secondary'}`} style={{ textDecoration: 'none' }}>Trading</Link>
-        <Link href="/bots?family=store" className={`btn ${familyFilter === 'store' ? 'btn-primary' : 'btn-secondary'}`} style={{ textDecoration: 'none' }}>Store</Link>
-        <Link href="/bots?family=social" className={`btn ${familyFilter === 'social' ? 'btn-primary' : 'btn-secondary'}`} style={{ textDecoration: 'none' }}>Social</Link>
+      <div className="family-tabs">
+        <Link
+          href="/bots"
+          className={`family-tab all ${!familyFilter ? 'active' : ''}`}
+        >
+          All Bots
+        </Link>
+        {Object.entries(FAMILY_CONFIG).map(([family, cfg]) => (
+          <Link
+            key={family}
+            href={`/bots?family=${family}`}
+            className={`family-tab ${family} ${familyFilter === family ? 'active' : ''}`}
+          >
+            <span>{cfg.icon}</span>
+            <span>{family.charAt(0).toUpperCase() + family.slice(1)}</span>
+          </Link>
+        ))}
       </div>
 
       {fetching && (
@@ -104,9 +212,11 @@ export default function BotsPage() {
 
       {!fetching && bots.length === 0 && (
         <div className="empty-state">
-          <div className="empty-state-icon">◈</div>
-          <div className="empty-state-title">No bots found</div>
-          <div className="empty-state-desc">Create your first bot to start automating.</div>
+          <div className="empty-state-icon">{currentConfig?.icon ?? '◈'}</div>
+          <div className="empty-state-title">No {familyFilter ?? ''} bots yet</div>
+          <div className="empty-state-desc">
+            {currentConfig?.emptyDesc ?? 'Create your first bot to start automating.'}
+          </div>
           <Link href="/bots/create" className="btn btn-primary" style={{ textDecoration: 'none' }}>
             Create Bot
           </Link>
@@ -114,60 +224,13 @@ export default function BotsPage() {
       )}
 
       {!fetching && bots.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Family</th>
-              <th>Platform</th>
-              <th>Status</th>
-              <th>Strategies</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bots.map((bot) => (
-              <tr key={bot.id}>
-                <td>
-                  <Link href={`/bots/${bot.id}`} style={{ color: 'var(--text-primary)', textDecoration: 'none', fontWeight: 600 }}>
-                    {bot.name}
-                  </Link>
-                </td>
-                <td><span className={`badge ${bot.family}`}>{bot.family}</span></td>
-                <td>{bot.platform}</td>
-                <td><StatusDot status={bot.status} /> {bot.status}</td>
-                <td>
-                  {(bot.strategies ?? []).map((s) => (
-                    <span key={s} className="strategy-tag" style={{ marginRight: '4px' }}>
-                      {s.replace(/_/g, ' ')}
-                    </span>
-                  ))}
-                </td>
-                <td>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {bot.status === 'running' ? (
-                      <>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleAction(bot.id, 'pause')}>Pause</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleAction(bot.id, 'stop')}>Stop</button>
-                      </>
-                    ) : bot.status === 'paused' ? (
-                      <>
-                        <button className="btn btn-primary btn-sm" onClick={() => handleAction(bot.id, 'start')}>Resume</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleAction(bot.id, 'stop')}>Stop</button>
-                      </>
-                    ) : (
-                      <button className="btn btn-primary btn-sm" onClick={() => handleAction(bot.id, 'start')}>Start</button>
-                    )}
-                    {bot.status !== 'running' && (
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(bot.id)}>Delete</button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="bot-grid">
+          {bots.map((bot) => (
+            <BotCard key={bot.id} bot={bot} onAction={handleAction} onDelete={handleDelete} />
+          ))}
+        </div>
       )}
     </AppShell>
   );
 }
+

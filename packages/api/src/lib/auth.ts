@@ -80,8 +80,8 @@ export async function rotateRefreshToken(oldToken: string) {
 
   const newTokenData = await issueRefreshToken({ userId: row.user_id, tenantId: row.tenant_id });
 
-  const accessToken = await signAccessToken({ userId: row.user_id, tenantId: row.tenant_id, email: '' });
-  // Note: caller may want to include email; we leave blank here — caller can re-query user email as needed
+  const userRow = db.prepare('SELECT email FROM users WHERE id = ?').get(row.user_id) as any;
+  const accessToken = await signAccessToken({ userId: row.user_id, tenantId: row.tenant_id, email: userRow?.email ?? '' });
 
   return { accessToken, refreshToken: newTokenData.token };
 }

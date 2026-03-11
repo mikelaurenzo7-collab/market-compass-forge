@@ -38,6 +38,14 @@ export default function BotDetailPage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
 
+  const FAMILY_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
+    trading: { icon: '📈', color: 'var(--color-trading)', label: 'Trading' },
+    store: { icon: '🛒', color: 'var(--color-store)', label: 'Store' },
+    social: { icon: '📱', color: 'var(--color-social)', label: 'Social' },
+    workforce: { icon: '⚙️', color: 'var(--color-workforce)', label: 'Workforce' },
+  };
+
+
   const fetchBot = useCallback(async () => {
     try {
       const res = await apiFetch(`/api/bots/${botId}`);
@@ -101,6 +109,19 @@ export default function BotDetailPage() {
 
       {bot && (
         <>
+          {/* family banner */}
+          <div className={`family-banner ${bot.family}`}>
+            <span className="family-banner-icon">{FAMILY_CONFIG[bot.family]?.icon}</span>
+            <div>
+              <div className="family-banner-title" style={{ color: FAMILY_CONFIG[bot.family]?.color }}>
+                {bot.name}
+              </div>
+              <div className="family-banner-desc">
+                {bot.platform} · {FAMILY_CONFIG[bot.family]?.label} bot
+              </div>
+            </div>
+          </div>
+
           <div className="page-header-row">
             <div>
               <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
@@ -221,7 +242,7 @@ export default function BotDetailPage() {
                       <tr key={i}>
                         <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(m.timestamp).toLocaleString()}</td>
                         <td>${m.equity.toLocaleString()}</td>
-                        <td style={{ color: m.pnl >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                        <td style={{ color: m.pnl >= 0 ? FAMILY_CONFIG[bot.family]?.color : 'var(--accent-red)' }}>
                           {m.pnl >= 0 ? '+' : ''}${m.pnl.toLocaleString()}
                         </td>
                         <td>{m.drawdown.toFixed(2)}%</td>

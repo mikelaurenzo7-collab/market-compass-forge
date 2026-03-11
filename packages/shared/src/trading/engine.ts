@@ -91,6 +91,14 @@ export async function executeTradingTick(
 ): Promise<{ result: TickResult; newState: TradingEngineState }> {
   const startTime = Date.now();
   let newState = { ...state };
+  let lastResult: TickResult = {
+    botId: state.safety.botId,
+    timestamp: Date.now(),
+    action: 'scan',
+    result: 'skipped',
+    details: { symbols: state.config.symbols, reason: 'no_signal' },
+    durationMs: 0,
+  };
 
   try {
     const positions = await adapter.getPositions();
@@ -159,17 +167,15 @@ export async function executeTradingTick(
       );
 
       if (!safetyResult.allowed) {
-        return {
-          result: {
-            botId: state.safety.botId,
-            timestamp: Date.now(),
-            action: `${signal.direction} ${symbol}`,
-            result: 'denied',
-            details: { reason: safetyResult.reason },
-            durationMs: Date.now() - startTime,
-          },
-          newState,
+        lastResult = {
+          botId: state.safety.botId,
+          timestamp: Date.now(),
+          action: `${signal.direction} ${symbol}`,
+          result: 'denied',
+          details: { reason: safetyResult.reason },
+          durationMs: Date.now() - startTime,
         };
+        continue;
       }
 
       // Execute trade (or simulate in paper mode)
@@ -196,36 +202,32 @@ export async function executeTradingTick(
           details: { signal: tradeSignal, paperMode: true },
         });
 
-        return {
-          result: {
-            botId: state.safety.botId,
-            timestamp: Date.now(),
-            action: `paper_${signal.direction} ${symbol}`,
-            result: 'executed',
-            details: { signal: tradeSignal, paperMode: true },
-            durationMs: Date.now() - startTime,
-          },
-          newState,
+        lastResult = {
+          botId: state.safety.botId,
+          timestamp: Date.now(),
+          action: `paper_${signal.direction} ${symbol}`,
+          result: 'executed',
+          details: { signal: tradeSignal, paperMode: true },
+          durationMs: Date.now() - startTime,
         };
+        continue;
       }
 
       const autonomy = state.config.autonomyLevel ?? 'manual';
       if (autonomy !== 'auto') {
-        return {
-          result: {
-            botId: state.safety.botId,
-            timestamp: Date.now(),
-            action: `${signal.direction} ${symbol}`,
-            result: 'skipped',
-            details: {
-              reason: 'autonomy_not_auto',
-              autonomyLevel: autonomy,
-              suggestedSignal: tradeSignal,
-            },
-            durationMs: Date.now() - startTime,
+        lastResult = {
+          botId: state.safety.botId,
+          timestamp: Date.now(),
+          action: `${signal.direction} ${symbol}`,
+          result: 'skipped',
+          details: {
+            reason: 'autonomy_not_auto',
+            autonomyLevel: autonomy,
+            suggestedSignal: tradeSignal,
           },
-          newState,
+          durationMs: Date.now() - startTime,
         };
+        continue;
       }
 
       const orderResult = await adapter.placeOrder(tradeSignal);
@@ -247,16 +249,13 @@ export async function executeTradingTick(
         details: { orderId: orderResult.orderId, signal: tradeSignal },
       });
 
-      return {
-        result: {
-          botId: state.safety.botId,
-          timestamp: Date.now(),
-          action: `${signal.direction} ${symbol}`,
-          result: 'executed',
-          details: { orderId: orderResult.orderId, signal: tradeSignal },
-          durationMs: Date.now() - startTime,
-        },
-        newState,
+      lastResult = {
+        botId: state.safety.botId,
+        timestamp: Date.now(),
+        action: `${signal.direction} ${symbol}`,
+        result: 'executed',
+        details: { orderId: orderResult.orderId, signal: tradeSignal },
+        durationMs: Date.now() - startTime,
       };
     }
 
@@ -337,8 +336,8 @@ export function generateStrategySignal(
       return marketMakingSignal(marketData.price, bid, ask, spreadThr);
     }
     case 'event_probability': {
-      const est = (config as any).eventProbabilityData?.estimated ?? 0;
-      const fair = (config as any).eventProbabilityData?.fair ?? 0;
+      const est = config.eventProbabilityData?.estimated ?? 0;
+      const fair = config.eventProbabilityData?.fair ?? 0;
       return eventProbabilitySignal(est, fair);
     }
     default:

@@ -63,10 +63,15 @@ export default function OnboardingPage() {
     // find record
     const info = available.find((i) => i.id === selectedIntegration);
     if (info?.oauth) {
-      const res = await apiFetch(`/api/integrations/${selectedIntegration}/connect`);
-      if (res.redirected) {
-        window.location.href = res.url;
-      }
+      try {
+        const res = await apiFetch(`/api/integrations/${selectedIntegration}/connect`, {
+          headers: { Accept: 'application/json' },
+        });
+        const json = await res.json();
+        if (json.success && json.url) {
+          window.location.href = json.url;
+        }
+      } catch { /* ignore — user will see nothing happened */ }
       return;
     }
     setConnectError('');

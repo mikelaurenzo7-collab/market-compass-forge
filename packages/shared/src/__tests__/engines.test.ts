@@ -66,6 +66,47 @@ describe('engine units', () => {
     expect(newState).toBeDefined();
   });
 
+  it('trading engine processes multiple symbols and updates histories', async () => {
+    const config: TradingBotConfig = {
+      platform: 'coinbase',
+      strategy: 'dca',
+      symbols: ['BTC-USD', 'ETH-USD'],
+      maxPositionSizeUsd: 100,
+      maxDailyLossUsd: 1000,
+      maxOpenPositions: 2,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    };
+    const safety = makeSafety('t1', 'bot1', 'coinbase');
+    const state = createTradingEngineState(config, safety);
+
+    const stubAdapter = {
+      fetchMarketData: async (symbol: string) => ({
+        symbol,
+        price: 100,
+        volume24h: 1000,
+        high24h: 105,
+        low24h: 95,
+        change24hPercent: 0,
+        bid: 100,
+        ask: 101,
+        timestamp: Date.now(),
+      }),
+      placeOrder: async () => ({ orderId: 'x', filled: true }),
+      getPositions: async () => [],
+      getBalance: async () => ({ availableUsd: 10000, totalUsd: 10000 }),
+    };
+
+    const { result, newState } = await executeTradingTick(state, stubAdapter as any);
+    expect(result.botId).toBe('bot1');
+    expect(['executed', 'skipped']).toContain(result.result);
+    expect(newState.priceHistories.size).toBe(2);
+    expect(newState.priceHistories.has('BTC-USD')).toBe(true);
+    expect(newState.priceHistories.has('ETH-USD')).toBe(true);
+  });
+
   it('generateStrategySignal returns hold for grid with no levels', () => {
     const indicators = {
       rsi: 50,

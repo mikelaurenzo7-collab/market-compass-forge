@@ -2,12 +2,12 @@
 
 export type BotFamily = 'trading' | 'store' | 'social' | 'workforce';
 
-export type IntegrationCategory = 'trading' | 'ecommerce' | 'social';
+export type IntegrationCategory = 'trading' | 'ecommerce' | 'social' | 'workforce' | 'communication' | 'project_management' | 'crm';
 
 export type TradingPlatform = 'coinbase' | 'binance' | 'alpaca' | 'kalshi' | 'polymarket';
 export type StorePlatform = 'shopify' | 'amazon' | 'etsy' | 'ebay' | 'square' | 'woocommerce';
-export type SocialPlatform = 'x' | 'tiktok' | 'instagram' | 'facebook' | 'linkedin';
-export type Platform = TradingPlatform | StorePlatform | SocialPlatform;
+export type SocialPlatform = 'x' | 'tiktok' | 'instagram' | 'facebook' | 'linkedin' | 'youtube';
+export type Platform = TradingPlatform | StorePlatform | SocialPlatform | WorkforceCategory;
 
 export type BotStatus = 'idle' | 'running' | 'paused' | 'stopped' | 'error';
 export type SafetyAction = 'allow' | 'deny' | 'require_approval';
@@ -117,6 +117,16 @@ export interface Position {
 
 export type AutonomyLevel = 'manual' | 'suggest' | 'auto';
 
+export interface EventProbabilityData {
+  eventId: string;
+  market: string;
+  currentProbability: number;
+  historicalProbabilities?: number[];
+  expiresAt?: number;
+  estimated?: number;
+  fair?: number;
+}
+
 export interface TradingBotConfig {
   platform: TradingPlatform;
   strategy: TradingStrategy;
@@ -135,7 +145,7 @@ export interface TradingBotConfig {
   openOrders?: { price: number; side: 'buy' | 'sell' }[];
   arbitrageThresholdPercent?: number;
   marketMakingSpread?: number;
-  eventProbabilityData?: any;
+  eventProbabilityData?: EventProbabilityData;
 }
 
 export interface MarketData {
@@ -265,6 +275,97 @@ export interface SocialBotConfig {
   autonomyLevel?: AutonomyLevel;
 }
 
+// ─── Workforce Bot Types ───────────────────────────────────────
+
+export type WorkforceCategory =
+  | 'customer_support'
+  | 'sales_crm'
+  | 'finance'
+  | 'hr'
+  | 'document_processing'
+  | 'email_management'
+  | 'scheduling'
+  | 'compliance'
+  | 'it_ops'
+  | 'reporting'
+  | 'project_management'
+  | 'procurement';
+
+export type WorkforceStrategy =
+  | 'ticket_triage'
+  | 'auto_response'
+  | 'lead_scoring'
+  | 'crm_enrichment'
+  | 'invoice_processing'
+  | 'expense_reconciliation'
+  | 'employee_onboarding'
+  | 'shift_scheduling'
+  | 'document_classification'
+  | 'data_extraction'
+  | 'email_triage'
+  | 'meeting_scheduler'
+  | 'compliance_monitoring'
+  | 'audit_preparation'
+  | 'system_health_check'
+  | 'report_generation'
+  | 'task_orchestration'
+  | 'vendor_evaluation'
+  | 'contract_review'
+  | 'knowledge_base_sync';
+
+export type TaskPriority = 'critical' | 'high' | 'medium' | 'low';
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'escalated' | 'failed';
+
+export interface WorkforceTask {
+  id: string;
+  category: WorkforceCategory;
+  strategy: WorkforceStrategy;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  assignee?: string;
+  inputData: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  deadlineAt?: number;
+  retryCount: number;
+  maxRetries?: number;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface WorkforceTaskResult {
+  taskId: string;
+  status: TaskStatus;
+  success?: boolean;
+  action?: string;
+  details?: Record<string, unknown>;
+  outputData?: Record<string, unknown>;
+  nextTasks?: WorkforceTask[];
+  confidence?: number;
+  strategy?: WorkforceStrategy;
+  durationMs?: number;
+  processingMs?: number;
+  costUsd?: number;
+  requiresHumanReview?: boolean;
+  escalated?: boolean;
+  escalationReason?: string;
+}
+
+export interface WorkforceBotConfig {
+  category: WorkforceCategory;
+  strategies: WorkforceStrategy[];
+  maxTasksPerHour: number;
+  maxConcurrentTasks: number;
+  requireApprovalForExternal: boolean;
+  escalationThresholdConfidence: number;
+  dataAccessScopes: string[];
+  workingHoursUtc?: { start: number; end: number };
+  paperMode: boolean;
+  useLLM?: boolean;
+  autonomyLevel?: AutonomyLevel;
+}
+
 // ─── Bot Runtime Types ─────────────────────────────────────────
 
 export interface BotRuntime {
@@ -273,7 +374,7 @@ export interface BotRuntime {
   family: BotFamily;
   platform: Platform;
   status: BotStatus;
-  config: TradingBotConfig | StoreBotConfig | SocialBotConfig;
+  config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
   safety: SafetyContext;
   lastTickAt: number;
   createdAt: number;
@@ -318,7 +419,34 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
   { id: 'tiktok', category: 'social', displayName: 'TikTok', oauth: true, status: 'planned' },
   { id: 'instagram', category: 'social', displayName: 'Instagram', oauth: true, status: 'planned' },
   { id: 'facebook', category: 'social', displayName: 'Facebook', oauth: true, status: 'planned' },
-  { id: 'linkedin', category: 'social', displayName: 'LinkedIn', oauth: true, status: 'planned' }
+  { id: 'linkedin', category: 'social', displayName: 'LinkedIn', oauth: true, status: 'planned' },
+  { id: 'youtube', category: 'social', displayName: 'YouTube', oauth: true, status: 'beta' },
+  // ─── Workforce Integrations ───────────────────────────────────
+  // Communication
+  { id: 'slack', category: 'communication', displayName: 'Slack', oauth: true, status: 'beta' },
+  { id: 'microsoft_teams', category: 'communication', displayName: 'Microsoft Teams', oauth: true, status: 'beta' },
+  { id: 'gmail', category: 'communication', displayName: 'Gmail', oauth: true, status: 'beta' },
+  { id: 'outlook', category: 'communication', displayName: 'Outlook / M365', oauth: true, status: 'beta' },
+  { id: 'zoom', category: 'communication', displayName: 'Zoom', oauth: true, status: 'planned' },
+  // Project Management
+  { id: 'notion', category: 'project_management', displayName: 'Notion', oauth: true, status: 'beta' },
+  { id: 'jira', category: 'project_management', displayName: 'Jira', oauth: true, status: 'beta' },
+  { id: 'asana', category: 'project_management', displayName: 'Asana', oauth: true, status: 'planned' },
+  { id: 'monday', category: 'project_management', displayName: 'Monday.com', oauth: true, status: 'planned' },
+  { id: 'linear', category: 'project_management', displayName: 'Linear', oauth: true, status: 'planned' },
+  { id: 'trello', category: 'project_management', displayName: 'Trello', oauth: true, status: 'planned' },
+  // CRM / Finance / HR
+  { id: 'salesforce', category: 'crm', displayName: 'Salesforce', oauth: true, status: 'beta' },
+  { id: 'hubspot', category: 'crm', displayName: 'HubSpot', oauth: true, status: 'beta' },
+  { id: 'zendesk', category: 'crm', displayName: 'Zendesk', oauth: true, status: 'beta' },
+  { id: 'quickbooks', category: 'workforce', displayName: 'QuickBooks', oauth: true, status: 'beta' },
+  { id: 'xero', category: 'workforce', displayName: 'Xero', oauth: true, status: 'planned' },
+  { id: 'gusto', category: 'workforce', displayName: 'Gusto (HR)', oauth: true, status: 'planned' },
+  { id: 'workday', category: 'workforce', displayName: 'Workday', oauth: false, status: 'planned' },
+  { id: 'google_drive', category: 'workforce', displayName: 'Google Drive', oauth: true, status: 'beta' },
+  { id: 'dropbox', category: 'workforce', displayName: 'Dropbox', oauth: true, status: 'planned' },
+  { id: 'docusign', category: 'workforce', displayName: 'DocuSign', oauth: true, status: 'planned' },
+  { id: 'servicenow', category: 'workforce', displayName: 'ServiceNow', oauth: true, status: 'planned' }
 ];
 
 export const DEFAULT_PRICING: PricingPlan[] = [
@@ -440,6 +568,27 @@ export function createDefaultPolicies(family: BotFamily): PolicyRule[] {
         action: 'require_approval',
         riskLevel: 'high',
       },
+      {
+        id: 'max-tasks-per-hour',
+        description: 'Enforce hourly task throughput limit',
+        condition: 'tasksThisHour >= config.maxTasksPerHour',
+        action: 'deny',
+        riskLevel: 'medium',
+      },
+      {
+        id: 'low-confidence-escalation',
+        description: 'Escalate tasks below confidence threshold',
+        condition: 'confidence < config.escalationThresholdConfidence',
+        action: 'require_approval',
+        riskLevel: 'medium',
+      },
+      {
+        id: 'data-scope-violation',
+        description: 'Block access outside permitted data scopes',
+        condition: '!config.dataAccessScopes.includes(scope)',
+        action: 'deny',
+        riskLevel: 'critical',
+      },
     ],
   };
 
@@ -458,3 +607,10 @@ export * from './store/adapters.js';
 export * from './social/strategies.js';
 export * from './social/engine.js';
 export * from './social/adapters.js';
+export * from './workforce/strategies.js';
+export * from './workforce/engine.js';
+export * from './workforce/adapters.js';
+export * from './workforce/team.js';
+export * from './workforce/learning.js';
+export * from './workforce/safety.js';
+export * from './workforce/intelligence.js';

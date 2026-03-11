@@ -15,7 +15,10 @@ export const safetyRouter = new Hono();
 
 // ─── Get Default Safety Config ────────────────────────────────
 
-safetyRouter.get('/defaults/:family', (c) => {
+safetyRouter.get('/defaults/:family', async (c) => {
+  const auth = await verifyAuthHeader(c.req.header('Authorization'));
+  if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
+
   const family = c.req.param('family') as BotFamily;
   const validFamilies: BotFamily[] = ['trading', 'store', 'social', 'workforce'];
   if (!validFamilies.includes(family)) {

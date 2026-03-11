@@ -167,22 +167,50 @@ const pkceAdapter: OAuthAdapter = {
 };
 
 const adapters: Record<string, OAuthAdapter> = {
-  shopify: shopifyAdapter,
-  x: pkceAdapter,
+  // ─── Trading ──────────────────────────────────────────────────────
   coinbase: defaultAdapter,
   binance: defaultAdapter,
   kalshi: defaultAdapter,
   polymarket: defaultAdapter,
   alpaca: defaultAdapter,
+  // ─── E-Commerce ───────────────────────────────────────────────────
+  shopify: shopifyAdapter, // custom: requires shop param + JSON body exchange
   amazon: defaultAdapter,
   etsy: defaultAdapter,
   square: defaultAdapter,
   woocommerce: defaultAdapter,
   ebay: defaultAdapter,
+  // ─── Social ───────────────────────────────────────────────────────
+  x: pkceAdapter,          // PKCE required by X / Twitter v2 API
   tiktok: defaultAdapter,
   instagram: defaultAdapter,
   facebook: defaultAdapter,
   linkedin: defaultAdapter,
+  youtube: defaultAdapter, // Google OAuth2 — set OAUTH_YOUTUBE_AUTHORIZE_URL=https://accounts.google.com/o/oauth2/v2/auth
+  // ─── Workforce: Communication ─────────────────────────────────────
+  slack: defaultAdapter,
+  microsoft_teams: defaultAdapter, // OAUTH_MICROSOFT_TEAMS_AUTHORIZE_URL=https://login.microsoftonline.com/{tenant}/oauth2/v2.0/authorize
+  gmail: defaultAdapter,           // Google OAuth2 — gmail scopes
+  outlook: defaultAdapter,         // Microsoft OAuth2 — mail scopes
+  zoom: defaultAdapter,
+  // ─── Workforce: Project Management ────────────────────────────────
+  notion: defaultAdapter,
+  jira: defaultAdapter,
+  asana: defaultAdapter,
+  monday: defaultAdapter,
+  linear: defaultAdapter,
+  trello: defaultAdapter,
+  // ─── Workforce: CRM / Finance / HR ────────────────────────────────
+  salesforce: defaultAdapter,
+  hubspot: defaultAdapter,
+  zendesk: defaultAdapter,
+  quickbooks: defaultAdapter,
+  xero: defaultAdapter,
+  gusto: defaultAdapter,
+  google_drive: defaultAdapter,
+  dropbox: defaultAdapter,
+  docusign: defaultAdapter,
+  servicenow: defaultAdapter,
 };
 
 export function getAdapter(provider: string): OAuthAdapter {

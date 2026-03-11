@@ -11,7 +11,12 @@ import { authRouter } from './routes/auth.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { credentialsRouter } from './routes/credentials.js';
 import { provisioningRouter } from './routes/provisioning.js';
-import { closeDb } from './lib/db.js';
+import { closeDb, getDb } from './lib/db.js';
+import { setSafetyStore } from '@beastbots/shared';
+import { DbSafetyStore } from './lib/safety-store.js';
+
+// Wire DB-backed safety store for persistence
+setSafetyStore(new DbSafetyStore());
 
 export const app = new Hono();
 
@@ -31,20 +36,25 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ─── Rate Limiting ────────────────────────────────────────────
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
-
 function rateLimit(windowMs: number, maxRequests: number) {
   return async (c: any, next: any) => {
-    const key = c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown';
+    // In production behind Cloudflare, use cf-connecting-ip (cannot be spoofed).
+    // x-forwarded-for is used here for local dev; do NOT trust in production without a trusted proxy.
+    const key = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown';
     const now = Date.now();
-    const entry = rateLimitStore.get(key);
-    if (!entry || now > entry.resetAt) {
-      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
-    } else {
-      entry.count++;
-      if (entry.count > maxRequests) {
-        return c.json({ success: false, error: 'Too many requests' }, 429);
-      }
+    const resetAt = now + windowMs;
+    const db = getDb();
+    // Atomic upsert: insert or reset if window expired, otherwise increment
+    db.prepare(`
+      INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        count = CASE WHEN reset_at < ? THEN 1 ELSE count + 1 END,
+        reset_at = CASE WHEN reset_at < ? THEN ? ELSE reset_at END
+    `).run(key, resetAt, now, now, resetAt);
+
+    const row = db.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').get(key) as any;
+    if (row && row.count > maxRequests) {
+      return c.json({ success: false, error: 'Too many requests' }, 429);
     }
     await next();
   };
@@ -106,9 +116,23 @@ if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
   const server = serve({ fetch: app.fetch, port });
   console.log(`BeastBots API listening on http://localhost:${port}`);
 
+  // Periodic cleanup: expired tokens, OAuth states, rate limit entries (every 15 min)
+  const cleanupInterval = setInterval(() => {
+    try {
+      const db = getDb();
+      const now = Date.now();
+      db.prepare('DELETE FROM refresh_tokens WHERE expires_at < ? OR revoked = 1').run(now);
+      db.prepare('DELETE FROM oauth_states WHERE expires_at < ?').run(now);
+      db.prepare('DELETE FROM rate_limits WHERE reset_at < ?').run(now);
+    } catch (err) {
+      console.error('[Cleanup] Error:', err);
+    }
+  }, 15 * 60 * 1000);
+
   // Graceful shutdown
   function shutdown() {
     console.log('[Shutdown] Closing server...');
+    clearInterval(cleanupInterval);
     server.close(() => {
       closeDb();
       console.log('[Shutdown] Clean exit');

@@ -6,6 +6,22 @@
 
 import type { TradingPlatform, MarketData, TradeSignal, Position } from '../index.js';
 import type { TradingAdapter } from './engine.js';
+import crypto from 'crypto';
+
+// ─── Signing helpers ─────────────────────────────────────────
+
+export function coinbaseSign(secret: string, timestamp: string, method: string, requestPath: string, body: string): string {
+  const prehash = timestamp + method.toUpperCase() + requestPath + body;
+  return crypto.createHmac('sha256', secret).update(prehash).digest('hex');
+}
+
+export function binanceSign(secret: string, queryString: string): string {
+  return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
+}
+
+export function alpacaSign(secret: string, body: string): string {
+  return crypto.createHmac('sha256', secret).update(body).digest('hex');
+}
 
 // ─── Shared HTTP helper ───────────────────────────────────────
 
@@ -39,23 +55,28 @@ export class CoinbaseAdapter implements TradingAdapter {
       : 'https://api.coinbase.com';
   }
 
-  private headers(): Record<string, string> {
+  private headers(method: string, requestPath: string, body: string = ''): Record<string, string> {
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const sign = coinbaseSign(this.creds.apiSecret, timestamp, method, requestPath, body);
     return {
       'Content-Type': 'application/json',
       'CB-ACCESS-KEY': this.creds.apiKey,
-      'CB-ACCESS-SIGN': this.creds.apiSecret, // real impl needs HMAC signature
+      'CB-ACCESS-SIGN': sign,
+      'CB-ACCESS-TIMESTAMP': timestamp,
       'CB-VERSION': '2024-01-01',
     };
   }
 
   async fetchMarketData(symbol: string): Promise<MarketData> {
     const productId = symbol.replace('/', '-'); // BTC-USD
+    const tickerPath = `/api/v3/brokerage/products/${productId}/ticker`;
+    const statsPath = `/api/v3/brokerage/products/${productId}`;
     const [ticker, stats] = await Promise.all([
-      jsonFetch<any>(`${this.baseUrl}/api/v3/brokerage/products/${productId}/ticker`, {
-        headers: this.headers(),
+      jsonFetch<any>(`${this.baseUrl}${tickerPath}`, {
+        headers: this.headers('GET', tickerPath),
       }),
-      jsonFetch<any>(`${this.baseUrl}/api/v3/brokerage/products/${productId}`, {
-        headers: this.headers(),
+      jsonFetch<any>(`${this.baseUrl}${statsPath}`, {
+        headers: this.headers('GET', statsPath),
       }),
     ]);
 
@@ -88,10 +109,11 @@ export class CoinbaseAdapter implements TradingAdapter {
       },
     };
 
+    const bodyStr = JSON.stringify(body);
     const result = await jsonFetch<any>(`${this.baseUrl}/api/v3/brokerage/orders`, {
       method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify(body),
+      headers: this.headers('POST', '/api/v3/brokerage/orders', bodyStr),
+      body: bodyStr,
     });
 
     return {
@@ -101,8 +123,9 @@ export class CoinbaseAdapter implements TradingAdapter {
   }
 
   async getPositions(): Promise<Position[]> {
-    const resp = await jsonFetch<any>(`${this.baseUrl}/api/v3/brokerage/accounts`, {
-      headers: this.headers(),
+    const path = '/api/v3/brokerage/accounts';
+    const resp = await jsonFetch<any>(`${this.baseUrl}${path}`, {
+      headers: this.headers('GET', path),
     });
 
     return (resp.accounts ?? [])
@@ -120,8 +143,9 @@ export class CoinbaseAdapter implements TradingAdapter {
   }
 
   async getBalance(): Promise<{ availableUsd: number; totalUsd: number }> {
-    const resp = await jsonFetch<any>(`${this.baseUrl}/api/v3/brokerage/accounts`, {
-      headers: this.headers(),
+    const path = '/api/v3/brokerage/accounts';
+    const resp = await jsonFetch<any>(`${this.baseUrl}${path}`, {
+      headers: this.headers('GET', path),
     });
     const usdAccount = (resp.accounts ?? []).find((a: any) => a.currency === 'USD');
     const available = parseFloat(usdAccount?.available_balance?.value ?? '0');
@@ -180,8 +204,9 @@ export class BinanceAdapter implements TradingAdapter {
       quantity: signal.quantity.toFixed(8),
       timestamp: String(Date.now()),
     });
-
-    const result = await jsonFetch<any>(`${this.baseUrl}/api/v3/order?${params}`, {
+    const query = params.toString();
+    const signature = binanceSign(this.creds.apiSecret, query);
+    const result = await jsonFetch<any>(`${this.baseUrl}/api/v3/order?${query}&signature=${signature}`, {
       method: 'POST',
       headers: this.headers(),
     });
@@ -194,7 +219,9 @@ export class BinanceAdapter implements TradingAdapter {
 
   async getPositions(): Promise<Position[]> {
     const params = new URLSearchParams({ timestamp: String(Date.now()) });
-    const resp = await jsonFetch<any>(`${this.baseUrl}/api/v3/account?${params}`, {
+    const queryStr = params.toString();
+    const signature = binanceSign(this.creds.apiSecret, queryStr);
+    const resp = await jsonFetch<any>(`${this.baseUrl}/api/v3/account?${queryStr}&signature=${signature}`, {
       headers: this.headers(),
     });
 
@@ -214,7 +241,9 @@ export class BinanceAdapter implements TradingAdapter {
 
   async getBalance(): Promise<{ availableUsd: number; totalUsd: number }> {
     const params = new URLSearchParams({ timestamp: String(Date.now()) });
-    const resp = await jsonFetch<any>(`${this.baseUrl}/api/v3/account?${params}`, {
+    const queryStr = params.toString();
+    const signature = binanceSign(this.creds.apiSecret, queryStr);
+    const resp = await jsonFetch<any>(`${this.baseUrl}/api/v3/account?${queryStr}&signature=${signature}`, {
       headers: this.headers(),
     });
     const usdt = (resp.balances ?? []).find((b: any) => b.asset === 'USDT');
@@ -286,10 +315,12 @@ export class AlpacaAdapter implements TradingAdapter {
       time_in_force: 'day',
     };
 
+    const bodyStr = JSON.stringify(body);
+    const sig = alpacaSign(this.creds.apiSecret, bodyStr);
     const result = await jsonFetch<any>(`${this.baseUrl}/v2/orders`, {
       method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify(body),
+      headers: { ...this.headers(), 'APCA-API-SIGNATURE': sig },
+      body: bodyStr,
     });
 
     return {

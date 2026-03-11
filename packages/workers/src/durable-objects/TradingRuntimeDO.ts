@@ -4,12 +4,19 @@ import type {
   TradingBotConfig,
   StoreBotConfig,
   SocialBotConfig,
+  WorkforceBotConfig,
   BotStatus,
   BotMetrics,
   TickResult,
   TradingPlatform,
   StorePlatform,
   SocialPlatform,
+  WorkforceCategory,
+  SafetyContext,
+  TradingAdapter,
+  StoreAdapter,
+  SocialAdapter,
+  WorkforceAdapter,
 } from '@beastbots/shared';
 import {
   createDefaultBudget,
@@ -18,25 +25,19 @@ import {
   createTradingAdapter,
   createStoreAdapter,
   createSocialAdapter,
-} from '@beastbots/shared';
-import type { SafetyContext } from '@beastbots/shared/src/safety.js';
-
-// engines and helpers
-import {
+  createWorkforceAdapter,
   createTradingEngineState,
   executeTradingTick,
-} from '../../../shared/src/trading/engine';
-import {
   createStoreEngineState,
   executeStoreTick,
-} from '../../../shared/src/store/engine';
-import {
   createSocialEngineState,
   executeSocialTick,
-} from '../../../shared/src/social/engine';
+  createWorkforceEngineState,
+  executeWorkforceTick,
+} from '@beastbots/shared';
 
 // simple stub adapters used when no real provider is injected
-function createStubAdapter(family: BotFamily): any {
+function createStubAdapter(family: BotFamily): TradingAdapter | StoreAdapter | SocialAdapter | WorkforceAdapter {
   switch (family) {
     case 'trading':
       return {
@@ -83,15 +84,107 @@ function createStubAdapter(family: BotFamily): any {
         getScheduledPosts: async () => [],
         getPostsToday: async () => 0,
       };
+    case 'workforce':
+      return {
+        category: 'customer_support',
+        fetchPendingTasks: async () => [],
+        executeTask: async (task: any) => ({
+          taskId: task.id ?? `stub-${Date.now()}`,
+          status: 'completed' as const,
+          success: true,
+          action: 'stub_execute',
+          details: {},
+          durationMs: 0,
+          escalated: false,
+        }),
+        escalateTask: async () => ({ success: true }),
+        getTaskHistory: async () => [],
+        sendNotification: async () => ({ success: true }),
+      };
     default:
-      return {};
+      // Unreachable for valid BotFamily values; fallback to trading stub
+      return {
+        platform: 'coinbase' as const,
+        fetchMarketData: async (symbol: string) => ({
+          symbol, price: 0, volume24h: 0, high24h: 0, low24h: 0,
+          change24hPercent: 0, bid: 0, ask: 0, timestamp: Date.now(),
+        }),
+        placeOrder: async () => ({ orderId: 'stub', filled: false }),
+        getPositions: async () => [],
+        getBalance: async () => ({ availableUsd: 0, totalUsd: 0 }),
+      } satisfies TradingAdapter;
   }
 }
 
-function defaultTickIntervalMs(family: BotFamily): number {
-  if (family === 'trading') return 1_000;
-  if (family === 'store') return 300_000;
-  if (family === 'social') return 900_000;
+/**
+ * Recommended tick intervals per bot family / platform / category.
+ *
+ * Trading (all platforms): 1 s — crypto markets run 24/7, stocks need
+ *   pre/post-market monitoring, event markets need fast reaction to news.
+ *   Trading bots MUST run continuously (no downtime windows).
+ *
+ * Store: 5 min — repricing and inventory checks; shorter intervals
+ *   waste API quota and trigger rate-limits. Peak-season operators may
+ *   reduce this to 2 min via custom tickIntervalMs.
+ *
+ * Social: 3 min — engagement automation (replies, DMs) benefits from
+ *   near-realtime cadence. Trend detection needs <10 min windows.
+ *   YouTube uploads are long-running; YouTube tick is elevated to 30 min
+ *   for content scheduling, but engagement is checked every 3 min.
+ *
+ * Workforce per category:
+ *   customer_support  30 s — SLA-driven; customer waiting on responses
+ *   sales_crm         60 s — lead enrichment can tolerate 1-min latency
+ *   email_management  45 s — near-realtime inbox triage
+ *   it_ops            20 s — incident monitoring needs sub-minute polling
+ *   scheduling        90 s — calendar sync tolerate slightly longer cadence
+ *   finance           5 min — batch invoice/reconciliation workflows
+ *   hr                5 min — onboarding tasks are rarely time-critical to the minute
+ *   document_processing 2 min — OCR/classification pipelines
+ *   compliance        5 min — regulatory monitoring; not second-level urgency
+ *   reporting         10 min — reports are scheduled, not reactive
+ *   project_management 2 min — task orchestration needs timely coordination
+ *   procurement       5 min — vendor evaluation is not real-time
+ */
+export const TICK_INTERVALS: {
+  trading: number;
+  store: number;
+  social: number;
+  social_youtube: number;
+  workforce: Record<string, number>;
+  workforce_default: number;
+} = {
+  trading: 1_000,           // 1 s — 24/7 continuous
+  store: 300_000,           // 5 min
+  social: 180_000,          // 3 min (was 15 min — improved engagement response)
+  social_youtube: 1_800_000, // 30 min — content scheduling cadence
+  workforce: {
+    customer_support: 30_000,
+    email_management: 45_000,
+    it_ops: 20_000,
+    sales_crm: 60_000,
+    document_processing: 120_000,
+    project_management: 120_000,
+    scheduling: 90_000,
+    finance: 300_000,
+    hr: 300_000,
+    compliance: 300_000,
+    procurement: 300_000,
+    reporting: 600_000,
+  },
+  workforce_default: 60_000,
+};
+
+function defaultTickIntervalMs(family: BotFamily, platform?: string): number {
+  if (family === 'trading') return TICK_INTERVALS.trading;
+  if (family === 'store') return TICK_INTERVALS.store;
+  if (family === 'social') {
+    if (platform === 'youtube') return TICK_INTERVALS.social_youtube;
+    return TICK_INTERVALS.social;
+  }
+  if (family === 'workforce') {
+    return TICK_INTERVALS.workforce[platform ?? ''] ?? TICK_INTERVALS.workforce_default;
+  }
   return 60_000;
 }
 
@@ -103,7 +196,7 @@ export interface RuntimeState {
   family: BotFamily;
   platform: Platform;
   status: BotStatus;
-  config: TradingBotConfig | StoreBotConfig | SocialBotConfig;
+  config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
   safety: SafetyContext;
   metrics: BotMetrics;
   lastTickAt: number;
@@ -120,7 +213,7 @@ export class TradingRuntimeDO {
   private state: RuntimeState | null = null;
   private lastHeartbeat = Date.now();
   private tickTimer: ReturnType<typeof setInterval> | null = null;
-  private adapter: any = null; // will hold TradingAdapter | StoreAdapter | SocialAdapter
+  private adapter: TradingAdapter | StoreAdapter | SocialAdapter | WorkforceAdapter | null = null;
   private tickHistory: TickResult[] = [];
 
   // ─── Lifecycle ────────────────────────────────
@@ -130,9 +223,9 @@ export class TradingRuntimeDO {
     tenantId: string;
     family: BotFamily;
     platform: Platform;
-    config: TradingBotConfig | StoreBotConfig | SocialBotConfig;
+    config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
     tickIntervalMs?: number;
-    adapter?: any;
+    adapter?: TradingAdapter | StoreAdapter | SocialAdapter | WorkforceAdapter;
     credentials?: { apiKey: string; apiSecret: string; passphrase?: string; shopDomain?: string; accessToken?: string; sandbox?: boolean };
   }): RuntimeState {
     const safety: SafetyContext = {
@@ -162,7 +255,7 @@ export class TradingRuntimeDO {
       },
       lastTickAt: 0,
       createdAt: Date.now(),
-      tickIntervalMs: params.tickIntervalMs ?? defaultTickIntervalMs(params.family),
+      tickIntervalMs: params.tickIntervalMs ?? defaultTickIntervalMs(params.family, String(params.platform)),
       engineState: undefined,
     };
 
@@ -179,6 +272,9 @@ export class TradingRuntimeDO {
           break;
         case 'social':
           this.adapter = createSocialAdapter(params.platform as SocialPlatform, params.credentials);
+          break;
+        case 'workforce':
+          this.adapter = createWorkforceAdapter(params.platform as WorkforceCategory, params.credentials);
           break;
         default:
           this.adapter = createStubAdapter(params.family);
@@ -204,6 +300,12 @@ export class TradingRuntimeDO {
       case 'social':
         this.state.engineState = createSocialEngineState(
           params.config as SocialBotConfig,
+          this.state.safety
+        );
+        break;
+      case 'workforce':
+        this.state.engineState = createWorkforceEngineState(
+          params.config as WorkforceBotConfig,
           this.state.safety
         );
         break;
@@ -304,13 +406,16 @@ export class TradingRuntimeDO {
     let engineResult: { result: TickResult; newState: any } | null = null;
     switch (this.state.family) {
       case 'trading':
-        engineResult = await executeTradingTick(this.state.engineState, this.adapter);
+        engineResult = await executeTradingTick(this.state.engineState, this.adapter as TradingAdapter);
         break;
       case 'store':
-        engineResult = await executeStoreTick(this.state.engineState, this.adapter);
+        engineResult = await executeStoreTick(this.state.engineState, this.adapter as StoreAdapter);
         break;
       case 'social':
-        engineResult = await executeSocialTick(this.state.engineState, this.adapter);
+        engineResult = await executeSocialTick(this.state.engineState, this.adapter as SocialAdapter);
+        break;
+      case 'workforce':
+        engineResult = await executeWorkforceTick(this.state.engineState, this.adapter as WorkforceAdapter);
         break;
     }
 
@@ -320,7 +425,7 @@ export class TradingRuntimeDO {
       const r = engineResult.result;
       if (r.result === 'executed') this.state.metrics.successfulActions++;
       else if (r.result === 'denied') this.state.metrics.deniedActions++;
-      else if (r.result === 'error' || r.result === 'failure') this.state.metrics.failedActions++;
+      else if (r.result === 'error') this.state.metrics.failedActions++;
 
       this.recordTick(r);
       return r;

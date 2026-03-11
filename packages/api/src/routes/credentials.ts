@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { INTEGRATIONS } from '@beastbots/shared';
 import { getDb } from '../lib/db.js';
 import { verifyAuthHeader } from '../lib/auth.js';
 import { encrypt, decrypt } from '../lib/crypto.js';
 import { logAudit } from '../lib/audit.js';
+
+const validPlatforms = INTEGRATIONS.map(i => i.id);
 
 export const credentialsRouter = new Hono();
 
@@ -50,6 +53,10 @@ credentialsRouter.post('/:platform', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
 
   const platform = c.req.param('platform');
+  if (!validPlatforms.includes(platform)) {
+    return c.json({ success: false, error: `Unknown platform: ${platform}` }, 400);
+  }
+
   const body = await c.req.json();
   const parsed = saveCredentialSchema.safeParse(body);
   if (!parsed.success) {

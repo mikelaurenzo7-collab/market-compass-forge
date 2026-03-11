@@ -117,6 +117,12 @@ function initSchema(db: Database.Database): void {
       created_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS rate_limits (
+      key TEXT PRIMARY KEY,
+      count INTEGER NOT NULL,
+      reset_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS onboarding (
       user_id TEXT PRIMARY KEY REFERENCES users(id),
       completed INTEGER NOT NULL DEFAULT 0,

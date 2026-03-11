@@ -81,8 +81,24 @@ export class ShopifyAdapter implements StoreAdapter {
     return { success: true };
   }
 
-  async getCompetitorPrices(_productId: string): Promise<number[]> {
-    // Competitor pricing requires third-party data (e.g., Price2Spy)
+  async getCompetitorPrices(productId: string): Promise<number[]> {
+    // If user supplied an Apify actor URL in credentials, delegate to it
+    const anyCreds = this.creds as any;
+    if (anyCreds.additionalFields?.apifyActorUrl && anyCreds.apiKey) {
+      try {
+        const { callActor } = await import('../apify.js');
+        const resp: any = await callActor({
+          actorUrl: anyCreds.additionalFields.apifyActorUrl,
+          apiKey: anyCreds.apiKey,
+          body: { productId },
+        });
+        return resp.prices ?? [];
+      } catch (err) {
+        console.warn('Apify competitor price fetch failed', err);
+        // fall through to empty
+      }
+    }
+    // Default - no data
     return [];
   }
 

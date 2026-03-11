@@ -1,4 +1,4 @@
-name = "beastbots-workers"
+name = "beastbots"
 main = "packages/workers/dist/index.js"
 compatibility_date = "2024-12-01"
 
@@ -17,12 +17,12 @@ new_classes = ["TradingRuntimeDO"]
 
 # Development overrides
 [env.dev]
-name = "beastbots-workers-dev"
+name = "beastbots-dev"
 [env.dev.vars]
 ENVIRONMENT = "development"
 
 # Staging
 [env.staging]
-name = "beastbots-workers-staging"
+name = "beastbots-staging"
 [env.staging.vars]
 ENVIRONMENT = "staging"

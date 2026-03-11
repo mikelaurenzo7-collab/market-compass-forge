@@ -21,7 +21,8 @@ export function checkPolicies(
   actionRiskLevel: RiskLevel
 ): PolicyCheckResult {
   for (const policy of safety.policies) {
-    if (policy.riskLevel === actionRiskLevel || isHigherRisk(actionRiskLevel, policy.riskLevel)) {
+    // Policy triggers when action risk meets or exceeds the policy's risk threshold
+    if (isHigherRisk(actionRiskLevel, policy.riskLevel)) {
       if (policy.action === 'deny') {
         return { allowed: false, requiresApproval: false, deniedBy: policy.id, riskLevel: actionRiskLevel };
       }
@@ -49,7 +50,42 @@ export interface ApprovalRequest {
   resolvedBy?: string;
 }
 
-const approvalQueue: Map<string, ApprovalRequest> = new Map();
+// ─── Pluggable Safety Store ───────────────────────────────────
+
+export interface SafetyStore {
+  saveApproval(request: ApprovalRequest): void;
+  getApproval(id: string): ApprovalRequest | undefined;
+  listPendingApprovals(tenantId: string): ApprovalRequest[];
+  updateApproval(request: ApprovalRequest): void;
+  appendAuditEntry(entry: AuditEntry): void;
+  getAuditEntries(tenantId: string, limit: number): AuditEntry[];
+}
+
+class InMemorySafetyStore implements SafetyStore {
+  private approvals = new Map<string, ApprovalRequest>();
+  private auditEntries: AuditEntry[] = [];
+
+  saveApproval(request: ApprovalRequest): void { this.approvals.set(request.id, request); }
+  getApproval(id: string): ApprovalRequest | undefined { return this.approvals.get(id); }
+  listPendingApprovals(tenantId: string): ApprovalRequest[] {
+    return Array.from(this.approvals.values()).filter(r => r.tenantId === tenantId && r.status === 'pending');
+  }
+  updateApproval(request: ApprovalRequest): void { this.approvals.set(request.id, request); }
+  appendAuditEntry(entry: AuditEntry): void { this.auditEntries.push(entry); }
+  getAuditEntries(tenantId: string, limit: number): AuditEntry[] {
+    return this.auditEntries.filter(e => e.tenantId === tenantId).slice(-limit);
+  }
+}
+
+let _store: SafetyStore = new InMemorySafetyStore();
+
+export function setSafetyStore(store: SafetyStore): void {
+  _store = store;
+}
+
+export function getSafetyStore(): SafetyStore {
+  return _store;
+}
 
 export function requestApproval(
   safety: SafetyContext,
@@ -68,23 +104,22 @@ export function requestApproval(
     status: 'pending',
     createdAt: Date.now(),
   };
-  approvalQueue.set(request.id, request);
+  _store.saveApproval(request);
   return request;
 }
 
 export function resolveApproval(id: string, approved: boolean, resolvedBy: string): ApprovalRequest | undefined {
-  const request = approvalQueue.get(id);
+  const request = _store.getApproval(id);
   if (!request) return undefined;
   request.status = approved ? 'approved' : 'rejected';
   request.resolvedAt = Date.now();
   request.resolvedBy = resolvedBy;
+  _store.updateApproval(request);
   return request;
 }
 
 export function getPendingApprovals(tenantId: string): ApprovalRequest[] {
-  return Array.from(approvalQueue.values()).filter(
-    (r) => r.tenantId === tenantId && r.status === 'pending'
-  );
+  return _store.listPendingApprovals(tenantId);
 }
 
 // ─── Layer 3: Budget Check ────────────────────────────────────
@@ -135,22 +170,18 @@ export function resetCircuitBreaker(cb: CircuitBreakerConfig): CircuitBreakerCon
 
 // ─── Layer 5: Audit Trail ─────────────────────────────────────
 
-const auditLog: AuditEntry[] = [];
-
 export function logAuditEntry(entry: Omit<AuditEntry, 'id' | 'timestamp'>): AuditEntry {
   const fullEntry: AuditEntry = {
     ...entry,
     id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     timestamp: Date.now(),
   };
-  auditLog.push(fullEntry);
+  _store.appendAuditEntry(fullEntry);
   return fullEntry;
 }
 
 export function getAuditLog(tenantId: string, limit: number = 100): AuditEntry[] {
-  return auditLog
-    .filter((e) => e.tenantId === tenantId)
-    .slice(-limit);
+  return _store.getAuditEntries(tenantId, limit);
 }
 
 // ─── Full Safety Pipeline ─────────────────────────────────────

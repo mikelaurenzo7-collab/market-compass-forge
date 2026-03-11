@@ -12,6 +12,59 @@ import type {
   TickResult,
 } from '@beastbots/shared';
 
+// ─── Response Types ───────────────────────────────────────────
+
+export interface IntegrationInfo {
+  id: string;
+  name: string;
+  category: string;
+  status: string;
+  description: string;
+  authType: string;
+}
+
+export interface PricingPlan {
+  family: string;
+  tier: string;
+  name: string;
+  priceMonthly: number;
+  maxBots: number;
+  features: string[];
+}
+
+export interface BotInfo {
+  id: string;
+  name: string;
+  family: BotFamily;
+  platform: string;
+  status: BotStatus;
+  createdAt: number;
+  updatedAt: number;
+  config: Record<string, unknown>;
+  metrics?: BotMetrics;
+}
+
+export interface BotActionResult {
+  id: string;
+  status: BotStatus;
+}
+
+export interface SafetyDefaults {
+  policies: unknown[];
+  budget: unknown;
+  circuitBreaker: unknown;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  tenantId: string;
+  action: string;
+  result: string;
+  riskLevel: string;
+  timestamp: number;
+  details?: unknown;
+}
+
 // ─── Bot Manifest ─────────────────────────────────────────────
 
 export interface BotManifest {
@@ -76,31 +129,31 @@ export class BeastBotsClient {
 
   // ─── Integrations ─────────────────────────────
 
-  async listIntegrations(category?: string): Promise<unknown[]> {
+  async listIntegrations(category?: string): Promise<IntegrationInfo[]> {
     const params = category ? `?category=${encodeURIComponent(category)}` : '';
     return this.request(`/api/integrations${params}`);
   }
 
-  async getIntegration(id: string): Promise<unknown> {
+  async getIntegration(id: string): Promise<IntegrationInfo> {
     return this.request(`/api/integrations/${encodeURIComponent(id)}`);
   }
 
   // ─── Pricing ──────────────────────────────────
 
-  async listPricing(family?: BotFamily): Promise<unknown[]> {
+  async listPricing(family?: BotFamily): Promise<PricingPlan[]> {
     const path = family ? `/api/pricing/${encodeURIComponent(family)}` : '/api/pricing';
     return this.request(path);
   }
 
   // ─── Bots ─────────────────────────────────────
 
-  async listBots(tenantId: string, family?: BotFamily): Promise<unknown[]> {
+  async listBots(tenantId: string, family?: BotFamily): Promise<BotInfo[]> {
     let params = `?tenantId=${encodeURIComponent(tenantId)}`;
     if (family) params += `&family=${encodeURIComponent(family)}`;
     return this.request(`/api/bots${params}`);
   }
 
-  async getBot(id: string): Promise<unknown> {
+  async getBot(id: string): Promise<BotInfo> {
     return this.request(`/api/bots/${encodeURIComponent(id)}`);
   }
 
@@ -110,40 +163,40 @@ export class BeastBotsClient {
     platform: string;
     name: string;
     config?: Record<string, unknown>;
-  }): Promise<unknown> {
+  }): Promise<BotInfo> {
     return this.request('/api/bots', {
       method: 'POST',
       body: JSON.stringify(params),
     });
   }
 
-  async startBot(id: string): Promise<unknown> {
+  async startBot(id: string): Promise<BotActionResult> {
     return this.request(`/api/bots/${encodeURIComponent(id)}/start`, { method: 'POST' });
   }
 
-  async pauseBot(id: string): Promise<unknown> {
+  async pauseBot(id: string): Promise<BotActionResult> {
     return this.request(`/api/bots/${encodeURIComponent(id)}/pause`, { method: 'POST' });
   }
 
-  async stopBot(id: string): Promise<unknown> {
+  async stopBot(id: string): Promise<BotActionResult> {
     return this.request(`/api/bots/${encodeURIComponent(id)}/stop`, { method: 'POST' });
   }
 
-  async killBot(id: string): Promise<unknown> {
+  async killBot(id: string): Promise<BotActionResult> {
     return this.request(`/api/bots/${encodeURIComponent(id)}/kill`, { method: 'POST' });
   }
 
-  async deleteBot(id: string): Promise<unknown> {
+  async deleteBot(id: string): Promise<{ deleted: boolean }> {
     return this.request(`/api/bots/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
   // ─── Safety ───────────────────────────────────
 
-  async getSafetyDefaults(family: BotFamily): Promise<unknown> {
+  async getSafetyDefaults(family: BotFamily): Promise<SafetyDefaults> {
     return this.request(`/api/safety/defaults/${encodeURIComponent(family)}`);
   }
 
-  async getAuditLog(tenantId: string, limit?: number): Promise<unknown[]> {
+  async getAuditLog(tenantId: string, limit?: number): Promise<AuditLogEntry[]> {
     const params = limit ? `?limit=${limit}` : '';
     return this.request(`/api/safety/audit/${encodeURIComponent(tenantId)}${params}`);
   }

@@ -264,9 +264,8 @@ botsRouter.post('/:id/start', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status, family, platform, config FROM bots WHERE id = ?').get(id) as any;
+  const row = db.prepare('SELECT id, tenant_id, status, family, platform, config FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
-  if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
 
   const parsedConfig = JSON.parse(row.config || '{}') as Record<string, unknown>;
   if (row.family === 'trading' && parsedConfig.paperTrading === false) {
@@ -305,9 +304,8 @@ botsRouter.post('/:id/pause', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ?').get(id) as any;
+  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
-  if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
   const runtime = getRuntime(auth.tenantId, id);
   runtime?.pause();
   db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?').run('paused', Date.now(), id);
@@ -326,9 +324,8 @@ botsRouter.post('/:id/stop', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ?').get(id) as any;
+  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
-  if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
   const runtime = getRuntime(auth.tenantId, id);
 
   // Persist metrics snapshot + tick history before stopping
@@ -366,9 +363,8 @@ botsRouter.post('/:id/kill', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ?').get(id) as any;
+  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
-  if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
   const runtime = getRuntime(auth.tenantId, id);
   runtime?.killSwitch();
   db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?').run('stopped', Date.now(), id);

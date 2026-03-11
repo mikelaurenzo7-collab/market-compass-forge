@@ -7,6 +7,10 @@ export default defineConfig({
       '@beastbots/shared': path.resolve(__dirname, 'packages/shared/src/index.ts'),
       '@beastbots/workers': path.resolve(__dirname, 'packages/workers/src/index.ts'),
     },
+    // Allow TypeScript ESM imports (.js extension → resolve .ts source)
+    extensionAlias: {
+      '.js': ['.ts', '.js'],
+    },
   },
   test: {
     globals: true,

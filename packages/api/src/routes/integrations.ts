@@ -27,6 +27,10 @@ integrationsRouter.get('/', (c) => {
         trading: results.filter((i) => i.category === 'trading').length,
         ecommerce: results.filter((i) => i.category === 'ecommerce').length,
         social: results.filter((i) => i.category === 'social').length,
+        workforce: results.filter((i) => i.category === 'workforce').length,
+        communication: results.filter((i) => i.category === 'communication').length,
+        project_management: results.filter((i) => i.category === 'project_management').length,
+        crm: results.filter((i) => i.category === 'crm').length,
       },
     },
   });
@@ -84,6 +88,16 @@ integrationsRouter.get('/:id/connect', async (c) => {
   const dataJson = stateData ? JSON.stringify(stateData) : null;
   db.prepare('INSERT INTO oauth_states (state, user_id, tenant_id, provider, created_at, expires_at, data) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(state, auth.userId, auth.tenantId, id, now, expiresAt, dataJson);
+
+  // Support JSON response for SPA callers (avoids fetch() cross-origin redirect issues)
+  // Frontend should check Accept header or pass ?format=url to get the URL as JSON
+  const wantsJson =
+    (c.req.header('Accept') ?? '').includes('application/json') ||
+    c.req.query('format') === 'url';
+
+  if (wantsJson) {
+    return c.json({ success: true, url });
+  }
   return c.redirect(url);
 });
 
@@ -121,7 +135,7 @@ integrationsRouter.get('/:id/callback', async (c) => {
       action: 'oauth_connect',
       result: 'success',
       riskLevel: 'medium',
-      details: JSON.stringify(data),
+      details: JSON.stringify({ provider: id, success: true }),
     });
     db.prepare('DELETE FROM oauth_states WHERE state = ?').run(state);
 

@@ -1,5 +1,5 @@
 import { TradingRuntimeDO } from './durable-objects/TradingRuntimeDO.js';
-import type { BotFamily, Platform, TradingBotConfig, StoreBotConfig, SocialBotConfig } from '@beastbots/shared';
+import type { BotFamily, Platform, TradingBotConfig, StoreBotConfig, SocialBotConfig, WorkforceBotConfig } from '@beastbots/shared';
 
 export { TradingRuntimeDO };
 
@@ -16,7 +16,7 @@ export function createRuntime(params: {
   tenantId: string;
   family: BotFamily;
   platform: Platform;
-  config: TradingBotConfig | StoreBotConfig | SocialBotConfig;
+  config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
   tickIntervalMs?: number;
   adapter?: any;
 }): TradingRuntimeDO {
