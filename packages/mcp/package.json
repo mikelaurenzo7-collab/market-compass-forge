@@ -2,13 +2,13 @@
   "name": "@beastbots/mcp",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/server.js",
+  "main": "src/server.ts",
   "types": "src/server.ts",
   "exports": {
     ".": {
       "types": "./src/server.ts",
-      "import": "./dist/server.js",
-      "default": "./dist/server.js"
+      "import": "./src/server.ts",
+      "default": "./src/server.ts"
     }
   },
   "scripts": {
