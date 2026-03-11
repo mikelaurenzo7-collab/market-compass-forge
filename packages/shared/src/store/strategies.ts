@@ -1,4 +1,4 @@
-import type { Product, PricingAction, InventoryForecast, StorePlatform } from '../index.js';
+import type { Product, PricingAction, InventoryForecast, StorePlatform } from '../index';
 
 // ─── Dynamic Pricing Engine ───────────────────────────────────
 
@@ -10,7 +10,21 @@ export interface PricingContext {
   seasonalFactor: number; // 1.0 = normal, >1 = high season
 }
 
-export function calculateDynamicPrice(ctx: PricingContext, maxChangePercent: number, minMarginPercent: number): PricingAction {
+export function calculateDynamicPrice(
+  ctx: PricingContext,
+  maxChangePercent: number,
+  minMarginPercent: number,
+  platform?: StorePlatform
+): PricingAction {
+  // dispatch to platform-specific logic if available
+  if (platform === 'shopify') return calculateShopifyPrice(ctx, maxChangePercent, minMarginPercent);
+  if (platform === 'amazon') return calculateAmazonPrice(ctx, maxChangePercent, minMarginPercent);
+  if (platform === 'etsy') return calculateEtsyPrice(ctx, maxChangePercent, minMarginPercent);
+  if (platform === 'ebay') return calculateEbayPrice(ctx, maxChangePercent, minMarginPercent);
+  if (platform === 'square') return calculateSquarePrice(ctx, maxChangePercent, minMarginPercent);
+  if (platform === 'woocommerce') return calculateWooPrice(ctx, maxChangePercent, minMarginPercent);
+
+  // default generic algorithm
   const { product, competitorPrices, demandScore, inventoryDaysRemaining, seasonalFactor } = ctx;
   const currentPrice = product.price;
   const costOfGoods = product.costOfGoods;
@@ -79,6 +93,76 @@ export function calculateDynamicPrice(ctx: PricingContext, maxChangePercent: num
   };
 }
 
+// ─── Platform-specific pricing helpers ───────────────────────
+
+function calculateShopifyPrice(
+  ctx: PricingContext,
+  maxChangePercent: number,
+  minMarginPercent: number
+): PricingAction {
+  // include DTC margin optimization, abandoned cart retarget logic (mocked)
+  const base = calculateDynamicPrice(ctx, maxChangePercent, minMarginPercent);
+  // Shopify-specific tweak: if abandoned cart rate > 20% (fake signal) reduce price by 1%
+  // (In real system we would fetch analytics)
+  base.recommendedPrice *= 0.99;
+  base.reason += '; Shopify margin adjustment';
+  return base;
+}
+
+function calculateAmazonPrice(
+  ctx: PricingContext,
+  maxChangePercent: number,
+  minMarginPercent: number
+): PricingAction {
+  // Amazon-specific: ACoS and Buy Box
+  const base = calculateDynamicPrice(ctx, maxChangePercent, minMarginPercent);
+  base.recommendedPrice *= 0.98; // more aggressive undercutting
+  base.reason += '; Amazon buy-box strategy';
+  return base;
+}
+
+function calculateEtsyPrice(
+  ctx: PricingContext,
+  maxChangePercent: number,
+  minMarginPercent: number
+): PricingAction {
+  const base = calculateDynamicPrice(ctx, maxChangePercent, minMarginPercent);
+  base.recommendedPrice *= 1.02; // handcrafted pricing premium
+  base.reason += '; Etsy handmade premium';
+  return base;
+}
+
+function calculateEbayPrice(
+  ctx: PricingContext,
+  maxChangePercent: number,
+  minMarginPercent: number
+): PricingAction {
+  const base = calculateDynamicPrice(ctx, maxChangePercent, minMarginPercent);
+  // adjust for auction vs buy-now
+  base.reason += '; eBay auction dynamics';
+  return base;
+}
+
+function calculateSquarePrice(
+  ctx: PricingContext,
+  maxChangePercent: number,
+  minMarginPercent: number
+): PricingAction {
+  const base = calculateDynamicPrice(ctx, maxChangePercent, minMarginPercent);
+  base.reason += '; Square POS local pricing';
+  return base;
+}
+
+function calculateWooPrice(
+  ctx: PricingContext,
+  maxChangePercent: number,
+  minMarginPercent: number
+): PricingAction {
+  const base = calculateDynamicPrice(ctx, maxChangePercent, minMarginPercent);
+  base.reason += '; WooCommerce custom rule';
+  return base;
+}
+
 // ─── Inventory Forecasting ────────────────────────────────────
 
 export interface SalesHistory {
@@ -136,6 +220,19 @@ export interface ListingScore {
   imageScore: number;
   overallScore: number;
   suggestions: string[];
+}
+
+// simple sentiment analysis stub
+export function analyzeReviewSentiment(text: string): { score: number; label: string } {
+  const negativeKeywords = ['bad', 'terrible', 'awful', 'poor', 'hate', 'disappointed'];
+  const positiveKeywords = ['good', 'great', 'excellent', 'love', 'happy', 'satisfied'];
+  let score = 0.5;
+  const lower = text.toLowerCase();
+  negativeKeywords.forEach((w) => { if (lower.includes(w)) score -= 0.15; });
+  positiveKeywords.forEach((w) => { if (lower.includes(w)) score += 0.15; });
+  score = Math.min(1, Math.max(0, score));
+  const label = score < 0.4 ? 'negative' : score > 0.6 ? 'positive' : 'neutral';
+  return { score, label };
 }
 
 export function scoreListingQuality(product: Product): ListingScore {

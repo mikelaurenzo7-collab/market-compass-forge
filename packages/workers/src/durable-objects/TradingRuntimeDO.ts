@@ -209,11 +209,14 @@ export interface RuntimeState {
 
 const MAX_TICK_HISTORY = 200;
 
+export type StateChangeCallback = (state: RuntimeState) => void;
+
 export class TradingRuntimeDO {
   private state: RuntimeState | null = null;
   private lastHeartbeat = Date.now();
   private tickTimer: ReturnType<typeof setInterval> | null = null;
   private adapter: TradingAdapter | StoreAdapter | SocialAdapter | WorkforceAdapter | null = null;
+  private onStateChange: StateChangeCallback | null = null;
   private tickHistory: TickResult[] = [];
 
   // ─── Lifecycle ────────────────────────────────
@@ -328,6 +331,7 @@ export class TradingRuntimeDO {
       this.tick().catch((err) => console.error('tick error', err));
     }, this.state.tickIntervalMs);
 
+    this.notifyStateChange();
     return { ok: true, status: this.state.status };
   }
 
@@ -338,6 +342,7 @@ export class TradingRuntimeDO {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
     }
+    this.notifyStateChange();
     return { ok: true, status: this.state.status };
   }
 
@@ -348,6 +353,7 @@ export class TradingRuntimeDO {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
     }
+    this.notifyStateChange();
     return { ok: true, status: this.state.status };
   }
 
@@ -361,6 +367,7 @@ export class TradingRuntimeDO {
       clearInterval(this.tickTimer);
       this.tickTimer = null;
     }
+    this.notifyStateChange();
     return { ok: true, status: 'stopped' };
   }
 
@@ -452,6 +459,10 @@ export class TradingRuntimeDO {
     if (this.tickHistory.length > MAX_TICK_HISTORY) {
       this.tickHistory.shift();
     }
+    // Persist state every 10 ticks to balance performance and durability
+    if (this.state && this.state.metrics.totalTicks % 10 === 0) {
+      this.notifyStateChange();
+    }
   }
 
   getTickHistory(limit?: number): TickResult[] {
@@ -467,6 +478,58 @@ export class TradingRuntimeDO {
 
   getMetrics(): BotMetrics | null {
     return this.state?.metrics ?? null;
+  }
+
+  setOnStateChange(cb: StateChangeCallback): void {
+    this.onStateChange = cb;
+  }
+
+  private notifyStateChange(): void {
+    if (this.onStateChange && this.state) {
+      try { this.onStateChange(this.state); } catch { /* non-critical */ }
+    }
+  }
+
+  /** Serialize state for persistence (excludes timers and adapters). */
+  serializeState(): {
+    engineState: string;
+    safetyState: string;
+    metrics: string;
+    tickHistory: string;
+    status: string;
+    lastTickAt: number;
+  } | null {
+    if (!this.state) return null;
+    return {
+      engineState: JSON.stringify(this.state.engineState ?? {}),
+      safetyState: JSON.stringify(this.state.safety),
+      metrics: JSON.stringify(this.state.metrics),
+      tickHistory: JSON.stringify(this.tickHistory.slice(-50)),
+      status: this.state.status,
+      lastTickAt: this.state.lastTickAt,
+    };
+  }
+
+  /** Restore persisted state into an already-initialized runtime. */
+  restoreState(data: {
+    engineState: string;
+    safetyState: string;
+    metrics: string;
+    tickHistory: string;
+    status: string;
+    lastTickAt: number;
+  }): void {
+    if (!this.state) return;
+    try {
+      this.state.engineState = JSON.parse(data.engineState);
+      this.state.safety = JSON.parse(data.safetyState);
+      this.state.metrics = JSON.parse(data.metrics);
+      this.tickHistory = JSON.parse(data.tickHistory);
+      this.state.status = data.status as BotStatus;
+      this.state.lastTickAt = data.lastTickAt;
+    } catch {
+      // If any parse fails, keep the freshly-initialized state
+    }
   }
 
   getStatus(): BotStatus {

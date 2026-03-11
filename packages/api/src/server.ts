@@ -5,12 +5,14 @@ import { healthRouter } from './routes/health.js';
 import { integrationsRouter } from './routes/integrations.js';
 import { pricingRouter } from './routes/pricing.js';
 import { botsRouter } from './routes/bots.js';
+import { restoreRuntimes } from './routes/bots.js';
 import { safetyRouter } from './routes/safety.js';
 import { auditRouter } from './routes/audit.js';
 import { authRouter } from './routes/auth.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { credentialsRouter } from './routes/credentials.js';
 import { provisioningRouter } from './routes/provisioning.js';
+import mcpRouter from './routes/mcp.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
@@ -110,11 +112,15 @@ app.route('/api/bots', botsRouter);
 app.route('/api/safety', safetyRouter);
 app.route('/api/audit', auditRouter);
 app.route('/api/provisioning', provisioningRouter);
+app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
   const port = Number(process.env.PORT ?? 4000);
   const server = serve({ fetch: app.fetch, port });
   console.log(`BeastBots API listening on http://localhost:${port}`);
+
+  // Restore runtimes for bots that were running before shutdown
+  restoreRuntimes();
 
   // Periodic cleanup: expired tokens, OAuth states, rate limit entries (every 15 min)
   const cleanupInterval = setInterval(() => {

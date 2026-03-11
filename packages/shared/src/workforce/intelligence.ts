@@ -20,8 +20,8 @@ import type {
   WorkforceBotConfig,
   TaskPriority,
   RiskLevel,
-} from '../index.js';
-import type { WorkforceIndustry } from './team.js';
+} from '../index';
+import type { WorkforceIndustry } from './team';
 
 // ─── Shared Intelligence Types ─────────────────────────────────────────────────
 

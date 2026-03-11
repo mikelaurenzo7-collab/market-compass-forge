@@ -291,7 +291,50 @@ export function startStdioServer(): void {
   });
 }
 
+// ─── HTTP listener helper ─────────────────────────────────────
+import http from 'http';
+
+export function startHttpServer(port: number = 4001): http.Server {
+  const server = http.createServer(async (req, res) => {
+    if (req.method !== 'POST' || req.url !== '/') {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+
+    let body = '';
+    req.on('data', (chunk) => { body += chunk.toString(); });
+    req.on('end', () => {
+      try {
+        const request = JSON.parse(body) as JsonRpcRequest;
+        const response = handleJsonRpc(request);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(response));
+      } catch (e) {
+        const errorResponse: JsonRpcResponse = {
+          jsonrpc: '2.0',
+          id: null,
+          error: { code: -32700, message: 'Parse error' },
+        };
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(errorResponse));
+      }
+    });
+  });
+
+  server.listen(port, () => {
+    console.log(`MCP HTTP server listening on http://localhost:${port}`);
+  });
+  return server;
+}
+
 // Auto-start in stdio mode when run directly
 if (process.argv[1] && (process.argv[1].endsWith('server.js') || process.argv[1].endsWith('server.ts'))) {
-  startStdioServer();
+  // choose mode based on env
+  if (process.env.MCP_HTTP === 'true') {
+    const port = Number(process.env.MCP_PORT) || 4001;
+    startHttpServer(port);
+  } else {
+    startStdioServer();
+  }
 }

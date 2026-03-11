@@ -15,8 +15,28 @@ import { verifyAuthHeader } from '../lib/auth.js';
 import { getDb } from '../lib/db.js';
 import { logAudit } from '../lib/audit.js';
 import { createRuntime, getRuntime, destroyRuntime } from '@beastbots/workers';
+import type { RuntimeState } from '@beastbots/workers';
 
 export const botsRouter = new Hono();
+
+// Build a callback that persists runtime state to bot_state table
+function makePersistCallback(botId: string, tenantId: string, family: BotFamily, platform: Platform) {
+  return (state: RuntimeState) => {
+    try {
+      const db = getDb();
+      const runtime = getRuntime(tenantId, botId);
+      if (!runtime) return;
+      const s = runtime.serializeState();
+      if (!s) return;
+      db.prepare(`
+        INSERT OR REPLACE INTO bot_state (bot_id, tenant_id, family, platform, status, engine_state, safety_state, metrics, tick_history, last_tick_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(botId, tenantId, family, platform, state.status, s.engineState, s.safetyState, s.metrics, s.tickHistory, s.lastTickAt, Date.now());
+    } catch (err) {
+      console.error(`[Persist] Failed to persist state for ${botId}:`, err);
+    }
+  };
+}
 
 function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Record<string, unknown>) {
   if (family === 'trading') {
@@ -284,6 +304,7 @@ botsRouter.post('/:id/start', async (c) => {
       platform: row.platform,
       config: normalizeRuntimeConfig(row.family, row.platform, parsedConfig) as any,
       tickIntervalMs: familyTickIntervalMs(row.family),
+      onStateChange: makePersistCallback(id, auth.tenantId, row.family, row.platform),
     });
   }
   runtime.start();
@@ -394,6 +415,7 @@ botsRouter.delete('/:id', async (c) => {
   }
   destroyRuntime(auth.tenantId, id);
   db.prepare('DELETE FROM bots WHERE id = ?').run(id);
+  db.prepare('DELETE FROM bot_state WHERE bot_id = ?').run(id);
   logAudit({
     tenantId: auth.tenantId,
     action: 'delete_bot',
@@ -519,3 +541,64 @@ botsRouter.get('/:id/history', async (c) => {
     data: { botId: id, decisions, metricsSnapshots: metricsRows },
   });
 });
+
+// ─── Runtime Restoration ──────────────────────────────────────
+
+/**
+ * Restores runtimes for bots that were running/paused when the server last shut down.
+ * Called once during API startup.
+ */
+export function restoreRuntimes(): void {
+  try {
+    const db = getDb();
+    const rows = db.prepare(
+      `SELECT bs.bot_id, bs.tenant_id, bs.family, bs.platform, bs.status,
+              bs.engine_state, bs.safety_state, bs.metrics, bs.tick_history, bs.last_tick_at,
+              b.config, b.name
+       FROM bot_state bs
+       JOIN bots b ON b.id = bs.bot_id
+       WHERE bs.status IN ('running', 'paused')`
+    ).all() as any[];
+
+    let restored = 0;
+    for (const row of rows) {
+      try {
+        const parsedConfig = JSON.parse(row.config || '{}') as Record<string, unknown>;
+        const runtime = createRuntime({
+          botId: row.bot_id,
+          tenantId: row.tenant_id,
+          family: row.family,
+          platform: row.platform,
+          config: normalizeRuntimeConfig(row.family, row.platform, parsedConfig) as any,
+          tickIntervalMs: familyTickIntervalMs(row.family),
+          onStateChange: makePersistCallback(row.bot_id, row.tenant_id, row.family, row.platform),
+        });
+
+        runtime.restoreState({
+          engineState: row.engine_state,
+          safetyState: row.safety_state,
+          metrics: row.metrics,
+          tickHistory: row.tick_history,
+          status: row.status,
+          lastTickAt: row.last_tick_at,
+        });
+
+        if (row.status === 'running') {
+          runtime.start();
+        }
+        restored++;
+      } catch (err) {
+        console.error(`[Restore] Failed to restore bot ${row.bot_id}:`, err);
+        // Mark as stopped so we don't retry on next restart
+        db.prepare('UPDATE bot_state SET status = ? WHERE bot_id = ?').run('stopped', row.bot_id);
+        db.prepare('UPDATE bots SET status = ? WHERE id = ?').run('stopped', row.bot_id);
+      }
+    }
+
+    if (restored > 0) {
+      console.log(`[Restore] Restored ${restored} runtime(s)`);
+    }
+  } catch (err) {
+    console.error('[Restore] Runtime restoration failed:', err);
+  }
+}

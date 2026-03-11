@@ -70,13 +70,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: User;
     tenantId: string;
     accessToken: string;
-    refreshToken?: string;
     onboardingRequired: boolean;
   }) => {
-    localStorage.setItem('bb_auth', JSON.stringify(data));
-    if (data.refreshToken) {
-      localStorage.setItem('bb_refresh', data.refreshToken);
-    }
+    localStorage.setItem('bb_auth', JSON.stringify({
+      user: data.user,
+      tenantId: data.tenantId,
+      accessToken: data.accessToken,
+      onboardingRequired: data.onboardingRequired,
+    }));
     setState({
       user: data.user,
       tenantId: data.tenantId,
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password, displayName }),
       });
       const json = await res.json();
@@ -109,7 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: json.data.user,
         tenantId: json.data.tenantId,
         accessToken: json.data.accessToken,
-        refreshToken: json.data.refreshToken,
         onboardingRequired: json.data.onboardingRequired,
       });
       return { success: true };
@@ -123,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
       const json = await res.json();
@@ -131,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: json.data.user,
         tenantId: json.data.tenantId,
         accessToken: json.data.accessToken,
-        refreshToken: json.data.refreshToken,
         onboardingRequired: json.data.onboardingRequired,
       });
       return { success: true };
@@ -141,10 +142,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [persistAuth]);
 
   const logout = useCallback(() => {
+    // Fire logout request to clear HttpOnly cookie
+    fetch(`${API_URL}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: state.accessToken ? { Authorization: `Bearer ${state.accessToken}` } : {},
+    }).catch(() => {});
     localStorage.removeItem('bb_auth');
-    localStorage.removeItem('bb_refresh');
     setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
-  }, []);
+  }, [state.accessToken]);
 
   const apiFetch = useCallback(async (path: string, init?: RequestInit): Promise<Response> => {
     const makeRequest = async (token?: string) => {
@@ -164,37 +170,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await makeRequest();
       if (res.status !== 401) return res;
 
-      // Attempt refresh once
-      const refreshToken = localStorage.getItem('bb_refresh');
-      if (!refreshToken) return res;
-
+      // Attempt refresh once — cookie sent automatically
       try {
         const r = await fetch(`${API_URL}/api/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          credentials: 'include',
+          body: JSON.stringify({}),
         });
         const jr = await r.json();
         if (jr?.success && jr.data?.accessToken) {
-          // update storage and state
           const stored = localStorage.getItem('bb_auth');
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
               parsed.accessToken = jr.data.accessToken;
-              parsed.onboardingRequired = parsed.onboardingRequired ?? false;
               localStorage.setItem('bb_auth', JSON.stringify(parsed));
             } catch {}
           }
-          if (jr.data.refreshToken) localStorage.setItem('bb_refresh', jr.data.refreshToken);
           setState((s) => ({ ...s, accessToken: jr.data.accessToken }));
 
-          // retry original request with new token
           const retry = await makeRequest(jr.data.accessToken);
           return retry;
         }
-      } catch (e) {
-        // refresh failed — fall through to return original 401 response
+      } catch {
         return res;
       }
 

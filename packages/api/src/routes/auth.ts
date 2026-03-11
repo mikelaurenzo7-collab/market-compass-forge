@@ -5,8 +5,26 @@ import { jwtVerify } from 'jose';
 import { getDb } from '../lib/db.js';
 import { signAccessToken, issueRefreshToken, verifyAccessToken, verifyAuthHeader, rotateRefreshToken, revokeRefreshTokensForUser } from '../lib/auth.js';
 import { logAudit } from '../lib/audit.js';
+import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 
 export const authRouter = new Hono();
+
+const REFRESH_COOKIE = 'bb_refresh';
+const REFRESH_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
+
+function setRefreshCookie(c: any, token: string) {
+  setCookie(c, REFRESH_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+    path: '/api/auth',
+    maxAge: REFRESH_MAX_AGE,
+  });
+}
+
+function clearRefreshCookie(c: any) {
+  deleteCookie(c, REFRESH_COOKIE, { path: '/api/auth' });
+}
 
 function uid(): string {
   return `u_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -78,13 +96,14 @@ authRouter.post('/signup', async (c) => {
   const accessToken = await signAccessToken({ userId, tenantId, email });
   const refreshTokenData = await issueRefreshToken({ userId, tenantId });
 
+  setRefreshCookie(c, refreshTokenData.token);
+
   return c.json({
     success: true,
     data: {
       user: { id: userId, email, displayName: displayName ?? email.split('@')[0] },
       tenantId,
       accessToken,
-      refreshToken: refreshTokenData.token,
       onboardingRequired: true,
     },
   }, 201);
@@ -105,15 +124,20 @@ authRouter.post('/login', async (c) => {
   ).get(email) as any;
 
   if (!user || !compareSync(password, user.password_hash)) {
-    // audit failed login
-    logAudit({
-      tenantId: user?.id ? (db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any)?.tenant_id : '',
-      userId: user?.id,
-      action: 'login',
-      result: 'failure',
-      riskLevel: 'medium',
-      details: 'invalid_credentials',
-    });
+    // audit failed login (only if we can resolve a tenant)
+    const failedTenantId = user?.id
+      ? (db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any)?.tenant_id
+      : null;
+    if (failedTenantId) {
+      logAudit({
+        tenantId: failedTenantId,
+        userId: user?.id,
+        action: 'login',
+        result: 'failure',
+        riskLevel: 'medium',
+        details: 'invalid_credentials',
+      });
+    }
     return c.json({ success: false, error: 'Invalid email or password' }, 401);
   }
 
@@ -140,13 +164,14 @@ authRouter.post('/login', async (c) => {
   const accessToken = await signAccessToken({ userId: user.id, tenantId, email: user.email });
   const refreshTokenData = await issueRefreshToken({ userId: user.id, tenantId });
 
+  setRefreshCookie(c, refreshTokenData.token);
+
   return c.json({
     success: true,
     data: {
       user: { id: user.id, email: user.email, displayName: user.display_name },
       tenantId,
       accessToken,
-      refreshToken: refreshTokenData.token,
       onboardingRequired: !onboarding?.completed,
     },
   });
@@ -155,8 +180,15 @@ authRouter.post('/login', async (c) => {
 // ─── POST /refresh ────────────────────────────────────────────
 
 authRouter.post('/refresh', async (c) => {
-  const body = await c.req.json();
-  const token = body?.refreshToken;
+  // Read refresh token from HttpOnly cookie, fall back to body for backward compat
+  const cookieToken = getCookie(c, REFRESH_COOKIE);
+  let bodyToken: string | undefined;
+  try {
+    const body = await c.req.json();
+    bodyToken = body?.refreshToken;
+  } catch { /* empty body is fine when cookie is present */ }
+
+  const token = cookieToken ?? bodyToken;
   if (!token) {
     return c.json({ success: false, error: 'Missing refresh token' }, 400);
   }
@@ -177,7 +209,9 @@ authRouter.post('/refresh', async (c) => {
     const rotation = await rotateRefreshToken(token);
 
     const accessToken = await signAccessToken({ userId, tenantId: membership?.tenant_id ?? '', email: user.email });
-    // audit refresh success
+
+    setRefreshCookie(c, rotation.refreshToken);
+
     logAudit({
       tenantId: membership?.tenant_id ?? '',
       userId,
@@ -186,17 +220,9 @@ authRouter.post('/refresh', async (c) => {
       riskLevel: 'low',
       details: '',
     });
-    return c.json({ success: true, data: { accessToken, refreshToken: rotation.refreshToken } });
+    return c.json({ success: true, data: { accessToken } });
   } catch {
-    // audit refresh failure maybe
-    logAudit({
-      tenantId: '',
-      userId: '',
-      action: 'refresh_token',
-      result: 'failure',
-      riskLevel: 'low',
-      details: 'invalid_or_expired',
-    });
+    clearRefreshCookie(c);
     return c.json({ success: false, error: 'Invalid or expired refresh token' }, 401);
   }
 });
@@ -247,6 +273,7 @@ authRouter.post('/logout', async (c) => {
       details: '',
     });
   }
+  clearRefreshCookie(c);
   return c.json({ success: true, data: { message: 'Logged out' } });
 });
 

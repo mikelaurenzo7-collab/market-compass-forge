@@ -1,7 +1,9 @@
 import { TradingRuntimeDO } from './durable-objects/TradingRuntimeDO.js';
+import type { StateChangeCallback } from './durable-objects/TradingRuntimeDO.js';
 import type { BotFamily, Platform, TradingBotConfig, StoreBotConfig, SocialBotConfig, WorkforceBotConfig } from '@beastbots/shared';
 
 export { TradingRuntimeDO };
+export type { StateChangeCallback, RuntimeState } from './durable-objects/TradingRuntimeDO.js';
 
 // ─── Runtime Registry ─────────────────────────────────────────
 
@@ -19,10 +21,14 @@ export function createRuntime(params: {
   config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
   tickIntervalMs?: number;
   adapter?: any;
+  onStateChange?: StateChangeCallback;
 }): TradingRuntimeDO {
   const key = getRuntimeKey(params.tenantId, params.botId);
   const runtime = new TradingRuntimeDO();
   runtime.initialize(params);
+  if (params.onStateChange) {
+    runtime.setOnStateChange(params.onStateChange);
+  }
   runtimes.set(key, runtime);
   return runtime;
 }

@@ -151,10 +151,13 @@ describe('API Routes', () => {
       expect(loginAudit).toBeDefined();
       expect(loginAudit.result).toBe('success');
 
-      // refresh token
+      // refresh token — sent via HttpOnly cookie
+      const refreshCookie = loginRes.headers.get('set-cookie')?.match(/bb_refresh=([^;]+)/)?.[1];
+      expect(refreshCookie).toBeTruthy();
       const refreshRes = await app.request('/api/auth/refresh', {
         method: 'POST',
-        body: JSON.stringify({ refreshToken: body.data.refreshToken }),
+        headers: { 'Content-Type': 'application/json', Cookie: `bb_refresh=${refreshCookie}` },
+        body: JSON.stringify({}),
       });
       expect(refreshRes.status).toBe(200);
       const refreshAudit = db.prepare('SELECT * FROM audit_log WHERE action = ?').get('refresh_token') as any;

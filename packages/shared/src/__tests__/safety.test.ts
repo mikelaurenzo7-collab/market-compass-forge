@@ -13,7 +13,7 @@ import {
   logAuditEntry,
   getAuditLog,
   runSafetyPipeline,
-} from '../safety';
+} from '../safety.js';
 import type { SafetyContext, BudgetConfig, CircuitBreakerConfig } from '../index';
 import { createDefaultBudget, createDefaultCircuitBreaker, createDefaultPolicies } from '../index';
 

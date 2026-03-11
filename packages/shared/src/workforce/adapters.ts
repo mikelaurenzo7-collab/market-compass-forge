@@ -3,8 +3,8 @@ import type {
   WorkforceTask,
   WorkforceTaskResult,
   TaskPriority,
-} from '../index.js';
-import type { WorkforceAdapter } from './engine.js';
+} from '../index';
+import type { WorkforceAdapter } from './engine';
 
 interface WorkforceCredentials {
   apiKey: string;
