@@ -12,6 +12,7 @@ packages/**/tsconfig.tsbuildinfo
 
 # Build artifacts
 out.js
+out
 
 # Compiled JS in shared src (use dist/ for compiled output)
 packages/shared/src/**/*.js
