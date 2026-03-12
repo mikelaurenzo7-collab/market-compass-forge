@@ -23,7 +23,8 @@ export type AlertEventType =
   | 'trade_executed'
   | 'bot_error'
   | 'daily_summary'
-  | 'position_liquidation';
+  | 'position_liquidation'
+  | 'liquidation_risk';
 
 export interface AlertConfig {
   /** Twilio Account SID */
@@ -82,6 +83,7 @@ const PRIORITY_RANK: Record<AlertPriority, number> = {
 const EVENT_PRIORITY: Record<AlertEventType, AlertPriority> = {
   circuit_breaker_tripped: 'critical',
   position_liquidation: 'critical',
+  liquidation_risk: 'critical',
   approval_required: 'high',
   budget_warning: 'high',
   bot_error: 'high',

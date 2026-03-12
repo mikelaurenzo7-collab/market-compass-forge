@@ -25,7 +25,7 @@ interface Bot {
 }
 
 function StatusDot({ status }: { status: string }) {
-  return <span className={`status-dot ${status}`} title={status} />;
+  return <span className={`status-dot ${status}`} title={status} aria-label={`Bot status: ${status}`} role="status" />;
 }
 
 export default function BotsPage() {

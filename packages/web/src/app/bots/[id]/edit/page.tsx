@@ -45,12 +45,21 @@ const STRATEGIES: Record<string, { id: string; name: string }[]> = {
   ],
 };
 
+interface BotDetail {
+  id: string;
+  name: string;
+  family: string;
+  platform: string;
+  status: string;
+  config: Record<string, unknown>;
+}
+
 export default function EditBotPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user, loading, apiFetch } = useAuth();
   const router = useRouter();
 
-  const [bot, setBot] = useState<any>(null);
+  const [bot, setBot] = useState<BotDetail | null>(null);
   const [name, setName] = useState('');
   const [strategy, setStrategy] = useState('');
   const [strategies, setStrategies] = useState<string[]>([]);
@@ -113,6 +122,7 @@ export default function EditBotPage({ params }: { params: Promise<{ id: string }
       autonomyLevel: autonomy,
     };
 
+    if (!bot) return;
     if (bot.family === 'trading') {
       config.strategy = strategy;
       config.maxPositionSizeUsd = Number(maxPositionSizeUsd);

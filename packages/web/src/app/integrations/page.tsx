@@ -83,7 +83,9 @@ function IntegrationsPageContent() {
       const res = await apiFetch('/api/credentials');
       const json = await res.json();
       setConnectedCreds(json.data ?? []);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to fetch credentials:', err);
+    }
     setFetching(false);
   }, [apiFetch]);
 
@@ -94,7 +96,9 @@ function IntegrationsPageContent() {
       if (json.success) {
         setIntegrations(json.data);
       }
-    } catch {}
+    } catch (err) {
+      console.error('Failed to fetch integrations:', err);
+    }
   }, [apiFetch]);
 
   useEffect(() => {
@@ -149,7 +153,11 @@ function IntegrationsPageContent() {
   async function handleDisconnect(platformId: string, label?: string) {
     if (!confirm(`Disconnect ${platformId}${label && label !== 'default' ? ` (${label})` : ''}?`)) return;
     const queryStr = label ? `?label=${encodeURIComponent(label)}` : '';
-    await apiFetch(`/api/credentials/${platformId}${queryStr}`, { method: 'DELETE' });
+    try {
+      await apiFetch(`/api/credentials/${platformId}${queryStr}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to disconnect:', err);
+    }
     fetchCredentials();
   }
 
@@ -163,7 +171,8 @@ function IntegrationsPageContent() {
       if (json.success && json.url) {
         window.location.href = json.url;
       }
-    } catch {
+    } catch (err) {
+      console.error('OAuth connect error:', err);
       setNotification('Failed to initiate connection. Please try again.');
     }
   }

@@ -28,7 +28,7 @@ describe('MCP Server', () => {
   it('returns server metadata', () => {
     expect(mcp.name).toBe('beastbots-mcp');
     expect(mcp.capabilities.length).toBeGreaterThan(0);
-    expect(mcp.tools.length).toBe(4);
+    expect(mcp.tools.length).toBe(6);
   });
 
   it('lists all tool names', () => {
@@ -37,6 +37,8 @@ describe('MCP Server', () => {
     expect(names).toContain('integration_status');
     expect(names).toContain('safety_review');
     expect(names).toContain('pricing_info');
+    expect(names).toContain('market_intelligence');
+    expect(names).toContain('alert_management');
   });
 
   // ─── operator_catalog ──────────────────────────

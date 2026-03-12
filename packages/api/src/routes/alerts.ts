@@ -59,6 +59,7 @@ const eventSchema = z.enum([
   'bot_error',
   'liquidation_risk',
   'daily_summary',
+  'position_liquidation',
 ]);
 const prioritySchema = z.enum(['critical', 'high', 'medium', 'low']);
 

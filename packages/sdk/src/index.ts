@@ -65,6 +65,22 @@ export interface AuditLogEntry {
   details?: unknown;
 }
 
+export interface AlertRecipientInfo {
+  id: string;
+  name: string;
+  phone: string;
+  channels: ('sms' | 'whatsapp')[];
+  eventTypes: string[];
+  minPriority: string;
+  createdAt: number;
+}
+
+export interface AlertStatus {
+  twilioConfigured: boolean;
+  recipientCount: number;
+  channels: { sms: boolean; whatsapp: boolean };
+}
+
 // ─── Bot Manifest ─────────────────────────────────────────────
 
 export interface BotManifest {
@@ -316,6 +332,72 @@ export class BeastBotsClient {
 
   async getSocialPlatforms(): Promise<unknown[]> {
     return this.request('/api/bots/platforms/social');
+  }
+
+  // ─── Alerts ───────────────────────────────────
+
+  async listAlertRecipients(): Promise<AlertRecipientInfo[]> {
+    return this.request('/api/alerts/recipients');
+  }
+
+  async createAlertRecipient(params: {
+    name: string;
+    phone: string;
+    channels?: ('sms' | 'whatsapp')[];
+    eventTypes?: string[];
+    minPriority?: 'critical' | 'high' | 'medium' | 'low';
+  }): Promise<{ id: string }> {
+    return this.request('/api/alerts/recipients', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async updateAlertRecipient(id: string, params: {
+    name?: string;
+    phone?: string;
+    channels?: ('sms' | 'whatsapp')[];
+    eventTypes?: string[];
+    minPriority?: 'critical' | 'high' | 'medium' | 'low';
+  }): Promise<void> {
+    await this.request(`/api/alerts/recipients/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async deleteAlertRecipient(id: string): Promise<void> {
+    await this.request(`/api/alerts/recipients/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async sendTestAlert(): Promise<{ sent: number }> {
+    return this.request('/api/alerts/test', { method: 'POST' });
+  }
+
+  async getAlertStatus(): Promise<AlertStatus> {
+    return this.request('/api/alerts/status');
+  }
+
+  // ─── MFA ──────────────────────────────────────
+
+  async setupMfa(): Promise<{ secret: string; qrCodeUrl: string }> {
+    return this.request('/api/auth/mfa/setup', { method: 'POST' });
+  }
+
+  async verifyMfaSetup(code: string): Promise<{ success: boolean }> {
+    return this.request('/api/auth/mfa/verify-setup', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async disableMfa(code: string): Promise<void> {
+    await this.request('/api/auth/mfa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
   }
 }
 

@@ -37,6 +37,11 @@ complianceRouter.post('/generate', async (c) => {
     return c.json({ success: false, error: 'toMs must be after fromMs' }, 400);
   }
 
+  const MAX_RANGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+  if (parsed.data.toMs - parsed.data.fromMs > MAX_RANGE_MS) {
+    return c.json({ success: false, error: 'Date range cannot exceed 90 days' }, 400);
+  }
+
   const db = getDb();
 
   // Fetch audit entries for the period
