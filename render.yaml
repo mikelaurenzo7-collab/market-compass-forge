@@ -1,0 +1,76 @@
+# ─── Render Blueprint ──────────────────────────────────────────
+# Deploy BeastBots API + Web as two services from a single monorepo.
+# See docs/render-deploy.md for full setup instructions.
+
+services:
+  # ─── API Service ───────────────────────────────────────────────
+  - type: web
+    name: beastbots-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerTarget: api          # multi-stage build target
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      # ── Required (server will not start without these) ──────────
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: DATABASE_PATH
+        value: /data/beastbot.db
+
+      # ── Networking (set after both services are created) ────────
+      - key: FRONTEND_URL
+        sync: false            # set manually to your web service URL
+      - key: API_BASE_URL
+        sync: false            # set manually to this service's URL
+
+      # ── Email (Resend) ─────────────────────────────────────────
+      - key: RESEND_API_KEY
+        sync: false
+
+      # ── AI / LLM providers (at least one recommended) ──────────
+      - key: OAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GROK_API_KEY
+        sync: false
+
+      # ── Webhook signing secrets ─────────────────────────────────
+      - key: SHOPIFY_WEBHOOK_SECRET
+        sync: false
+      - key: COINBASE_WEBHOOK_SECRET
+        sync: false
+      - key: ALPACA_WEBHOOK_SECRET
+        sync: false
+
+    disk:
+      name: beastbots-data
+      mountPath: /data
+      sizeGB: 1
+
+  # ─── Web Service ───────────────────────────────────────────────
+  - type: web
+    name: beastbots-web
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerTarget: web          # multi-stage build target
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      # NEXT_PUBLIC_* vars are baked in at build time.
+      # Set this to the beastbots-api service URL before the first build.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false            # e.g. https://beastbots-api.onrender.com
