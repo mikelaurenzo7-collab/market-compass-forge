@@ -6,6 +6,7 @@
  */
 
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { verifyAuthHeader } from '../lib/auth.js';
 import { getDb } from '../lib/db.js';
 
@@ -168,18 +169,30 @@ notificationsRouter.get('/preferences', async (c) => {
   return c.json({ success: true, data: JSON.parse(prefs.preferences) });
 });
 
+const notificationPrefsSchema = z.object({
+  emailTradeAlerts: z.boolean().optional(),
+  emailDailyDigest: z.boolean().optional(),
+  emailSecurityAlerts: z.boolean().optional(),
+  emailWeeklyReport: z.boolean().optional(),
+  tradeAlertMinConfidence: z.number().min(0).max(100).optional(),
+  tradeAlertMinPnlUsd: z.number().min(0).max(100_000).optional(),
+}).strict();
+
 notificationsRouter.put('/preferences', async (c) => {
   const auth = await verifyAuthHeader(c.req.header('Authorization'));
   if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
   const body = await c.req.json();
+  const parsed = notificationPrefsSchema.safeParse(body);
+  if (!parsed.success) return c.json({ success: false, error: parsed.error.issues }, 400);
+
   const db = getDb();
 
   db.prepare(
     `INSERT INTO notification_preferences (tenant_id, preferences, updated_at)
      VALUES (?, ?, ?)
      ON CONFLICT(tenant_id) DO UPDATE SET preferences = ?, updated_at = ?`
-  ).run(auth.tenantId, JSON.stringify(body), Date.now(), JSON.stringify(body), Date.now());
+  ).run(auth.tenantId, JSON.stringify(parsed.data), Date.now(), JSON.stringify(parsed.data), Date.now());
 
   return c.json({ success: true });
 });

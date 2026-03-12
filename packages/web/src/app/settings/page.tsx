@@ -3,9 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Settings, User, Shield, AlertTriangle, LogOut, Bell, KeyRound } from 'lucide-react';
+import { Settings, User, Shield, AlertTriangle, LogOut, Bell, KeyRound, BellRing, Network } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
+import LoadingScreen from '../components/LoadingScreen';
 
 interface NotificationPrefs {
   emailTradeAlerts: boolean;
@@ -38,6 +39,12 @@ export default function SettingsPage() {
   const [mfaBackupCodes, setMfaBackupCodes] = useState<string[] | null>(null);
   const [mfaError, setMfaError] = useState('');
   const [mfaWorking, setMfaWorking] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushWorking, setPushWorking] = useState(false);
+  const [federatedEnabled, setFederatedEnabled] = useState(false);
+  const [federatedLoading, setFederatedLoading] = useState(true);
+  const [federatedWorking, setFederatedWorking] = useState(false);
 
   const fetchPrefs = useCallback(async () => {
     try {
@@ -59,12 +66,28 @@ export default function SettingsPage() {
     }
   }, [apiFetch]);
 
+  const fetchFederatedStatus = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/federated/status');
+      const json = await res.json();
+      if (json.success) setFederatedEnabled(json.data.enabled);
+    } catch { /* ignore */ } finally {
+      setFederatedLoading(false);
+    }
+  }, [apiFetch]);
+
   useEffect(() => {
     if (loading) return;
     if (!user) { router.push('/login'); return; }
     fetchPrefs();
     fetchMfaStatus();
-  }, [user, loading, router, fetchPrefs, fetchMfaStatus]);
+    fetchFederatedStatus();
+    // Check push notification support
+    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
+      setPushSupported(true);
+      setPushSubscribed(Notification.permission === 'granted');
+    }
+  }, [user, loading, router, fetchPrefs, fetchMfaStatus, fetchFederatedStatus]);
 
   async function savePrefs(updated: NotificationPrefs) {
     setPrefs(updated);
@@ -142,12 +165,41 @@ export default function SettingsPage() {
     } catch { setMfaError('Network error'); } finally { setMfaWorking(false); }
   }
 
+  async function handlePushToggle() {
+    setPushWorking(true);
+    try {
+      if (!pushSubscribed) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          setPushSubscribed(true);
+        }
+      }
+    } catch { /* ignore */ } finally {
+      setPushWorking(false);
+    }
+  }
+
+  async function handleFederatedToggle() {
+    setFederatedWorking(true);
+    try {
+      const res = await apiFetch('/api/federated/opt-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !federatedEnabled }),
+      });
+      const json = await res.json();
+      if (json.success) setFederatedEnabled(!federatedEnabled);
+    } catch { /* ignore */ } finally {
+      setFederatedWorking(false);
+    }
+  }
+
   async function handleLogout() {
     await logout();
     router.push('/login');
   }
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   return (
     <AppShell>
@@ -314,6 +366,62 @@ export default function SettingsPage() {
               <div className={`toggle-switch ${prefs.emailWeeklyReport ? 'active' : ''}`} role="switch" aria-checked={prefs.emailWeeklyReport} tabIndex={0} onClick={() => togglePref('emailWeeklyReport')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePref('emailWeeklyReport'); }}} />
             </div>
           </>
+        )}
+      </div>
+
+      {/* Push Notifications */}
+      <div className="settings-section">
+        <div className="settings-section-title"><BellRing size={16} style={{ marginRight: 6 }} />Push Notifications</div>
+        {!pushSupported ? (
+          <div style={{ padding: 'var(--space-md)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Push notifications are not supported in this browser.
+          </div>
+        ) : (
+          <div style={{ padding: 'var(--space-md)' }}>
+            <div className="settings-row">
+              <div>
+                <span className="settings-label">Browser Push</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Receive real-time alerts for trades, approvals, and circuit breakers
+                </p>
+              </div>
+              {pushSubscribed ? (
+                <span className="connect-badge connected">Enabled</span>
+              ) : (
+                <button className="btn btn-primary" disabled={pushWorking} onClick={handlePushToggle} style={{ fontSize: '0.8rem' }}>
+                  {pushWorking ? 'Enabling...' : 'Enable Push'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Federated Learning */}
+      <div className="settings-section">
+        <div className="settings-section-title"><Network size={16} style={{ marginRight: 6 }} />Federated Learning</div>
+        {federatedLoading ? (
+          <div style={{ padding: 'var(--space-md)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading...</div>
+        ) : (
+          <div style={{ padding: 'var(--space-md)' }}>
+            <div className="notification-toggle">
+              <div>
+                <div className="notification-toggle-label">Contribute anonymized performance data</div>
+                <div className="notification-toggle-desc">
+                  Help improve strategy recommendations across the BeastBots network.
+                  Your data is aggregated and never shared individually.
+                </div>
+              </div>
+              <div
+                className={`toggle-switch ${federatedEnabled ? 'active' : ''}`}
+                role="switch"
+                aria-checked={federatedEnabled}
+                tabIndex={0}
+                onClick={federatedWorking ? undefined : handleFederatedToggle}
+                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !federatedWorking) { e.preventDefault(); handleFederatedToggle(); }}}
+              />
+            </div>
+          </div>
         )}
       </div>
 

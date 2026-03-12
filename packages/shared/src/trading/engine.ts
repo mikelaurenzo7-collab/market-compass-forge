@@ -543,9 +543,9 @@ export async function executeTradingTick(
       };
     }
 
-    // No signals triggered
+    // Return the last meaningful result, or no_signal if nothing happened
     return {
-      result: {
+      result: lastResult ?? {
         botId: state.safety.botId,
         timestamp: Date.now(),
         action: 'scan',
@@ -774,19 +774,19 @@ function baseStrategySignal(
       return dcaSignal(lastBuy, intervalMs);
     }
     case 'grid': {
-      const levels = (config as any).gridLevels ?? [];
-      const open = (config as any).openOrders ?? [];
+      const levels = config.gridLevels ?? [];
+      const open = config.openOrders ?? [];
       return gridSignal(marketData.price, levels, open);
     }
     case 'arbitrage': {
-      const prices = (config as any).arbitragePrices ?? [];
-      const thresh = (config as any).arbitrageThresholdPercent ?? 1;
+      const prices = config.arbitragePrices ?? [];
+      const thresh = config.arbitrageThresholdPercent ?? 1;
       return arbitrageSignal(prices, thresh);
     }
     case 'market_making': {
-      const bid = (config as any).marketMakingBid ?? marketData.bid;
-      const ask = (config as any).marketMakingAsk ?? marketData.ask;
-      const spreadThr = (config as any).marketMakingSpread ?? 0.5;
+      const bid = config.marketMakingBid ?? marketData.bid;
+      const ask = config.marketMakingAsk ?? marketData.ask;
+      const spreadThr = config.marketMakingSpread ?? 0.5;
       return marketMakingSignal(marketData.price, bid, ask, spreadThr);
     }
     case 'event_probability': {
@@ -848,7 +848,7 @@ function generateBinanceSignal(
   const signal = baseStrategySignal(config, indicators, marketData, state);
   // amplify momentum signals during high volume
   if (signal.direction === 'buy' && indicators.rsi > 70) {
-    signal.confidence += 10;
+    return { ...signal, confidence: Math.min(signal.confidence + 10, 100) };
   }
   return signal;
 }

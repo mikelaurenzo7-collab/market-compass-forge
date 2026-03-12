@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '../../../../lib/auth-context';
 import AppShell from '../../../components/AppShell';
+import LoadingScreen from '../../../components/LoadingScreen';
 
 const STRATEGIES: Record<string, { id: string; name: string }[]> = {
   trading: [
@@ -141,7 +142,7 @@ export default function EditBotPage({ params }: { params: Promise<{ id: string }
     }
   }
 
-  if (loading || !user || !bot) return null;
+  if (loading || !user || !bot) return <LoadingScreen />;
 
   const familyStrategies = STRATEGIES[bot.family] ?? [];
 

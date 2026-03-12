@@ -18,6 +18,10 @@ import { templatesRouter } from './routes/templates.js';
 import { webhooksRouter } from './routes/webhooks.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { mfaRouter } from './routes/mfa.js';
+import { federatedRouter } from './routes/federated.js';
+import { complianceRouter } from './routes/compliance.js';
+import { pushRouter } from './routes/push.js';
+import { performanceRouter } from './routes/performance.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
@@ -139,6 +143,10 @@ app.route('/api/provisioning', provisioningRouter);
 app.route('/api/templates', templatesRouter);
 app.route('/api/webhooks', webhooksRouter);
 app.route('/api/notifications', notificationsRouter);
+app.route('/api/federated', federatedRouter);
+app.route('/api/compliance', complianceRouter);
+app.route('/api/push', pushRouter);
+app.route('/api/performance', performanceRouter);
 app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {

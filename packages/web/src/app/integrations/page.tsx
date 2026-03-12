@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
+import LoadingScreen from '../components/LoadingScreen';
 
 interface IntegrationInfo {
   id: string;
@@ -167,7 +168,7 @@ function IntegrationsPageContent() {
     }
   }
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   const platformIntegrations = integrations.filter((p) => BOT_PLATFORM_CATEGORIES.includes(p.category));
   const toolIntegrations = integrations.filter((p) => WORKFORCE_TOOL_CATEGORIES.includes(p.category));

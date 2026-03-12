@@ -16,6 +16,8 @@ import {
   LogOut,
   BarChart3,
   Sparkles,
+  FileCheck,
+  Trophy,
 } from 'lucide-react';
 
 const BOT_NAV = [
@@ -28,6 +30,8 @@ const BOT_NAV = [
 const SYSTEM_ITEMS = [
   { label: 'Templates', icon: <Sparkles size={16} />, href: '/templates' },
   { label: 'Analytics', icon: <BarChart3 size={16} />, href: '/analytics' },
+  { label: 'Performance', icon: <Trophy size={16} />, href: '/performance' },
+  { label: 'Compliance', icon: <FileCheck size={16} />, href: '/compliance' },
   { label: 'Safety', icon: <Shield size={16} />, href: '/safety' },
   { label: 'Integrations', icon: <Plug size={16} />, href: '/integrations' },
   { label: 'Settings', icon: <Settings size={16} />, href: '/settings' },

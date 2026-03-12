@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
+import LoadingScreen from '../../components/LoadingScreen';
 import { PlatformLogo, StrategyPill, getPlatformBrand, getFamilyConfig } from '../../components/PlatformIdentity';
 
 interface BotDetail {
@@ -245,7 +246,7 @@ export default function BotDetailPage() {
     router.push('/bots');
   }
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   return (
     <AppShell>

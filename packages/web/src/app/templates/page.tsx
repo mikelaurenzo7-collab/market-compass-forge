@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
+import LoadingScreen from '../components/LoadingScreen';
 
 interface BotTemplate {
   id: string;
@@ -118,7 +119,7 @@ export default function TemplatesPage() {
     }
   }
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   return (
     <AppShell>
@@ -192,6 +193,9 @@ export default function TemplatesPage() {
               className="template-card"
               variants={fade}
               onClick={() => setSelectedTemplate(template)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedTemplate(template); }}}
+              role="button"
+              tabIndex={0}
               style={{ cursor: 'pointer' }}
             >
               <div className="template-card-header">
@@ -279,14 +283,19 @@ export default function TemplatesPage() {
                 </div>
               </div>
 
-              <div className="template-modal-description" dangerouslySetInnerHTML={{
-                __html: selectedTemplate.longDescription
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\n- /g, '\n<li>')
-                  .replace(/\n\n/g, '</p><p>')
-                  .replace(/^/, '<p>')
-                  .replace(/$/, '</p>')
-              }} />
+              <div className="template-modal-description">
+                {selectedTemplate.longDescription.split('\n\n').map((paragraph, pi) => (
+                  <p key={pi} style={{ marginBottom: 'var(--space-sm)' }}>
+                    {paragraph.startsWith('- ')
+                      ? <ul style={{ paddingLeft: 'var(--space-lg)', margin: 0 }}>
+                          {paragraph.split('\n').filter(l => l.startsWith('- ')).map((li, li2) => (
+                            <li key={li2}>{li.slice(2)}</li>
+                          ))}
+                        </ul>
+                      : paragraph}
+                  </p>
+                ))}
+              </div>
 
               {deployError && <div className="auth-error" style={{ marginTop: 'var(--space-md)' }}>{deployError}</div>}
             </div>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
+import LoadingScreen from '../components/LoadingScreen';
 
 interface AuditEntry {
   id: string;
@@ -50,6 +51,7 @@ export default function SafetyPage() {
   const [systemAudit, setSystemAudit] = useState<AuditEntry[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ id: string; decision: 'approved' | 'denied'; action: string } | null>(null);
 
   const fetchSafety = useCallback(async () => {
     try {
@@ -80,6 +82,7 @@ export default function SafetyPage() {
   }, [user, loading, router, fetchSafety]);
 
   async function handleApproval(id: string, decision: 'approved' | 'denied') {
+    setConfirmAction(null);
     await apiFetch(`/api/safety/approvals/${id}/resolve`, {
       method: 'POST',
       body: JSON.stringify({ approved: decision === 'approved', resolvedBy: user?.email ?? 'user' }),
@@ -87,7 +90,11 @@ export default function SafetyPage() {
     fetchSafety();
   }
 
-  if (loading || !user) return null;
+  function requestApproval(id: string, decision: 'approved' | 'denied', action: string) {
+    setConfirmAction({ id, decision, action });
+  }
+
+  if (loading || !user) return <LoadingScreen />;
 
   const pendingApprovals = approvals.filter((a) => a.status === 'pending');
 
@@ -147,8 +154,8 @@ export default function SafetyPage() {
                   <td>{new Date(a.requestedAt).toLocaleString()}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => handleApproval(a.id, 'approved')}><Check size={14} /> Approve</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleApproval(a.id, 'denied')}><X size={14} /> Deny</button>
+                      <button className="btn btn-primary btn-sm" onClick={() => requestApproval(a.id, 'approved', a.action)}><Check size={14} /> Approve</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => requestApproval(a.id, 'denied', a.action)}><X size={14} /> Deny</button>
                     </div>
                   </td>
                 </tr>
@@ -230,6 +237,44 @@ export default function SafetyPage() {
           </>
         )}
       </motion.div>
+
+      {/* Confirmation Dialog */}
+      {confirmAction && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+          onClick={() => setConfirmAction(null)}
+        >
+          <div
+            style={{
+              background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+              borderRadius: '12px', padding: 'var(--space-xl)', maxWidth: '420px', width: '90%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginBottom: 'var(--space-sm)', color: confirmAction.decision === 'denied' ? 'var(--red)' : 'var(--green)' }}>
+              {confirmAction.decision === 'approved' ? 'Approve Action?' : 'Deny Action?'}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
+              {confirmAction.decision === 'approved'
+                ? `This will allow "${confirmAction.action}" to execute. This action may affect real assets.`
+                : `This will block "${confirmAction.action}" from executing.`}
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'flex-end' }}>
+              <button className="btn btn-secondary" onClick={() => setConfirmAction(null)}>Cancel</button>
+              <button
+                className={confirmAction.decision === 'approved' ? 'btn btn-primary' : 'btn btn-danger'}
+                onClick={() => handleApproval(confirmAction.id, confirmAction.decision)}
+              >
+                {confirmAction.decision === 'approved' ? 'Confirm Approve' : 'Confirm Deny'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

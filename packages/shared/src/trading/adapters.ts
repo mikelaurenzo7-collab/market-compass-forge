@@ -19,9 +19,8 @@ export function binanceSign(secret: string, queryString: string): string {
   return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
 }
 
-export function alpacaSign(secret: string, body: string): string {
-  return crypto.createHmac('sha256', secret).update(body).digest('hex');
-}
+// Note: Alpaca authenticates via APCA-API-KEY-ID + APCA-API-SECRET-KEY headers.
+// No request signing is needed.
 
 // ─── Shared HTTP helper with retry + rate-limit awareness ─────
 
@@ -387,10 +386,9 @@ export class AlpacaAdapter implements TradingAdapter {
     };
 
     const bodyStr = JSON.stringify(body);
-    const sig = alpacaSign(this.creds.apiSecret, bodyStr);
     const result = await jsonFetch<any>(`${this.baseUrl}/v2/orders`, {
       method: 'POST',
-      headers: { ...this.headers(), 'APCA-API-SIGNATURE': sig },
+      headers: { ...this.headers(), 'Content-Type': 'application/json' },
       body: bodyStr,
     });
 

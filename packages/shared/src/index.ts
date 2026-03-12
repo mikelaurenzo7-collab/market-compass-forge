@@ -171,9 +171,12 @@ export interface TradingBotConfig {
   gridLevels?: number[];
   openOrders?: { price: number; side: 'buy' | 'sell' }[];
   arbitrageThresholdPercent?: number;
+  arbitragePrices?: number[];
   // cross-exchange arbitrage: list of platforms to compare prices across
   arbitragePlatforms?: TradingPlatform[];
   marketMakingSpread?: number;
+  marketMakingBid?: number;
+  marketMakingAsk?: number;
   eventProbabilityData?: EventProbabilityData;
 }
 
@@ -655,6 +658,26 @@ export * from './workforce/engine.js';
 export * from './workforce/adapters.js';
 export * from './workforce/team.js';
 export * from './workforce/learning.js';
-export * from './workforce/safety.js';
+export {
+  type WorkforceSafetyConfig,
+  type WorkforceAuditEventType,
+  type WorkforceAuditEntry,
+  createAuditEntry,
+  type PrivacyCheckResult,
+  enforcePrivacyBoundaries,
+  type RogueBehaviourCheck,
+  type RogueDetectorState,
+  detectRogueBehaviour,
+  type WorkforceCheckpoint,
+  requiresHumanCheckpoint,
+  createHumanCheckpoint,
+  type ComplianceReport as WorkforceComplianceReport,
+  generateComplianceReport as generateWorkforceComplianceReport,
+  createDefaultWorkforceSafetyConfig,
+} from './workforce/safety.js';
 export * from './workforce/intelligence.js';
 export * from './templates.js';
+export * from './federated-learning.js';
+export * from './compliance.js';
+export * from './push-notifications.js';
+export * from './performance-reports.js';

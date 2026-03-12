@@ -379,7 +379,7 @@ export async function executeStoreTick(
     // ─── Review Management (LLM-enhanced sentiment) ──
     if (state.config.strategies.includes('review_management')) {
       try {
-        const reviews: { id: string; rating: number; text: string }[] = await (adapter as any).getReviews?.() ?? [];
+        const reviews: { id: string; rating: number; text: string }[] = await adapter.getReviews?.() ?? [];
         if (reviews.length === 0) {
           actions.push('🛎️ Checked reviews: no new reviews');
         } else {
@@ -438,7 +438,7 @@ export async function executeStoreTick(
                 );
 
                 if (safetyResult.allowed) {
-                  await (adapter as any).respondToReview?.(rev.id, responseText);
+                  await adapter.respondToReview?.(rev.id, responseText);
                   actions.push(`↩️ Responded to negative review ${rev.id} (personalized)`);
                 }
               }
@@ -449,7 +449,7 @@ export async function executeStoreTick(
                 (state.config.autonomyLevel ?? 'manual') === 'auto'
               ) {
                 const reviewResp = generateReviewResponse(rev.text, activeProducts[0]?.title ?? 'our product');
-                await (adapter as any).respondToReview?.(rev.id, reviewResp.suggestedResponse);
+                await adapter.respondToReview?.(rev.id, reviewResp.suggestedResponse);
                 actions.push(`💚 Thanked positive reviewer ${rev.id}`);
               }
             }

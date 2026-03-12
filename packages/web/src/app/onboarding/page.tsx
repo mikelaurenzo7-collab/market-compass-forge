@@ -16,6 +16,7 @@ const FAMILIES = [
   { id: 'trading', title: 'Trading Operators', desc: 'Crypto, stocks, events & prediction markets', color: 'var(--green)' },
   { id: 'store', title: 'Store Operators', desc: 'Shopify, Amazon, Etsy, eBay & more', color: 'var(--blue)' },
   { id: 'social', title: 'Social Operators', desc: 'X, TikTok, Instagram, Facebook & LinkedIn', color: 'var(--purple)' },
+  { id: 'workforce', title: 'Workforce Operators', desc: 'Slack, Notion, Asana, Jira & automation', color: 'var(--gold)' },
 ] as const;
 
 // we'll fetch the same list from API so we can inspect the oauth flag
@@ -24,6 +25,7 @@ const INTEGRATIONS: Record<string, IntegrationData[]> = {
   trading: [],
   store: [],
   social: [],
+  workforce: [],
 };
 
 export default function OnboardingPage() {
@@ -167,7 +169,7 @@ export default function OnboardingPage() {
             <div className="onboarding-integration-grid">
               {available
                 .filter((int) => {
-                const categoryMap: Record<string, string> = { trading: 'trading', store: 'ecommerce', social: 'social' };
+                const categoryMap: Record<string, string> = { trading: 'trading', store: 'ecommerce', social: 'social', workforce: 'workforce' };
                 return int.category === (categoryMap[selectedFamily] ?? selectedFamily);
               })
                 .map((int) => (

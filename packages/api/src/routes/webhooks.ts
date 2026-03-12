@@ -179,7 +179,13 @@ webhooksRouter.post('/alpaca', async (c) => {
     return c.json({ success: false, error: 'Webhook verification not configured' }, 500);
   }
 
-  if (!signature || signature !== webhookSecret) {
+  // Constant-time comparison to prevent timing attacks
+  if (!signature) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401);
+  }
+  const sigBuf = Buffer.from(signature);
+  const secBuf = Buffer.from(webhookSecret);
+  if (sigBuf.length !== secBuf.length || !crypto.timingSafeEqual(sigBuf, secBuf)) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 

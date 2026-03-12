@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, ShoppingCart, Share2, Users, ArrowLeft, Check } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
+import LoadingScreen from '../../components/LoadingScreen';
 
 const CREATE_FAMILY_ICONS: Record<string, React.ReactNode> = {
   trading: <TrendingUp size={20} />,
@@ -183,7 +184,7 @@ export default function CreateBotPage() {
     }
   }
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   const availablePlatforms = PLATFORMS[family] ?? [];
   const availableStrategies = STRATEGIES[family] ?? [];

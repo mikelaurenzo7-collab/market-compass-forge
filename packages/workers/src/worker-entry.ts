@@ -16,12 +16,26 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+/** Validates that the request carries a valid worker auth token. */
+function isAuthorized(request: Request, env: Env & { WORKER_AUTH_TOKEN?: string }): boolean {
+  const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+  const expected = env.WORKER_AUTH_TOKEN;
+  if (!expected || !token) return false;
+  // Constant-time comparison
+  if (token.length !== expected.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < token.length; i++) {
+    mismatch |= token.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const segments = url.pathname.split('/').filter(Boolean);
 
-    // Health check
+    // Health check — unauthenticated
     if (segments[0] === 'health' || segments.length === 0) {
       return json({
         ok: true,
@@ -29,6 +43,11 @@ export default {
         env: env.ENVIRONMENT ?? 'unknown',
         timestamp: new Date().toISOString(),
       });
+    }
+
+    // All other endpoints require auth
+    if (!isAuthorized(request, env)) {
+      return json({ error: 'unauthorized' }, 401);
     }
 
     // Bot operations: /bot/:tenantId/:botId/:action

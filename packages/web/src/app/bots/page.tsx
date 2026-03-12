@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
+import LoadingScreen from '../components/LoadingScreen';
 import { BotListCard } from '../components/BotCard';
 import { FAMILY_CONFIG } from '../components/PlatformIdentity';
 
@@ -73,7 +74,7 @@ function BotsPageContent() {
     fetchBots();
   }
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   const currentConfig = familyFilter ? FAMILY_CONFIG[familyFilter] : null;
   const title = currentConfig ? currentConfig.label : 'All Bots';

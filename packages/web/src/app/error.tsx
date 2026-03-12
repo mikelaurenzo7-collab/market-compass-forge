@@ -38,7 +38,7 @@ export default function Error({
           Try Again
         </button>
         <Link
-          href="/bots"
+          href="/"
           style={{
             background: 'rgba(255,255,255,0.06)',
             color: '#e2e8f0',

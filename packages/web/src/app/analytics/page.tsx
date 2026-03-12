@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
+import LoadingScreen from '../components/LoadingScreen';
 
 /* ─── types ─── */
 interface SummaryMetrics {
@@ -123,7 +124,7 @@ export default function AnalyticsPage() {
     return () => clearInterval(interval);
   }, [user, loading, onboardingRequired, router, fetchAll]);
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   const m = summary?.metrics;
   const totalBots = summary?.bots.total ?? 0;

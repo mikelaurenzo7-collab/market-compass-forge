@@ -8,7 +8,7 @@ const mcp = startMcpServer();
 
 const router = new Hono();
 
-router.post('/mcp', async (c: Context) => {
+router.post('/', async (c: Context) => {
   // Require authentication — MCP tools expose internal platform data
   const auth = await verifyAuthHeader(c.req.header('Authorization'));
   if (!auth) {

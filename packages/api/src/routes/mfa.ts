@@ -218,7 +218,21 @@ mfaRouter.post('/verify', async (c) => {
     return c.json({ success: false, error: parsed.error.issues[0].message }, 400);
   }
 
+  // Strict rate limiting: 5 attempts per user per minute
+  const rateLimitKey = `mfa_verify:${parsed.data.userId}`;
   const db = getDb();
+  const now = Date.now();
+  const resetAt = now + 60_000;
+  db.prepare(`
+    INSERT INTO rate_limits (key, count, reset_at) VALUES (?, 1, ?)
+    ON CONFLICT(key) DO UPDATE SET
+      count = CASE WHEN reset_at < ? THEN 1 ELSE count + 1 END,
+      reset_at = CASE WHEN reset_at < ? THEN ? ELSE reset_at END
+  `).run(rateLimitKey, resetAt, now, now, resetAt);
+  const rl = db.prepare('SELECT count FROM rate_limits WHERE key = ?').get(rateLimitKey) as { count: number } | undefined;
+  if (rl && rl.count > 5) {
+    return c.json({ success: false, error: 'Too many attempts. Try again in 1 minute.' }, 429);
+  }
   const user = db.prepare(
     'SELECT id, email, display_name, totp_secret, mfa_enabled, mfa_backup_codes FROM users WHERE id = ?'
   ).get(parsed.data.userId) as { id: string; email: string; display_name: string; totp_secret: string | null; mfa_enabled: number; mfa_backup_codes: string | null } | undefined;
