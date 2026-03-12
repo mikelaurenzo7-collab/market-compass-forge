@@ -3132,3 +3132,510 @@ body::before {
     max-height: 90vh;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   RICH BOT CARDS — Platform-branded cards for dashboard & list
+   ═══════════════════════════════════════════════════════════ */
+
+.rich-bot-card {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  cursor: pointer;
+}
+.rich-bot-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+.rich-bot-card-inner {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+/* Family accent bar at top */
+.rich-bot-card-inner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--card-accent, var(--color-trading));
+  opacity: 0.7;
+}
+.rich-bot-card.trading { --card-accent: var(--color-trading); }
+.rich-bot-card.store   { --card-accent: var(--color-store); }
+.rich-bot-card.social  { --card-accent: var(--color-social); }
+.rich-bot-card.workforce { --card-accent: var(--color-workforce); }
+.rich-bot-card.interactive { --card-accent: var(--purple); }
+
+.rich-bot-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.rich-bot-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.rich-bot-card-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+.rich-bot-card-platform {
+  font-size: 0.78rem;
+  font-weight: 500;
+  margin-top: 2px;
+}
+.rich-bot-card-tagline {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Strategy Pills */
+.rich-bot-card-strategies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.strategy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
+.strategy-pill svg {
+  width: 10px;
+  height: 10px;
+  opacity: 0.6;
+}
+.strategy-pill .more {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Card Footer */
+.rich-bot-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+.rich-bot-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rich-bot-card-family {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.5;
+}
+.rich-bot-card-live {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--green);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.rich-bot-card-paper {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+/* Actions (for list variant) */
+.rich-bot-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   STATUS CHIP & LIVE PULSE
+   ═══════════════════════════════════════════════════════════ */
+
+.bot-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+}
+.bot-status-chip svg {
+  width: 12px;
+  height: 12px;
+}
+.bot-status-chip.running {
+  background: rgba(0, 232, 123, 0.1);
+  color: var(--green);
+}
+.bot-status-chip.paused {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-workforce);
+}
+.bot-status-chip.stopped {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+.bot-status-chip.idle {
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--color-store);
+}
+.bot-status-chip.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red);
+}
+
+.live-pulse-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.live-pulse-bar-fill {
+  height: 100%;
+  width: 40%;
+  border-radius: 2px;
+  animation: pulse-slide 2s ease-in-out infinite;
+}
+.rich-bot-card.trading .live-pulse-bar-fill  { background: var(--color-trading); }
+.rich-bot-card.store .live-pulse-bar-fill    { background: var(--color-store); }
+.rich-bot-card.social .live-pulse-bar-fill   { background: var(--color-social); }
+.rich-bot-card.workforce .live-pulse-bar-fill { background: var(--color-workforce); }
+
+@keyframes pulse-slide {
+  0%   { transform: translateX(-100%); opacity: 0.4; }
+  50%  { transform: translateX(150%); opacity: 1; }
+  100% { transform: translateX(400%); opacity: 0.4; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOT ACTION BUTTONS
+   ═══════════════════════════════════════════════════════════ */
+
+.bot-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+}
+.bot-action-btn svg {
+  width: 13px;
+  height: 13px;
+}
+.bot-action-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+.bot-action-btn.primary {
+  background: rgba(0, 232, 123, 0.12);
+  color: var(--green);
+  border-color: rgba(0, 232, 123, 0.2);
+}
+.bot-action-btn.primary:hover {
+  background: rgba(0, 232, 123, 0.2);
+}
+.bot-action-btn.secondary {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--color-workforce);
+  border-color: rgba(245, 158, 11, 0.15);
+}
+.bot-action-btn.secondary:hover {
+  background: rgba(245, 158, 11, 0.18);
+}
+.bot-action-btn.danger {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--red);
+  border-color: rgba(239, 68, 68, 0.12);
+}
+.bot-action-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.16);
+}
+.bot-action-btn.details {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--purple);
+  border-color: rgba(139, 92, 246, 0.15);
+}
+.bot-action-btn.details:hover {
+  background: rgba(139, 92, 246, 0.18);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BOT DETAIL HERO — Platform-branded header
+   ═══════════════════════════════════════════════════════════ */
+
+.bot-detail-hero {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.bot-detail-hero-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background: radial-gradient(
+    ellipse at 30% 20%,
+    var(--hero-color, var(--color-trading)) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+.bot-detail-hero.trading { --hero-color: var(--color-trading); }
+.bot-detail-hero.store   { --hero-color: var(--color-store); }
+.bot-detail-hero.social  { --hero-color: var(--color-social); }
+.bot-detail-hero.workforce { --hero-color: var(--color-workforce); }
+
+.bot-detail-hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 28px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+.bot-detail-hero-info {
+  flex: 1;
+  min-width: 0;
+}
+.bot-detail-hero-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+.bot-detail-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
+.bot-detail-hero-sep {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.5;
+}
+.bot-detail-hero-paper {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.bot-detail-hero-tagline {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* Detail Actions Bar */
+.bot-detail-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.bot-detail-status-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   METRIC CONTEXT GRID — Family-specific metrics
+   ═══════════════════════════════════════════════════════════ */
+
+.metric-context-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.metric-context-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.metric-context-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  opacity: 0.5;
+}
+.metric-context-card.trading::before  { background: var(--color-trading); }
+.metric-context-card.store::before    { background: var(--color-store); }
+.metric-context-card.social::before   { background: var(--color-social); }
+.metric-context-card.workforce::before { background: var(--color-workforce); }
+
+.metric-context-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.metric-context-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.metric-context-value.positive { color: var(--green); }
+.metric-context-value.negative { color: var(--red); }
+.metric-context-value.caution  { color: var(--color-workforce); }
+
+.metric-context-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.metric-context-hint svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+  .metric-context-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .bot-detail-hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    padding: 20px 16px;
+  }
+  .bot-detail-hero-name {
+    font-size: 1.2rem;
+  }
+  .bot-detail-actions-bar {
+    flex-wrap: wrap;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LANDING PAGE — Platform brand badges & metrics
+   ═══════════════════════════════════════════════════════════ */
+
+.family-showcase-platforms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.platform-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--pb-bg, rgba(255, 255, 255, 0.04));
+  color: var(--pb-color, var(--text-secondary));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s;
+}
+.platform-brand-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+.family-showcase-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.family-metric-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+.family-metric-tag svg {
+  width: 10px;
+  height: 10px;
+  opacity: 0.5;
+}
+
+/* Platform logos section (landing page bottom) */
+.platform-logo {
+  font-weight: 600;
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  transition: opacity 0.2s;
+}
+.platform-logo:hover {
+  opacity: 1 !important;
+}

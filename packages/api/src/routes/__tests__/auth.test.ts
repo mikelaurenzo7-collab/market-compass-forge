@@ -7,6 +7,7 @@ const tmpDb = path.join(os.tmpdir(), `beastbots-auth-test-${Date.now()}-${Math.r
 process.env.DATABASE_PATH = tmpDb;
 process.env.JWT_SECRET = 'test-secret';
 process.env.ENCRYPTION_KEY = 'test-encryption-key-32bytes!';
+process.env.NODE_ENV = 'test';
 
 import app from '../../server.js';
 import { getDb, closeDb } from '../../lib/db.js';

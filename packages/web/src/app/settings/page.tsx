@@ -290,28 +290,28 @@ export default function SettingsPage() {
                 <div className="notification-toggle-label">Trade Alerts</div>
                 <div className="notification-toggle-desc">Get emailed when a bot executes a trade</div>
               </div>
-              <div className={`toggle-switch ${prefs.emailTradeAlerts ? 'active' : ''}`} onClick={() => togglePref('emailTradeAlerts')} />
+              <div className={`toggle-switch ${prefs.emailTradeAlerts ? 'active' : ''}`} role="switch" aria-checked={prefs.emailTradeAlerts} tabIndex={0} onClick={() => togglePref('emailTradeAlerts')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePref('emailTradeAlerts'); }}} />
             </div>
             <div className="notification-toggle">
               <div>
                 <div className="notification-toggle-label">Daily Digest</div>
                 <div className="notification-toggle-desc">Morning summary of all bot activity and P&L</div>
               </div>
-              <div className={`toggle-switch ${prefs.emailDailyDigest ? 'active' : ''}`} onClick={() => togglePref('emailDailyDigest')} />
+              <div className={`toggle-switch ${prefs.emailDailyDigest ? 'active' : ''}`} role="switch" aria-checked={prefs.emailDailyDigest} tabIndex={0} onClick={() => togglePref('emailDailyDigest')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePref('emailDailyDigest'); }}} />
             </div>
             <div className="notification-toggle">
               <div>
                 <div className="notification-toggle-label">Security Alerts</div>
                 <div className="notification-toggle-desc">Login notifications, API key changes, and safety events</div>
               </div>
-              <div className={`toggle-switch ${prefs.emailSecurityAlerts ? 'active' : ''}`} onClick={() => togglePref('emailSecurityAlerts')} />
+              <div className={`toggle-switch ${prefs.emailSecurityAlerts ? 'active' : ''}`} role="switch" aria-checked={prefs.emailSecurityAlerts} tabIndex={0} onClick={() => togglePref('emailSecurityAlerts')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePref('emailSecurityAlerts'); }}} />
             </div>
             <div className="notification-toggle">
               <div>
                 <div className="notification-toggle-label">Weekly Report</div>
                 <div className="notification-toggle-desc">Weekly performance summary across all bots</div>
               </div>
-              <div className={`toggle-switch ${prefs.emailWeeklyReport ? 'active' : ''}`} onClick={() => togglePref('emailWeeklyReport')} />
+              <div className={`toggle-switch ${prefs.emailWeeklyReport ? 'active' : ''}`} role="switch" aria-checked={prefs.emailWeeklyReport} tabIndex={0} onClick={() => togglePref('emailWeeklyReport')} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePref('emailWeeklyReport'); }}} />
             </div>
           </>
         )}

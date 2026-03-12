@@ -9,14 +9,14 @@ export interface OAuthAdapter {
     redirectUri: string;
     state: string;
     query?: Record<string, string>;
-  }): { url: string; stateData?: any };
+  }): { url: string; stateData?: Record<string, string> };
 
   exchangeToken(opts: {
     provider: string;
     code: string;
     redirectUri: string;
-    stateData?: any;
-  }): Promise<any>;
+    stateData?: Record<string, string>;
+  }): Promise<{ accessToken: string; refreshToken?: string; expiresIn?: number; scope?: string; rawData?: Record<string, unknown> }>;
 }
 
 function envKey(provider: string, key: string): string {

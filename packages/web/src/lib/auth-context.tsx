@@ -44,21 +44,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onboardingRequired: false,
   });
 
-  // Restore session from localStorage
+  // Restore session from localStorage (user info only — token is obtained via refresh cookie)
   useEffect(() => {
-    const stored = localStorage.getItem('bb_auth');
+    const stored = localStorage.getItem('bb_session');
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
+        // User/tenant info stored in localStorage for fast hydration.
+        // Access token is NOT stored — it stays in memory only (XSS-safe).
+        // On page reload, the refresh cookie (HttpOnly) is used to get a new access token.
         setState({
           user: parsed.user,
           tenantId: parsed.tenantId,
-          accessToken: parsed.accessToken,
-          loading: false,
+          accessToken: null, // will be refreshed below
+          loading: true,
           onboardingRequired: parsed.onboardingRequired ?? false,
         });
+
+        // Obtain a fresh access token from the HttpOnly refresh cookie
+        fetch(`${API_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({}),
+        })
+          .then((r) => r.json())
+          .then((jr) => {
+            if (jr?.success && jr.data?.accessToken) {
+              setState((s) => ({ ...s, accessToken: jr.data.accessToken, loading: false }));
+            } else {
+              // Refresh failed — session expired, clear stored data
+              localStorage.removeItem('bb_session');
+              setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
+            }
+          })
+          .catch(() => {
+            localStorage.removeItem('bb_session');
+            setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
+          });
       } catch {
-        localStorage.removeItem('bb_auth');
+        localStorage.removeItem('bb_session');
         setState((s) => ({ ...s, loading: false }));
       }
     } else {
@@ -72,27 +97,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: string;
     onboardingRequired: boolean;
   }) => {
-    localStorage.setItem('bb_auth', JSON.stringify({
+    // Store user/tenant info only — never persist the access token to localStorage
+    localStorage.setItem('bb_session', JSON.stringify({
       user: data.user,
       tenantId: data.tenantId,
-      accessToken: data.accessToken,
       onboardingRequired: data.onboardingRequired,
     }));
     setState({
       user: data.user,
       tenantId: data.tenantId,
-      accessToken: data.accessToken,
+      accessToken: data.accessToken, // kept in memory only
       loading: false,
       onboardingRequired: data.onboardingRequired,
     });
   }, []);
 
   const completeOnboarding = useCallback(() => {
-    const stored = localStorage.getItem('bb_auth');
+    const stored = localStorage.getItem('bb_session');
     if (stored) {
       const parsed = JSON.parse(stored);
       parsed.onboardingRequired = false;
-      localStorage.setItem('bb_auth', JSON.stringify(parsed));
+      localStorage.setItem('bb_session', JSON.stringify(parsed));
     }
     setState((s) => ({ ...s, onboardingRequired: false }));
   }, []);
@@ -148,7 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       credentials: 'include',
       headers: state.accessToken ? { Authorization: `Bearer ${state.accessToken}` } : {},
     }).catch(() => {});
-    localStorage.removeItem('bb_auth');
+    localStorage.removeItem('bb_session');
     setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
   }, [state.accessToken]);
 
@@ -180,14 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         const jr = await r.json();
         if (jr?.success && jr.data?.accessToken) {
-          const stored = localStorage.getItem('bb_auth');
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              parsed.accessToken = jr.data.accessToken;
-              localStorage.setItem('bb_auth', JSON.stringify(parsed));
-            } catch {}
-          }
+          // Store new access token in memory only — never in localStorage
           setState((s) => ({ ...s, accessToken: jr.data.accessToken }));
 
           const retry = await makeRequest(jr.data.accessToken);

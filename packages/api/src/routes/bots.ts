@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { BotFamily, Platform, BotStatus } from '@beastbots/shared';
+import type { BotFamily, Platform, BotStatus, TradingBotConfig, StoreBotConfig, SocialBotConfig, WorkforceBotConfig, TradingPlatform, StorePlatform, SocialPlatform, AutonomyLevel, StoreStrategy, SocialStrategy, TradingStrategy } from '@beastbots/shared';
 import {
   INTEGRATIONS,
   DEFAULT_PRICING,
@@ -19,6 +19,25 @@ import { createRuntime, getRuntime, destroyRuntime } from '@beastbots/workers';
 import type { RuntimeState } from '@beastbots/workers';
 
 export const botsRouter = new Hono();
+
+/* ─── DB Row Interfaces ─── */
+interface BotRow {
+  id: string;
+  tenant_id: string;
+  name: string;
+  family: string;
+  platform: string;
+  status: string;
+  config: string;
+  created_at: number;
+  updated_at: number;
+}
+interface BotStatusRow { id: string; tenant_id: string; status: string; }
+interface BotFamilyRow { id: string; tenant_id: string; family: string; status: string; }
+interface BotIdRow { id: string; tenant_id: string; }
+interface CredRow { id: string; }
+interface TickRow { ts: number; json: string; }
+interface StateRow { state_json: string; tick_history: string; }
 
 // Build a callback that persists runtime state to bot_state table
 function makePersistCallback(botId: string, tenantId: string, family: BotFamily, platform: Platform) {
@@ -39,11 +58,13 @@ function makePersistCallback(botId: string, tenantId: string, family: BotFamily,
   };
 }
 
-function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Record<string, unknown>) {
+type BotConfig = TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
+
+function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Record<string, unknown>): BotConfig {
   if (family === 'trading') {
     return {
-      platform,
-      strategy: (config.strategy as string) ?? 'dca',
+      platform: platform as TradingPlatform,
+      strategy: (config.strategy as TradingStrategy) ?? 'dca',
       symbols: (config.symbols as string[]) ?? ['BTC-USD'],
       maxPositionSizeUsd: Number(config.maxPositionSizeUsd ?? 100),
       maxDailyLossUsd: Number(config.maxDailyLossUsd ?? 1000),
@@ -53,14 +74,14 @@ function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Rec
       cooldownAfterLossMs: Number(config.cooldownAfterLossMs ?? 60_000),
       paperTrading: Boolean(config.paperTrading ?? true),
       useLLM: Boolean(config.useLLM ?? false),
-      autonomyLevel: (config.autonomyLevel as string) ?? 'manual',
+      autonomyLevel: (config.autonomyLevel as AutonomyLevel) ?? 'manual',
     };
   }
 
   if (family === 'store') {
     return {
-      platform,
-      strategies: (config.strategies as string[]) ?? ['dynamic_pricing'],
+      platform: platform as StorePlatform,
+      strategies: (config.strategies as StoreStrategy[]) ?? ['dynamic_pricing'],
       maxPriceChangePercent: Number(config.maxPriceChangePercent ?? 5),
       minMarginPercent: Number(config.minMarginPercent ?? 10),
       syncIntervalMs: Number(config.syncIntervalMs ?? 300_000),
@@ -68,13 +89,13 @@ function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Rec
       autoReorder: Boolean(config.autoReorder ?? false),
       paperMode: Boolean(config.paperMode ?? true),
       useLLM: Boolean(config.useLLM ?? false),
-      autonomyLevel: (config.autonomyLevel as string) ?? 'manual',
+      autonomyLevel: (config.autonomyLevel as AutonomyLevel) ?? 'manual',
     };
   }
 
   return {
-    platform,
-    strategies: (config.strategies as string[]) ?? ['content_calendar'],
+    platform: platform as SocialPlatform,
+    strategies: (config.strategies as SocialStrategy[]) ?? ['content_calendar'],
     maxPostsPerDay: Number(config.maxPostsPerDay ?? 2),
     maxEngagementsPerHour: Number(config.maxEngagementsPerHour ?? 10),
     contentApprovalRequired: Boolean(config.contentApprovalRequired ?? true),
@@ -82,7 +103,7 @@ function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Rec
     brandVoiceGuidelines: (config.brandVoiceGuidelines as string) ?? 'professional',
     paperMode: Boolean(config.paperMode ?? true),
     useLLM: Boolean(config.useLLM ?? false),
-    autonomyLevel: (config.autonomyLevel as string) ?? 'manual',
+    autonomyLevel: (config.autonomyLevel as AutonomyLevel) ?? 'manual',
   };
 }
 
@@ -163,7 +184,7 @@ botsRouter.get('/:id', async (c) => {
 
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
   const bot = {
@@ -250,7 +271,8 @@ botsRouter.post('/', async (c) => {
     details: JSON.stringify({ botId: id, platform }),
   });
 
-  const row = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ?').get(id) as any;
+  const row = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ?').get(id) as BotRow | undefined;
+  if (!row) return c.json({ success: false, error: 'Bot not found after creation' }, 404);
   const bot = {
     id: row.id,
     tenantId: row.tenant_id,
@@ -274,7 +296,7 @@ botsRouter.patch('/:id', async (c) => {
 
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ?').get(id) as any;
+  const row = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ?').get(id) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
   if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
 
@@ -298,7 +320,8 @@ botsRouter.patch('/:id', async (c) => {
     details: JSON.stringify({ botId: id }),
   });
 
-  const updated = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ?').get(id) as any;
+  const updated = db.prepare('SELECT id, tenant_id, name, family, platform, status, config, created_at, updated_at FROM bots WHERE id = ?').get(id) as BotRow | undefined;
+  if (!updated) return c.json({ success: false, error: 'Bot not found after update' }, 404);
   const bot = {
     id: updated.id,
     tenantId: updated.tenant_id,
@@ -321,12 +344,12 @@ botsRouter.post('/:id/start', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status, family, platform, config FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id, status, family, platform, config FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
   const parsedConfig = JSON.parse(row.config || '{}') as Record<string, unknown>;
   if (row.family === 'trading' && parsedConfig.paperTrading === false) {
-    const cred = db.prepare('SELECT id FROM credentials WHERE tenant_id = ? AND platform = ?').get(auth.tenantId, row.platform) as any;
+    const cred = db.prepare('SELECT id FROM credentials WHERE tenant_id = ? AND platform = ?').get(auth.tenantId, row.platform) as CredRow | undefined;
     if (!cred) {
       return c.json({ success: false, error: 'Trading live mode requires connected credentials' }, 400);
     }
@@ -337,11 +360,11 @@ botsRouter.post('/:id/start', async (c) => {
     runtime = createRuntime({
       botId: id,
       tenantId: auth.tenantId,
-      family: row.family,
-      platform: row.platform,
-      config: normalizeRuntimeConfig(row.family, row.platform, parsedConfig) as any,
-      tickIntervalMs: familyTickIntervalMs(row.family),
-      onStateChange: makePersistCallback(id, auth.tenantId, row.family, row.platform),
+      family: row.family as BotFamily,
+      platform: row.platform as Platform,
+      config: normalizeRuntimeConfig(row.family as BotFamily, row.platform, parsedConfig),
+      tickIntervalMs: familyTickIntervalMs(row.family as BotFamily),
+      onStateChange: makePersistCallback(id, auth.tenantId, row.family as BotFamily, row.platform as Platform),
     });
   }
   runtime.start();
@@ -362,7 +385,7 @@ botsRouter.post('/:id/pause', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
   const runtime = getRuntime(auth.tenantId, id);
   runtime?.pause();
@@ -382,7 +405,7 @@ botsRouter.post('/:id/stop', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
   const runtime = getRuntime(auth.tenantId, id);
 
@@ -421,7 +444,7 @@ botsRouter.post('/:id/kill', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
   const runtime = getRuntime(auth.tenantId, id);
   runtime?.killSwitch();
@@ -444,7 +467,7 @@ botsRouter.delete('/:id', async (c) => {
 
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ?').get(id) as any;
+  const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ?').get(id) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
   if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
   if (row.status === 'running') {
@@ -485,7 +508,7 @@ botsRouter.get('/:id/metrics', async (c) => {
 
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, family, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id, family, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
   const runtime = getRuntime(auth.tenantId, id);
@@ -518,7 +541,7 @@ botsRouter.get('/:id/trace', async (c) => {
 
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
   const limit = Math.min(Number(c.req.query('limit') ?? '50'), 200);
@@ -534,14 +557,14 @@ botsRouter.get('/:id/decisions', async (c) => {
 
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
   const runtime = getRuntime(auth.tenantId, id);
   const history = runtime?.getTickHistory(200) ?? [];
 
   // Filter to only actionable decisions (not heartbeats)
-  const decisions = history.filter((t) => t.result !== 'skipped' || (t.details as any)?.suggestedSignal);
+  const decisions = history.filter((t) => t.result !== 'skipped' || (t.details as Record<string, unknown>)?.suggestedSignal);
 
   return c.json({ success: true, data: { botId: id, decisions } });
 });
@@ -552,15 +575,15 @@ botsRouter.get('/:id/history', async (c) => {
 
   const id = c.req.param('id');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as any;
+  const row = db.prepare('SELECT id, tenant_id FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
   const limit = Math.min(Number(c.req.query('limit') ?? '100'), 500);
   const rows = db.prepare(
     'SELECT action, result, details, duration_ms AS durationMs, created_at AS timestamp FROM decision_log WHERE bot_id = ? AND tenant_id = ? ORDER BY created_at DESC LIMIT ?'
-  ).all(id, auth.tenantId, limit) as any[];
+  ).all(id, auth.tenantId, limit) as { action: string; result: string; details: string; durationMs: number; timestamp: number }[];
 
-  const decisions = rows.map((r: any) => ({
+  const decisions = rows.map((r) => ({
     action: r.action,
     result: r.result,
     details: JSON.parse(r.details || '{}'),
@@ -571,7 +594,7 @@ botsRouter.get('/:id/history', async (c) => {
   // Also include persisted metrics snapshots
   const metricsRows = db.prepare(
     'SELECT total_ticks AS totalTicks, successful_actions AS successfulActions, failed_actions AS failedActions, denied_actions AS deniedActions, total_pnl_usd AS totalPnlUsd, uptime_ms AS uptimeMs, recorded_at AS recordedAt FROM bot_metrics WHERE bot_id = ? ORDER BY recorded_at DESC LIMIT 10'
-  ).all(id) as any[];
+  ).all(id) as { totalTicks: number; successfulActions: number; failedActions: number; deniedActions: number; totalPnlUsd: number; uptimeMs: number; recordedAt: number }[];
 
   return c.json({
     success: true,
@@ -595,7 +618,7 @@ export function restoreRuntimes(): void {
        FROM bot_state bs
        JOIN bots b ON b.id = bs.bot_id
        WHERE bs.status IN ('running', 'paused')`
-    ).all() as any[];
+    ).all() as { bot_id: string; tenant_id: string; family: string; platform: string; status: string; engine_state: string; safety_state: string; metrics: string; tick_history: string; last_tick_at: number; config: string; name: string }[];
 
     let restored = 0;
     for (const row of rows) {
@@ -604,11 +627,11 @@ export function restoreRuntimes(): void {
         const runtime = createRuntime({
           botId: row.bot_id,
           tenantId: row.tenant_id,
-          family: row.family,
-          platform: row.platform,
-          config: normalizeRuntimeConfig(row.family, row.platform, parsedConfig) as any,
-          tickIntervalMs: familyTickIntervalMs(row.family),
-          onStateChange: makePersistCallback(row.bot_id, row.tenant_id, row.family, row.platform),
+          family: row.family as BotFamily,
+          platform: row.platform as Platform,
+          config: normalizeRuntimeConfig(row.family as BotFamily, row.platform, parsedConfig),
+          tickIntervalMs: familyTickIntervalMs(row.family as BotFamily),
+          onStateChange: makePersistCallback(row.bot_id, row.tenant_id, row.family as BotFamily, row.platform as Platform),
         });
 
         runtime.restoreState({

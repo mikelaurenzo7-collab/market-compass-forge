@@ -1,4 +1,4 @@
-import type { TradingBotConfig, TickResult } from '../index';
+import type { TradingBotConfig, TickResult, SafetyContext } from '../index';
 import { createTradingEngineState, executeTradingTick } from './engine';
 import type { TradingAdapter } from './engine';
 
@@ -29,7 +29,7 @@ interface HistoricalAdapter extends TradingAdapter {
 
 export async function backtest(
   config: TradingBotConfig,
-  safety: any,
+  safety: SafetyContext,
   candles: Candle[]
 ): Promise<BacktestResult> {
   const candleQueue = [...candles];
@@ -54,7 +54,7 @@ export async function backtest(
   let prevEquity = 0;
 
   while (candleQueue.length > 0) {
-    const { newState } = await executeTradingTick(state, adapter as any);
+    const { newState } = await executeTradingTick(state, adapter);
     state = newState;
     const equity = state.totalPnl;
     equityCurve.push(equity);

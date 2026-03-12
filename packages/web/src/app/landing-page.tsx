@@ -31,6 +31,14 @@ const FAMILIES = [
     desc: 'Execute momentum, mean-reversion, and arbitrage strategies across crypto and equities with real-time risk management.',
     tags: ['StochRSI', 'ADX', 'Paper Mode', 'Alpaca', 'Binance'],
     color: 'var(--color-trading)',
+    platforms: [
+      { name: 'Coinbase', color: '#0052FF', icon: '◆' },
+      { name: 'Binance', color: '#F0B90B', icon: '◈' },
+      { name: 'Alpaca', color: '#FFDC00', icon: '▲' },
+      { name: 'Kalshi', color: '#00D395', icon: '⬢' },
+      { name: 'Polymarket', color: '#0066FF', icon: '⬟' },
+    ],
+    metrics: ['P&L Tracking', 'Win Rate', 'Position Sizing', 'Risk Controls'],
   },
   {
     id: 'store',
@@ -39,6 +47,15 @@ const FAMILIES = [
     desc: 'Dynamic pricing, inventory forecasting, listing optimization, and catalog sync across your entire storefront.',
     tags: ['Shopify', 'Amazon', 'Etsy', 'Dynamic Pricing', 'Inventory'],
     color: 'var(--color-store)',
+    platforms: [
+      { name: 'Shopify', color: '#95BF47', icon: '🛍' },
+      { name: 'Amazon', color: '#FF9900', icon: '📦' },
+      { name: 'Etsy', color: '#F1641E', icon: '🎨' },
+      { name: 'eBay', color: '#E53238', icon: '🏷️' },
+      { name: 'Square', color: '#006AFF', icon: '◼' },
+      { name: 'WooCommerce', color: '#96588A', icon: '🔌' },
+    ],
+    metrics: ['Revenue Impact', 'Price Changes', 'Stock Alerts', 'Review Responses'],
   },
   {
     id: 'social',
@@ -47,6 +64,15 @@ const FAMILIES = [
     desc: 'Smart content scheduling, engagement algorithms, audience analytics, and cross-platform amplification.',
     tags: ['X / Twitter', 'Instagram', 'YouTube', 'TikTok', 'LinkedIn'],
     color: 'var(--color-social)',
+    platforms: [
+      { name: '𝕏', color: '#A0A0A0', icon: '𝕏' },
+      { name: 'TikTok', color: '#FE2C55', icon: '♪' },
+      { name: 'Instagram', color: '#E4405F', icon: '📷' },
+      { name: 'Facebook', color: '#1877F2', icon: 'f' },
+      { name: 'LinkedIn', color: '#0A66C2', icon: 'in' },
+      { name: 'YouTube', color: '#FF0000', icon: '▶' },
+    ],
+    metrics: ['Engagement Rate', 'Follower Growth', 'Post Reach', 'Trend Alerts'],
   },
   {
     id: 'workforce',
@@ -55,6 +81,14 @@ const FAMILIES = [
     desc: 'Orchestrate multi-agent teams for hiring, onboarding, support triage, and knowledge management workflows.',
     tags: ['Slack', 'Notion', 'Jira', 'Asana', 'HubSpot'],
     color: 'var(--color-workforce)',
+    platforms: [
+      { name: 'Slack', color: '#4A154B', icon: '#' },
+      { name: 'Notion', color: '#FFFFFF', icon: '◧' },
+      { name: 'Jira', color: '#0052CC', icon: '◈' },
+      { name: 'Salesforce', color: '#00A1E0', icon: '☁' },
+      { name: 'HubSpot', color: '#FF7A59', icon: '⊕' },
+    ],
+    metrics: ['Tasks Done', 'SLA Compliance', 'Response Time', 'Escalations'],
   },
 ];
 
@@ -229,9 +263,30 @@ export default function LandingPage() {
                 {fam.title}
               </div>
               <div className="family-showcase-desc">{fam.desc}</div>
-              <div className="family-showcase-tags">
-                {fam.tags.map((t) => (
-                  <span key={t} className="family-showcase-tag">{t}</span>
+
+              {/* Platform badges with brand colors */}
+              <div className="family-showcase-platforms">
+                {fam.platforms.map((p) => (
+                  <span
+                    key={p.name}
+                    className="platform-brand-badge"
+                    style={{
+                      '--pb-color': p.color,
+                      '--pb-bg': `${p.color}15`,
+                    } as React.CSSProperties}
+                  >
+                    <span className="platform-brand-icon">{p.icon}</span>
+                    {p.name}
+                  </span>
+                ))}
+              </div>
+
+              {/* Key metrics this family tracks */}
+              <div className="family-showcase-metrics">
+                {fam.metrics.map((m) => (
+                  <span key={m} className="family-metric-tag">
+                    <CheckCircle2 size={10} /> {m}
+                  </span>
                 ))}
               </div>
             </motion.div>
@@ -246,8 +301,23 @@ export default function LandingPage() {
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
       >
-        {['Coinbase', 'Binance', 'Alpaca', 'Shopify', 'Amazon', 'Etsy', 'X / Twitter', 'Instagram', 'TikTok', 'LinkedIn', 'YouTube', 'Slack', 'Notion', 'Jira'].map((name) => (
-          <span key={name} className="platform-logo">{name}</span>
+        {[
+          { name: 'Coinbase', color: '#0052FF' },
+          { name: 'Binance', color: '#F0B90B' },
+          { name: 'Alpaca', color: '#FFDC00' },
+          { name: 'Shopify', color: '#95BF47' },
+          { name: 'Amazon', color: '#FF9900' },
+          { name: 'Etsy', color: '#F1641E' },
+          { name: '𝕏', color: '#A0A0A0' },
+          { name: 'Instagram', color: '#E4405F' },
+          { name: 'TikTok', color: '#FE2C55' },
+          { name: 'LinkedIn', color: '#0A66C2' },
+          { name: 'YouTube', color: '#FF0000' },
+          { name: 'Slack', color: '#4A154B' },
+          { name: 'Notion', color: '#FFFFFF' },
+          { name: 'Jira', color: '#0052CC' },
+        ].map((p) => (
+          <span key={p.name} className="platform-logo" style={{ color: p.color, opacity: 0.8 }}>{p.name}</span>
         ))}
       </motion.div>
 

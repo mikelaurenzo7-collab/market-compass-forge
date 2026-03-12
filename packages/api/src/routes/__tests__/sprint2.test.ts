@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 // Isolated temp database
@@ -7,6 +8,10 @@ const tmpDb = path.join(os.tmpdir(), `beastbots-test-sprint2-${Date.now()}-${Mat
 process.env.DATABASE_PATH = tmpDb;
 process.env.JWT_SECRET = 'test-secret';
 process.env.ENCRYPTION_KEY = 'test-encryption-key-32bytes!';
+process.env.SHOPIFY_WEBHOOK_SECRET = 'shopify-test-secret';
+process.env.COINBASE_WEBHOOK_SECRET = 'coinbase-test-secret';
+process.env.ALPACA_WEBHOOK_SECRET = 'alpaca-test-secret';
+process.env.WEBHOOK_SECRET_ETSY = 'etsy-test-secret';
 
 import app from '../../server';
 import { getDb, closeDb } from '../../lib/db';
@@ -145,12 +150,15 @@ describe('Webhooks API', () => {
        VALUES (?, ?, 'shopify', ?, 'api_key', '{}', 'active', ?, ?)`
     ).run(`cred-shop-${now}`, tenantId, 'test-shop.myshopify.com', now, now);
 
+    const body = JSON.stringify({ id: 123, total_price: '49.99' });
+    const hmac = crypto.createHmac('sha256', 'shopify-test-secret').update(body, 'utf8').digest('base64');
+
     const res = await app.request('/api/webhooks/shopify', {
       method: 'POST',
-      body: JSON.stringify({ id: 123, total_price: '49.99' }),
+      body,
       headers: {
         'Content-Type': 'application/json',
-        'x-shopify-hmac-sha256': 'testhash',
+        'x-shopify-hmac-sha256': hmac,
         'x-shopify-shop-domain': 'test-shop.myshopify.com',
         'x-shopify-topic': 'orders/create',
       },
@@ -179,12 +187,15 @@ describe('Webhooks API', () => {
   });
 
   it('POST /api/webhooks/coinbase stores event', async () => {
+    const body = JSON.stringify({ event: { type: 'trade_completed', user_id: 'u1' } });
+    const sig = crypto.createHmac('sha256', 'coinbase-test-secret').update(body, 'utf8').digest('hex');
+
     const res = await app.request('/api/webhooks/coinbase', {
       method: 'POST',
-      body: JSON.stringify({ event: { type: 'trade_completed', user_id: 'u1' } }),
+      body,
       headers: {
         'Content-Type': 'application/json',
-        'cb-signature': 'test-sig',
+        'cb-signature': sig,
       },
     });
     expect(res.status).toBe(200);
@@ -196,7 +207,10 @@ describe('Webhooks API', () => {
     const res = await app.request('/api/webhooks/alpaca', {
       method: 'POST',
       body: JSON.stringify({ event: 'fill', order: { symbol: 'AAPL', qty: 10 } }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'alpaca-webhook-secret': 'alpaca-test-secret',
+      },
     });
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -209,17 +223,20 @@ describe('Webhooks API', () => {
   });
 
   it('POST /api/webhooks/:platform stores generic event', async () => {
-    const res = await app.request('/api/webhooks/stripe', {
+    const res = await app.request('/api/webhooks/etsy', {
       method: 'POST',
-      body: JSON.stringify({ type: 'payment_intent.succeeded' }),
-      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'listing.updated' }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer etsy-test-secret',
+      },
     });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.success).toBe(true);
 
     const event = db.prepare(
-      "SELECT * FROM webhook_events WHERE platform = 'stripe'"
+      "SELECT * FROM webhook_events WHERE platform = 'etsy'"
     ).get() as any;
     expect(event).toBeDefined();
     expect(event.event_type).toBe('generic');

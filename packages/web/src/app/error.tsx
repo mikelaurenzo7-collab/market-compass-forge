@@ -19,7 +19,7 @@ export default function Error({
       <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
       <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>Something went wrong</h2>
       <p style={{ color: '#94a3b8', fontSize: '0.9rem', maxWidth: '400px', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-        {error.message || 'An unexpected error occurred. Please try again.'}
+        An unexpected error occurred. Please try again.
       </p>
       <div style={{ display: 'flex', gap: '0.75rem' }}>
         <button

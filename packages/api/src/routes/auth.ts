@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import type { Context } from 'hono';
 import { z } from 'zod';
 import crypto from 'node:crypto';
 import { hashSync, compareSync } from 'bcryptjs';
@@ -11,10 +12,20 @@ import { sendEmail, passwordResetEmail } from './notifications.js';
 
 export const authRouter = new Hono();
 
+/* ─── DB Row Interfaces ─── */
+interface UserRow { id: string; email: string; password_hash: string; display_name: string; email_verified: number; mfa_secret?: string; created_at: number; }
+interface UserBasicRow { id: string; email: string; display_name?: string; created_at?: number; email_verified?: number; }
+interface MemberRow { tenant_id: string; }
+interface MfaRow { mfa_secret: string; }
+interface OnboardingRow { completed: number; current_step: string; selected_family: string; first_integration: string; }
+interface PlatformRow { platform: string; status: string; }
+interface ResetTokenRow { id: string; user_id: string; token_hash: string; expires_at: number; used: number; }
+interface VerifyTokenRow { id: string; user_id: string; token_hash: string; expires_at: number; used: number; }
+
 const REFRESH_COOKIE = 'bb_refresh';
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
 
-function setRefreshCookie(c: any, token: string) {
+function setRefreshCookie(c: Context, token: string) {
   setCookie(c, REFRESH_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -24,12 +35,12 @@ function setRefreshCookie(c: any, token: string) {
   });
 }
 
-function clearRefreshCookie(c: any) {
+function clearRefreshCookie(c: Context) {
   deleteCookie(c, REFRESH_COOKIE, { path: '/api/auth' });
 }
 
 function uid(): string {
-  return `u_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  return `u_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
 }
 
 // ─── Schemas ──────────────────────────────────────────────────
@@ -144,7 +155,7 @@ authRouter.post('/login', async (c) => {
 
   const user = db.prepare(
     'SELECT id, email, password_hash, display_name, mfa_enabled, failed_login_attempts, locked_until, email_verified FROM users WHERE email = ?'
-  ).get(email) as any;
+  ).get(email) as (UserRow & { mfa_enabled: number; failed_login_attempts: number; locked_until: number | null }) | undefined;
 
   // Account lockout check
   if (user?.locked_until && Date.now() < user.locked_until) {
@@ -168,7 +179,7 @@ authRouter.post('/login', async (c) => {
     }
     // audit failed login
     const failedTenantId = user?.id
-      ? (db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any)?.tenant_id
+      ? (db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as MemberRow | undefined)?.tenant_id
       : null;
     if (failedTenantId) {
       logAudit({
@@ -191,7 +202,7 @@ authRouter.post('/login', async (c) => {
 
   const membership = db.prepare(
     'SELECT tenant_id, role FROM tenant_members WHERE user_id = ?'
-  ).get(user.id) as any;
+  ).get(user.id) as (MemberRow & { role?: string }) | undefined;
 
   const tenantId = membership?.tenant_id ?? '';
 
@@ -226,7 +237,7 @@ authRouter.post('/login', async (c) => {
 
   const onboarding = db.prepare(
     'SELECT completed FROM onboarding WHERE user_id = ?'
-  ).get(user.id) as any;
+  ).get(user.id) as { completed: number } | undefined;
 
   const accessToken = await signAccessToken({ userId: user.id, tenantId, email: user.email });
   const refreshTokenData = await issueRefreshToken({ userId: user.id, tenantId });
@@ -263,16 +274,16 @@ authRouter.post('/refresh', async (c) => {
 
   try {
     const payload = await verifyAccessToken(token);
-    if (!payload || (payload as any).type !== 'refresh') {
+    if (!payload || (payload as Record<string, unknown>).type !== 'refresh') {
       return c.json({ success: false, error: 'Invalid token type' }, 401);
     }
 
     const userId = payload.sub as string;
     const db = getDb();
-    const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId) as any;
+    const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId) as UserBasicRow | undefined;
     if (!user) return c.json({ success: false, error: 'User not found' }, 401);
 
-    const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(userId) as any;
+    const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(userId) as MemberRow | undefined;
 
     const rotation = await rotateRefreshToken(token);
 
@@ -302,19 +313,19 @@ authRouter.get('/me', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
 
   const db = getDb();
-  const user = db.prepare('SELECT id, email, display_name, created_at FROM users WHERE id = ?').get(auth.userId) as any;
+  const user = db.prepare('SELECT id, email, display_name, created_at FROM users WHERE id = ?').get(auth.userId) as UserBasicRow | undefined;
   if (!user) return c.json({ success: false, error: 'User not found' }, 401);
 
-  const onboarding = db.prepare('SELECT completed, current_step, selected_family, first_integration FROM onboarding WHERE user_id = ?').get(auth.userId) as any;
+  const onboarding = db.prepare('SELECT completed, current_step, selected_family, first_integration FROM onboarding WHERE user_id = ?').get(auth.userId) as OnboardingRow | undefined;
 
-  const connectedPlatforms = db.prepare('SELECT platform, status FROM credentials WHERE tenant_id = ?').all(auth.tenantId) as any[];
+  const connectedPlatforms = db.prepare('SELECT platform, status FROM credentials WHERE tenant_id = ?').all(auth.tenantId) as PlatformRow[];
 
   return c.json({
     success: true,
     data: {
       user: { id: user.id, email: user.email, displayName: user.display_name, createdAt: user.created_at },
       tenantId: auth.tenantId,
-      role: (auth as any).role ?? 'member',
+      role: (auth as Record<string, unknown>).role as string ?? 'member',
       onboarding: {
         completed: !!onboarding?.completed,
         currentStep: onboarding?.current_step ?? 0,
@@ -363,7 +374,7 @@ authRouter.post('/forgot-password', async (c) => {
 
   const { email } = parsed.data;
   const db = getDb();
-  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as any;
+  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as { id: string } | undefined;
 
   // Always return success to prevent email enumeration
   if (!user) {
@@ -376,7 +387,7 @@ authRouter.post('/forgot-password', async (c) => {
   // Generate a secure random token
   const rawToken = crypto.randomBytes(32).toString('hex');
   const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
-  const id = `prt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const id = `prt_${crypto.randomUUID().replace(/-/g, '').slice(0, 16)}`;
   const now = Date.now();
   const expiresAt = now + 60 * 60 * 1000; // 1 hour
 
@@ -386,9 +397,6 @@ authRouter.post('/forgot-password', async (c) => {
 
   // In production, send email with: /reset-password?token=<rawToken>
   const resetUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/reset-password?token=${rawToken}`;
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`[Password Reset] ${email} → ${resetUrl}`);
-  }
 
   // Send the reset email (non-blocking — don't fail the request if email fails)
   const emailTemplate = passwordResetEmail(resetUrl);
@@ -396,7 +404,7 @@ authRouter.post('/forgot-password', async (c) => {
     console.error('[Email] Password reset email failed:', err);
   });
 
-  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any;
+  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as MemberRow | undefined;
   logAudit({
     tenantId: membership?.tenant_id ?? '',
     userId: user.id,
@@ -410,8 +418,8 @@ authRouter.post('/forgot-password', async (c) => {
     success: true,
     data: {
       message: 'If that email is registered, a reset link has been sent.',
-      // Include token in non-production for testing
-      ...(process.env.NODE_ENV !== 'production' ? { resetToken: rawToken } : {}),
+      // Expose token only in test env so integration tests can complete the reset flow
+      ...(process.env.NODE_ENV === 'test' ? { resetToken: rawToken } : {}),
     },
   });
 });
@@ -436,7 +444,7 @@ authRouter.post('/reset-password', async (c) => {
 
   const resetRow = db.prepare(
     'SELECT id, user_id, expires_at, used FROM password_reset_tokens WHERE token_hash = ?'
-  ).get(tokenHash) as any;
+  ).get(tokenHash) as ResetTokenRow | undefined;
 
   if (!resetRow) {
     return c.json({ success: false, error: 'Invalid or expired reset link' }, 400);
@@ -464,7 +472,7 @@ authRouter.post('/reset-password', async (c) => {
     db.prepare('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ?').run(resetRow.user_id);
   })();
 
-  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(resetRow.user_id) as any;
+  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(resetRow.user_id) as MemberRow | undefined;
   logAudit({
     tenantId: membership?.tenant_id ?? '',
     userId: resetRow.user_id,
@@ -497,7 +505,7 @@ authRouter.post('/verify-email', async (c) => {
 
   const user = db.prepare(
     'SELECT id, email_verification_token, email_verified FROM users WHERE email_verification_token = ?'
-  ).get(tokenHash) as any;
+  ).get(tokenHash) as { id: string; email_verification_token: string; email_verified: number } | undefined;
 
   if (!user) {
     return c.json({ success: false, error: 'Invalid verification link' }, 400);
@@ -510,7 +518,7 @@ authRouter.post('/verify-email', async (c) => {
   db.prepare('UPDATE users SET email_verified = 1, email_verification_token = NULL, updated_at = ? WHERE id = ?')
     .run(Date.now(), user.id);
 
-  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any;
+  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as MemberRow | undefined;
   logAudit({
     tenantId: membership?.tenant_id ?? '',
     userId: user.id,
@@ -530,7 +538,7 @@ authRouter.post('/resend-verification', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
 
   const db = getDb();
-  const user = db.prepare('SELECT id, email, email_verified FROM users WHERE id = ?').get(auth.userId) as any;
+  const user = db.prepare('SELECT id, email, email_verified FROM users WHERE id = ?').get(auth.userId) as UserBasicRow | undefined;
   if (!user) return c.json({ success: false, error: 'User not found' }, 404);
   if (user.email_verified) return c.json({ success: true, data: { message: 'Email is already verified.' } });
 

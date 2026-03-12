@@ -45,9 +45,11 @@ if (process.env.NODE_ENV !== 'test') {
 // ─── Rate Limiting ────────────────────────────────────────────
 function rateLimit(windowMs: number, maxRequests: number) {
   return async (c: any, next: any) => {
-    // In production behind Cloudflare, use cf-connecting-ip (cannot be spoofed).
-    // x-forwarded-for is used here for local dev; do NOT trust in production without a trusted proxy.
-    const key = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown';
+    // In production behind Cloudflare, cf-connecting-ip is set by CF edge and cannot be spoofed.
+    // In non-CF environments, fall back to the socket remote address via c.env to avoid header spoofing.
+    const key = c.req.header('cf-connecting-ip')
+      ?? (c.env?.incoming?.socket?.remoteAddress as string | undefined)
+      ?? 'unknown';
     const now = Date.now();
     const resetAt = now + windowMs;
     const db = getDb();
@@ -59,7 +61,7 @@ function rateLimit(windowMs: number, maxRequests: number) {
         reset_at = CASE WHEN reset_at < ? THEN ? ELSE reset_at END
     `).run(key, resetAt, now, now, resetAt);
 
-    const row = db.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').get(key) as any;
+    const row = db.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').get(key) as { count: number; reset_at: number } | undefined;
     if (row && row.count > maxRequests) {
       return c.json({ success: false, error: 'Too many requests' }, 429);
     }
@@ -83,6 +85,7 @@ app.use('*', async (c, next) => {
   c.res.headers.set('X-XSS-Protection', '0');
   c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  c.res.headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 });
 
 // Body size limit (1MB)

@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 import AppShell from './components/AppShell';
+import { DashboardBotCard } from './components/BotCard';
+import { FAMILY_CONFIG } from './components/PlatformIdentity';
 
 /* ─── types ─── */
 interface BotSummary {
@@ -63,12 +65,6 @@ interface TimeseriesBucket {
 }
 
 /* ─── constants ─── */
-const FAMILY_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string; cssVar: string }> = {
-  trading: { icon: <TrendingUp size={16} />, color: '#00e87b', label: 'Trading', cssVar: 'var(--color-trading)' },
-  store: { icon: <ShoppingCart size={16} />, color: '#3b82f6', label: 'Store', cssVar: 'var(--color-store)' },
-  social: { icon: <Share2 size={16} />, color: '#8b5cf6', label: 'Social', cssVar: 'var(--color-social)' },
-  workforce: { icon: <Users size={16} />, color: '#f59e0b', label: 'Workforce', cssVar: 'var(--color-workforce)' },
-};
 
 const fade = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } };
 const stagger = { show: { transition: { staggerChildren: 0.06 } } };
@@ -111,26 +107,7 @@ function FamilyBotSection({ family, bots }: { family: string; bots: BotSummary[]
       </h2>
       <div className="bot-grid">
         {bots.map((bot) => (
-          <Link href={`/bots/${bot.id}`} key={bot.id} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div className={`bot-card ${family}`}>
-              <div className="bot-card-header">
-                <div>
-                  <div className="bot-name">{bot.name}</div>
-                  <div className="bot-platform" style={{ color: cfg.cssVar, opacity: 0.7 }}>{bot.platform}</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                  <StatusDot status={bot.status} />
-                  <span style={{
-                    fontSize: '0.65rem', fontWeight: 600,
-                    color: bot.status === 'running' ? 'var(--green)' : 'var(--text-muted)',
-                    textTransform: 'uppercase', letterSpacing: '0.04em',
-                  }}>
-                    {bot.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Link>
+          <DashboardBotCard key={bot.id} bot={bot} />
         ))}
       </div>
     </motion.div>
@@ -170,8 +147,29 @@ export default function DashboardPage() {
     if (!user) { router.push('/login'); return; }
     if (onboardingRequired) { router.push('/onboarding'); return; }
     fetchDashboard();
-    const interval = setInterval(fetchDashboard, 5_000);
-    return () => clearInterval(interval);
+
+    let interval: ReturnType<typeof setInterval> | null = null;
+
+    const startPolling = () => {
+      if (!interval) interval = setInterval(fetchDashboard, 5_000);
+    };
+    const stopPolling = () => {
+      if (interval) { clearInterval(interval); interval = null; }
+    };
+
+    startPolling();
+
+    // Pause polling when tab is hidden to save resources
+    const onVisibility = () => {
+      if (document.hidden) stopPolling();
+      else { fetchDashboard(); startPolling(); }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [user, loading, onboardingRequired, router, fetchDashboard]);
 
   if (loading || !user) return null;
@@ -251,11 +249,23 @@ export default function DashboardPage() {
         </motion.div>
 
         {fetching ? (
-          <section className="stats-grid">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="skeleton-card"><div className="skeleton-line w-40" /><div className="skeleton-line h-xl w-60" /></div>
-            ))}
-          </section>
+          <>
+            <section className="stats-grid">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="skeleton-card"><div className="skeleton-line w-40" /><div className="skeleton-line h-xl w-60" /></div>
+              ))}
+            </section>
+            <div className="charts-row">
+              <div className="chart-container" style={{ minHeight: 180 }}>
+                <div className="skeleton-line w-40" style={{ marginBottom: 12 }} />
+                <div className="skeleton-line" style={{ height: 120, borderRadius: 8 }} />
+              </div>
+              <div className="chart-container" style={{ minHeight: 180 }}>
+                <div className="skeleton-line w-40" style={{ marginBottom: 12 }} />
+                <div className="skeleton-line" style={{ height: 120, borderRadius: 8 }} />
+              </div>
+            </div>
+          </>
         ) : hasBots ? (
           <motion.section variants={fade} className="stats-grid">
             {statCards.map((s) => (
