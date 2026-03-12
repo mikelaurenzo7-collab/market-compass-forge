@@ -67,16 +67,25 @@ export default function TemplatesPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<BotTemplate | null>(null);
   const [deploying, setDeploying] = useState(false);
   const [deployError, setDeployError] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   const fetchTemplates = useCallback(async () => {
+    setLoadError('');
     try {
       const params = new URLSearchParams();
       if (familyFilter !== 'all') params.set('family', familyFilter);
       if (difficultyFilter !== 'all') params.set('difficulty', difficultyFilter);
       const res = await apiFetch(`/api/templates?${params.toString()}`);
       const json = await res.json();
-      if (json.success) setTemplates(json.data);
-    } catch { /* ignore */ } finally {
+      if (json.success) {
+        setTemplates(json.data);
+      } else {
+        setLoadError(json.error ?? 'Failed to load templates');
+      }
+    } catch (err) {
+      console.error('Failed to fetch templates:', err);
+      setLoadError('Failed to load templates. Please try again.');
+    } finally {
       setFetching(false);
     }
   }, [apiFetch, familyFilter, difficultyFilter]);
@@ -112,7 +121,8 @@ export default function TemplatesPage() {
       }
       const botId = json.data?.id ?? json.id;
       router.push(`/bots/${botId}`);
-    } catch {
+    } catch (err) {
+      console.error('Failed to deploy template:', err);
       setDeployError('Failed to deploy template');
     } finally {
       setDeploying(false);
@@ -168,6 +178,12 @@ export default function TemplatesPage() {
           ))}
         </div>
       </div>
+
+      {loadError && (
+        <div className="auth-error" style={{ marginBottom: 'var(--space-lg)' }}>
+          {loadError}
+        </div>
+      )}
 
       {/* Template Grid */}
       {fetching ? (

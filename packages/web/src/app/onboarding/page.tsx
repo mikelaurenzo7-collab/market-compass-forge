@@ -39,21 +39,44 @@ export default function OnboardingPage() {
   const [connectError, setConnectError] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [available, setAvailable] = useState<IntegrationData[]>([]);
+  const [loadingIntegrations, setLoadingIntegrations] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const familyIntegrations = available.filter((int) => {
+    if (!selectedFamily) return false;
+    const categoryMap: Record<string, string> = {
+      trading: 'trading',
+      store: 'ecommerce',
+      social: 'social',
+      workforce: 'workforce',
+    };
+    return int.category === (categoryMap[selectedFamily] ?? selectedFamily);
+  });
 
   useEffect(() => {
     async function load() {
+      setLoadError('');
+      setLoadingIntegrations(true);
       try {
         const res = await apiFetch('/api/integrations');
         const json = await res.json();
         if (json.success) {
           setAvailable(json.data);
+        } else {
+          setLoadError(json.error ?? 'Failed to load integrations');
         }
-      } catch {}
+      } catch (err) {
+        console.error('Failed to load onboarding integrations:', err);
+        setLoadError('Failed to load integrations. Please refresh and try again.');
+      } finally {
+        setLoadingIntegrations(false);
+      }
     }
     load();
   }, [apiFetch]);
 
   async function handleFamilySelect(family: string) {
+    setConnectError('');
     setSelectedFamily(family);
     await apiFetch('/api/onboarding', {
       method: 'PATCH',
@@ -63,6 +86,7 @@ export default function OnboardingPage() {
   }
 
   async function handleIntegrationSelect(platform: string) {
+    setConnectError('');
     setSelectedIntegration(platform);
     setStep(2);
   }
@@ -73,6 +97,7 @@ export default function OnboardingPage() {
     // find record
     const info = available.find((i) => i.id === selectedIntegration);
     if (info?.oauth) {
+      setConnecting(true);
       try {
         const res = await apiFetch(`/api/integrations/${selectedIntegration}/connect`, {
           headers: { Accept: 'application/json' },
@@ -80,8 +105,15 @@ export default function OnboardingPage() {
         const json = await res.json();
         if (json.success && json.url) {
           window.location.href = json.url;
+          return;
         }
-      } catch { /* ignore — user will see nothing happened */ }
+        setConnectError(json.error ?? 'Failed to start OAuth flow');
+      } catch (err) {
+        console.error('Failed to start onboarding OAuth flow:', err);
+        setConnectError('Failed to start OAuth flow. Please try again.');
+      } finally {
+        setConnecting(false);
+      }
       return;
     }
     setConnectError('');
@@ -105,7 +137,8 @@ export default function OnboardingPage() {
       });
       setConnecting(false);
       setStep(3);
-    } catch {
+    } catch (err) {
+      console.error('Failed to save onboarding credentials:', err);
       setConnectError('Network error');
       setConnecting(false);
     }
@@ -166,13 +199,9 @@ export default function OnboardingPage() {
           <>
             <h1 className="auth-title">Connect your first platform</h1>
             <p className="auth-subtitle">Choose a platform to connect</p>
+            {loadError && <div className="auth-error">{loadError}</div>}
             <div className="onboarding-integration-grid">
-              {available
-                .filter((int) => {
-                const categoryMap: Record<string, string> = { trading: 'trading', store: 'ecommerce', social: 'social', workforce: 'workforce' };
-                return int.category === (categoryMap[selectedFamily] ?? selectedFamily);
-              })
-                .map((int) => (
+              {familyIntegrations.map((int) => (
                   <button
                     key={int.id}
                     className="onboarding-integration-card"
@@ -182,6 +211,10 @@ export default function OnboardingPage() {
                   </button>
                 ))}
             </div>
+            {loadingIntegrations && <p className="auth-subtitle">Loading integrations...</p>}
+            {!loadingIntegrations && !loadError && familyIntegrations.length === 0 && (
+              <div className="auth-error">No integrations are available for this family yet.</div>
+            )}
             <div className="onboarding-nav">
               <button onClick={() => setStep(0)} className="auth-back">Back</button>
               <button onClick={() => setStep(3)} className="auth-skip">Skip this step</button>
@@ -229,8 +262,8 @@ export default function OnboardingPage() {
             )}
 
             {available.find((i) => i.id === selectedIntegration)?.oauth && (
-              <button className="btn btn-primary" onClick={(e) => handleConnect(e)}>
-                Begin OAuth flow
+              <button className="btn btn-primary" onClick={(e) => handleConnect(e)} disabled={connecting}>
+                {connecting ? 'Starting OAuth...' : 'Begin OAuth flow'}
               </button>
             )}
 

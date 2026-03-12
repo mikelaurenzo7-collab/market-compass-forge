@@ -72,12 +72,30 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [selectedFamily, setSelectedFamily] = useState('trading');
   const [annual, setAnnual] = useState(false);
+  const [loadingPlans, setLoadingPlans] = useState(true);
+  const [pricingError, setPricingError] = useState('');
 
   useEffect(() => {
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
-    fetch(`${apiBase}/api/pricing`).then(r => r.json()).then(json => {
-      if (json.data) setPlans(json.data);
-    }).catch(() => {});
+    setPricingError('');
+    setLoadingPlans(true);
+    fetch(`${apiBase}/api/pricing`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Pricing request failed (${r.status})`);
+        return r.json();
+      })
+      .then((json) => {
+        if (json.data) {
+          setPlans(json.data);
+          return;
+        }
+        throw new Error(json.error ?? 'Pricing is unavailable right now');
+      })
+      .catch((err) => {
+        console.error('Failed to load pricing plans:', err);
+        setPricingError('Pricing is temporarily unavailable. Please try again shortly.');
+      })
+      .finally(() => setLoadingPlans(false));
   }, []);
 
   const familyPlans = plans.filter(p => p.family === selectedFamily);
@@ -159,6 +177,18 @@ export default function PricingPage() {
         </p>
       )}
 
+      {pricingError && (
+        <div style={{ maxWidth: 640, margin: '0 auto 24px', padding: '12px 16px', borderRadius: 12, border: '1px solid rgba(239,68,68,0.35)', background: 'rgba(239,68,68,0.08)', color: '#fca5a5', textAlign: 'center' }}>
+          {pricingError}
+        </div>
+      )}
+
+      {loadingPlans && (
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 24px 40px', color: 'var(--text-muted)', textAlign: 'center' }}>
+          Loading pricing plans...
+        </div>
+      )}
+
       {/* Pricing cards */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
@@ -199,18 +229,18 @@ export default function PricingPage() {
 
               <div style={{ marginBottom: 8 }}>
                 <span style={{ fontSize: '2.5rem', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
-                  ${price.toLocaleString()}
+                  {loadingPlans ? '...' : `$${price.toLocaleString()}`}
                 </span>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>/mo</span>
               </div>
 
-              {plan && (
+              {!loadingPlans && plan && (
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>
                   Includes ${plan.includedUsageUsd.toLocaleString()} usage credits
                 </div>
               )}
 
-              {plan && (
+              {!loadingPlans && plan && (
                 <div style={{ fontSize: '0.8rem', color: 'var(--accent-green)', marginBottom: 24, fontWeight: 600 }}>
                   {plan.maxBots === 1
                     ? '1 dedicated bot included'
