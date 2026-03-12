@@ -322,7 +322,7 @@ describe('engine units', () => {
       updateInventory: async () => ({ success: true }),
     };
     const { result } = await executeStoreTick(state, stubAdapter as any);
-    expect(result.action).toContain('⚠️');
+    expect(result.action).toContain('🔍');
     expect(result.result).toBe('executed');
   });
 
@@ -554,7 +554,7 @@ describe('engine units', () => {
       getPostsToday: async () => 0,
     };
     const { result } = await executeSocialTick(state, stubAdapter as any);
-    expect(result.action).toContain('boost');
+    expect(result.action).toContain('Engagement health');
   });
 
   it('social engine hashtag optimization logs hashtags', async () => {
@@ -621,7 +621,7 @@ describe('engine units', () => {
       replyToComment: async () => ({ success: true }),
     };
       const { result } = await executeSocialTick(state, stubAdapter as any);
-    expect(result.action).toContain('Reply sent');
+    expect(result.action).toContain('Replied to');
   });
 
   it('store dynamic pricing adjusts per platform rules', async () => {
@@ -648,7 +648,7 @@ describe('engine units', () => {
       updateInventory: async () => ({ success: true }),
     };
     const { result } = await executeStoreTick(state, stubAdapter as any);
-    expect(result.action).toContain('Priced');
+    expect(result.action).toContain('Recommended price');
   });
 
 });

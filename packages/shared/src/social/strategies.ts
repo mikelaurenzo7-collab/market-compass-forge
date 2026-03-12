@@ -187,13 +187,328 @@ export function scoreTrendRelevance(
 
 // ─── Hashtag Optimization ───────────────────────────────────
 
-export function selectOptimalHashtags(metrics: AudienceMetrics, platform: SocialPlatform, count?: number): string[] {
+export interface HashtagScore {
+  tag: string;
+  score: number;
+  category: 'broad' | 'niche' | 'trending' | 'brand';
+}
+
+export function selectOptimalHashtags(
+  metrics: AudienceMetrics,
+  platform: SocialPlatform,
+  count?: number,
+  trendingHashtags?: string[],
+  brandKeywords?: string[],
+): HashtagScore[] {
   const strategy = SOCIAL_PLATFORM_STRATEGIES.find((s) => s.platform === platform);
-  const desired = count ?? (strategy?.platform === 'instagram' ? 15 : strategy?.platform === 'tiktok' ? 5 : 3);
-  // take top metrics hashtags, pad or trim
-  const tags = metrics.topHashtags.slice(0, desired);
-  while (tags.length < desired) tags.push('');
-  return tags.filter((t) => t);
+
+  // Platform-specific hashtag count targets
+  const platformCounts: Record<string, number> = {
+    instagram: 10, tiktok: 5, x: 2, linkedin: 4, facebook: 2,
+  };
+  const desired = count ?? platformCounts[platform] ?? 5;
+
+  const scored: HashtagScore[] = [];
+  const seen = new Set<string>();
+
+  // Score existing top hashtags from metrics
+  for (let i = 0; i < metrics.topHashtags.length; i++) {
+    const tag = metrics.topHashtags[i].toLowerCase().replace(/^#/, '');
+    if (!tag || seen.has(tag)) continue;
+    seen.add(tag);
+
+    // Base score from ranking position (higher ranked = better performance)
+    const rankScore = 1 - (i / Math.max(metrics.topHashtags.length, 1));
+
+    // Categorize by assumed reach (longer/more specific = niche)
+    const isNiche = tag.length > 15 || tag.includes('_');
+    const category: HashtagScore['category'] = isNiche ? 'niche' : 'broad';
+
+    scored.push({ tag: `#${tag}`, score: rankScore * 0.8, category });
+  }
+
+  // Add trending hashtags with boost
+  if (trendingHashtags) {
+    for (const t of trendingHashtags) {
+      const tag = t.toLowerCase().replace(/^#/, '');
+      if (!tag || seen.has(tag)) continue;
+      seen.add(tag);
+      scored.push({ tag: `#${tag}`, score: 0.9, category: 'trending' });
+    }
+  }
+
+  // Add brand keywords as branded hashtags
+  if (brandKeywords) {
+    for (const kw of brandKeywords) {
+      const tag = kw.toLowerCase().replace(/\s+/g, '').replace(/^#/, '');
+      if (!tag || seen.has(tag)) continue;
+      seen.add(tag);
+      scored.push({ tag: `#${tag}`, score: 0.6, category: 'brand' });
+    }
+  }
+
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
+
+  // Mix strategy: ensure at least 1 broad, 1 niche if available
+  const result: HashtagScore[] = [];
+  const byCategory = {
+    trending: scored.filter(h => h.category === 'trending'),
+    broad: scored.filter(h => h.category === 'broad'),
+    niche: scored.filter(h => h.category === 'niche'),
+    brand: scored.filter(h => h.category === 'brand'),
+  };
+
+  // Priority: trending first, then mix
+  for (const t of byCategory.trending.slice(0, Math.ceil(desired * 0.3))) {
+    if (result.length < desired) result.push(t);
+  }
+  for (const t of byCategory.broad.slice(0, Math.ceil(desired * 0.3))) {
+    if (result.length < desired) result.push(t);
+  }
+  for (const t of byCategory.niche.slice(0, Math.ceil(desired * 0.3))) {
+    if (result.length < desired) result.push(t);
+  }
+  for (const t of byCategory.brand.slice(0, 2)) {
+    if (result.length < desired) result.push(t);
+  }
+
+  // Fill remaining with highest scored not yet included
+  for (const t of scored) {
+    if (result.length >= desired) break;
+    if (!result.includes(t)) result.push(t);
+  }
+
+  return result.slice(0, desired);
+}
+
+// ─── Trend-Reactive Content Generation ────────────────────────
+
+export interface TrendPost {
+  topic: string;
+  hashtag: string;
+  suggestedContent: string;
+  format: ContentFormat;
+  urgency: 'immediate' | 'within_hours' | 'today';
+  relevanceScore: number;
+}
+
+export function generateTrendPost(
+  trend: TrendSignal,
+  platform: SocialPlatform,
+  brandDescription: string,
+  brandVoice?: string,
+): TrendPost {
+  const strategy = SOCIAL_PLATFORM_STRATEGIES.find(s => s.platform === platform);
+
+  // Select best format for trend-reactive content per platform
+  const trendFormats: Record<string, ContentFormat> = {
+    x: 'thread',
+    tiktok: 'video',
+    instagram: 'reel',
+    facebook: 'text',
+    linkedin: 'text',
+  };
+  const format = trendFormats[platform] ?? 'text';
+
+  // Determine urgency based on velocity
+  let urgency: TrendPost['urgency'];
+  if (trend.velocityPercent > 100) urgency = 'immediate';
+  else if (trend.velocityPercent > 50) urgency = 'within_hours';
+  else urgency = 'today';
+
+  // Generate suggested content template (LLM will enhance this in engine)
+  const voice = brandVoice ?? 'professional yet approachable';
+  const pillars = strategy?.contentPillars ?? [];
+  const pillar = pillars.find(p => p.toLowerCase().includes('trend')) ?? pillars[0] ?? 'Industry insights';
+
+  let suggestedContent: string;
+
+  if (platform === 'x') {
+    suggestedContent = `🔥 ${trend.topic} is trending!\n\nHere's our take as ${brandDescription}:\n\n[Key insight about ${trend.topic}]\n\n${trend.hashtag} #trending`;
+  } else if (platform === 'tiktok' || platform === 'instagram') {
+    suggestedContent = `HOOK: "Did you hear about ${trend.topic}?"\n\nBODY: Our perspective as ${brandDescription} — [3 key points]\n\nCTA: Follow for more ${pillar.toLowerCase()}\n\n${trend.hashtag}`;
+  } else if (platform === 'linkedin') {
+    suggestedContent = `${trend.topic} is reshaping our industry.\n\nAs ${brandDescription}, here are 3 things we're watching:\n\n1. [Point 1]\n2. [Point 2]\n3. [Point 3]\n\nWhat's your take? 👇\n\n${trend.hashtag}`;
+  } else {
+    suggestedContent = `${trend.topic} — here's what it means for ${brandDescription}.\n\n[Share your perspective]\n\n${trend.hashtag}`;
+  }
+
+  return {
+    topic: trend.topic,
+    hashtag: trend.hashtag,
+    suggestedContent,
+    format,
+    urgency,
+    relevanceScore: trend.relevanceScore,
+  };
+}
+
+// ─── Post Performance Analysis ────────────────────────────────
+
+export interface PerformanceInsight {
+  bestFormat: ContentFormat;
+  bestPillar: string;
+  bestHour: number;
+  formatBreakdown: { format: ContentFormat; avgEngagement: number }[];
+  recommendations: string[];
+}
+
+export function analyzePostPerformance(
+  posts: ScheduledPost[],
+  metrics: AudienceMetrics,
+  platform: SocialPlatform,
+): PerformanceInsight {
+  const strategy = SOCIAL_PLATFORM_STRATEGIES.find(s => s.platform === platform);
+  const recommendations: string[] = [];
+
+  // Analyze engagement by format
+  const formatEngagement = new Map<ContentFormat, { total: number; count: number }>();
+  for (const post of posts) {
+    const existing = formatEngagement.get(post.format) ?? { total: 0, count: 0 };
+    // Use metrics engagement rate as proxy (in reality would use per-post metrics)
+    const formatMultipliers: Record<ContentFormat, number> = {
+      text: 1.0, image: 1.3, video: 1.8, carousel: 1.6, story: 0.9, reel: 2.0, thread: 1.5, article: 1.2,
+    };
+    const estimated = metrics.engagementRate * (formatMultipliers[post.format] ?? 1.0);
+    existing.total += estimated;
+    existing.count += 1;
+    formatEngagement.set(post.format, existing);
+  }
+
+  const formatBreakdown: { format: ContentFormat; avgEngagement: number }[] = [];
+  let bestFormat: ContentFormat = 'text';
+  let bestFormatEngagement = 0;
+
+  for (const [format, data] of formatEngagement) {
+    const avg = data.count > 0 ? data.total / data.count : 0;
+    formatBreakdown.push({ format, avgEngagement: Math.round(avg * 100) / 100 });
+    if (avg > bestFormatEngagement) {
+      bestFormatEngagement = avg;
+      bestFormat = format;
+    }
+  }
+
+  formatBreakdown.sort((a, b) => b.avgEngagement - a.avgEngagement);
+
+  // Best pillar (from platform strategy)
+  const bestPillar = strategy?.contentPillars[0] ?? 'General content';
+
+  // Best hour from audience data
+  const bestHour = metrics.bestPostingHours[0] ?? strategy?.peakEngagementHoursUtc[0] ?? 12;
+
+  // Generate actionable recommendations
+  if (formatBreakdown.length > 1) {
+    const top = formatBreakdown[0];
+    const bottom = formatBreakdown[formatBreakdown.length - 1];
+    if (top.avgEngagement > bottom.avgEngagement * 1.5) {
+      recommendations.push(`Double down on ${top.format} content — ${(top.avgEngagement / bottom.avgEngagement).toFixed(1)}x more engagement than ${bottom.format}`);
+    }
+  }
+
+  const currentPostCount = posts.length / 7; // avg per day
+  if (strategy && currentPostCount < strategy.optimalPostsPerDay * 0.7) {
+    recommendations.push(`Increase posting frequency to ${strategy.optimalPostsPerDay}/day (currently ~${currentPostCount.toFixed(1)}/day)`);
+  } else if (strategy && currentPostCount > strategy.optimalPostsPerDay * 1.5) {
+    recommendations.push(`Reduce posting to ${strategy.optimalPostsPerDay}/day — over-posting can hurt reach`);
+  }
+
+  if (metrics.engagementRate < 2) {
+    recommendations.push('Engagement rate below 2% — focus on interactive content (polls, questions, CTAs)');
+  } else if (metrics.engagementRate > 5) {
+    recommendations.push('Strong engagement! Consider monetization opportunities or sponsored content');
+  }
+
+  // Platform-specific recommendations
+  if (platform === 'instagram' && !posts.some(p => p.format === 'reel')) {
+    recommendations.push('No Reels detected — Instagram Reels get 2x reach vs static posts');
+  }
+  if (platform === 'x' && !posts.some(p => p.format === 'thread')) {
+    recommendations.push('No threads detected — X threads drive deeper engagement and follows');
+  }
+  if (platform === 'linkedin' && posts.filter(p => p.format === 'carousel').length === 0) {
+    recommendations.push('Try document/carousel posts on LinkedIn — they get highest saves');
+  }
+
+  // Growth tactics from strategy
+  if (strategy && recommendations.length < 5) {
+    for (const tactic of strategy.growthTactics.slice(0, 2)) {
+      recommendations.push(`Growth tip: ${tactic}`);
+    }
+  }
+
+  return {
+    bestFormat,
+    bestPillar,
+    bestHour,
+    formatBreakdown,
+    recommendations,
+  };
+}
+
+// ─── Comment Intent Classification ────────────────────────────
+
+export type CommentIntent = 'question' | 'complaint' | 'praise' | 'spam' | 'neutral' | 'purchase_interest';
+
+export function classifyCommentIntent(text: string): { intent: CommentIntent; confidence: number } {
+  const lower = text.toLowerCase();
+
+  // Spam detection
+  const spamSignals = ['click here', 'free money', 'dm me', 'check my bio', 'follow me', 'subscribe', 'bit.ly', 'tinyurl'];
+  if (spamSignals.some(s => lower.includes(s))) {
+    return { intent: 'spam', confidence: 0.9 };
+  }
+
+  // Purchase interest
+  const buySignals = ['how much', 'price', 'where to buy', 'link', 'available', 'in stock', 'ship to', 'do you sell', 'cost', 'order'];
+  if (buySignals.some(s => lower.includes(s))) {
+    return { intent: 'purchase_interest', confidence: 0.8 };
+  }
+
+  // Question detection
+  const questionSignals = /\?|^(how|what|when|where|why|who|can|does|will|is|are|do)\b/i;
+  if (questionSignals.test(lower)) {
+    return { intent: 'question', confidence: 0.75 };
+  }
+
+  // Complaint detection
+  const complaintWords = ['broken', 'terrible', 'worst', 'hate', 'scam', 'disappointed', 'refund', 'return', 'problem', 'issue', 'unacceptable'];
+  if (complaintWords.some(w => lower.includes(w))) {
+    return { intent: 'complaint', confidence: 0.8 };
+  }
+
+  // Praise detection
+  const praiseWords = ['love', 'amazing', 'best', 'awesome', 'great', 'perfect', 'obsessed', 'fire', '🔥', '❤️', '💯', 'incredible'];
+  if (praiseWords.some(w => lower.includes(w))) {
+    return { intent: 'praise', confidence: 0.75 };
+  }
+
+  return { intent: 'neutral', confidence: 0.5 };
+}
+
+export function generateCommentReply(
+  commentText: string,
+  intent: CommentIntent,
+  brandVoice: string,
+  productContext?: string,
+): string {
+  const context = productContext ? ` about ${productContext}` : '';
+
+  switch (intent) {
+    case 'question':
+      return `Great question${context}! We'd love to help — check out our bio for more info or DM us for details! 💬`;
+    case 'complaint':
+      return `We're sorry to hear about your experience${context}. Please DM us so we can make this right ASAP. Your satisfaction matters to us! 🙏`;
+    case 'praise':
+      return `Thank you so much! 🙌 We love hearing this — it means the world to us! Stay tuned for more exciting things coming soon!`;
+    case 'purchase_interest':
+      return `Thanks for your interest${context}! Check the link in our bio for pricing and availability, or DM us for a quick answer! 🛒`;
+    case 'spam':
+      return ''; // Don't respond to spam
+    case 'neutral':
+    default:
+      return `Thanks for engaging with us! We appreciate our community. 💙`;
+  }
 }
 
 // ─── Audience Timezone Optimization ───────────────────────────
