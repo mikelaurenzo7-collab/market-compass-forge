@@ -460,8 +460,10 @@ export class BotRuntime {
     if (this.tickHistory.length > MAX_TICK_HISTORY) {
       this.tickHistory.shift();
     }
-    // Persist state every 10 ticks to balance performance and durability
-    if (this.state && this.state.metrics.totalTicks % 10 === 0) {
+    // Persist on critical actions (trades, price changes, inventory updates) immediately
+    // Otherwise persist every 10 ticks for scans/skips to balance performance
+    const isCritical = result.result === 'executed' || result.result === 'error';
+    if (this.state && (isCritical || this.state.metrics.totalTicks % 10 === 0)) {
       this.notifyStateChange();
     }
   }

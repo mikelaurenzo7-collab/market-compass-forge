@@ -139,10 +139,11 @@ export class BotRuntimeDO extends DurableObject<Env> {
     const state = this.runtime.getState();
     if (!state || state.status !== 'running') return;
 
-    await this.runtime.tick();
+    const result = await this.runtime.tick();
 
-    // Persist every 10 ticks
-    if (state.metrics.totalTicks % 10 === 0) {
+    // Persist immediately on critical actions (trades, errors), otherwise every 10 ticks
+    const isCritical = result && (result.result === 'executed' || result.result === 'error');
+    if (isCritical || state.metrics.totalTicks % 10 === 0) {
       await this.persistState();
     }
 

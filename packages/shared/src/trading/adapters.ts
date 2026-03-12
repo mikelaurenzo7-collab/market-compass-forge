@@ -23,7 +23,7 @@ export function alpacaSign(secret: string, body: string): string {
   return crypto.createHmac('sha256', secret).update(body).digest('hex');
 }
 
-// ─── Shared HTTP helper ───────────────────────────────────────
+// ─── Shared HTTP helper with retry + rate-limit awareness ─────
 
 interface AdapterCredentials {
   apiKey: string;
@@ -32,13 +32,53 @@ interface AdapterCredentials {
   sandbox?: boolean;
 }
 
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const MAX_RETRIES = 3;
+
 async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text.slice(0, 200)}`);
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url, init);
+
+      if (res.ok) return res.json() as Promise<T>;
+
+      // Rate-limited: respect Retry-After header
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('Retry-After');
+        const waitMs = retryAfter
+          ? (Number(retryAfter) > 0 ? Number(retryAfter) * 1000 : 1000)
+          : 1000 * 2 ** attempt;
+        if (attempt < MAX_RETRIES) {
+          await sleep(Math.min(waitMs, 30_000));
+          continue;
+        }
+      }
+
+      // Retryable server errors: exponential backoff
+      if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_RETRIES) {
+        await sleep(50 * 2 ** attempt); // 50ms → 100ms → 200ms
+        continue;
+      }
+
+      const text = await res.text();
+      throw new Error(`API ${res.status}: ${text.slice(0, 200)}`);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      // Network errors (ECONNRESET, timeout) are retryable
+      if (attempt < MAX_RETRIES && !lastError.message.startsWith('API ')) {
+        await sleep(50 * 2 ** attempt);
+        continue;
+      }
+      throw lastError;
+    }
   }
-  return res.json() as Promise<T>;
+  throw lastError ?? new Error('jsonFetch: exhausted retries');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ─── Coinbase Advanced Trade Adapter ──────────────────────────

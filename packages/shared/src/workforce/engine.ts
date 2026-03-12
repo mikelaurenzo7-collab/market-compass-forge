@@ -70,6 +70,28 @@ function isWithinWorkingHours(config: WorkforceBotConfig): boolean {
   return currentHourUtc >= start || currentHourUtc < end;
 }
 
+// ─── Retry helper for task execution ──────────────────────────
+
+const MAX_TASK_RETRIES = 2;
+
+async function executeWithRetry<T>(
+  fn: () => Promise<T>,
+  retries: number = MAX_TASK_RETRIES
+): Promise<T> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 100 * 2 ** attempt)); // 100ms, 200ms
+      }
+    }
+  }
+  throw lastError;
+}
+
 // ─── Workforce Engine Tick ────────────────────────────────────
 
 export async function executeWorkforceTick(
@@ -134,7 +156,7 @@ export async function executeWorkforceTick(
         if (!safetyResult.allowed) { actions.push(`Triage blocked for ${task.id}: ${safetyResult.reason}`); continue; }
 
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask({ ...task, priority: priorityScore.priority });
+          const result = await executeWithRetry(() => adapter.executeTask({ ...task, priority: priorityScore.priority }));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') { newState.tasksCompleted++; actions.push(`🎫 Triaged ${task.id} → ${priorityScore.priority} (score: ${priorityScore.overallScore})`); }
           else if (result.status === 'escalated') { newState.tasksEscalated++; actions.push(`⬆️ Escalated ${task.id}: ${result.escalationReason}`); }
@@ -161,7 +183,7 @@ export async function executeWorkforceTick(
         }
 
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`💬 Auto-responded to ${task.id} (confidence: ${((result.confidence ?? 0) * 100).toFixed(0)}%)`);
@@ -178,7 +200,7 @@ export async function executeWorkforceTick(
         actions.push(`📊 Lead ${task.id}: ${lead.tier} (score: ${lead.qualityScore}) → ${lead.recommendedAction}`);
         logAuditEntry({ tenantId: state.safety.tenantId, botId: state.safety.botId, platform: state.config.category, action: `LEAD_SCORED ${task.id}`, result: 'success', riskLevel: 'low', details: { lead } });
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          await adapter.executeTask(task);
+          await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           newState.tasksCompleted++;
         }
@@ -191,7 +213,7 @@ export async function executeWorkforceTick(
         const safetyResult = runSafetyPipeline(state.safety, `crm_enrichment ${task.id}`, 0, 'low');
         if (!safetyResult.allowed) continue;
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') { newState.tasksCompleted++; actions.push(`🔍 Enriched CRM record ${task.id}: ${Object.keys(result.outputData ?? {}).length} fields updated`); }
         } else { actions.push(`[PAPER] Would enrich CRM record ${task.id}`); }
@@ -208,11 +230,11 @@ export async function executeWorkforceTick(
         if (!safetyResult.allowed) { actions.push(`Invoice blocked for ${task.id}: ${safetyResult.reason}`); continue; }
 
         if (extracted.confidence < state.config.escalationThresholdConfidence) {
-          await adapter.escalateTask(task, `Low extraction confidence: ${(extracted.confidence * 100).toFixed(0)}%`);
+          await executeWithRetry(() => adapter.escalateTask(task, `Low extraction confidence: ${(extracted.confidence * 100).toFixed(0)}%`));
           newState.tasksEscalated++;
           actions.push(`⬆️ Escalated invoice ${task.id} — confidence ${(extracted.confidence * 100).toFixed(0)}%`);
         } else if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          await adapter.executeTask(task);
+          await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           newState.tasksCompleted++;
           actions.push(`📄 Processed invoice ${extracted.invoiceNumber} from ${extracted.vendorName}: $${extracted.totalAmount.toFixed(2)}`);
@@ -229,7 +251,7 @@ export async function executeWorkforceTick(
         const safetyResult = runSafetyPipeline(state.safety, `expense_reconciliation ${task.id}`, 0, 'medium');
         if (!safetyResult.allowed) continue;
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`🧾u Reconciled expense ${task.id}: ${JSON.stringify((result.outputData ?? {}).category ?? 'uncategorized')}`);
@@ -243,7 +265,7 @@ export async function executeWorkforceTick(
         const safetyResult = runSafetyPipeline(state.safety, `employee_onboarding ${task.id}`, 0, 'medium');
         if (!safetyResult.allowed) continue;
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           const stepCount = (result.nextTasks ?? []).length;
@@ -262,7 +284,7 @@ export async function executeWorkforceTick(
           else { actions.push('📅 Schedule fully covered — no gaps'); }
         }
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          await adapter.executeTask(task);
+          await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           newState.tasksCompleted++;
         }
@@ -275,10 +297,10 @@ export async function executeWorkforceTick(
         const classification = classifyDocument(task);
         actions.push(`📁 Classified ${task.id} → ${classification.documentClass} (confidence: ${(classification.confidence * 100).toFixed(0)}%)`);
         if (classification.confidence < state.config.escalationThresholdConfidence) {
-          await adapter.escalateTask(task, `Low classification confidence: ${(classification.confidence * 100).toFixed(0)}%`);
+          await executeWithRetry(() => adapter.escalateTask(task, `Low classification confidence: ${(classification.confidence * 100).toFixed(0)}%`));
           newState.tasksEscalated++;
         } else if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          await adapter.executeTask(task);
+          await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           newState.tasksCompleted++;
         }
@@ -295,7 +317,7 @@ export async function executeWorkforceTick(
           logAuditEntry({ tenantId: state.safety.tenantId, botId: state.safety.botId, platform: state.config.category, action: 'llm_prompt', result: 'success', riskLevel: 'low', details: { prompt, response: resp } });
         }
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`📋 Extracted data from ${task.id}: ${Object.keys(result.outputData ?? {}).length} fields`);
@@ -312,7 +334,7 @@ export async function executeWorkforceTick(
           await promptLLM(prompt);
         }
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          await adapter.executeTask({ ...task, priority: priorityScore.priority });
+          await executeWithRetry(() => adapter.executeTask({ ...task, priority: priorityScore.priority }));
           newState.tasksProcessedThisHour++;
           newState.tasksCompleted++;
         }
@@ -326,7 +348,7 @@ export async function executeWorkforceTick(
         const safetyResult = runSafetyPipeline(state.safety, `meeting_scheduler ${task.id}`, 0, 'low');
         if (!safetyResult.allowed) continue;
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`📆 Scheduled meeting for ${task.id}: ${(result.outputData ?? {}).scheduledAt ?? 'TBD'}`);
@@ -340,13 +362,13 @@ export async function executeWorkforceTick(
         const assessment = assessComplianceRisk(task);
         logAuditEntry({ tenantId: state.safety.tenantId, botId: state.safety.botId, platform: state.config.category, action: `COMPLIANCE_CHECK ${task.id}`, result: 'success', riskLevel: assessment.riskLevel, details: { assessment } });
         if (assessment.requiresImmediateAction) {
-          await adapter.escalateTask(task, `Compliance risk: ${assessment.riskLevel} (score: ${assessment.riskScore})`);
+          await executeWithRetry(() => adapter.escalateTask(task, `Compliance risk: ${assessment.riskLevel} (score: ${assessment.riskScore})`));
           newState.tasksEscalated++;
           actions.push(`🚨 Compliance alert ${task.id}: ${assessment.riskLevel} — ${assessment.findings.join('; ')}`);
         } else {
           actions.push(`✅ Compliance check ${task.id}: ${assessment.riskLevel} (score: ${assessment.riskScore})`);
           if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-            await adapter.executeTask(task);
+            await executeWithRetry(() => adapter.executeTask(task));
             newState.tasksProcessedThisHour++;
             newState.tasksCompleted++;
           }
@@ -360,7 +382,7 @@ export async function executeWorkforceTick(
         const safetyResult = runSafetyPipeline(state.safety, `audit_preparation ${task.id}`, 0, 'high');
         if (!safetyResult.allowed) { actions.push(`Audit prep blocked for ${task.id}: ${safetyResult.reason}`); continue; }
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`📋 Audit package compiled for ${task.id}: ${Object.keys(result.outputData ?? {}).length} artifacts`);
@@ -372,7 +394,7 @@ export async function executeWorkforceTick(
     if (state.config.strategies.includes('system_health_check')) {
       for (const task of tasksToProcess.filter((t) => t.strategy === 'system_health_check')) {
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           const healthy = (result.outputData ?? {}).healthy ?? true;
           if (!healthy) {
@@ -392,7 +414,7 @@ export async function executeWorkforceTick(
           logAuditEntry({ tenantId: state.safety.tenantId, botId: state.safety.botId, platform: state.config.category, action: 'llm_prompt', result: 'success', riskLevel: 'low', details: { prompt, response: resp } });
         }
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`📈 Report generated: ${task.title}`);
@@ -406,7 +428,7 @@ export async function executeWorkforceTick(
         const safetyResult = runSafetyPipeline(state.safety, `task_orchestration ${task.id}`, 0, 'low');
         if (!safetyResult.allowed) continue;
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           const nextCount = (result.nextTasks ?? []).length;
@@ -423,7 +445,7 @@ export async function executeWorkforceTick(
           await promptLLM(prompt);
         }
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`🏢 Vendor evaluated ${task.id}: ${(result.outputData ?? {}).recommendation ?? 'review needed'}`);
@@ -441,7 +463,7 @@ export async function executeWorkforceTick(
           await promptLLM(prompt);
         }
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`📝 Contract reviewed ${task.id}: ${(result.outputData ?? {}).keyFindings ?? 'see details'}`);
@@ -453,7 +475,7 @@ export async function executeWorkforceTick(
     if (state.config.strategies.includes('knowledge_base_sync')) {
       for (const task of tasksToProcess.filter((t) => t.strategy === 'knowledge_base_sync')) {
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
-          const result = await adapter.executeTask(task);
+          const result = await executeWithRetry(() => adapter.executeTask(task));
           newState.tasksProcessedThisHour++;
           if (result.status === 'completed') newState.tasksCompleted++;
           actions.push(`📚 KB synced: ${(result.outputData ?? {}).articlesUpdated ?? 0} articles updated`);

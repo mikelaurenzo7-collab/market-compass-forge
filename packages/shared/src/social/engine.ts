@@ -87,6 +87,15 @@ export async function executeSocialTick(
 
     newState.postsPublishedToday = postsToday;
 
+    // ─── Daily Calendar Refresh ──────────────────
+    const calendarAgeMs = Date.now() - newState.lastCalendarGeneration;
+    if (calendarAgeMs > 24 * 60 * 60 * 1000) {
+      newState.contentCalendar = generateContentCalendar(state.config.platform, state.config.maxPostsPerDay);
+      newState.lastCalendarGeneration = Date.now();
+      newState.postsPublishedToday = 0; // reset daily counter
+      newState.engagementsToday = 0;
+    }
+
     // ─── Content Calendar ─────────────────────────
     if (state.config.strategies.includes('content_calendar')) {
       const now = new Date();

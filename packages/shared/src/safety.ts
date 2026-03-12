@@ -46,6 +46,7 @@ export interface ApprovalRequest {
   policyId: string;
   status: 'pending' | 'approved' | 'rejected';
   createdAt: number;
+  expiresAt?: number;
   resolvedAt?: number;
   resolvedBy?: string;
 }
@@ -64,14 +65,32 @@ export interface SafetyStore {
 class InMemorySafetyStore implements SafetyStore {
   private approvals = new Map<string, ApprovalRequest>();
   private auditEntries: AuditEntry[] = [];
+  private static readonly MAX_AUDIT_ENTRIES = 100_000;
 
   saveApproval(request: ApprovalRequest): void { this.approvals.set(request.id, request); }
   getApproval(id: string): ApprovalRequest | undefined { return this.approvals.get(id); }
   listPendingApprovals(tenantId: string): ApprovalRequest[] {
-    return Array.from(this.approvals.values()).filter(r => r.tenantId === tenantId && r.status === 'pending');
+    const now = Date.now();
+    return Array.from(this.approvals.values()).filter(r => {
+      if (r.tenantId !== tenantId || r.status !== 'pending') return false;
+      // Auto-expire approvals after 24h
+      if (r.expiresAt && now > r.expiresAt) {
+        r.status = 'rejected';
+        r.resolvedAt = now;
+        r.resolvedBy = 'system:expired';
+        return false;
+      }
+      return true;
+    });
   }
   updateApproval(request: ApprovalRequest): void { this.approvals.set(request.id, request); }
-  appendAuditEntry(entry: AuditEntry): void { this.auditEntries.push(entry); }
+  appendAuditEntry(entry: AuditEntry): void {
+    this.auditEntries.push(entry);
+    // Circular buffer: evict oldest 10% when at capacity
+    if (this.auditEntries.length > InMemorySafetyStore.MAX_AUDIT_ENTRIES) {
+      this.auditEntries = this.auditEntries.slice(Math.floor(InMemorySafetyStore.MAX_AUDIT_ENTRIES * 0.1));
+    }
+  }
   getAuditEntries(tenantId: string, limit: number): AuditEntry[] {
     return this.auditEntries.filter(e => e.tenantId === tenantId).slice(-limit);
   }
@@ -103,6 +122,7 @@ export function requestApproval(
     policyId,
     status: 'pending',
     createdAt: Date.now(),
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24h expiry
   };
   _store.saveApproval(request);
   return request;
@@ -134,18 +154,28 @@ export function checkBudget(budget: BudgetConfig, actionCostUsd: number): Budget
   const remainingUsd = budget.maxDailySpendUsd - budget.currentSpentUsd;
   const wouldExceed = budget.currentSpentUsd + actionCostUsd > budget.maxDailySpendUsd;
   const exceedsPerAction = actionCostUsd > budget.maxPerActionUsd;
+
+  // Hourly velocity check: no more than 25% of daily budget in any rolling hour
+  const hourlyLimit = budget.maxDailySpendUsd * 0.25;
+  const hourlySpent = budget.currentHourlySpentUsd ?? 0;
+  const exceedsHourly = hourlySpent + actionCostUsd > hourlyLimit;
+
   const warningThreshold = budget.maxDailySpendUsd * (budget.warningThresholdPercent / 100);
   const warningTriggered = budget.currentSpentUsd + actionCostUsd >= warningThreshold;
 
   return {
-    allowed: !wouldExceed && !exceedsPerAction,
+    allowed: !wouldExceed && !exceedsPerAction && !exceedsHourly,
     remainingUsd: Math.max(0, remainingUsd),
     warningTriggered,
   };
 }
 
 export function recordSpend(budget: BudgetConfig, amountUsd: number): BudgetConfig {
-  return { ...budget, currentSpentUsd: budget.currentSpentUsd + amountUsd };
+  return {
+    ...budget,
+    currentSpentUsd: budget.currentSpentUsd + amountUsd,
+    currentHourlySpentUsd: (budget.currentHourlySpentUsd ?? 0) + amountUsd,
+  };
 }
 
 // ─── Layer 4: Circuit Breaker ─────────────────────────────────

@@ -45,6 +45,7 @@ export interface BudgetConfig {
   maxPerActionUsd: number;
   warningThresholdPercent: number;
   currentSpentUsd: number;
+  currentHourlySpentUsd?: number;
 }
 
 export interface CircuitBreakerConfig {

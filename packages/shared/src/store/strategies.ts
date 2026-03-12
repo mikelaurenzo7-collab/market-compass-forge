@@ -97,11 +97,11 @@ export function calculateDynamicPrice(
   if (seasonalFactor > 1.05) reasons.push(`High season (${seasonalFactor.toFixed(2)}x)`);
   if (seasonalFactor < 0.95) reasons.push(`Low season (${seasonalFactor.toFixed(2)}x)`);
 
-  // Enforce constraints
+  // Enforce constraints: stay within max change range AND above margin floor
   const maxDelta = currentPrice * (maxChangePercent / 100);
-  recommendedPrice = Math.max(minPrice, Math.min(recommendedPrice, currentPrice + maxDelta));
-  recommendedPrice = Math.min(recommendedPrice, currentPrice + maxDelta);
-  recommendedPrice = Math.max(recommendedPrice, currentPrice - maxDelta);
+  const floor = Math.max(minPrice, currentPrice - maxDelta);
+  const ceiling = currentPrice + maxDelta;
+  recommendedPrice = Math.max(floor, Math.min(recommendedPrice, ceiling));
 
   const confidence = Math.min(
     50 + competitorPrices.length * 10 + Math.abs(demandScore - 50),
@@ -130,10 +130,9 @@ function applyConstraints(
 ): number {
   const minPrice = ctx.product.costOfGoods * (1 + minMarginPercent / 100);
   const maxDelta = ctx.product.price * (maxChangePercent / 100);
-  let p = Math.max(price, minPrice);
-  p = Math.min(p, ctx.product.price + maxDelta);
-  p = Math.max(p, ctx.product.price - maxDelta);
-  return Math.round(p * 100) / 100;
+  const floor = Math.max(minPrice, ctx.product.price - maxDelta);
+  const ceiling = ctx.product.price + maxDelta;
+  return Math.round(Math.max(floor, Math.min(price, ceiling)) * 100) / 100;
 }
 
 function calculateShopifyPrice(
