@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { TrendingUp, ShoppingCart, Share2, Users, Check } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
 interface PricingPlan {
@@ -11,9 +13,16 @@ interface PricingPlan {
   includedUsageUsd: number;
 }
 
-const FAMILY_INFO: Record<string, { icon: string; tagline: string; features: Record<string, string[]> }> = {
+const FAMILY_ICONS: Record<string, React.ReactNode> = {
+  trading: <TrendingUp size={18} />,
+  store: <ShoppingCart size={18} />,
+  social: <Share2 size={18} />,
+  workforce: <Users size={18} />,
+};
+
+const FAMILY_INFO: Record<string, { icon: React.ReactNode; tagline: string; features: Record<string, string[]> }> = {
   trading: {
-    icon: '📈',
+    icon: FAMILY_ICONS.trading,
     tagline: 'Autonomous trading across crypto, equities, and prediction markets',
     features: {
       starter: ['1 bot', '5 strategies', 'Paper trading', 'Daily reports', 'Email support'],
@@ -22,7 +31,7 @@ const FAMILY_INFO: Record<string, { icon: string; tagline: string; features: Rec
     },
   },
   store: {
-    icon: '🛒',
+    icon: FAMILY_ICONS.store,
     tagline: 'Smart ecommerce operations across all major marketplaces',
     features: {
       starter: ['1 bot', '3 strategies', '1 marketplace', 'Weekly reports', 'Email support'],
@@ -31,7 +40,7 @@ const FAMILY_INFO: Record<string, { icon: string; tagline: string; features: Rec
     },
   },
   social: {
-    icon: '📱',
+    icon: FAMILY_ICONS.social,
     tagline: 'Automated content, engagement, and analytics across platforms',
     features: {
       starter: ['1 bot', '2 strategies', '1 platform', 'Weekly analytics', 'Email support'],
@@ -40,7 +49,7 @@ const FAMILY_INFO: Record<string, { icon: string; tagline: string; features: Rec
     },
   },
   workforce: {
-    icon: '🏢',
+    icon: FAMILY_ICONS.workforce,
     tagline: 'General-purpose autonomous operators for business workflows',
     features: {
       starter: ['1 bot', 'Basic automations', '100 actions/day', 'Weekly reports', 'Email support'],
@@ -202,7 +211,7 @@ export default function PricingPage() {
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
                 {features.map(f => (
                   <li key={f} style={{ padding: '6px 0', fontSize: '0.88rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ color: 'var(--accent-green)', fontSize: '0.9rem' }}>✓</span> {f}
+                    <Check size={14} style={{ color: 'var(--accent-green)', flexShrink: 0 }} /> {f}
                   </li>
                 ))}
               </ul>

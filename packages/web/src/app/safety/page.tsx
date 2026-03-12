@@ -2,6 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  Shield, FileCheck, Users, DollarSign, AlertTriangle, ScrollText,
+  Check, X,
+} from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
 
@@ -21,6 +26,14 @@ interface Approval {
   status: string;
   requestedAt: string;
 }
+
+const SAFETY_ICONS = [
+  <FileCheck size={14} key={0} />,
+  <Users size={14} key={1} />,
+  <DollarSign size={14} key={2} />,
+  <AlertTriangle size={14} key={3} />,
+  <ScrollText size={14} key={4} />,
+];
 
 const SAFETY_LAYERS = [
   { num: 1, name: 'Policy Checks', desc: 'Rule-based constraints evaluated before every action', status: 'Active' },
@@ -80,140 +93,143 @@ export default function SafetyPage() {
 
   return (
     <AppShell>
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-title">Safety Center</h1>
-          <p className="page-subtitle">5-layer safety model protecting all autonomous operations</p>
-        </div>
-      </div>
-
-      {/* Safety Layers */}
-      <h2 className="section-title">Safety Layers</h2>
-      <div className="safety-layers">
-        {SAFETY_LAYERS.map((layer) => (
-          <div key={layer.num} className="safety-layer">
-            <div className="safety-layer-number">{layer.num}</div>
-            <div style={{ flex: 1 }}>
-              <div className="safety-layer-name">{layer.name}</div>
-              <div className="safety-layer-desc">{layer.desc}</div>
-            </div>
-            <span className="connect-badge connected">{layer.status}</span>
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+        <div className="page-header-row">
+          <div>
+            <h1 className="page-title"><Shield size={22} style={{ marginRight: 8, verticalAlign: 'text-bottom' }} />Safety Center</h1>
+            <p className="page-subtitle">5-layer safety model protecting all autonomous operations</p>
           </div>
-        ))}
-      </div>
-
-      {/* Pending Approvals */}
-      <h2 className="section-title">
-        Pending Approvals
-        {pendingApprovals.length > 0 && (
-          <span className="badge trading">{pendingApprovals.length}</span>
-        )}
-      </h2>
-      {pendingApprovals.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-state-icon">✓</div>
-          <div className="empty-state-title">No pending approvals</div>
-          <div className="empty-state-desc">All actions within normal parameters.</div>
         </div>
-      ) : (
-        <table className="data-table" style={{ marginBottom: 'var(--space-2xl)' }}>
-          <thead>
-            <tr>
-              <th>Bot ID</th>
-              <th>Action</th>
-              <th>Requested</th>
-              <th>Decision</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pendingApprovals.map((a) => (
-              <tr key={a.id}>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{a.botId}</td>
-                <td>{a.action}</td>
-                <td>{new Date(a.requestedAt).toLocaleString()}</td>
-                <td>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    <button className="btn btn-primary btn-sm" onClick={() => handleApproval(a.id, 'approved')}>Approve</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => handleApproval(a.id, 'denied')}>Deny</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
 
-      {/* Audit Log */}
-      <h2 className="section-title">Audit Log</h2>
-      {fetching && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-          {[1,2,3].map(i => (
-            <div key={i} className="skeleton-card">
-              <div className="skeleton-line w-80" />
-              <div className="skeleton-line w-40" />
-            </div>
+        {/* Safety Layers */}
+        <h2 className="section-title">Safety Layers</h2>
+        <div className="safety-layers">
+          {SAFETY_LAYERS.map((layer, i) => (
+            <motion.div key={layer.num} className="safety-layer" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07, duration: 0.35 }}>
+              <div className="safety-layer-number">{SAFETY_ICONS[i]}</div>
+              <div style={{ flex: 1 }}>
+                <div className="safety-layer-name">{layer.name}</div>
+                <div className="safety-layer-desc">{layer.desc}</div>
+              </div>
+              <span className="connect-badge connected">{layer.status}</span>
+            </motion.div>
           ))}
         </div>
-      )}
-      {!fetching && audit.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-state-icon">📋</div>
-          <div className="empty-state-title">No audit entries yet</div>
-          <div className="empty-state-desc">Actions will be logged here as your bots operate.</div>
-        </div>
-      )}
-      {audit.length > 0 && (
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Bot</th>
-              <th>Action</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            {audit.map((entry) => (
-              <tr key={entry.id}>
-                <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                <td>{entry.botId}</td>
-                <td>{entry.action}</td>
-                <td>
-                  <span className={`connect-badge ${entry.result === 'allowed' ? 'connected' : 'disconnected'}`}>
-                    {entry.result}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
 
-      {/* System audit logs from auth/credentials */}
-      {systemAudit.length > 0 && (
-        <>
-          <h3 className="section-subtitle">System audit</h3>
+        {/* Pending Approvals */}
+        <h2 className="section-title">
+          Pending Approvals
+          {pendingApprovals.length > 0 && (
+            <span className="badge trading">{pendingApprovals.length}</span>
+          )}
+        </h2>
+        {pendingApprovals.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon"><Check size={28} /></div>
+            <div className="empty-state-title">No pending approvals</div>
+            <div className="empty-state-desc">All actions within normal parameters.</div>
+          </div>
+        ) : (
+          <table className="data-table" style={{ marginBottom: 'var(--space-2xl)' }}>
+            <thead>
+              <tr>
+                <th>Bot ID</th>
+                <th>Action</th>
+                <th>Requested</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingApprovals.map((a) => (
+                <tr key={a.id}>
+                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{a.botId}</td>
+                  <td>{a.action}</td>
+                  <td>{new Date(a.requestedAt).toLocaleString()}</td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button className="btn btn-primary btn-sm" onClick={() => handleApproval(a.id, 'approved')}><Check size={14} /> Approve</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => handleApproval(a.id, 'denied')}><X size={14} /> Deny</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* Audit Log */}
+        <h2 className="section-title"><ScrollText size={16} style={{ marginRight: 6 }} />Audit Log</h2>
+        {fetching && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+            {[1,2,3].map(i => (
+              <div key={i} className="skeleton-card">
+                <div className="skeleton-line w-80" />
+                <div className="skeleton-line w-40" />
+              </div>
+            ))}
+          </div>
+        )}
+        {!fetching && audit.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-icon"><ScrollText size={28} /></div>
+            <div className="empty-state-title">No audit entries yet</div>
+            <div className="empty-state-desc">Actions will be logged here as your bots operate.</div>
+          </div>
+        )}
+        {audit.length > 0 && (
           <table className="data-table">
             <thead>
               <tr>
                 <th>Timestamp</th>
-                <th>Platform</th>
+                <th>Bot</th>
                 <th>Action</th>
                 <th>Result</th>
               </tr>
             </thead>
             <tbody>
-              {systemAudit.map((entry) => (
+              {audit.map((entry) => (
                 <tr key={entry.id}>
                   <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                  <td>{entry.platform}</td>
+                  <td>{entry.botId}</td>
                   <td>{entry.action}</td>
-                  <td>{entry.result}</td>
+                  <td>
+                    <span className={`connect-badge ${entry.result === 'allowed' ? 'connected' : 'disconnected'}`}>
+                      {entry.result}
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </>
-      )}    </AppShell>
+        )}
+
+        {/* System audit logs from auth/credentials */}
+        {systemAudit.length > 0 && (
+          <>
+            <h3 className="section-subtitle">System audit</h3>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Platform</th>
+                  <th>Action</th>
+                  <th>Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {systemAudit.map((entry) => (
+                  <tr key={entry.id}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(entry.timestamp).toLocaleString()}</td>
+                    <td>{entry.platform}</td>
+                    <td>{entry.action}</td>
+                    <td>{entry.result}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
+      </motion.div>
+    </AppShell>
   );
 }

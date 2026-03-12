@@ -1,8 +1,16 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import {
+  AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis,
+} from 'recharts';
+import {
+  TrendingUp, ShoppingCart, Share2, Users, Play, Pause, Square,
+  Trash2, AlertOctagon, ArrowLeft, Activity,
+} from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
 
@@ -24,6 +32,13 @@ interface MetricEntry {
   drawdown: number;
 }
 
+const FAMILY_ICONS: Record<string, React.ReactNode> = {
+  trading: <TrendingUp size={28} />,
+  store: <ShoppingCart size={28} />,
+  social: <Share2 size={28} />,
+  workforce: <Users size={28} />,
+};
+
 function StatusDot({ status }: { status: string }) {
   return <span className={`status-dot ${status}`} title={status} />;
 }
@@ -38,11 +53,11 @@ export default function BotDetailPage() {
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
 
-  const FAMILY_CONFIG: Record<string, { icon: string; color: string; label: string }> = {
-    trading: { icon: '📈', color: 'var(--color-trading)', label: 'Trading' },
-    store: { icon: '🛒', color: 'var(--color-store)', label: 'Store' },
-    social: { icon: '📱', color: 'var(--color-social)', label: 'Social' },
-    workforce: { icon: '⚙️', color: 'var(--color-workforce)', label: 'Workforce' },
+  const FAMILY_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
+    trading: { icon: <TrendingUp size={18} />, color: 'var(--color-trading)', label: 'Trading' },
+    store: { icon: <ShoppingCart size={18} />, color: 'var(--color-store)', label: 'Store' },
+    social: { icon: <Share2 size={18} />, color: 'var(--color-social)', label: 'Social' },
+    workforce: { icon: <Users size={18} />, color: 'var(--color-workforce)', label: 'Workforce' },
   };
 
 
@@ -89,8 +104,8 @@ export default function BotDetailPage() {
   return (
     <AppShell>
       <div style={{ marginBottom: 'var(--space-lg)' }}>
-        <Link href="/bots" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none' }}>
-          ← Back to Bots
+        <Link href="/bots" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <ArrowLeft size={14} /> Back to Bots
         </Link>
       </div>
 
@@ -111,7 +126,9 @@ export default function BotDetailPage() {
         <>
           {/* family banner */}
           <div className={`family-banner ${bot.family}`}>
-            <span className="family-banner-icon">{FAMILY_CONFIG[bot.family]?.icon}</span>
+            <span className="family-banner-icon" style={{ color: FAMILY_CONFIG[bot.family]?.color }}>
+              {FAMILY_ICONS[bot.family]}
+            </span>
             <div>
               <div className="family-banner-title" style={{ color: FAMILY_CONFIG[bot.family]?.color }}>
                 {bot.name}
@@ -132,22 +149,36 @@ export default function BotDetailPage() {
             <div className="page-actions">
               {bot.status === 'running' ? (
                 <>
-                  <button className="btn btn-secondary" onClick={() => handleAction('pause')}>Pause</button>
-                  <button className="btn btn-danger" onClick={() => handleAction('stop')}>Stop</button>
+                  <button className="btn btn-secondary" onClick={() => handleAction('pause')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Pause size={14} /> Pause
+                  </button>
+                  <button className="btn btn-danger" onClick={() => handleAction('stop')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Square size={14} /> Stop
+                  </button>
                 </>
               ) : bot.status === 'paused' ? (
                 <>
-                  <button className="btn btn-primary" onClick={() => handleAction('start')}>Resume</button>
-                  <button className="btn btn-danger" onClick={() => handleAction('stop')}>Stop</button>
+                  <button className="btn btn-primary" onClick={() => handleAction('start')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Play size={14} /> Resume
+                  </button>
+                  <button className="btn btn-danger" onClick={() => handleAction('stop')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Square size={14} /> Stop
+                  </button>
                 </>
               ) : (
-                <button className="btn btn-primary" onClick={() => handleAction('start')}>Start</button>
+                <button className="btn btn-primary" onClick={() => handleAction('start')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Play size={14} /> Start
+                </button>
               )}
               {bot.status === 'running' && (
-                <button className="btn btn-danger" onClick={() => handleAction('kill')} title="Emergency kill switch">Kill</button>
+                <button className="btn btn-danger" onClick={() => handleAction('kill')} title="Emergency kill switch" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <AlertOctagon size={14} /> Kill
+                </button>
               )}
               {bot.status !== 'running' && (
-                <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
+                <button className="btn btn-danger" onClick={handleDelete} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Trash2 size={14} /> Delete
+                </button>
               )}
             </div>
           </div>

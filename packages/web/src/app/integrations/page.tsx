@@ -2,6 +2,11 @@
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import {
+  TrendingUp, ShoppingCart, Share2, Wrench, MessageSquare,
+  ClipboardList, Handshake, Plug, Unplug, Bot,
+} from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
 
@@ -18,14 +23,24 @@ const BOT_PLATFORM_CATEGORIES = ['trading', 'ecommerce', 'social'];
 // Workforce tool categories — enhance your team's workflow
 const WORKFORCE_TOOL_CATEGORIES = ['workforce', 'communication', 'project_management', 'crm'];
 
-const CATEGORY_META: Record<string, { label: string; icon: string; desc: string; color: string }> = {
-  trading: { label: 'Trading Platforms', icon: '📈', desc: 'Exchanges & brokers your trading bots execute on', color: 'var(--color-trading)' },
-  ecommerce: { label: 'E-Commerce', icon: '🛒', desc: 'Storefronts & marketplaces your store bots manage', color: 'var(--color-store)' },
-  social: { label: 'Social Media', icon: '📱', desc: 'Social channels your content bots operate on', color: 'var(--color-social)' },
-  workforce: { label: 'Workforce Tools', icon: '⚙️', desc: 'Internal automation & operations tools', color: 'var(--color-workforce)' },
-  communication: { label: 'Communication', icon: '💬', desc: 'Messaging & notification channels', color: 'var(--accent-blue)' },
-  project_management: { label: 'Project Management', icon: '📋', desc: 'Task tracking & project workflows', color: 'var(--accent-purple)' },
-  crm: { label: 'CRM & Sales', icon: '🤝', desc: 'Customer relationship & pipeline tools', color: 'var(--accent-gold)' },
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  trading: <TrendingUp size={18} />,
+  ecommerce: <ShoppingCart size={18} />,
+  social: <Share2 size={18} />,
+  workforce: <Wrench size={18} />,
+  communication: <MessageSquare size={18} />,
+  project_management: <ClipboardList size={18} />,
+  crm: <Handshake size={18} />,
+};
+
+const CATEGORY_META: Record<string, { label: string; icon: React.ReactNode; desc: string; color: string }> = {
+  trading: { label: 'Trading Platforms', icon: CATEGORY_ICONS.trading, desc: 'Exchanges & brokers your trading bots execute on', color: 'var(--color-trading)' },
+  ecommerce: { label: 'E-Commerce', icon: CATEGORY_ICONS.ecommerce, desc: 'Storefronts & marketplaces your store bots manage', color: 'var(--color-store)' },
+  social: { label: 'Social Media', icon: CATEGORY_ICONS.social, desc: 'Social channels your content bots operate on', color: 'var(--color-social)' },
+  workforce: { label: 'Workforce Tools', icon: CATEGORY_ICONS.workforce, desc: 'Internal automation & operations tools', color: 'var(--color-workforce)' },
+  communication: { label: 'Communication', icon: CATEGORY_ICONS.communication, desc: 'Messaging & notification channels', color: 'var(--accent-blue)' },
+  project_management: { label: 'Project Management', icon: CATEGORY_ICONS.project_management, desc: 'Task tracking & project workflows', color: 'var(--accent-purple)' },
+  crm: { label: 'CRM & Sales', icon: CATEGORY_ICONS.crm, desc: 'Customer relationship & pipeline tools', color: 'var(--accent-gold)' },
 };
 
 export default function IntegrationsPage() {
@@ -182,18 +197,18 @@ function IntegrationsPageContent() {
           </span>
           {isConnected ? (
             <button className="btn btn-danger btn-sm" onClick={() => handleDisconnect(p.id)}>
-              Disconnect
+              <Unplug size={14} /> Disconnect
             </button>
           ) : p.oauth ? (
             <button
               className="btn btn-primary btn-sm"
               onClick={() => handleOAuthConnect(p.id)}
             >
-              Connect
+              <Plug size={14} /> Connect
             </button>
           ) : (
             <button className="btn btn-primary btn-sm" onClick={() => { setModal(p); setConnectError(''); setApiKey(''); setApiSecret(''); }}>
-              Connect
+              <Plug size={14} /> Connect
             </button>
           )}
         </div>
@@ -220,7 +235,7 @@ function IntegrationsPageContent() {
           className={`tab-btn ${activeTab === 'platforms' ? 'active' : ''}`}
           onClick={() => setActiveTab('platforms')}
         >
-          <span>🤖</span>
+          <Bot size={16} />
           <span>Bot Platforms</span>
           {!fetching && platformConnected.length > 0 && (
             <span style={{ background: 'var(--green-dim)', color: 'var(--green)', borderRadius: 999, padding: '1px 7px', fontSize: '0.7rem', fontWeight: 700 }}>
@@ -232,7 +247,7 @@ function IntegrationsPageContent() {
           className={`tab-btn ${activeTab === 'tools' ? 'active' : ''}`}
           onClick={() => setActiveTab('tools')}
         >
-          <span>🔧</span>
+          <Wrench size={16} />
           <span>Workforce Tools</span>
           {!fetching && toolConnected.length > 0 && (
             <span style={{ background: 'var(--gold-dim)', color: 'var(--gold)', borderRadius: 999, padding: '1px 7px', fontSize: '0.7rem', fontWeight: 700 }}>
@@ -245,7 +260,7 @@ function IntegrationsPageContent() {
       {/* Tab description */}
       {activeTab === 'platforms' ? (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-md) var(--space-lg)', marginBottom: 'var(--space-xl)', display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-          <span style={{ fontSize: '1.5rem' }}>🤖</span>
+          <Bot size={24} />
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Bot Operation Platforms</div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -255,7 +270,7 @@ function IntegrationsPageContent() {
         </div>
       ) : (
         <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: 'var(--space-md) var(--space-lg)', marginBottom: 'var(--space-xl)', display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-          <span style={{ fontSize: '1.5rem' }}>🔧</span>
+          <Wrench size={24} />
           <div>
             <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Workforce & Automation Tools</div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 2 }}>
@@ -287,7 +302,7 @@ function IntegrationsPageContent() {
                 {/* Category header */}
                 <div className="integration-section-header">
                   <div className="integration-section-icon" style={{ background: `${meta?.color}18` }}>
-                    {meta?.icon ?? '●'}
+                    {CATEGORY_ICONS[cat] ?? <Plug size={18} />}
                   </div>
                   <div>
                     <div className="integration-section-title" style={{ color: meta?.color }}>

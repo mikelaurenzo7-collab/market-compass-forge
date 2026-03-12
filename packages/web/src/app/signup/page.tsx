@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../lib/auth-context';
 import Link from 'next/link';
 
@@ -42,7 +43,7 @@ export default function SignupPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card">
+      <motion.div className="auth-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
         <div className="auth-logo">BeastBots</div>
         <h1 className="auth-title">Create your account</h1>
         <p className="auth-subtitle">Start building autonomous operators</p>
@@ -111,7 +112,7 @@ export default function SignupPage() {
           Already have an account?{' '}
           <Link href="/login" className="auth-link">Sign in</Link>
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }

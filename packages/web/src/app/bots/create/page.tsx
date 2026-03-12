@@ -3,14 +3,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { TrendingUp, ShoppingCart, Share2, Users, ArrowLeft, Check } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
 
-const FAMILY_META: Record<string, { icon: string; label: string; desc: string; color: string }> = {
-  trading: { icon: '📈', label: 'Trading', desc: 'Crypto & stock exchanges', color: 'var(--color-trading)' },
-  store: { icon: '🛒', label: 'Store', desc: 'Ecommerce & marketplaces', color: 'var(--color-store)' },
-  social: { icon: '📱', label: 'Social', desc: 'Social media platforms', color: 'var(--color-social)' },
-  workforce: { icon: '⚙️', label: 'Workforce', desc: 'Team & operations tools', color: 'var(--color-workforce)' },
+const CREATE_FAMILY_ICONS: Record<string, React.ReactNode> = {
+  trading: <TrendingUp size={20} />,
+  store: <ShoppingCart size={20} />,
+  social: <Share2 size={20} />,
+  workforce: <Users size={20} />,
+};
+
+const FAMILY_META: Record<string, { icon: React.ReactNode; label: string; desc: string; color: string }> = {
+  trading: { icon: CREATE_FAMILY_ICONS.trading, label: 'Trading', desc: 'Crypto & stock exchanges', color: 'var(--color-trading)' },
+  store: { icon: CREATE_FAMILY_ICONS.store, label: 'Store', desc: 'Ecommerce & marketplaces', color: 'var(--color-store)' },
+  social: { icon: CREATE_FAMILY_ICONS.social, label: 'Social', desc: 'Social media platforms', color: 'var(--color-social)' },
+  workforce: { icon: CREATE_FAMILY_ICONS.workforce, label: 'Workforce', desc: 'Team & operations tools', color: 'var(--color-workforce)' },
 };
 
 const PLATFORMS: Record<string, { id: string; name: string }[]> = {
@@ -178,8 +187,8 @@ export default function CreateBotPage() {
   return (
     <AppShell>
       <div style={{ marginBottom: 'var(--space-lg)' }}>
-        <Link href="/bots" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none' }}>
-          ← Back to Bots
+        <Link href="/bots" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <ArrowLeft size={14} /> Back to Bots
         </Link>
       </div>
 
@@ -318,7 +327,7 @@ export default function CreateBotPage() {
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s.desc}</span>
                     </div>
                     <span style={{ color: selectedStrategies.includes(s.id) ? (currentFamilyMeta?.color ?? 'var(--green)') : 'var(--text-muted)', fontSize: '1.2rem' }}>
-                      {selectedStrategies.includes(s.id) ? '✓' : '○'}
+                      {selectedStrategies.includes(s.id) ? <Check size={18} /> : '○'}
                     </span>
                   </button>
                 ))}
@@ -363,9 +372,9 @@ export default function CreateBotPage() {
                 Autonomy Level
                 <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
                   {[
-                    { id: 'manual', label: '🛑 Manual', desc: 'You control everything' },
-                    { id: 'suggest', label: '💡 Suggest', desc: 'Bot recommends, you approve' },
-                    { id: 'auto', label: '🤖 Auto', desc: 'Full autonomous operation' },
+                    { id: 'manual', label: 'Manual', desc: 'You control everything' },
+                    { id: 'suggest', label: 'Suggest', desc: 'Bot recommends, you approve' },
+                    { id: 'auto', label: 'Auto', desc: 'Full autonomous operation' },
                   ].map(a => (
                     <button
                       key={a.id}

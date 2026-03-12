@@ -2,12 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { TrendingUp, ShoppingCart, Share2, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
+const FAMILY_ICONS: Record<string, React.ReactNode> = {
+  trading: <TrendingUp size={28} />,
+  store: <ShoppingCart size={28} />,
+  social: <Share2 size={28} />,
+};
+
 const FAMILIES = [
-  { id: 'trading', icon: '⟁', title: 'Trading Operators', desc: 'Crypto, stocks, events & prediction markets', color: 'var(--green)' },
-  { id: 'store', icon: '⊞', title: 'Store Operators', desc: 'Shopify, Amazon, Etsy, eBay & more', color: 'var(--blue)' },
-  { id: 'social', icon: '◉', title: 'Social Operators', desc: 'X, TikTok, Instagram, Facebook & LinkedIn', color: 'var(--purple)' },
+  { id: 'trading', title: 'Trading Operators', desc: 'Crypto, stocks, events & prediction markets', color: 'var(--green)' },
+  { id: 'store', title: 'Store Operators', desc: 'Shopify, Amazon, Etsy, eBay & more', color: 'var(--blue)' },
+  { id: 'social', title: 'Social Operators', desc: 'X, TikTok, Instagram, Facebook & LinkedIn', color: 'var(--purple)' },
 ] as const;
 
 // we'll fetch the same list from API so we can inspect the oauth flag
@@ -141,7 +149,7 @@ export default function OnboardingPage() {
                   onClick={() => handleFamilySelect(f.id)}
                   style={{ '--accent': f.color } as React.CSSProperties}
                 >
-                  <span className="onboarding-family-icon">{f.icon}</span>
+                  <span className="onboarding-family-icon">{FAMILY_ICONS[f.id]}</span>
                   <span className="onboarding-family-title">{f.title}</span>
                   <span className="onboarding-family-desc">{f.desc}</span>
                 </button>
@@ -234,7 +242,7 @@ export default function OnboardingPage() {
         {/* Step 3: Ready */}
         {step === 3 && (
           <>
-            <div className="onboarding-success-icon">✓</div>
+            <div className="onboarding-success-icon"><CheckCircle size={40} /></div>
             <h1 className="auth-title">You&apos;re all set!</h1>
             <p className="auth-subtitle">
               {selectedIntegration
