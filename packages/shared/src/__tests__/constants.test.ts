@@ -1,4 +1,9 @@
-import { DEFAULT_PRICING, INTEGRATIONS, ERROR_CODES } from '../index';
+import {
+  DEFAULT_PRICING,
+  INTEGRATIONS,
+  ERROR_CODES,
+  DEFAULT_LOOP_CONFIG,
+} from '../index';
 
 describe('shared constants', () => {
   it('contains core v1 integrations', () => {
@@ -38,5 +43,11 @@ describe('shared constants', () => {
       expect(['trading', 'ecommerce', 'social']).toContain(integration.category);
       expect(['planned', 'beta', 'ga']).toContain(integration.status);
     }
+  });
+
+  it('DEFAULT_LOOP_CONFIG has correct intervals', () => {
+    expect(DEFAULT_LOOP_CONFIG.tradingLoopSeconds).toBe(1);
+    expect(DEFAULT_LOOP_CONFIG.storeLoopSeconds).toBe(600);
+    expect(DEFAULT_LOOP_CONFIG.socialLoopSeconds).toBe(900);
   });
 });

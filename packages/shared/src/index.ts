@@ -1,5 +1,137 @@
 export type BotFamily = 'trading' | 'store' | 'social' | 'workforce';
 
+// ─── Bot sub-types (one per domain) ──────────────────────────────────────────
+
+/** Specific trading domain — crypto, equities, or prediction markets. */
+export type TradingBotType = 'crypto' | 'stocks' | 'predictions';
+
+/** E-commerce platform slug — one bot per storefront. */
+export type StoreBotPlatform =
+  | 'shopify'
+  | 'amazon'
+  | 'etsy'
+  | 'square'
+  | 'woocommerce'
+  | 'ebay';
+
+/** Social media platform slug — one bot per channel. */
+export type SocialBotPlatform =
+  | 'x'
+  | 'tiktok'
+  | 'instagram'
+  | 'facebook'
+  | 'linkedin';
+
+/** Union of all specific bot subtypes. */
+export type BotSubtype = TradingBotType | StoreBotPlatform | SocialBotPlatform;
+
+// ─── User risk and autonomy controls ─────────────────────────────────────────
+
+/** How much risk the user is comfortable with. */
+export type RiskLevel = 'conservative' | 'moderate' | 'aggressive';
+
+/**
+ * How much independence the bot has.
+ * - `supervised`       – every significant action requires human approval
+ * - `semi-autonomous`  – acts freely below the approval threshold
+ * - `fully-autonomous` – acts freely within budget/loss limits, no approval queue
+ */
+export type AutonomyLevel = 'supervised' | 'semi-autonomous' | 'fully-autonomous';
+
+/**
+ * User-configured risk profile — the user is always in control.
+ * The bot MUST respect every field here and never exceed these guardrails.
+ */
+export interface UserRiskProfile {
+  riskLevel: RiskLevel;
+  autonomyLevel: AutonomyLevel;
+  /** Maximum single-trade / single-action size in USD. */
+  maxActionUsd: number;
+  /** Daily loss cap in USD before the circuit breaker trips. */
+  dailyLossLimitUsd: number;
+  /** Total budget allocated to this bot in USD. */
+  budgetUsd: number;
+  /**
+   * Require human approval for any action whose notional value exceeds this
+   * threshold (unless autonomyLevel is `fully-autonomous`).
+   */
+  requireApprovalAboveUsd: number;
+}
+
+// ─── Bot strategies ───────────────────────────────────────────────────────────
+
+/** Elite trading strategies — applied to crypto, stock, and prediction bots. */
+export type TradingStrategy =
+  | 'dca'
+  | 'momentum'
+  | 'mean-reversion'
+  | 'breakout'
+  | 'arbitrage'
+  | 'grid';
+
+/** Elite e-commerce automation strategies. */
+export type StoreStrategy =
+  | 'dynamic-pricing'
+  | 'inventory-restock'
+  | 'ad-campaign'
+  | 'product-promotion'
+  | 'review-response';
+
+/** Elite social media automation strategies. */
+export type SocialStrategy =
+  | 'content-schedule'
+  | 'engagement-boost'
+  | 'ad-promotion'
+  | 'trend-monitor'
+  | 'influencer-outreach';
+
+export type BotStrategy = TradingStrategy | StoreStrategy | SocialStrategy;
+
+// ─── Loop / frequency configuration ──────────────────────────────────────────
+
+/**
+ * Runtime loop intervals.
+ * Trading bots run every 1 s (24/7 via Cloudflare Durable Objects).
+ * Store and social bots use longer intervals to stay optimised but not
+ * hammering external APIs.
+ */
+export interface LoopConfig {
+  /** Trading bots: 1-second heartbeat loop, 24/7 via Cloudflare DO. */
+  tradingLoopSeconds: number;
+  /** Store bots: default 600 s (10 min). */
+  storeLoopSeconds: number;
+  /** Social bots: default 900 s (15 min). */
+  socialLoopSeconds: number;
+}
+
+export const DEFAULT_LOOP_CONFIG: LoopConfig = {
+  tradingLoopSeconds: 1,
+  storeLoopSeconds: 600,
+  socialLoopSeconds: 900,
+};
+
+// ─── Bot instance configuration ───────────────────────────────────────────────
+
+/**
+ * Full configuration for a user-created bot instance.
+ * Stored server-side; drives the DO runtime and approval queue.
+ */
+export interface BotInstanceConfig {
+  id: string;
+  tenantId: string;
+  family: BotFamily;
+  /** Specific platform / domain this instance is wired to. */
+  subtype: BotSubtype;
+  name: string;
+  /** Active strategies — must be valid for the bot's family. */
+  strategies: BotStrategy[];
+  riskProfile: UserRiskProfile;
+  /** Whether the bot is actively running. */
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type IntegrationCategory = 'trading' | 'ecommerce' | 'social';
 
 export type PricingTier = 'starter' | 'pro' | 'enterprise';
@@ -69,11 +201,15 @@ export interface BotRuntimeStatus {
   botId: string;
   tenantId: string;
   family: BotFamily;
+  /** Specific platform / domain sub-type (present when set). */
+  subtype?: BotSubtype;
   running: boolean;
   loopSeconds: number;
   circuitOpen: boolean;
   budgetRemainingUsd: number;
   lastHeartbeat: string;
+  /** Active strategies in use by this bot. */
+  strategies?: BotStrategy[];
 }
 
 export const INTEGRATIONS: IntegrationDefinition[] = [

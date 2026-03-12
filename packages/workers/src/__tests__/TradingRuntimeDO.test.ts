@@ -76,3 +76,83 @@ describe('bootstrapWorkers', () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe('TradingRuntimeDO — elite subtypes and risk profile', () => {
+  it('exposes tradingBotType (crypto) in status', () => {
+    const do_ = new TradingRuntimeDO({
+      botId: 'e1',
+      tenantId: 'te1',
+      family: 'trading',
+      tradingBotType: 'crypto',
+      strategies: ['dca', 'momentum'],
+    });
+    do_.tick();
+    const s = do_.status();
+    expect(s.subtype).toBe('crypto');
+    expect(s.strategies).toEqual(['dca', 'momentum']);
+  });
+
+  it('exposes tradingBotType (stocks) in status', () => {
+    const do_ = new TradingRuntimeDO({
+      botId: 'e2',
+      tenantId: 'te2',
+      family: 'trading',
+      tradingBotType: 'stocks',
+      strategies: ['breakout'],
+    });
+    do_.tick();
+    expect(do_.status().subtype).toBe('stocks');
+  });
+
+  it('exposes tradingBotType (predictions) in status', () => {
+    const do_ = new TradingRuntimeDO({
+      botId: 'e3',
+      tenantId: 'te3',
+      family: 'trading',
+      tradingBotType: 'predictions',
+      strategies: ['arbitrage'],
+    });
+    do_.tick();
+    expect(do_.status().subtype).toBe('predictions');
+  });
+
+  it('accepts UserRiskProfile and uses its budget/loss limit', () => {
+    const do_ = new TradingRuntimeDO({
+      botId: 'e4',
+      tenantId: 'te4',
+      family: 'trading',
+      tradingBotType: 'crypto',
+      riskProfile: {
+        riskLevel: 'moderate',
+        autonomyLevel: 'semi-autonomous',
+        maxActionUsd: 500,
+        dailyLossLimitUsd: 300,
+        budgetUsd: 2000,
+        requireApprovalAboveUsd: 1000,
+      },
+    });
+    expect(do_.status().budgetRemainingUsd).toBe(2000);
+    do_.recordLoss(299);
+    expect(do_.status().circuitOpen).toBe(false);
+    do_.recordLoss(2); // total 301 > 300
+    expect(do_.status().circuitOpen).toBe(true);
+  });
+
+  it('riskProfile budget takes precedence over legacy budgetUsd', () => {
+    const do_ = new TradingRuntimeDO({
+      botId: 'e5',
+      tenantId: 'te5',
+      family: 'trading',
+      budgetUsd: 100, // legacy — should be ignored
+      riskProfile: {
+        riskLevel: 'conservative',
+        autonomyLevel: 'supervised',
+        maxActionUsd: 50,
+        dailyLossLimitUsd: 200,
+        budgetUsd: 5000,
+        requireApprovalAboveUsd: 100,
+      },
+    });
+    expect(do_.status().budgetRemainingUsd).toBe(5000);
+  });
+});
