@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && cp -r src/lib/migrations dist/lib/migrations",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

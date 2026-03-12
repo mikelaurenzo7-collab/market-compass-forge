@@ -5,6 +5,17 @@ import { getRuntime } from '@beastbots/workers';
 
 export const analyticsRouter = new Hono();
 
+// ─── DB row types ─────────────────────────────────────────────
+interface BotRow { id: string; family: string; platform: string; status: string; name: string; created_at: number }
+interface AggMetricsRow { totalTicks: number | null; successfulActions: number | null; failedActions: number | null; deniedActions: number | null; totalPnlUsd: number | null; uptimeMs: number | null }
+interface CountRow { cnt: number }
+interface AuditActivityRow { source: string; id: string; botId: string | null; platform: string | null; action: string; result: string; riskLevel: string | null; timestamp: number }
+interface DecisionActivityRow { source: string; id: string; botId: string; action: string; result: string; durationMs: number; timestamp: number }
+interface DecisionRow { action: string; result: string; ts: number; family: string }
+interface PnlRow { pnl: number; ts: number; family: string }
+interface BotNameRow { id: string; family: string; platform: string; status: string; name: string }
+interface BotMetricRow { total_ticks: number; successful_actions: number; failed_actions: number; denied_actions: number; total_pnl_usd: number; uptime_ms: number; recorded_at: number }
+
 // ─── GET /api/analytics/summary ────────────────────────────────
 // Aggregated stats across all of a tenant's bots — used by dashboard + analytics page
 analyticsRouter.get('/summary', async (c) => {
@@ -16,9 +27,7 @@ analyticsRouter.get('/summary', async (c) => {
   // All bots for this tenant
   const bots = db.prepare(
     'SELECT id, family, platform, status, name, created_at FROM bots WHERE tenant_id = ? ORDER BY created_at DESC'
-  ).all(auth.tenantId) as any[];
-
-  // Aggregate per-family counts
+  ).all(auth.tenantId) as BotRow[];
   const familyCounts: Record<string, { total: number; running: number }> = {};
   for (const b of bots) {
     if (!familyCounts[b.family]) familyCounts[b.family] = { total: 0, running: 0 };
@@ -55,7 +64,7 @@ analyticsRouter.get('/summary', async (c) => {
            SUM(failed_actions) AS failedActions, SUM(denied_actions) AS deniedActions,
            SUM(total_pnl_usd) AS totalPnlUsd, SUM(uptime_ms) AS uptimeMs
     FROM bot_metrics WHERE bot_id IN (SELECT id FROM bots WHERE tenant_id = ?)
-  `).get(auth.tenantId) as any;
+  `).get(auth.tenantId) as AggMetricsRow | undefined;
 
   if (histMetrics?.totalTicks) {
     totalTicks += histMetrics.totalTicks;
@@ -72,14 +81,14 @@ analyticsRouter.get('/summary', async (c) => {
   // Connected platforms count
   const credCount = db.prepare(
     'SELECT COUNT(*) AS cnt FROM credentials WHERE tenant_id = ?'
-  ).get(auth.tenantId) as any;
+  ).get(auth.tenantId) as CountRow | undefined;
 
   return c.json({
     success: true,
     data: {
       bots: {
         total: bots.length,
-        running: bots.filter((b: any) => b.status === 'running').length,
+        running: bots.filter((b) => b.status === 'running').length,
         byFamily: familyCounts,
       },
       metrics: {
@@ -111,13 +120,13 @@ analyticsRouter.get('/activity', async (c) => {
     SELECT 'audit' AS source, id, bot_id AS botId, platform, action, result, risk_level AS riskLevel, created_at AS timestamp
     FROM audit_log WHERE tenant_id = ?
     ORDER BY created_at DESC LIMIT ?
-  `).all(auth.tenantId, limit) as any[];
+  `).all(auth.tenantId, limit) as AuditActivityRow[];
 
   const decisionRows = db.prepare(`
     SELECT 'decision' AS source, CAST(id AS TEXT) AS id, bot_id AS botId, action, result, duration_ms AS durationMs, created_at AS timestamp
     FROM decision_log WHERE tenant_id = ?
     ORDER BY created_at DESC LIMIT ?
-  `).all(auth.tenantId, limit) as any[];
+  `).all(auth.tenantId, limit) as DecisionActivityRow[];
 
   // Merge and sort by timestamp desc
   const merged = [...auditRows, ...decisionRows]
@@ -166,7 +175,7 @@ analyticsRouter.get('/timeseries', async (c) => {
     JOIN bots b ON d.bot_id = b.id
     WHERE d.tenant_id = ? AND d.created_at >= ?
     ORDER BY d.created_at ASC
-  `).all(auth.tenantId, sinceMs) as any[];
+  `).all(auth.tenantId, sinceMs) as DecisionRow[];
 
   // Build bucketed time-series
   const buckets: Record<number, { ts: number; trading: number; store: number; social: number; workforce: number; success: number; fail: number }> = {};
@@ -176,7 +185,7 @@ analyticsRouter.get('/timeseries', async (c) => {
       buckets[bucketKey] = { ts: bucketKey, trading: 0, store: 0, social: 0, workforce: 0, success: 0, fail: 0 };
     }
     const bucket = buckets[bucketKey];
-    if (d.family in bucket) (bucket as any)[d.family]++;
+    if (d.family === 'trading' || d.family === 'store' || d.family === 'social' || d.family === 'workforce') bucket[d.family]++;
     if (d.result === 'executed' || d.result === 'allowed') bucket.success++;
     else bucket.fail++;
   }
@@ -194,10 +203,10 @@ analyticsRouter.get('/timeseries', async (c) => {
     JOIN bots b ON bm.bot_id = b.id
     WHERE b.tenant_id = ? AND bm.recorded_at >= ?
     ORDER BY bm.recorded_at ASC
-  `).all(auth.tenantId, sinceMs) as any[];
+  `).all(auth.tenantId, sinceMs) as PnlRow[];
 
   // Also include live running metrics as most recent point
-  const bots = db.prepare('SELECT id, family FROM bots WHERE tenant_id = ?').all(auth.tenantId) as any[];
+  const bots = db.prepare('SELECT id, family FROM bots WHERE tenant_id = ?').all(auth.tenantId) as { id: string; family: string }[];
   const livePnl: { pnl: number; ts: number; family: string }[] = [];
   for (const b of bots) {
     const runtime = getRuntime(auth.tenantId, b.id);
@@ -226,9 +235,9 @@ analyticsRouter.get('/per-bot', async (c) => {
   const db = getDb();
   const bots = db.prepare(
     'SELECT id, family, platform, status, name FROM bots WHERE tenant_id = ?'
-  ).all(auth.tenantId) as any[];
+  ).all(auth.tenantId) as BotNameRow[];
 
-  const perBot = bots.map((b: any) => {
+  const perBot = bots.map((b) => {
     // Live metrics from runtime
     const runtime = getRuntime(auth.tenantId, b.id);
     const liveMetrics = runtime?.getMetrics() ?? null;
@@ -236,7 +245,7 @@ analyticsRouter.get('/per-bot', async (c) => {
     // Historical metrics (latest snapshot)
     const histMetrics = db.prepare(
       'SELECT total_ticks, successful_actions, failed_actions, denied_actions, total_pnl_usd, uptime_ms, recorded_at FROM bot_metrics WHERE bot_id = ? ORDER BY recorded_at DESC LIMIT 1'
-    ).get(b.id) as any;
+    ).get(b.id) as BotMetricRow | undefined;
 
     const metrics = liveMetrics ?? (histMetrics ? {
       totalTicks: histMetrics.total_ticks,

@@ -41,6 +41,7 @@ export function createRuntime(params: {
   config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
   tickIntervalMs?: number;
   adapter?: any;
+  credentials?: { apiKey: string; apiSecret: string; passphrase?: string; shopDomain?: string; accessToken?: string; sandbox?: boolean };
   onStateChange?: StateChangeCallback;
 }): BotRuntime {
   const key = getRuntimeKey(params.tenantId, params.botId);

@@ -35,6 +35,20 @@ function ensureRequiredEnvs() {
     console.error('[CONFIG] Missing required env:', missing.join(', '));
     throw new Error(`Missing required env: ${missing.join(', ')}`);
   }
+
+  // Warn about recommended env vars so operators know what is unconfigured
+  const recommended = [
+    'RESEND_API_KEY',
+    'FRONTEND_URL',
+    'API_BASE_URL',
+    'SHOPIFY_WEBHOOK_SECRET',
+    'COINBASE_WEBHOOK_SECRET',
+    'ALPACA_WEBHOOK_SECRET',
+  ];
+  const unset = recommended.filter((k) => !process.env[k]);
+  if (unset.length > 0) {
+    console.warn('[CONFIG] Recommended env vars not set (some features disabled):', unset.join(', '));
+  }
 }
 
 // Skip strict env enforcement during test runs so tests can set envs per-file

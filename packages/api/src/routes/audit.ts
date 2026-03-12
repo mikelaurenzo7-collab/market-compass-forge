@@ -12,7 +12,7 @@ auditRouter.get('/', async (c) => {
   const db = getDb();
   const rows = db.prepare(
     'SELECT id, bot_id AS botId, platform, action, result, risk_level AS riskLevel, details, created_at AS timestamp FROM audit_log WHERE tenant_id = ? ORDER BY created_at DESC'
-  ).all(auth.tenantId) as any[];
+  ).all(auth.tenantId) as { id: string; botId: string | null; platform: string | null; action: string; result: string; riskLevel: string; details: string | null; timestamp: number }[];
 
   return c.json({ success: true, data: rows });
 });
@@ -25,9 +25,7 @@ auditRouter.get('/export', async (c) => {
   const db = getDb();
   const rows = db.prepare(
     'SELECT id, bot_id, platform, action, result, risk_level, details, created_at FROM audit_log WHERE tenant_id = ? ORDER BY created_at DESC'
-  ).all(auth.tenantId) as any[];
-
-  // Build CSV
+  ).all(auth.tenantId) as { id: string; bot_id: string | null; platform: string | null; action: string; result: string; risk_level: string; details: string | null; created_at: number }[];
   const headers = ['ID', 'Bot ID', 'Platform', 'Action', 'Result', 'Risk Level', 'Details', 'Timestamp'];
   const csvRows = [headers.join(',')];
   for (const row of rows) {

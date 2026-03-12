@@ -15,6 +15,7 @@ import {
 import { verifyAuthHeader } from '../lib/auth.js';
 import { getDb } from '../lib/db.js';
 import { logAudit } from '../lib/audit.js';
+import { decrypt } from '../lib/crypto.js';
 import { createRuntime, getRuntime, destroyRuntime } from '@beastbots/workers';
 import type { RuntimeState } from '@beastbots/workers';
 
@@ -56,6 +57,23 @@ function makePersistCallback(botId: string, tenantId: string, family: BotFamily,
       console.error(`[Persist] Failed to persist state for ${botId}:`, err);
     }
   };
+}
+
+/** Look up and decrypt platform credentials for a tenant. Returns undefined if none stored. */
+type BotCredentials = { apiKey: string; apiSecret: string; passphrase?: string; shopDomain?: string; accessToken?: string; sandbox?: boolean };
+
+function lookupCredentials(tenantId: string, platform: string): BotCredentials | undefined {
+  const db = getDb();
+  const row = db.prepare(
+    'SELECT encrypted_data FROM credentials WHERE tenant_id = ? AND platform = ? AND status = ? LIMIT 1'
+  ).get(tenantId, platform, 'active') as { encrypted_data: string } | undefined;
+  if (!row) return undefined;
+  try {
+    return JSON.parse(decrypt(row.encrypted_data)) as BotCredentials;
+  } catch {
+    console.error(`[Credentials] Failed to decrypt credentials for ${platform} / tenant ${tenantId}`);
+    return undefined;
+  }
 }
 
 type BotConfig = TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
@@ -357,6 +375,7 @@ botsRouter.post('/:id/start', async (c) => {
 
   let runtime = getRuntime(auth.tenantId, id);
   if (!runtime) {
+    const credentials = lookupCredentials(auth.tenantId, row.platform);
     runtime = createRuntime({
       botId: id,
       tenantId: auth.tenantId,
@@ -365,6 +384,7 @@ botsRouter.post('/:id/start', async (c) => {
       config: normalizeRuntimeConfig(row.family as BotFamily, row.platform, parsedConfig),
       tickIntervalMs: familyTickIntervalMs(row.family as BotFamily),
       onStateChange: makePersistCallback(id, auth.tenantId, row.family as BotFamily, row.platform as Platform),
+      credentials,
     });
   }
   runtime.start();
@@ -624,6 +644,7 @@ export function restoreRuntimes(): void {
     for (const row of rows) {
       try {
         const parsedConfig = JSON.parse(row.config || '{}') as Record<string, unknown>;
+        const credentials = lookupCredentials(row.tenant_id, row.platform);
         const runtime = createRuntime({
           botId: row.bot_id,
           tenantId: row.tenant_id,
@@ -632,6 +653,7 @@ export function restoreRuntimes(): void {
           config: normalizeRuntimeConfig(row.family as BotFamily, row.platform, parsedConfig),
           tickIntervalMs: familyTickIntervalMs(row.family as BotFamily),
           onStateChange: makePersistCallback(row.bot_id, row.tenant_id, row.family as BotFamily, row.platform as Platform),
+          credentials,
         });
 
         runtime.restoreState({

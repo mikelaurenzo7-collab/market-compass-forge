@@ -108,7 +108,7 @@ mfaRouter.post('/setup', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
 
   const db = getDb();
-  const user = db.prepare('SELECT id, email, mfa_enabled FROM users WHERE id = ?').get(auth.userId) as any;
+  const user = db.prepare('SELECT id, email, mfa_enabled FROM users WHERE id = ?').get(auth.userId) as { id: string; email: string; mfa_enabled: number } | undefined;
   if (!user) return c.json({ success: false, error: 'User not found' }, 404);
 
   if (user.mfa_enabled) {
@@ -161,7 +161,7 @@ mfaRouter.post('/verify-setup', async (c) => {
   }
 
   const db = getDb();
-  const user = db.prepare('SELECT id, totp_secret, mfa_enabled FROM users WHERE id = ?').get(auth.userId) as any;
+  const user = db.prepare('SELECT id, totp_secret, mfa_enabled FROM users WHERE id = ?').get(auth.userId) as { id: string; totp_secret: string | null; mfa_enabled: number } | undefined;
   if (!user) return c.json({ success: false, error: 'User not found' }, 404);
   if (!user.totp_secret) return c.json({ success: false, error: 'MFA setup not initiated' }, 400);
   if (user.mfa_enabled) return c.json({ success: false, error: 'MFA is already enabled' }, 400);
@@ -221,9 +221,9 @@ mfaRouter.post('/verify', async (c) => {
   const db = getDb();
   const user = db.prepare(
     'SELECT id, email, display_name, totp_secret, mfa_enabled, mfa_backup_codes FROM users WHERE id = ?'
-  ).get(parsed.data.userId) as any;
+  ).get(parsed.data.userId) as { id: string; email: string; display_name: string; totp_secret: string | null; mfa_enabled: number; mfa_backup_codes: string | null } | undefined;
 
-  if (!user || !user.mfa_enabled) {
+  if (!user || !user.mfa_enabled || !user.totp_secret) {
     return c.json({ success: false, error: 'Invalid request' }, 400);
   }
 
@@ -251,10 +251,10 @@ mfaRouter.post('/verify', async (c) => {
     return c.json({ success: false, error: 'Invalid verification code' }, 401);
   }
 
-  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any;
+  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as { tenant_id: string } | undefined;
   const tenantId = membership?.tenant_id ?? '';
 
-  const onboarding = db.prepare('SELECT completed FROM onboarding WHERE user_id = ?').get(user.id) as any;
+  const onboarding = db.prepare('SELECT completed FROM onboarding WHERE user_id = ?').get(user.id) as { completed: number } | undefined;
 
   const accessToken = await signAccessToken({ userId: user.id, tenantId, email: user.email });
   const refreshTokenData = await issueRefreshToken({ userId: user.id, tenantId });
@@ -298,9 +298,10 @@ mfaRouter.post('/disable', async (c) => {
   }
 
   const db = getDb();
-  const user = db.prepare('SELECT id, totp_secret, mfa_enabled FROM users WHERE id = ?').get(auth.userId) as any;
+  const user = db.prepare('SELECT id, totp_secret, mfa_enabled FROM users WHERE id = ?').get(auth.userId) as { id: string; totp_secret: string | null; mfa_enabled: number } | undefined;
   if (!user) return c.json({ success: false, error: 'User not found' }, 404);
   if (!user.mfa_enabled) return c.json({ success: false, error: 'MFA is not enabled' }, 400);
+  if (!user.totp_secret) return c.json({ success: false, error: 'MFA not properly configured' }, 400);
 
   const isValid = verifyTOTP(parsed.data.code, user.totp_secret);
   if (!isValid) {
@@ -330,7 +331,7 @@ mfaRouter.get('/status', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
 
   const db = getDb();
-  const user = db.prepare('SELECT mfa_enabled FROM users WHERE id = ?').get(auth.userId) as any;
+  const user = db.prepare('SELECT mfa_enabled FROM users WHERE id = ?').get(auth.userId) as { mfa_enabled: number } | undefined;
   if (!user) return c.json({ success: false, error: 'User not found' }, 404);
 
   return c.json({ success: true, data: { mfaEnabled: !!user.mfa_enabled } });

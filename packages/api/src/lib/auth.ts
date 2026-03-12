@@ -66,7 +66,7 @@ function msFromTTL(ttl: string): number {
 export async function rotateRefreshToken(oldToken: string) {
   const db = getDb();
   const oldHash = hashToken(oldToken);
-  const row = db.prepare('SELECT id, user_id, tenant_id, revoked, expires_at FROM refresh_tokens WHERE token_hash = ?').get(oldHash) as any;
+  const row = db.prepare('SELECT id, user_id, tenant_id, revoked, expires_at FROM refresh_tokens WHERE token_hash = ?').get(oldHash) as { id: string; user_id: string; tenant_id: string; revoked: number; expires_at: number } | undefined;
   if (!row) throw new Error('refresh_not_found');
   if (row.revoked) throw new Error('refresh_revoked');
   if (Date.now() > row.expires_at) throw new Error('refresh_expired');
@@ -80,7 +80,7 @@ export async function rotateRefreshToken(oldToken: string) {
 
   const newTokenData = await issueRefreshToken({ userId: row.user_id, tenantId: row.tenant_id });
 
-  const userRow = db.prepare('SELECT email FROM users WHERE id = ?').get(row.user_id) as any;
+  const userRow = db.prepare('SELECT email FROM users WHERE id = ?').get(row.user_id) as { email: string } | undefined;
   const accessToken = await signAccessToken({ userId: row.user_id, tenantId: row.tenant_id, email: userRow?.email ?? '' });
 
   return { accessToken, refreshToken: newTokenData.token };
@@ -104,8 +104,8 @@ export async function verifyAuthHeader(authHeader: string | undefined) {
   // Ensure user still exists and is member of tenant
   const db = getDb();
   const userId = payload.sub as string;
-  const membership = db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ?').get(userId) as any;
-  const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId) as any;
+  const membership = db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ?').get(userId) as { tenant_id: string; role: string } | undefined;
+  const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId) as { id: string; email: string } | undefined;
   if (!user) return null;
 
   return { userId, tenantId: membership?.tenant_id ?? '', email: user.email, role: membership?.role ?? 'member' };

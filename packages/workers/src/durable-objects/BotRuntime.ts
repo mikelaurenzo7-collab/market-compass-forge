@@ -283,6 +283,7 @@ export class BotRuntime {
           this.adapter = createStubAdapter(params.family);
       }
     } else {
+      console.warn(`[BotRuntime] Bot ${params.botId} (${params.family}/${params.platform}): no credentials provided — using stub adapter (no real actions will execute)`);
       this.adapter = createStubAdapter(params.family);
     }
 

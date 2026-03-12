@@ -19,11 +19,11 @@ interface EmailPayload {
   html: string;
 }
 
-export async function sendEmail(payload: EmailPayload): Promise<{ success: boolean; messageId?: string }> {
+export async function sendEmail(payload: EmailPayload): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn('[Email] RESEND_API_KEY not set — email not sent:', payload.subject);
-    return { success: false };
+    console.error('[Email] RESEND_API_KEY not set — cannot send:', payload.subject);
+    return { success: false, error: 'Email service not configured (RESEND_API_KEY missing)' };
   }
 
   const fromAddress = process.env.EMAIL_FROM ?? 'BeastBots <noreply@beastbots.ai>';
@@ -45,7 +45,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ success: boole
   if (!res.ok) {
     const text = await res.text();
     console.error('[Email] Send failed:', text);
-    return { success: false };
+    return { success: false, error: `Email provider error: ${res.status}` };
   }
 
   const data = await res.json() as { id?: string };
@@ -148,7 +148,7 @@ notificationsRouter.get('/preferences', async (c) => {
   const db = getDb();
   const prefs = db.prepare(
     'SELECT * FROM notification_preferences WHERE tenant_id = ?'
-  ).get(auth.tenantId) as any;
+  ).get(auth.tenantId) as { preferences: string } | undefined;
 
   if (!prefs) {
     // Return defaults
