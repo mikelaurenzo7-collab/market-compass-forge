@@ -44,6 +44,12 @@ const SAFETY_LAYERS = [
   { num: 5, name: 'Audit Trail', desc: 'Immutable log of every decision for compliance review', status: 'Active' },
 ];
 
+function auditBadgeClass(result: string): string {
+  if (['allowed', 'success', 'executed', 'approved'].includes(result)) return 'connected';
+  if (['pending', 'pending_approval'].includes(result)) return 'pending';
+  return 'disconnected';
+}
+
 export default function SafetyPage() {
   const { user, loading, apiFetch } = useAuth();
   const router = useRouter();
@@ -200,7 +206,7 @@ export default function SafetyPage() {
                   <td>{entry.botId}</td>
                   <td>{entry.action}</td>
                   <td>
-                    <span className={`connect-badge ${entry.result === 'allowed' ? 'connected' : 'disconnected'}`}>
+                    <span className={`connect-badge ${auditBadgeClass(entry.result)}`}>
                       {entry.result}
                     </span>
                   </td>

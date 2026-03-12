@@ -58,7 +58,7 @@ const FAMILY_ICONS: Record<string, React.ReactNode> = {
 };
 
 function StatusDot({ status }: { status: string }) {
-  return <span className={`status-dot ${status}`} title={status} />;
+  return <span className={`status-dot ${status}`} title={status} aria-label={`Bot status: ${status}`} role="status" />;
 }
 
 /* ─── Family-specific metric explanations ─── */
@@ -202,7 +202,8 @@ export default function BotDetailPage() {
       const json = await res.json();
       if (json.error) { setError(json.error); return; }
       setBot(json.data ?? json);
-    } catch {
+    } catch (err) {
+      console.error('Failed to load bot detail:', err);
       setError('Failed to load bot');
     } finally {
       setFetching(false);
@@ -212,13 +213,17 @@ export default function BotDetailPage() {
       const res = await apiFetch(`/api/bots/${botId}/metrics`);
       const json = await res.json();
       if (json.success) setMetricsData(json.data ?? null);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to load bot metrics:', err);
+    }
     // Fetch decisions
     try {
       const res = await apiFetch(`/api/bots/${botId}/decisions`);
       const json = await res.json();
       if (json.success) setDecisions(json.data ?? []);
-    } catch { /* ignore */ }
+    } catch (err) {
+      console.error('Failed to load bot decisions:', err);
+    }
   }, [apiFetch, botId]);
 
   useEffect(() => {
@@ -236,14 +241,26 @@ export default function BotDetailPage() {
   }, [user, loading, router, fetchBot]);
 
   async function handleAction(action: string) {
-    await apiFetch(`/api/bots/${botId}/${action}`, { method: 'POST' });
-    fetchBot();
+    setError('');
+    try {
+      await apiFetch(`/api/bots/${botId}/${action}`, { method: 'POST' });
+      fetchBot();
+    } catch (err) {
+      console.error(`Failed to ${action} bot:`, err);
+      setError(`Failed to ${action} bot`);
+    }
   }
 
   async function handleDelete() {
     if (!confirm('Delete this bot? This cannot be undone.')) return;
-    await apiFetch(`/api/bots/${botId}`, { method: 'DELETE' });
-    router.push('/bots');
+    setError('');
+    try {
+      await apiFetch(`/api/bots/${botId}`, { method: 'DELETE' });
+      router.push('/bots');
+    } catch (err) {
+      console.error('Failed to delete bot:', err);
+      setError('Failed to delete bot');
+    }
   }
 
   if (loading || !user) return <LoadingScreen />;

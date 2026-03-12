@@ -107,8 +107,8 @@ const FEATURES = [
   },
   {
     icon: <BarChart3 size={20} />,
-    title: 'Meaningful Analytics',
-    desc: 'Track P&L, success rates, latency, and sentiment scores with interactive charts and sparklines.',
+    title: 'ROI-Centric Analytics',
+    desc: 'Track P&L, revenue lift, cost savings, success rates, latency, and sentiment from one command center.',
     variant: 'purple' as const,
   },
   {
@@ -147,18 +147,18 @@ export default function LandingPage() {
           style={{ position: 'relative', zIndex: 1 }}
         >
           <motion.div variants={fade} className="hero-badge">
-            <span className="hero-badge-dot" />
-            Now with multi-provider AI routing
+            <BarChart3 size={12} style={{ marginRight: 6 }} />
+            The ROI-focused automation platform
           </motion.div>
 
           <motion.h1 variants={fade} className="hero-title">
             Autonomous operators that{' '}
-            <span className="hero-title-gradient">run like beasts</span>
+            <span className="hero-title-gradient">run like beasts and grow your bottom line</span>
           </motion.h1>
 
           <motion.p variants={fade} className="hero-desc">
             Deploy self-driving bots for trading, ecommerce, social media, and workforce
-            automation — with built-in safety, real-time analytics, and edge-native execution.
+            automation with built-in safety, edge-native execution, and analytics that tie actions directly to ROI.
           </motion.p>
 
           <motion.div variants={fade} className="hero-actions">
@@ -187,8 +187,8 @@ export default function LandingPage() {
           }}
         >
           {[
-            { label: 'Bots Deployed', value: '2,400+' },
-            { label: 'Trades Executed', value: '1.2M' },
+            { label: 'Decisions Analyzed', value: '18.4M' },
+            { label: 'ROI-Driving Actions', value: '3.1M' },
             { label: 'Uptime', value: '99.97%' },
             { label: 'Platforms', value: '16' },
           ].map((s) => (
