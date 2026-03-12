@@ -11,7 +11,7 @@
     "@beastbots/shared": "0.1.0",
     "framer-motion": "^12.35.2",
     "lucide-react": "^0.577.0",
-    "next": "14.2.20",
+    "next": "16.1.6",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "recharts": "^3.8.0"

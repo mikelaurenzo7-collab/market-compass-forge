@@ -6,23 +6,14 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm -w @beastbots/api run dev",
+    "dev": "turbo run dev",
     "dev:api": "npm -w @beastbots/api run dev",
     "dev:web": "npm -w @beastbots/web run dev",
     "dev:workers": "npm -w @beastbots/workers run dev",
     "dev:mcp": "npm -w @beastbots/mcp run dev",
-    "build": "npm run build:shared && npm run build:api && npm run build:web && npm run build:mcp && npm run build:workers && npm run build:sdk",
-    "build:shared": "npm -w @beastbots/shared run build",
-    "build:api": "npm -w @beastbots/api run build",
-    "build:web": "npm -w @beastbots/web run build",
-    "build:mcp": "npm -w @beastbots/mcp run build",
-    "build:workers": "npm -w @beastbots/workers run build",
-    "build:sdk": "npm -w @beastbots/sdk run build",
-    "typecheck": "npm run typecheck:api && npm run typecheck:web && npm run typecheck:workers",
-    "typecheck:api": "npm -w @beastbots/api run typecheck",
-    "typecheck:web": "npm -w @beastbots/web run typecheck",
-    "typecheck:workers": "npm -w @beastbots/workers run typecheck",
-    "test": "vitest run"
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260310.1",
@@ -33,7 +24,14 @@
     "@types/react-dom": "^18.3.5",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "wrangler": "^4.72.0"
+    "vitest": "^4.0.18",
+    "wrangler": "^4.72.0",
+    "turbo": "^2.0.4"
+  },
+  "dependencies": {
+    "next": "16.1.6"
+  },
+  "overrides": {
+    "next": "16.1.6"
   }
 }

@@ -18,6 +18,7 @@ import { templatesRouter } from './routes/templates.js';
 import { webhooksRouter } from './routes/webhooks.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { mfaRouter } from './routes/mfa.js';
+import { backtest } from './routes/backtest.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
@@ -126,6 +127,7 @@ app.route('/api/templates', templatesRouter);
 app.route('/api/webhooks', webhooksRouter);
 app.route('/api/notifications', notificationsRouter);
 app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
+app.route('/api/backtest', backtest);
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
   const port = Number(process.env.PORT ?? 4000);

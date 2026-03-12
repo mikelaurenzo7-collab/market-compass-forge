@@ -6,6 +6,25 @@ import type {
   TrendSignal,
 } from '../index';
 
+// ─── Base Strategy Interface ──────────────────────────────────
+
+/**
+ * Defines the contract for a social strategy.
+ * A social strategy is responsible for making decisions about what content to post.
+ */
+export interface SocialStrategy {
+  decide(context: any): Promise<SocialStrategyDecision>;
+}
+
+/**
+ * Represents a decision made by a social strategy.
+ * For now, it's just a post, but it can be expanded to include other actions.
+ */
+export interface SocialStrategyDecision {
+  post: string;
+  // Future additions could include: 'retweet', 'reply', 'quote', etc.
+}
+
 // ─── Platform-Specific Content Strategy ───────────────────────
 
 export interface PlatformContentStrategy {
