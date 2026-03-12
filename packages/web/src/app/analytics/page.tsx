@@ -190,11 +190,11 @@ export default function AnalyticsPage() {
       <motion.div initial="hidden" animate="show" variants={stagger}>
         <motion.header variants={fade} className="page-header-row">
           <div>
-            <h1 className="page-title">Analytics</h1>
+            <h1 className="page-title">Analytics & ROI</h1>
             <p className="page-subtitle">
               {singleBot
-                ? `Performance metrics for ${perBot[0]?.name ?? 'your operator'}`
-                : 'Performance metrics, execution data, and operator intelligence.'
+                ? `Performance, execution quality, and tracked value for ${perBot[0]?.name ?? 'your operator'}`
+                : 'Performance metrics, execution quality, and tracked value across your operator portfolio.'
               }
             </p>
           </div>
@@ -221,18 +221,18 @@ export default function AnalyticsPage() {
         ) : (
           <motion.section variants={fade} className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
             <div className="stat-card" style={{ borderLeft: `3px solid ${totalPnl >= 0 ? 'var(--green)' : 'var(--red)'}` }}>
-              <div className="stat-label"><DollarSign size={12} /> Total P&L</div>
+              <div className="stat-label"><DollarSign size={12} /> Tracked Value</div>
               <div className="stat-value" style={{ color: totalPnl >= 0 ? 'var(--green)' : 'var(--red)', fontSize: '1.5rem' }}>
                 {totalPnl >= 0 ? '+' : ''}${Math.abs(totalPnl).toLocaleString()}
               </div>
               <div className="stat-change" style={{ color: totalPnl >= 0 ? 'var(--green)' : 'var(--red)', display: 'flex', alignItems: 'center', gap: 2 }}>
                 {totalPnl >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
-                {m?.totalTicks ?? 0} ticks executed
+                {m?.totalTicks ?? 0} tracked decisions
               </div>
             </div>
 
             <div className="stat-card" style={{ borderLeft: '3px solid var(--green)' }}>
-              <div className="stat-label"><Target size={12} /> Success Rate</div>
+              <div className="stat-label"><Target size={12} /> Execution Quality</div>
               <div className="stat-value" style={{ color: 'var(--green)', fontSize: '1.5rem' }}>
                 {successRate}%
               </div>
@@ -242,7 +242,7 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="stat-card" style={{ borderLeft: '3px solid var(--blue)' }}>
-              <div className="stat-label"><Activity size={12} /> Total Actions</div>
+              <div className="stat-label"><Activity size={12} /> Execution Volume</div>
               <div className="stat-value" style={{ color: 'var(--blue)', fontSize: '1.5rem' }}>
                 {totalActions.toLocaleString()}
               </div>
@@ -269,8 +269,8 @@ export default function AnalyticsPage() {
             <div className="chart-container">
               <div className="chart-header">
                 <div>
-                  <div className="chart-title">{singleBot ? `${perBot[0]?.name} P&L` : 'Portfolio Value'}</div>
-                  <div className="chart-subtitle">Cumulative P&L {singleBot ? '' : 'across all bots'}</div>
+                  <div className="chart-title">{singleBot ? `${perBot[0]?.name} Performance` : 'Tracked Portfolio Value'}</div>
+                  <div className="chart-subtitle">Cumulative tracked value {singleBot ? '' : 'across all operators'}</div>
                 </div>
               </div>
               <div style={{ height: 240 }}>
@@ -301,8 +301,8 @@ export default function AnalyticsPage() {
             <div className="chart-container">
               <div className="chart-header">
                 <div>
-                  <div className="chart-title">Action Flow</div>
-                  <div className="chart-subtitle">Success vs failure over time</div>
+                  <div className="chart-title">Execution Quality</div>
+                  <div className="chart-subtitle">Successful vs failed actions over time</div>
                 </div>
               </div>
               <div style={{ height: 240 }}>

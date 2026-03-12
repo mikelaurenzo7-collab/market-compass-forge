@@ -195,8 +195,8 @@ export default function DashboardPage() {
       const cfg = FAMILY_CONFIG[bot.family];
       return [
         { key: 'status', label: 'Bot Status', value: bot.status === 'running' ? 'Live' : bot.status.charAt(0).toUpperCase() + bot.status.slice(1), color: bot.status === 'running' ? 'var(--green)' : 'var(--text-secondary)', sub: `${cfg?.label ?? bot.family} · ${bot.platform}`, icon: cfg?.icon ?? <Bot size={16} /> },
-        { key: 'actions', label: 'Total Actions', value: (m?.totalActions ?? 0).toLocaleString(), color: 'var(--blue)', sub: `${m?.successRate ?? 0}% success rate`, icon: <Activity size={16} /> },
-        { key: 'pnl', label: 'P&L', value: `${(m?.totalPnlUsd ?? 0) >= 0 ? '+' : ''}$${(m?.totalPnlUsd ?? 0).toLocaleString()}`, color: (m?.totalPnlUsd ?? 0) >= 0 ? 'var(--green)' : 'var(--red)', sub: `${m?.totalTicks ?? 0} ticks executed`, icon: <TrendingUp size={16} /> },
+        { key: 'actions', label: 'Impact Actions', value: (m?.totalActions ?? 0).toLocaleString(), color: 'var(--blue)', sub: `${m?.successRate ?? 0}% execution quality`, icon: <Activity size={16} /> },
+        { key: 'pnl', label: 'Tracked Value', value: `${(m?.totalPnlUsd ?? 0) >= 0 ? '+' : ''}$${(m?.totalPnlUsd ?? 0).toLocaleString()}`, color: (m?.totalPnlUsd ?? 0) >= 0 ? 'var(--green)' : 'var(--red)', sub: `${m?.totalTicks ?? 0} decisions executed`, icon: <TrendingUp size={16} /> },
         { key: 'uptime', label: 'Uptime', value: formatUptime(m?.totalUptimeMs ?? 0), color: 'var(--purple)', sub: `${m?.deniedActions ?? 0} safety blocks`, icon: <Clock size={16} /> },
       ];
     }
@@ -211,8 +211,8 @@ export default function DashboardPage() {
 
     return [
       { key: 'bots', label: 'Total Bots', value: String(summary.bots.total), color: 'var(--green)', sub: `${summary.bots.running} running`, icon: <Bot size={16} /> },
-      { key: 'actions', label: 'Total Actions', value: (m?.totalActions ?? 0).toLocaleString(), color: 'var(--blue)', sub: `${m?.successRate ?? 0}% success`, icon: <Activity size={16} /> },
-      { key: 'pnl', label: 'P&L', value: `${(m?.totalPnlUsd ?? 0) >= 0 ? '+' : ''}$${(m?.totalPnlUsd ?? 0).toLocaleString()}`, color: (m?.totalPnlUsd ?? 0) >= 0 ? 'var(--green)' : 'var(--red)', sub: `${m?.totalTicks ?? 0} ticks`, icon: <TrendingUp size={16} /> },
+      { key: 'actions', label: 'Impact Actions', value: (m?.totalActions ?? 0).toLocaleString(), color: 'var(--blue)', sub: `${m?.successRate ?? 0}% execution quality`, icon: <Activity size={16} /> },
+      { key: 'pnl', label: 'Tracked Value', value: `${(m?.totalPnlUsd ?? 0) >= 0 ? '+' : ''}$${(m?.totalPnlUsd ?? 0).toLocaleString()}`, color: (m?.totalPnlUsd ?? 0) >= 0 ? 'var(--green)' : 'var(--red)', sub: `${m?.totalTicks ?? 0} operator ticks`, icon: <TrendingUp size={16} /> },
       { key: 'uptime', label: 'Uptime', value: formatUptime(m?.totalUptimeMs ?? 0), color: 'var(--purple)', sub: `${m?.deniedActions ?? 0} blocked`, icon: <Clock size={16} /> },
     ];
   }
@@ -224,14 +224,14 @@ export default function DashboardPage() {
       <motion.div initial="hidden" animate="show" variants={stagger}>
         <motion.header variants={fade} className="page-header-row">
           <div>
-            <h1 className="page-title">Command Center</h1>
+            <h1 className="page-title">ROI Command Center</h1>
             <p className="page-subtitle">
-              {singleBot ? `Live view of ${bots[0]?.name ?? 'your operator'}` : 'Real-time overview of your autonomous operators'}
+              {singleBot ? `Live ROI view of ${bots[0]?.name ?? 'your operator'}` : 'Real-time view of autonomous operators tied to measurable outcomes'}
             </p>
           </div>
           <div className="page-actions">
             <Link href="/bots/create" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={14} /> New Bot
+              <Plus size={14} /> Launch Operator
             </Link>
           </div>
         </motion.header>
@@ -343,10 +343,10 @@ export default function DashboardPage() {
         {!fetching && !hasBots && (
           <motion.div variants={fade} className="empty-state" style={{ marginTop: 'var(--space-xl)' }}>
             <div className="empty-state-icon" style={{ fontSize: '3rem', opacity: 0.2 }}><Activity size={64} /></div>
-            <div className="empty-state-title">No bots yet</div>
-            <div className="empty-state-desc">Deploy your first autonomous operator to see it in action.</div>
+            <div className="empty-state-title">No operators live yet</div>
+            <div className="empty-state-desc">Launch your first operator to start measuring ROI, execution quality, and safety performance.</div>
             <div style={{ display: 'flex', gap: 'var(--space-sm)', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/bots/create" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><Plus size={14} /> Create Your First Bot</Link>
+              <Link href="/bots/create" className="btn btn-primary" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}><Plus size={14} /> Launch Your First Operator</Link>
               <Link href="/integrations" className="btn btn-secondary" style={{ textDecoration: 'none' }}>Connect Platforms</Link>
             </div>
           </motion.div>

@@ -28,7 +28,7 @@ const FAMILIES = [
     id: 'trading',
     icon: <TrendingUp size={28} />,
     title: 'Trading Operators',
-    desc: 'Execute momentum, mean-reversion, and arbitrage strategies across crypto and equities with real-time risk management.',
+    desc: 'Generate risk-adjusted return with autonomous execution, position sizing, alerts, and real-time risk controls.',
     tags: ['StochRSI', 'ADX', 'Paper Mode', 'Alpaca', 'Binance'],
     color: 'var(--color-trading)',
     platforms: [
@@ -38,13 +38,13 @@ const FAMILIES = [
       { name: 'Kalshi', color: '#00D395', icon: '⬢' },
       { name: 'Polymarket', color: '#0066FF', icon: '⬟' },
     ],
-    metrics: ['P&L Tracking', 'Win Rate', 'Position Sizing', 'Risk Controls'],
+    metrics: ['Net P&L', 'Win Rate', 'Drawdown Control', 'Risk Controls'],
   },
   {
     id: 'store',
     icon: <ShoppingCart size={28} />,
     title: 'Store Operators',
-    desc: 'Dynamic pricing, inventory forecasting, listing optimization, and catalog sync across your entire storefront.',
+    desc: 'Increase margin and revenue with autonomous pricing, inventory forecasting, listing optimization, and catalog sync.',
     tags: ['Shopify', 'Amazon', 'Etsy', 'Dynamic Pricing', 'Inventory'],
     color: 'var(--color-store)',
     platforms: [
@@ -55,13 +55,13 @@ const FAMILIES = [
       { name: 'Square', color: '#006AFF', icon: '◼' },
       { name: 'WooCommerce', color: '#96588A', icon: '🔌' },
     ],
-    metrics: ['Revenue Impact', 'Price Changes', 'Stock Alerts', 'Review Responses'],
+    metrics: ['Margin Protected', 'Revenue Lift', 'Stockouts Avoided', 'Manual Hours Saved'],
   },
   {
     id: 'social',
     icon: <Share2 size={28} />,
     title: 'Social Operators',
-    desc: 'Smart content scheduling, engagement algorithms, audience analytics, and cross-platform amplification.',
+    desc: 'Turn content and engagement into efficient growth with automated scheduling, trend capture, and cross-platform amplification.',
     tags: ['X / Twitter', 'Instagram', 'YouTube', 'TikTok', 'LinkedIn'],
     color: 'var(--color-social)',
     platforms: [
@@ -72,13 +72,13 @@ const FAMILIES = [
       { name: 'LinkedIn', color: '#0A66C2', icon: 'in' },
       { name: 'YouTube', color: '#FF0000', icon: '▶' },
     ],
-    metrics: ['Engagement Rate', 'Follower Growth', 'Post Reach', 'Trend Alerts'],
+    metrics: ['Pipeline Influence', 'Engagement Efficiency', 'Content Throughput', 'Trend Capture'],
   },
   {
     id: 'workforce',
     icon: <Users size={28} />,
     title: 'Workforce Pods',
-    desc: 'Orchestrate multi-agent teams for hiring, onboarding, support triage, and knowledge management workflows.',
+    desc: 'Save time and improve operational throughput with autonomous support, finance, compliance, and internal workflow operators.',
     tags: ['Slack', 'Notion', 'Jira', 'Asana', 'HubSpot'],
     color: 'var(--color-workforce)',
     platforms: [
@@ -88,7 +88,7 @@ const FAMILIES = [
       { name: 'Salesforce', color: '#00A1E0', icon: '☁' },
       { name: 'HubSpot', color: '#FF7A59', icon: '⊕' },
     ],
-    metrics: ['Tasks Done', 'SLA Compliance', 'Response Time', 'Escalations'],
+    metrics: ['Hours Saved', 'SLA Improvement', 'Cycle Time Reduction', 'Escalation Control'],
   },
 ];
 
@@ -152,23 +152,24 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.h1 variants={fade} className="hero-title">
-            Autonomous operators that{' '}
-            <span className="hero-title-gradient">run like beasts and grow your bottom line</span>
+            Autonomous operators built for{' '}
+            <span className="hero-title-gradient">measurable ROI</span>
           </motion.h1>
 
           <motion.p variants={fade} className="hero-desc">
-            Deploy self-driving bots for trading, ecommerce, social media, and workforce
-            automation with built-in safety, edge-native execution, and analytics that tie actions directly to ROI.
+            Deploy AI-powered operators for ecommerce, trading, social, and workforce workflows.
+            BeastBots ties every action to business outcomes with built-in safety, approvals,
+            alerts, and edge-native execution.
           </motion.p>
 
           <motion.div variants={fade} className="hero-actions">
             <Link href="/signup" className="hero-btn-primary">
               <Sparkles size={16} />
-              Start for free
+              See Your ROI
               <ArrowRight size={16} />
             </Link>
-            <Link href="/pricing" className="hero-btn-secondary">
-              View pricing
+            <Link href="/safety" className="hero-btn-secondary">
+              Explore the Safety Model
             </Link>
           </motion.div>
         </motion.div>
@@ -187,10 +188,10 @@ export default function LandingPage() {
           }}
         >
           {[
-            { label: 'Decisions Analyzed', value: '18.4M' },
-            { label: 'ROI-Driving Actions', value: '3.1M' },
+            { label: 'Revenue Influenced', value: '$4.8M' },
+            { label: 'Margin Protected', value: '$1.2M' },
+            { label: 'Hours Saved', value: '21k+' },
             { label: 'Uptime', value: '99.97%' },
-            { label: 'Platforms', value: '16' },
           ].map((s) => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.5rem', fontWeight: 800, color: 'var(--green)' }}>
@@ -231,7 +232,7 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            Four operator families. One command center.
+            One platform. Four operator families. One outcome: ROI.
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -239,7 +240,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
           >
-            Each family has purpose-built strategies, platform adapters, and safety controls.
+            Each operator family is purpose-built for a different kind of return: capital return, revenue growth, marketing efficiency, or operational leverage.
           </motion.p>
         </div>
 
@@ -354,8 +355,8 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2>Live in three steps</h2>
-          <p>From signup to a running bot in under 2 minutes.</p>
+          <h2>Start with one operator. Expand into a system.</h2>
+          <p>Launch in the lane with the clearest ROI, then add adjacent operators on the same governed platform.</p>
         </motion.div>
 
         <motion.div
@@ -366,9 +367,9 @@ export default function LandingPage() {
           variants={stagger}
         >
           {[
-            { num: '1', title: 'Connect your platform', desc: 'Link your exchange, store, or social account with API keys or OAuth. Credentials are encrypted with AES-256.' },
-            { num: '2', title: 'Choose a strategy', desc: 'Pick from battle-tested templates — DCA, momentum, dynamic pricing, content calendar — or build your own config.' },
-            { num: '3', title: 'Deploy & monitor', desc: 'Start in paper mode with zero risk. Watch your bot execute in real-time. Upgrade to live when ready.' },
+            { num: '1', title: 'Pick the ROI lane', desc: 'Choose the operator family tied to your clearest outcome: margin, revenue, returns, or team efficiency.' },
+            { num: '2', title: 'Connect your platform', desc: 'Link your store, exchange, or internal tools with API keys or OAuth. Credentials are encrypted with AES-256.' },
+            { num: '3', title: 'Launch with controls', desc: 'Start in paper mode, monitor live decisions, and graduate to full autonomy only when the metrics look right.' },
           ].map((step) => (
             <motion.div key={step.num} variants={fade} className="how-step">
               <div className="how-step-number">{step.num}</div>
@@ -387,8 +388,8 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2>Why teams choose BeastBots</h2>
-          <p>The only platform that unifies trading, ecommerce, social, and workforce automation.</p>
+          <h2>Why ROI-focused teams choose BeastBots</h2>
+          <p>Point tools automate tasks. BeastBots runs measurable operator loops with built-in controls.</p>
         </motion.div>
 
         <motion.table
@@ -409,28 +410,28 @@ export default function LandingPage() {
           <tbody>
             <tr>
               <td>Trading bots</td>
-              <td className="highlight">7 strategies</td>
+              <td className="highlight">Risk-adjusted returns</td>
               <td>DCA, Grid</td>
               <td>Grid, DCA</td>
               <td className="muted">—</td>
             </tr>
             <tr>
               <td>Ecommerce automation</td>
-              <td className="highlight">6 strategies</td>
+              <td className="highlight">Margin + revenue ops</td>
               <td className="muted">—</td>
               <td className="muted">—</td>
               <td className="muted">—</td>
             </tr>
             <tr>
               <td>Social media bots</td>
-              <td className="highlight">6 strategies</td>
+              <td className="highlight">Growth efficiency</td>
               <td className="muted">—</td>
               <td className="muted">—</td>
               <td>Scheduling only</td>
             </tr>
             <tr>
               <td>Workforce automation</td>
-              <td className="highlight">6 strategies</td>
+              <td className="highlight">Hours saved</td>
               <td className="muted">—</td>
               <td className="muted">—</td>
               <td className="muted">—</td>
@@ -457,8 +458,8 @@ export default function LandingPage() {
               <td className="muted">—</td>
             </tr>
             <tr>
-              <td>Unified dashboard</td>
-              <td className="highlight">All bots, one view</td>
+              <td>Outcome dashboard</td>
+              <td className="highlight">All operators, one ROI view</td>
               <td>Trading only</td>
               <td>Trading only</td>
               <td>Social only</td>

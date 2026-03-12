@@ -70,7 +70,7 @@ const TIER_META: Record<string, { label: string; badge?: string }> = {
 export default function PricingPage() {
   const { user } = useAuth();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
-  const [selectedFamily, setSelectedFamily] = useState('trading');
+  const [selectedFamily, setSelectedFamily] = useState('store');
   const [annual, setAnnual] = useState(false);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [pricingError, setPricingError] = useState('');
@@ -126,11 +126,15 @@ export default function PricingPage() {
       {/* Header */}
       <div style={{ textAlign: 'center', padding: '60px 20px 40px' }}>
         <h1 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: 12 }}>
-          Simple, transparent pricing
+          Pricing built around measurable ROI
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '1.1rem', maxWidth: 560, margin: '0 auto 32px' }}>
-          Start with paper mode for free during beta. Pay only when you go live.
+          Start with Store Operators, prove margin and revenue impact, then expand into adjacent operator lanes on the same platform.
         </p>
+
+        <div style={{ maxWidth: 760, margin: '0 auto 28px', padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(0,232,123,0.18)', background: 'rgba(0,232,123,0.05)', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
+          Recommended launch wedge: <span style={{ color: 'var(--color-store)', fontWeight: 700 }}>Store Operators</span> for ecommerce brands that need margin protection, pricing discipline, and inventory-aware automation.
+        </div>
 
         {/* Annual toggle */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 32 }}>
@@ -278,9 +282,9 @@ export default function PricingPage() {
         borderTop: '1px solid var(--border-primary)', padding: '32px 24px',
         textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem',
       }}>
-        All plans include paper mode, safety guardrails, and 5-layer risk pipeline.
+        All plans include paper mode, 5-layer safety guardrails, and ROI-aware analytics.
         <br />
-        Enterprise plans include SLA, SSO, dedicated support, and custom integrations.
+        Enterprise plans include SLA, SSO, dedicated support, custom integrations, and rollout planning.
       </div>
     </div>
   );
