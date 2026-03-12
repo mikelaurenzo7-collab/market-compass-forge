@@ -1,12 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import {
-  AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
 import {
   TrendingUp, ShoppingCart, Share2, Users, Play, Pause, Square,
   Trash2, AlertOctagon, ArrowLeft, Activity,
@@ -25,11 +22,21 @@ interface BotDetail {
   createdAt: string;
 }
 
-interface MetricEntry {
-  timestamp: string;
-  equity: number;
-  pnl: number;
-  drawdown: number;
+interface BotMetrics {
+  totalTicks: number;
+  successfulActions: number;
+  failedActions: number;
+  deniedActions: number;
+  totalPnlUsd: number;
+  uptimeMs: number;
+}
+
+interface MetricsResponse {
+  botId: string;
+  family: string;
+  status: string;
+  heartbeat: string | null;
+  metrics: BotMetrics;
 }
 
 const FAMILY_ICONS: Record<string, React.ReactNode> = {
@@ -49,7 +56,7 @@ export default function BotDetailPage() {
   const params = useParams();
   const botId = params.id as string;
   const [bot, setBot] = useState<BotDetail | null>(null);
-  const [metrics, setMetrics] = useState<MetricEntry[]>([]);
+  const [metricsData, setMetricsData] = useState<MetricsResponse | null>(null);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
 
@@ -76,7 +83,7 @@ export default function BotDetailPage() {
     try {
       const res = await apiFetch(`/api/bots/${botId}/metrics`);
       const json = await res.json();
-      if (json.success) setMetrics(json.data ?? []);
+      if (json.success) setMetricsData(json.data ?? null);
     } catch { /* ignore */ }
   }, [apiFetch, botId]);
 
@@ -239,49 +246,55 @@ export default function BotDetailPage() {
           )}
 
           {/* Metrics */}
-          {metrics.length > 0 && (
+          {metricsData && (
             <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
               <div className="settings-section-title">Performance Metrics</div>
               <div className="stats-grid" style={{ marginBottom: 'var(--space-md)' }}>
                 <div className="stat-card">
-                  <div className="stat-label">Latest Equity</div>
-                  <div className="stat-value blue">${metrics[metrics.length - 1].equity.toLocaleString()}</div>
+                  <div className="stat-label">Status</div>
+                  <div className={`stat-value ${metricsData.status === 'running' ? 'green' : ''}`}>{metricsData.status}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Total Ticks</div>
+                  <div className="stat-value blue">{metricsData.metrics.totalTicks.toLocaleString()}</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">P&amp;L</div>
-                  <div className={`stat-value ${metrics[metrics.length - 1].pnl >= 0 ? 'green' : 'red'}`}>
-                    {metrics[metrics.length - 1].pnl >= 0 ? '+' : ''}${metrics[metrics.length - 1].pnl.toLocaleString()}
+                  <div className={`stat-value ${metricsData.metrics.totalPnlUsd >= 0 ? 'green' : 'red'}`}>
+                    {metricsData.metrics.totalPnlUsd >= 0 ? '+' : ''}${metricsData.metrics.totalPnlUsd.toLocaleString()}
                   </div>
                 </div>
+              </div>
+              <div className="stats-grid">
                 <div className="stat-card">
-                  <div className="stat-label">Drawdown</div>
-                  <div className="stat-value gold">{metrics[metrics.length - 1].drawdown.toFixed(2)}%</div>
+                  <div className="stat-label">Successful</div>
+                  <div className="stat-value green">{metricsData.metrics.successfulActions.toLocaleString()}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Failed</div>
+                  <div className="stat-value red">{metricsData.metrics.failedActions.toLocaleString()}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Safety Blocks</div>
+                  <div className="stat-value gold">{metricsData.metrics.deniedActions.toLocaleString()}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Uptime</div>
+                  <div className="stat-value blue">{(() => {
+                    const ms = metricsData.metrics.uptimeMs;
+                    if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+                    if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+                    if (ms < 86_400_000) return `${(ms / 3_600_000).toFixed(1)}h`;
+                    return `${(ms / 86_400_000).toFixed(1)}d`;
+                  })()}</div>
                 </div>
               </div>
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Equity</th>
-                      <th>P&amp;L</th>
-                      <th>Drawdown</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metrics.slice(-20).reverse().map((m, i) => (
-                      <tr key={i}>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(m.timestamp).toLocaleString()}</td>
-                        <td>${m.equity.toLocaleString()}</td>
-                        <td style={{ color: m.pnl >= 0 ? FAMILY_CONFIG[bot.family]?.color : 'var(--accent-red)' }}>
-                          {m.pnl >= 0 ? '+' : ''}${m.pnl.toLocaleString()}
-                        </td>
-                        <td>{m.drawdown.toFixed(2)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {metricsData.heartbeat && (
+                <div className="settings-row" style={{ marginTop: 'var(--space-sm)' }}>
+                  <span className="settings-label">Last heartbeat</span>
+                  <span className="settings-value" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(metricsData.heartbeat).toLocaleString()}</span>
+                </div>
+              )}
             </div>
           )}
         </>

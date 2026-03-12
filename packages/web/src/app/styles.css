@@ -2335,6 +2335,14 @@ body::before {
 
 /* ─── Enhanced Responsive ──────────────────────────────────── */
 
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .gauge-grid { grid-template-columns: repeat(3, 1fr); }
+  .charts-row { grid-template-columns: 1fr; }
+  .hero-title { font-size: 2.5rem; }
+  .features-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 @media (max-width: 768px) {
   .landing-nav { padding: 16px 20px; }
   .landing-nav-links { gap: 16px; }
@@ -2345,4 +2353,35 @@ body::before {
   .charts-row { grid-template-columns: 1fr; }
   .health-meta { display: none; }
   .gauge-grid { grid-template-columns: repeat(2, 1fr); }
+  .page-actions { flex-wrap: wrap; gap: var(--space-xs); }
+  .btn { min-height: 44px; padding: var(--space-sm) var(--space-md); font-size: 0.85rem; }
+  .chart-container { padding: var(--space-md); }
+  .chart-period-selector { gap: var(--space-xs); }
+  .chart-period-btn { min-height: 36px; min-width: 44px; padding: var(--space-xs) var(--space-sm); }
+  .activity-feed { max-height: 350px; }
+  .stat-card { padding: var(--space-md); }
+  .health-bar { flex-wrap: wrap; gap: var(--space-sm); }
+}
+
+@media (max-width: 480px) {
+  .main-content { padding: var(--space-md); padding-bottom: 80px; }
+  .stats-grid { grid-template-columns: 1fr; gap: var(--space-sm); }
+  .gauge-grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); }
+  .page-title { font-size: 1.5rem; }
+  .page-subtitle { font-size: 0.8rem; }
+  .stat-value { font-size: 1.25rem; }
+  .hero-title { font-size: 1.5rem; }
+  .hero-subtitle { font-size: 0.95rem; }
+  .auth-card { padding: var(--space-lg); }
+  .family-banner { padding: var(--space-md); }
+  .section-title { font-size: 0.85rem; }
+  .bot-grid { gap: var(--space-sm); }
+  .settings-section { padding: var(--space-md); }
+}
+
+@media (max-width: 360px) {
+  .page-title { font-size: 1.3rem; }
+  .gauge-grid { grid-template-columns: 1fr; }
+  .chart-period-selector { flex-wrap: wrap; }
+  .btn { font-size: 0.8rem; padding: var(--space-xs) var(--space-sm); }
 }

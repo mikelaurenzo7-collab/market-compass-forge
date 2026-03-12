@@ -12,6 +12,7 @@ import { authRouter } from './routes/auth.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { credentialsRouter } from './routes/credentials.js';
 import { provisioningRouter } from './routes/provisioning.js';
+import { analyticsRouter } from './routes/analytics.js';
 import mcpRouter from './routes/mcp.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
@@ -111,6 +112,7 @@ app.route('/api/pricing', pricingRouter);
 app.route('/api/bots', botsRouter);
 app.route('/api/safety', safetyRouter);
 app.route('/api/audit', auditRouter);
+app.route('/api/analytics', analyticsRouter);
 app.route('/api/provisioning', provisioningRouter);
 app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
 
