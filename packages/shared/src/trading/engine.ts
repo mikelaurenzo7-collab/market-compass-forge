@@ -73,6 +73,17 @@ export function volatilityPositionSize(
   return Math.min(positionUsd, maxPositionUsd);
 }
 
+// ─── Open Position Tracking ───────────────────────────────────
+
+export interface OpenPosition {
+  symbol: string;
+  side: 'buy' | 'sell';
+  entryPrice: number;
+  quantity: number;
+  entryTimestamp: number;
+  orderId: string;
+}
+
 // ─── Trading Engine Core ──────────────────────────────────────
 
 export interface TradingEngineState {
@@ -85,7 +96,10 @@ export interface TradingEngineState {
   lastDcaBuy: Map<string, number>;
   // highest price seen per symbol (for trailing stop calculation)
   highWater: Map<string, number>;
+  // internal position tracker — source of truth for entry prices & P&L
+  openPositions: Map<string, OpenPosition[]>;
   consecutiveLosses: number;
+  cooldownUntil: number;
   totalPnl: number;
   totalTrades: number;
   winningTrades: number;
@@ -102,11 +116,60 @@ export function createTradingEngineState(
     secondaryHistories: new Map(),
     lastDcaBuy: new Map(),
     highWater: new Map(),
+    openPositions: new Map(),
     consecutiveLosses: 0,
+    cooldownUntil: 0,
     totalPnl: 0,
     totalTrades: 0,
     winningTrades: 0,
   };
+}
+
+/** Close a position tracked in engine state and update P&L / win-loss stats. */
+export function closeTrackedPosition(
+  newState: TradingEngineState,
+  symbol: string,
+  exitPrice: number,
+  quantity: number,
+): number {
+  const tracked = newState.openPositions.get(symbol) ?? [];
+  let remaining = quantity;
+  let realizedPnl = 0;
+
+  const survivors: OpenPosition[] = [];
+  for (const pos of tracked) {
+    if (remaining <= 0) { survivors.push(pos); continue; }
+    const closable = Math.min(pos.quantity, remaining);
+    const pnl = (exitPrice - pos.entryPrice) * closable * (pos.side === 'buy' ? 1 : -1);
+    realizedPnl += pnl;
+    remaining -= closable;
+    const leftover = pos.quantity - closable;
+    if (leftover > 0) {
+      survivors.push({ ...pos, quantity: leftover });
+    }
+  }
+
+  newState.openPositions = new Map(newState.openPositions);
+  if (survivors.length > 0) {
+    newState.openPositions.set(symbol, survivors);
+  } else {
+    newState.openPositions.delete(symbol);
+  }
+
+  newState.totalPnl += realizedPnl;
+  newState.totalTrades += 1;
+  if (realizedPnl >= 0) {
+    newState.winningTrades += 1;
+    newState.consecutiveLosses = 0;
+  } else {
+    newState.consecutiveLosses += 1;
+    // apply cooldown after configurable consecutive losses (default 3)
+    if (newState.config.cooldownAfterLossMs > 0 && newState.consecutiveLosses >= 3) {
+      newState.cooldownUntil = Date.now() + newState.config.cooldownAfterLossMs;
+    }
+  }
+
+  return realizedPnl;
 }
 
 export async function executeTradingTick(
@@ -143,6 +206,25 @@ export async function executeTradingTick(
       };
     }
 
+    // consecutive loss cooldown — pause trading until cooldown expires
+    if (newState.cooldownUntil > 0 && Date.now() < newState.cooldownUntil) {
+      return {
+        result: {
+          botId: state.safety.botId,
+          timestamp: Date.now(),
+          action: 'tick',
+          result: 'skipped',
+          details: { reason: 'consecutive_loss_cooldown', cooldownUntil: newState.cooldownUntil },
+          durationMs: Date.now() - startTime,
+        },
+        newState,
+      };
+    }
+    // reset cooldown if it has expired
+    if (newState.cooldownUntil > 0 && Date.now() >= newState.cooldownUntil) {
+      newState.cooldownUntil = 0;
+    }
+
     for (const symbol of state.config.symbols) {
       // Fetch market data and update history
       const marketData = await adapter.fetchMarketData(symbol);
@@ -164,22 +246,37 @@ export async function executeTradingTick(
       if (updatedHistory.prices.length < 20) continue; // Not enough data yet
 
       // --- position management for this symbol ------------------------------------------------
-      const symbolPositions = positions.filter(p => p.symbol === symbol);
+      // Prefer engine-tracked positions (accurate entry price) over adapter positions
+      const trackedPositions = newState.openPositions.get(symbol) ?? [];
+      const adapterPositions = positions.filter(p => p.symbol === symbol);
+      const symbolPositions = trackedPositions.length > 0
+        ? trackedPositions.map(tp => ({
+            platform: state.config.platform,
+            symbol: tp.symbol,
+            side: tp.side,
+            entryPrice: tp.entryPrice,
+            currentPrice: marketData.price,
+            quantity: tp.quantity,
+            unrealizedPnl: (marketData.price - tp.entryPrice) * tp.quantity * (tp.side === 'buy' ? 1 : -1),
+            openedAt: tp.entryTimestamp,
+          } satisfies Position))
+        : adapterPositions;
+
       for (const pos of symbolPositions) {
         // update high-water mark
         const prevHigh = newState.highWater.get(symbol) ?? pos.entryPrice;
         const newHigh = Math.max(prevHigh, marketData.price);
         newState.highWater.set(symbol, newHigh);
 
-        const pnlUsd = (marketData.price - pos.entryPrice) * pos.quantity * (pos.side === 'buy' ? 1 : -1);
-        const pnlPct = pnlUsd / (pos.entryPrice * pos.quantity);
+        const pnlPct = pos.entryPrice > 0
+          ? ((marketData.price - pos.entryPrice) * (pos.side === 'buy' ? 1 : -1)) / pos.entryPrice
+          : 0;
 
         // trailing stop
         if (state.config.trailingStopPercent !== undefined) {
           const trailLevel = newHigh * (1 - state.config.trailingStopPercent);
           if (marketData.price <= trailLevel) {
-            // exit position
-            await adapter.placeOrder({
+            const exitResult = await adapter.placeOrder({
               platform: state.config.platform,
               symbol,
               side: pos.side === 'buy' ? 'sell' : 'buy',
@@ -190,14 +287,15 @@ export async function executeTradingTick(
               indicators: {},
               timestamp: Date.now(),
             });
-            newState.totalPnl += pnlUsd;
-            // trailing stop exit logged via audit entry above
+            if (exitResult.filled) {
+              closeTrackedPosition(newState, symbol, marketData.price, pos.quantity);
+            }
           }
         }
 
         // stop-loss
         if (state.config.stopLossPercent !== undefined && pnlPct <= -state.config.stopLossPercent) {
-          await adapter.placeOrder({
+          const exitResult = await adapter.placeOrder({
             platform: state.config.platform,
             symbol,
             side: pos.side === 'buy' ? 'sell' : 'buy',
@@ -208,13 +306,14 @@ export async function executeTradingTick(
             indicators: {},
             timestamp: Date.now(),
           });
-          newState.totalPnl += pnlUsd;
-          // stop-loss exit logged via audit entry above
+          if (exitResult.filled) {
+            closeTrackedPosition(newState, symbol, marketData.price, pos.quantity);
+          }
         }
 
         // take-profit
         if (state.config.takeProfitPercent !== undefined && pnlPct >= state.config.takeProfitPercent) {
-          await adapter.placeOrder({
+          const exitResult = await adapter.placeOrder({
             platform: state.config.platform,
             symbol,
             side: pos.side === 'buy' ? 'sell' : 'buy',
@@ -225,8 +324,9 @@ export async function executeTradingTick(
             indicators: {},
             timestamp: Date.now(),
           });
-          newState.totalPnl += pnlUsd;
-          // take-profit exit logged via audit entry above
+          if (exitResult.filled) {
+            closeTrackedPosition(newState, symbol, marketData.price, pos.quantity);
+          }
         }
       }
 
@@ -390,21 +490,23 @@ export async function executeTradingTick(
           details: { tradeSignal, orderResult },
         });
       } else {
-        // if we just bought, record entry high-water; if we sold, update PnL
         if (signal.direction === 'buy') {
+          // Record new position in engine-tracked openPositions
+          const existing = newState.openPositions.get(symbol) ?? [];
+          newState.openPositions = new Map(newState.openPositions);
+          newState.openPositions.set(symbol, [...existing, {
+            symbol,
+            side: 'buy' as const,
+            entryPrice: marketData.price,
+            quantity: tradeSignal.quantity,
+            entryTimestamp: Date.now(),
+            orderId: orderResult.orderId,
+          }]);
           const prevHigh = newState.highWater.get(symbol) ?? marketData.price;
           newState.highWater.set(symbol, prevHigh);
         } else {
-          // closing position
-          // approximate entry using orderResult.details?.entryPrice or marketData
-          const entryPrice = (orderResult as any).entryPrice ?? marketData.price;
-          const pnlUsd = (marketData.price - entryPrice) * tradeSignal.quantity * (signal.direction === 'sell' ? 1 : -1);
-          newState.totalPnl += pnlUsd;
-          if (pnlUsd < 0) newState.consecutiveLosses += 1;
-          else {
-            newState.consecutiveLosses = 0;
-            newState.winningTrades += 1;
-          }
+          // Close tracked position (FIFO) — updates P&L, totalTrades, winningTrades, consecutiveLosses
+          closeTrackedPosition(newState, symbol, marketData.price, tradeSignal.quantity);
         }
       }
 
