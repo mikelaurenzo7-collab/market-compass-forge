@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Settings, User, Shield, AlertTriangle, LogOut, Bell } from 'lucide-react';
+import { Settings, User, Shield, AlertTriangle, LogOut, Bell, KeyRound } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
 
@@ -31,6 +31,13 @@ export default function SettingsPage() {
   const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [prefsSaving, setPrefsSaving] = useState(false);
+  const [mfaEnabled, setMfaEnabled] = useState(false);
+  const [mfaLoading, setMfaLoading] = useState(true);
+  const [mfaSetupData, setMfaSetupData] = useState<{ secret: string; otpauthUrl: string } | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaBackupCodes, setMfaBackupCodes] = useState<string[] | null>(null);
+  const [mfaError, setMfaError] = useState('');
+  const [mfaWorking, setMfaWorking] = useState(false);
 
   const fetchPrefs = useCallback(async () => {
     try {
@@ -42,11 +49,22 @@ export default function SettingsPage() {
     }
   }, [apiFetch]);
 
+  const fetchMfaStatus = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/auth/mfa/status');
+      const json = await res.json();
+      if (json.success) setMfaEnabled(json.data.mfaEnabled);
+    } catch { /* ignore */ } finally {
+      setMfaLoading(false);
+    }
+  }, [apiFetch]);
+
   useEffect(() => {
     if (loading) return;
     if (!user) { router.push('/login'); return; }
     fetchPrefs();
-  }, [user, loading, router, fetchPrefs]);
+    fetchMfaStatus();
+  }, [user, loading, router, fetchPrefs, fetchMfaStatus]);
 
   async function savePrefs(updated: NotificationPrefs) {
     setPrefs(updated);
@@ -65,6 +83,63 @@ export default function SettingsPage() {
   function togglePref(key: keyof NotificationPrefs) {
     const updated = { ...prefs, [key]: !prefs[key] };
     savePrefs(updated);
+  }
+
+  async function handleMfaSetup() {
+    setMfaError('');
+    setMfaWorking(true);
+    try {
+      const res = await apiFetch('/api/auth/mfa/setup', { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        setMfaSetupData(json.data);
+      } else {
+        setMfaError(json.error || 'Failed to start MFA setup');
+      }
+    } catch { setMfaError('Network error'); } finally { setMfaWorking(false); }
+  }
+
+  async function handleMfaVerifySetup() {
+    if (mfaCode.length !== 6) { setMfaError('Enter a 6-digit code'); return; }
+    setMfaError('');
+    setMfaWorking(true);
+    try {
+      const res = await apiFetch('/api/auth/mfa/verify-setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: mfaCode }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setMfaEnabled(true);
+        setMfaBackupCodes(json.data.backupCodes);
+        setMfaSetupData(null);
+        setMfaCode('');
+      } else {
+        setMfaError(json.error || 'Invalid code');
+      }
+    } catch { setMfaError('Network error'); } finally { setMfaWorking(false); }
+  }
+
+  async function handleMfaDisable() {
+    if (mfaCode.length !== 6) { setMfaError('Enter your authenticator code to disable MFA'); return; }
+    setMfaError('');
+    setMfaWorking(true);
+    try {
+      const res = await apiFetch('/api/auth/mfa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: mfaCode }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setMfaEnabled(false);
+        setMfaCode('');
+        setMfaBackupCodes(null);
+      } else {
+        setMfaError(json.error || 'Failed to disable MFA');
+      }
+    } catch { setMfaError('Network error'); } finally { setMfaWorking(false); }
   }
 
   async function handleLogout() {
@@ -99,6 +174,83 @@ export default function SettingsPage() {
           <span className="settings-label">Tenant ID</span>
           <span className="settings-value">{tenantId}</span>
         </div>
+      </div>
+
+      {/* Two-Factor Authentication */}
+      <div className="settings-section">
+        <div className="settings-section-title"><KeyRound size={16} style={{ marginRight: 6 }} />Two-Factor Authentication</div>
+        {mfaLoading ? (
+          <div style={{ padding: 'var(--space-md)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading...</div>
+        ) : mfaBackupCodes ? (
+          <div style={{ padding: 'var(--space-md)' }}>
+            <p style={{ color: 'var(--green)', fontWeight: 600, marginBottom: 'var(--space-sm)' }}>✓ MFA enabled successfully!</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 'var(--space-sm)' }}>Save these backup codes — they won&apos;t be shown again:</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', maxWidth: '320px' }}>
+              {mfaBackupCodes.map((code, i) => (
+                <code key={i} style={{ padding: '4px 8px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', fontSize: '0.8rem', textAlign: 'center', color: 'var(--text-secondary)' }}>{code}</code>
+              ))}
+            </div>
+            <button className="btn btn-secondary" style={{ marginTop: 'var(--space-md)', fontSize: '0.8rem' }} onClick={() => setMfaBackupCodes(null)}>I&apos;ve saved them</button>
+          </div>
+        ) : mfaSetupData ? (
+          <div style={{ padding: 'var(--space-md)' }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 'var(--space-sm)' }}>
+              Scan in your authenticator app or enter the key manually:
+            </p>
+            <code style={{ display: 'block', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '6px', fontSize: '0.8rem', color: 'var(--green)', marginBottom: 'var(--space-md)', wordBreak: 'break-all' }}>
+              {mfaSetupData.secret}
+            </code>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="6-digit code"
+                value={mfaCode}
+                onChange={e => { setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setMfaError(''); }}
+                style={{ width: '120px', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.9rem', textAlign: 'center', letterSpacing: '4px' }}
+              />
+              <button className="btn btn-primary" disabled={mfaWorking || mfaCode.length !== 6} onClick={handleMfaVerifySetup} style={{ fontSize: '0.8rem' }}>
+                {mfaWorking ? 'Verifying...' : 'Verify & Enable'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => { setMfaSetupData(null); setMfaCode(''); setMfaError(''); }} style={{ fontSize: '0.8rem' }}>Cancel</button>
+            </div>
+            {mfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 'var(--space-xs)' }}>{mfaError}</p>}
+          </div>
+        ) : mfaEnabled ? (
+          <div style={{ padding: 'var(--space-md)' }}>
+            <div className="settings-row">
+              <div>
+                <span className="settings-label">TOTP Authenticator</span>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Your account is protected with two-factor authentication</p>
+              </div>
+              <span className="connect-badge connected">Enabled</span>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginTop: 'var(--space-sm)', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Code to disable"
+                value={mfaCode}
+                onChange={e => { setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setMfaError(''); }}
+                style={{ width: '120px', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.9rem', textAlign: 'center', letterSpacing: '4px' }}
+              />
+              <button className="btn btn-danger" disabled={mfaWorking} onClick={handleMfaDisable} style={{ fontSize: '0.8rem' }}>Disable MFA</button>
+            </div>
+            {mfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 'var(--space-xs)' }}>{mfaError}</p>}
+          </div>
+        ) : (
+          <div style={{ padding: 'var(--space-md)' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 'var(--space-sm)' }}>
+              Add an extra layer of security using a TOTP authenticator app.
+            </p>
+            <button className="btn btn-primary" disabled={mfaWorking} onClick={handleMfaSetup} style={{ fontSize: '0.8rem' }}>
+              {mfaWorking ? 'Setting up...' : 'Enable MFA'}
+            </button>
+            {mfaError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 'var(--space-xs)' }}>{mfaError}</p>}
+          </div>
+        )}
       </div>
 
       {/* Safety Defaults */}

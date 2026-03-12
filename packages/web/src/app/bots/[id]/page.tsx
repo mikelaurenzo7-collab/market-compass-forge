@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, ShoppingCart, Share2, Users, Play, Pause, Square,
-  Trash2, AlertOctagon, ArrowLeft, Activity, Zap,
+  Trash2, AlertOctagon, ArrowLeft, Activity, Zap, Pencil,
 } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
@@ -202,6 +202,11 @@ export default function BotDetailPage() {
                 <button className="btn btn-danger" onClick={handleDelete} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <Trash2 size={14} /> Delete
                 </button>
+              )}
+              {bot.status !== 'running' && (
+                <Link href={`/bots/${bot.id}/edit`} className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+                  <Pencil size={14} /> Edit
+                </Link>
               )}
             </div>
           </div>

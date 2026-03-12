@@ -17,6 +17,7 @@ import mcpRouter from './routes/mcp.js';
 import { templatesRouter } from './routes/templates.js';
 import { webhooksRouter } from './routes/webhooks.js';
 import { notificationsRouter } from './routes/notifications.js';
+import { mfaRouter } from './routes/mfa.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
@@ -108,6 +109,7 @@ app.onError((err, c) => {
 app.get('/', (c) => c.json({ success: true, data: { name: 'BeastBots API', version: '0.1.0' } }));
 app.route('/api/health', healthRouter);
 app.route('/api/auth', authRouter);
+app.route('/api/auth/mfa', mfaRouter);
 app.route('/api/onboarding', onboardingRouter);
 app.route('/api/credentials', credentialsRouter);
 app.route('/api/integrations', integrationsRouter);

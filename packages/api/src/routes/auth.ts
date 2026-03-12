@@ -85,6 +85,27 @@ authRouter.post('/signup', async (c) => {
     ).run(userId);
   })();
 
+  // Send email verification
+  const verificationRaw = crypto.randomBytes(32).toString('hex');
+  const verificationHash = crypto.createHash('sha256').update(verificationRaw).digest('hex');
+  db.prepare('UPDATE users SET email_verification_token = ?, email_verification_sent_at = ? WHERE id = ?')
+    .run(verificationHash, now, userId);
+
+  const verifyUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/verify-email?token=${verificationRaw}`;
+  sendEmail({
+    to: email,
+    subject: 'Verify your BeastBots email',
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px;">
+        <h1 style="color: #10b981; font-size: 24px; margin-bottom: 16px;">Welcome to BeastBots!</h1>
+        <p style="color: #e2e8f0; font-size: 16px; line-height: 1.6;">Verify your email address to unlock all features.</p>
+        <a href="${verifyUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; margin: 24px 0;">Verify Email</a>
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 24px 0;" />
+        <p style="color: #64748b; font-size: 12px;">BeastBots — Deploy AI-powered autonomous bots</p>
+      </div>
+    `,
+  }).catch(err => console.error('[Email] Verification email failed:', err));
+
   // audit signup
   logAudit({
     tenantId,
@@ -122,11 +143,30 @@ authRouter.post('/login', async (c) => {
   const db = getDb();
 
   const user = db.prepare(
-    'SELECT id, email, password_hash, display_name FROM users WHERE email = ?'
+    'SELECT id, email, password_hash, display_name, mfa_enabled, failed_login_attempts, locked_until, email_verified FROM users WHERE email = ?'
   ).get(email) as any;
 
+  // Account lockout check
+  if (user?.locked_until && Date.now() < user.locked_until) {
+    const minutesLeft = Math.ceil((user.locked_until - Date.now()) / 60_000);
+    return c.json({ success: false, error: `Account is locked. Try again in ${minutesLeft} minute(s).` }, 423);
+  }
+
   if (!user || !compareSync(password, user.password_hash)) {
-    // audit failed login (only if we can resolve a tenant)
+    // Increment failed attempts
+    if (user) {
+      const attempts = (user.failed_login_attempts ?? 0) + 1;
+      const LOCKOUT_THRESHOLD = 5;
+      const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+      if (attempts >= LOCKOUT_THRESHOLD) {
+        db.prepare('UPDATE users SET failed_login_attempts = ?, locked_until = ?, updated_at = ? WHERE id = ?')
+          .run(attempts, Date.now() + LOCKOUT_DURATION_MS, Date.now(), user.id);
+      } else {
+        db.prepare('UPDATE users SET failed_login_attempts = ?, updated_at = ? WHERE id = ?')
+          .run(attempts, Date.now(), user.id);
+      }
+    }
+    // audit failed login
     const failedTenantId = user?.id
       ? (db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any)?.tenant_id
       : null;
@@ -143,11 +183,36 @@ authRouter.post('/login', async (c) => {
     return c.json({ success: false, error: 'Invalid email or password' }, 401);
   }
 
+  // Reset failed attempts on successful password check
+  if (user.failed_login_attempts > 0) {
+    db.prepare('UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = ? WHERE id = ?')
+      .run(Date.now(), user.id);
+  }
+
   const membership = db.prepare(
     'SELECT tenant_id, role FROM tenant_members WHERE user_id = ?'
   ).get(user.id) as any;
 
   const tenantId = membership?.tenant_id ?? '';
+
+  // If MFA is enabled, return mfaRequired challenge instead of tokens
+  if (user.mfa_enabled) {
+    logAudit({
+      tenantId,
+      userId: user.id,
+      action: 'login_mfa_challenge',
+      result: 'success',
+      riskLevel: 'medium',
+      details: email,
+    });
+    return c.json({
+      success: true,
+      data: {
+        mfaRequired: true,
+        userId: user.id,
+      },
+    });
+  }
 
   // audit successful login
   logAudit({
@@ -175,6 +240,7 @@ authRouter.post('/login', async (c) => {
       tenantId,
       accessToken,
       onboardingRequired: !onboarding?.completed,
+      emailVerified: !!user.email_verified,
     },
   });
 });
@@ -412,6 +478,83 @@ authRouter.post('/reset-password', async (c) => {
     success: true,
     data: { message: 'Password has been reset. Please log in with your new password.' },
   });
+});
+// ─── POST /verify-email ───────────────────────────────────
+
+const verifyEmailSchema = z.object({
+  token: z.string().min(1),
+});
+
+authRouter.post('/verify-email', async (c) => {
+  const body = await c.req.json();
+  const parsed = verifyEmailSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0].message }, 400);
+  }
+
+  const db = getDb();
+  const tokenHash = crypto.createHash('sha256').update(parsed.data.token).digest('hex');
+
+  const user = db.prepare(
+    'SELECT id, email_verification_token, email_verified FROM users WHERE email_verification_token = ?'
+  ).get(tokenHash) as any;
+
+  if (!user) {
+    return c.json({ success: false, error: 'Invalid verification link' }, 400);
+  }
+
+  if (user.email_verified) {
+    return c.json({ success: true, data: { message: 'Email is already verified.' } });
+  }
+
+  db.prepare('UPDATE users SET email_verified = 1, email_verification_token = NULL, updated_at = ? WHERE id = ?')
+    .run(Date.now(), user.id);
+
+  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any;
+  logAudit({
+    tenantId: membership?.tenant_id ?? '',
+    userId: user.id,
+    action: 'email_verified',
+    result: 'success',
+    riskLevel: 'low',
+    details: '',
+  });
+
+  return c.json({ success: true, data: { message: 'Email verified successfully.' } });
+});
+
+// ─── POST /resend-verification ────────────────────────────
+
+authRouter.post('/resend-verification', async (c) => {
+  const auth = await verifyAuthHeader(c.req.header('Authorization'));
+  if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
+
+  const db = getDb();
+  const user = db.prepare('SELECT id, email, email_verified FROM users WHERE id = ?').get(auth.userId) as any;
+  if (!user) return c.json({ success: false, error: 'User not found' }, 404);
+  if (user.email_verified) return c.json({ success: true, data: { message: 'Email is already verified.' } });
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  db.prepare('UPDATE users SET email_verification_token = ?, email_verification_sent_at = ?, updated_at = ? WHERE id = ?')
+    .run(tokenHash, Date.now(), Date.now(), user.id);
+
+  const verifyUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/verify-email?token=${rawToken}`;
+  sendEmail({
+    to: user.email,
+    subject: 'Verify your BeastBots email',
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px;">
+        <h1 style="color: #10b981; font-size: 24px; margin-bottom: 16px;">Verify Your Email</h1>
+        <p style="color: #e2e8f0; font-size: 16px; line-height: 1.6;">Click below to verify your email address.</p>
+        <a href="${verifyUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981, #059669); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; margin: 24px 0;">Verify Email</a>
+        <hr style="border: none; border-top: 1px solid #1e293b; margin: 24px 0;" />
+        <p style="color: #64748b; font-size: 12px;">BeastBots — Deploy AI-powered autonomous bots</p>
+      </div>
+    `,
+  }).catch(err => console.error('[Email] Verification email failed:', err));
+
+  return c.json({ success: true, data: { message: 'Verification email sent.' } });
 });
 // end of file
 
