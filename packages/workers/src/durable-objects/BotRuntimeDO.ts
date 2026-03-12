@@ -230,6 +230,39 @@ export class BotRuntimeDO extends DurableObject<Env> {
           return json({ ok: true, result });
         }
 
+        case 'update': {
+          if (request.method !== 'POST') {
+            return json({ error: 'POST required' }, 405);
+          }
+          if (!(await this.ensureInitialized())) {
+            return json({ error: 'not_initialized' }, 400);
+          }
+
+          const body = await request.json() as Pick<InitPayload, 'config' | 'tickIntervalMs'>;
+          const params = await this.ctx.storage.get<InitPayload>(STORAGE_KEYS.INIT_PARAMS);
+          if (!params) {
+            return json({ error: 'not_initialized' }, 400);
+          }
+
+          const nextParams: InitPayload = {
+            ...params,
+            config: body.config ?? params.config,
+            tickIntervalMs: body.tickIntervalMs ?? params.tickIntervalMs,
+          };
+
+          await this.ctx.storage.put(STORAGE_KEYS.INIT_PARAMS, nextParams);
+          this.runtime.applyConfig({ config: nextParams.config, tickIntervalMs: nextParams.tickIntervalMs });
+          await this.persistState();
+
+          const state = this.runtime.getState();
+          if (state?.status === 'running') {
+            await this.ctx.storage.deleteAlarm();
+            await this.scheduleNextAlarm();
+          }
+
+          return json({ ok: true, state });
+        }
+
         case 'state': {
           if (!(await this.ensureInitialized())) {
             return json({ error: 'not_initialized' }, 400);
@@ -252,8 +285,19 @@ export class BotRuntimeDO extends DurableObject<Env> {
           return json(this.runtime.getTickHistory(limit));
         }
 
+        case 'delete': {
+          if (await this.ensureInitialized()) {
+            this.runtime.stop();
+          }
+          await this.ctx.storage.deleteAlarm();
+          await this.ctx.storage.deleteAll();
+          this.runtime = new BotRuntime();
+          this.initialized = false;
+          return json({ ok: true, deleted: true });
+        }
+
         default:
-          return json({ error: 'unknown_action', available: ['init','start','pause','stop','kill','tick','state','metrics','history'] }, 404);
+          return json({ error: 'unknown_action', available: ['init','start','pause','stop','kill','tick','update','state','metrics','history','delete'] }, 404);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

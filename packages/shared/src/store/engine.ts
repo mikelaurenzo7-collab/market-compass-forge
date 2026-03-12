@@ -187,7 +187,13 @@ export async function executeStoreTick(
             state.safety,
             `price_change ${product.id}`,
             0,
-            'medium'
+            'medium',
+            {
+              bot: { totalTicks: newState.priceChangesApplied + newState.inventoryAlertsSent },
+              config: state.config as unknown as Record<string, unknown>,
+              priceChange: action.currentPrice === 0 ? 0 : ((action.recommendedPrice - action.currentPrice) / action.currentPrice) * 100,
+              newMargin: action.recommendedPrice === 0 ? 0 : ((action.recommendedPrice - product.costOfGoods) / action.recommendedPrice) * 100,
+            },
           );
 
           if (
@@ -241,6 +247,10 @@ export async function executeStoreTick(
               `auto_reorder ${product.id}`,
               product.costOfGoods * forecast.recommendedReorderQty,
               'high',
+              {
+                bot: { totalTicks: newState.priceChangesApplied + newState.inventoryAlertsSent },
+                config: state.config as unknown as Record<string, unknown>,
+              },
             );
 
             if (safetyResult.allowed) {

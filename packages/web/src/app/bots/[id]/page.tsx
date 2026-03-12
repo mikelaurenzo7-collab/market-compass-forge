@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, ShoppingCart, Share2, Users, Play, Pause, Square,
-  Trash2, AlertOctagon, ArrowLeft, Activity, Zap, Pencil, Shield,
+  Trash2, AlertOctagon, ArrowLeft, Activity, Zap, Pencil, Shield, CheckCircle2, Clock3, XCircle,
 } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
@@ -38,6 +38,11 @@ interface MetricsResponse {
   family: string;
   status: string;
   heartbeat: string | null;
+  authority?: {
+    mode: 'worker-control-plane' | 'local-runtime';
+    label: string;
+    live: boolean;
+  };
   metrics: BotMetrics;
 }
 
@@ -50,12 +55,51 @@ interface DecisionEntry {
   durationMs: number;
 }
 
+interface SafetyApprovalEntry {
+  id: string;
+  botId: string;
+  action: string;
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  policyId: string;
+  status: 'pending' | 'approved' | 'rejected' | 'consumed';
+  createdAt: number;
+  resolvedAt?: number;
+  resolvedBy?: string;
+}
+
+interface StoreOutcomeSummary {
+  revenueUsd: number;
+  ordersCount: number;
+  fulfilledOrdersCount: number;
+  unitsSold: number;
+  stockoutAlerts: number;
+  restocks: number;
+}
+
+interface StoreOutcomeEvent {
+  eventType: string;
+  revenueUsd: number;
+  units: number;
+  payload: string;
+  createdAt: number;
+}
+
+interface StoreOutcomeData {
+  period: string;
+  platform: string;
+  summary: StoreOutcomeSummary;
+  timeseries: Array<{ ts: number; revenueUsd: number; ordersCount: number; fulfilledOrdersCount: number; stockoutAlerts: number; unitsSold: number }>;
+  recentEvents: StoreOutcomeEvent[];
+}
+
 interface OperatorPlaybookItem {
   title: string;
   action: string;
   reason: string;
   impact: string;
   tone: 'positive' | 'neutral' | 'warning';
+  cta?: string;
+  configPatch?: Record<string, unknown>;
 }
 
 const FAMILY_ICONS: Record<string, React.ReactNode> = {
@@ -67,6 +111,28 @@ const FAMILY_ICONS: Record<string, React.ReactNode> = {
 
 function StatusDot({ status }: { status: string }) {
   return <span className={`status-dot ${status}`} title={status} aria-label={`Bot status: ${status}`} role="status" />;
+}
+
+function summarizeDecision(decision: DecisionEntry): string | null {
+  const details = decision.details ?? {};
+  if (typeof details.reason === 'string' && details.reason.trim().length > 0) return details.reason;
+  if (details.approvalConsumed === true && typeof details.approvalId === 'string') {
+    return `Approval grant ${details.approvalId} was consumed and execution resumed.`;
+  }
+  if (typeof details.approvalId === 'string' && typeof details.policyId === 'string') {
+    return `Queued behind approval ${details.approvalId} because policy ${details.policyId} intervened.`;
+  }
+  if (typeof details.policyId === 'string' && (decision.result === 'denied' || decision.result === 'blocked')) {
+    return `Blocked by policy ${details.policyId}.`;
+  }
+  if (typeof details.suggestedSignal === 'string') {
+    return `Suggested signal: ${details.suggestedSignal}.`;
+  }
+  return null;
+}
+
+function formatDecisionResult(result: string): string {
+  return result.replace(/_/g, ' ');
 }
 
 /* ─── Family-specific metric explanations ─── */
@@ -212,6 +278,8 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: 'This bot is still relying on single-frame entries, which is weaker during volatile launch conditions.',
         impact: 'Fewer low-conviction trades and better execution quality.',
         tone: 'neutral',
+        cta: 'Enable confirmation',
+        configPatch: { multiTimeframeConfirmation: true },
       });
     }
     if (metrics && (successRate < 60 || recentFailures > 0)) {
@@ -221,6 +289,11 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: `${successRate}% execution quality with ${recentFailures} recent failed decisions is below launch-grade consistency.`,
         impact: 'Lower drawdown risk while preserving decision throughput.',
         tone: 'warning',
+        cta: 'Reduce risk',
+        configPatch: {
+          maxPositionSizeUsd: Math.max(25, Math.round(Number(config.maxPositionSizeUsd ?? 100) * 0.8)),
+          cooldownAfterLossMs: Math.max(300_000, Number(config.cooldownAfterLossMs ?? 60_000)),
+        },
       });
     }
   } else if (bot.family === 'store') {
@@ -231,6 +304,8 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: 'Manual approval slows down the exact pricing windows that create measurable store ROI.',
         impact: 'Faster margin capture on demand and inventory swings.',
         tone: 'positive',
+        cta: 'Enable auto pricing',
+        configPatch: { autoApplyPricing: true },
       });
     }
     if (!Boolean(config.autoReorder)) {
@@ -240,6 +315,8 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: 'Inventory forecasting is more valuable when it closes the loop instead of only flagging risk.',
         impact: 'Better in-stock rate and less revenue leakage.',
         tone: 'neutral',
+        cta: 'Enable auto reorder',
+        configPatch: { autoReorder: true },
       });
     }
     if (metrics && (recentBlocks > 0 || Number(config.syncIntervalMs ?? 0) > 3_600_000)) {
@@ -249,6 +326,8 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: `${recentBlocks} recent guardrail blocks suggest the bot is seeing opportunities it cannot safely execute.`,
         impact: 'More usable catalog actions with fewer missed pricing windows.',
         tone: recentBlocks > 0 ? 'warning' : 'neutral',
+        cta: 'Speed up sync',
+        configPatch: { syncIntervalMs: Math.max(60_000, Math.round(Number(config.syncIntervalMs ?? 300_000) * 0.5)) },
       });
     }
   } else if (bot.family === 'social') {
@@ -268,6 +347,8 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: 'Low publishing cadence can cap growth even when execution quality is strong.',
         impact: 'More reach opportunities and more signal for content optimization.',
         tone: 'neutral',
+        cta: 'Increase cadence',
+        configPatch: { maxPostsPerDay: Math.max(3, Number(config.maxPostsPerDay ?? 2)) },
       });
     }
     if (metrics && (successRate < 70 || recentBlocks > 0)) {
@@ -277,6 +358,8 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: `${recentBlocks} recent blocks or ${successRate}% delivery quality indicates the bot is still brushing against content boundaries.`,
         impact: 'Cleaner publishing flow and fewer preventable content rejections.',
         tone: 'warning',
+        cta: 'Require approval',
+        configPatch: { contentApprovalRequired: true },
       });
     }
   } else {
@@ -296,6 +379,8 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: 'Unchecked 24/7 task execution creates handoff gaps in support, ops, and finance workflows.',
         impact: 'Better SLA adherence and cleaner human escalation paths.',
         tone: 'neutral',
+        cta: 'Set workday window',
+        configPatch: { workingHoursUtc: { start: 13, end: 21 } },
       });
     }
     if (metrics && (successRate < 75 || recentFailures > 0)) {
@@ -305,6 +390,11 @@ function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decis
         reason: `${successRate}% completion quality with ${recentFailures} recent failures is not strong enough for a broad production rollout.`,
         impact: 'Higher task reliability and fewer manual cleanup cycles.',
         tone: 'warning',
+        cta: 'Tighten escalation',
+        configPatch: {
+          escalationThresholdConfidence: Math.max(0.8, Number(config.escalationThresholdConfidence ?? 0.75)),
+          maxConcurrentTasks: Math.max(1, Math.min(Number(config.maxConcurrentTasks ?? 3), 2)),
+        },
       });
     }
   }
@@ -330,8 +420,12 @@ export default function BotDetailPage() {
   const [bot, setBot] = useState<BotDetail | null>(null);
   const [metricsData, setMetricsData] = useState<MetricsResponse | null>(null);
   const [decisions, setDecisions] = useState<DecisionEntry[]>([]);
+  const [approvalHistory, setApprovalHistory] = useState<SafetyApprovalEntry[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
+  const [optimizationState, setOptimizationState] = useState<{ title: string; saving: boolean } | null>(null);
+  const [optimizationMessage, setOptimizationMessage] = useState('');
+  const [storeOutcomes, setStoreOutcomes] = useState<StoreOutcomeData | null>(null);
 
   const DETAIL_FAMILY_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
     trading: { icon: <TrendingUp size={18} />, color: 'var(--color-trading)', label: 'Trading' },
@@ -342,11 +436,13 @@ export default function BotDetailPage() {
 
 
   const fetchBot = useCallback(async () => {
+    let loadedBot: BotDetail | null = null;
     try {
       const res = await apiFetch(`/api/bots/${botId}`);
       const json = await res.json();
       if (json.error) { setError(json.error); return; }
-      setBot(json.data ?? json);
+      loadedBot = json.data ?? json;
+      setBot(loadedBot);
     } catch (err) {
       console.error('Failed to load bot detail:', err);
       setError('Failed to load bot');
@@ -365,9 +461,27 @@ export default function BotDetailPage() {
     try {
       const res = await apiFetch(`/api/bots/${botId}/decisions`);
       const json = await res.json();
-      if (json.success) setDecisions(json.data ?? []);
+      if (json.success) setDecisions(json.data?.decisions ?? json.data ?? []);
     } catch (err) {
       console.error('Failed to load bot decisions:', err);
+    }
+    try {
+      const res = await apiFetch(`/api/safety/approvals?botId=${botId}&includeResolved=true&limit=12`);
+      const json = await res.json();
+      if (json.success) setApprovalHistory(json.data ?? []);
+    } catch (err) {
+      console.error('Failed to load approval history:', err);
+    }
+    try {
+      if (loadedBot?.family === 'store' && loadedBot?.platform) {
+        const outcomesRes = await apiFetch(`/api/analytics/store-outcomes?period=30d&platform=${loadedBot.platform}`);
+        const outcomesJson = await outcomesRes.json();
+        if (outcomesJson.success) setStoreOutcomes(outcomesJson.data ?? null);
+      } else {
+        setStoreOutcomes(null);
+      }
+    } catch (err) {
+      console.error('Failed to load store outcomes:', err);
     }
   }, [apiFetch, botId]);
 
@@ -408,6 +522,34 @@ export default function BotDetailPage() {
     }
   }
 
+  async function handleApplyOptimization(item: OperatorPlaybookItem) {
+    if (!item.configPatch || !bot) return;
+
+    setError('');
+    setOptimizationMessage('');
+    setOptimizationState({ title: item.title, saving: true });
+
+    try {
+      const res = await apiFetch(`/api/bots/${botId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: item.configPatch }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setError(typeof json.error === 'string' ? json.error : 'Failed to apply optimization');
+      } else {
+        setOptimizationMessage(`${item.title} applied`);
+        await fetchBot();
+      }
+    } catch (err) {
+      console.error('Failed to apply optimization:', err);
+      setError('Failed to apply optimization');
+    } finally {
+      setOptimizationState(null);
+    }
+  }
+
   if (loading || !user) return <LoadingScreen />;
 
   return (
@@ -430,11 +572,18 @@ export default function BotDetailPage() {
         </div>
       )}
       {error && <div className="auth-error">{error}</div>}
+      {optimizationMessage && <div className="auth-success">{optimizationMessage}</div>}
 
       {bot && (() => {
         const brand = getPlatformBrand(bot.platform);
         const famCfg = DETAIL_FAMILY_CONFIG[bot.family];
         const playbook = buildOperatorPlaybook(bot, metricsData?.metrics ?? null, decisions);
+        const approvalStatusMeta: Record<SafetyApprovalEntry['status'], { icon: React.ReactNode; label: string; className: string }> = {
+          pending: { icon: <Clock3 size={14} />, label: 'Pending approval', className: 'pending' },
+          approved: { icon: <CheckCircle2 size={14} />, label: 'Approved', className: 'approved' },
+          rejected: { icon: <XCircle size={14} />, label: 'Rejected', className: 'rejected' },
+          consumed: { icon: <Shield size={14} />, label: 'Approval consumed', className: 'consumed' },
+        };
         return (
         <>
           {/* Platform-branded hero banner */}
@@ -516,6 +665,50 @@ export default function BotDetailPage() {
             <FamilyMetricContext family={bot.family} metrics={metricsData.metrics} />
           )}
 
+          {bot.family === 'store' && storeOutcomes && ((storeOutcomes.summary.ordersCount > 0) || (storeOutcomes.summary.stockoutAlerts > 0)) && (
+            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
+              <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                <ShoppingCart size={16} style={{ color: famCfg?.color }} />
+                Connected Store Outcomes
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 'auto' }}>
+                  last 30 days on {brand.name}
+                </span>
+              </div>
+              <div className="store-outcome-summary-grid">
+                <div className="store-outcome-summary-card revenue">
+                  <div className="store-outcome-summary-label">Revenue Captured</div>
+                  <div className="store-outcome-summary-value">${storeOutcomes.summary.revenueUsd.toLocaleString()}</div>
+                  <div className="store-outcome-summary-hint">Explicit order revenue from webhook events</div>
+                </div>
+                <div className="store-outcome-summary-card orders">
+                  <div className="store-outcome-summary-label">Orders Captured</div>
+                  <div className="store-outcome-summary-value">{storeOutcomes.summary.ordersCount.toLocaleString()}</div>
+                  <div className="store-outcome-summary-hint">{storeOutcomes.summary.fulfilledOrdersCount.toLocaleString()} fulfilled · {storeOutcomes.summary.unitsSold.toLocaleString()} units</div>
+                </div>
+                <div className="store-outcome-summary-card alerts">
+                  <div className="store-outcome-summary-label">Inventory Alerts</div>
+                  <div className="store-outcome-summary-value">{storeOutcomes.summary.stockoutAlerts.toLocaleString()}</div>
+                  <div className="store-outcome-summary-hint">{storeOutcomes.summary.restocks.toLocaleString()} restocks recorded</div>
+                </div>
+              </div>
+              <div className="store-outcome-list" style={{ marginTop: 'var(--space-md)' }}>
+                {storeOutcomes.recentEvents.slice(0, 6).map((event, index) => (
+                  <div key={`${event.eventType}-${event.createdAt}-${index}`} className={`store-outcome-item ${event.eventType}`}>
+                    <div className="store-outcome-item-header">
+                      <div className="store-outcome-item-title">{event.eventType.replace(/_/g, ' ')}</div>
+                      <div className="store-outcome-item-time">{new Date(event.createdAt).toLocaleString()}</div>
+                    </div>
+                    <div className="store-outcome-item-meta">
+                      {event.revenueUsd > 0 && <span>Revenue: ${event.revenueUsd.toLocaleString()}</span>}
+                      {event.units > 0 && <span>Units: {event.units.toLocaleString()}</span>}
+                      {event.revenueUsd === 0 && event.units === 0 && <span>Inventory or fulfillment state change captured</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {playbook.length > 0 && (
             <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
               <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
@@ -534,6 +727,16 @@ export default function BotDetailPage() {
                     </div>
                     <div className="operator-playbook-action">{item.action}</div>
                     <div className="operator-playbook-reason">{item.reason}</div>
+                    {item.configPatch && item.cta && (
+                      <button
+                        type="button"
+                        className="operator-playbook-button"
+                        onClick={() => handleApplyOptimization(item)}
+                        disabled={optimizationState?.saving === true}
+                      >
+                        {optimizationState?.saving && optimizationState.title === item.title ? 'Applying...' : item.cta}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -624,6 +827,64 @@ export default function BotDetailPage() {
             </div>
           )}
 
+          {metricsData?.authority && (
+            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
+              <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                <Shield size={14} style={{ color: brand.color }} />
+                Execution Authority
+              </div>
+              <div className="settings-row">
+                <span className="settings-label">Runtime source</span>
+                <span className="settings-value">{metricsData.authority.label}</span>
+              </div>
+              <div className="settings-row">
+                <span className="settings-label">Authority mode</span>
+                <span className="settings-value">{metricsData.authority.mode === 'worker-control-plane' ? 'Distributed control plane' : 'Single-process dev runtime'}</span>
+              </div>
+              <div className="settings-row">
+                <span className="settings-label">Live state</span>
+                <span className="settings-value">{metricsData.authority.live ? 'Connected to active runtime' : 'Showing persisted state'}</span>
+              </div>
+            </div>
+          )}
+
+          {approvalHistory.length > 0 && (
+            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
+              <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                <Shield size={16} style={{ color: brand.color }} />
+                Safety Approval Timeline
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 'auto' }}>
+                  Last {approvalHistory.length} approval events
+                </span>
+              </div>
+              <div className="approval-timeline">
+                {approvalHistory.map((approval) => {
+                  const meta = approvalStatusMeta[approval.status];
+                  return (
+                    <div key={approval.id} className={`approval-item ${meta.className}`}>
+                      <div className={`approval-badge ${meta.className}`}>
+                        {meta.icon}
+                        <span>{meta.label}</span>
+                      </div>
+                      <div className="approval-copy">
+                        <div className="approval-heading-row">
+                          <span className="approval-action">{approval.action.replace(/_/g, ' ')}</span>
+                          <span className={`approval-risk ${approval.riskLevel}`}>{approval.riskLevel}</span>
+                        </div>
+                        <div className="approval-meta-row">
+                          <span>Policy: {approval.policyId}</span>
+                          <span>Opened: {new Date(approval.createdAt).toLocaleString()}</span>
+                          {approval.resolvedAt && <span>Updated: {new Date(approval.resolvedAt).toLocaleString()}</span>}
+                          {approval.resolvedBy && <span>By: {approval.resolvedBy}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Decision Activity Stream */}
           {decisions.length > 0 && (
             <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
@@ -643,13 +904,16 @@ export default function BotDetailPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
                         <span className="decision-action">{d.action.replace(/_/g, ' ')}</span>
-                        <span className={`decision-result ${d.result}`}>{d.result}</span>
+                        <span className={`decision-result ${d.result}`}>{formatDecisionResult(d.result)}</span>
                         {d.durationMs > 0 && (
                           <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                             {d.durationMs}ms
                           </span>
                         )}
                       </div>
+                      {summarizeDecision(d) && (
+                        <div className="decision-summary">{summarizeDecision(d)}</div>
+                      )}
                       {d.details && Object.keys(d.details).length > 0 && (
                         <div className="decision-details">
                           {Object.entries(d.details).map(([k, v]) => (

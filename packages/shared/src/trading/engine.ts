@@ -183,6 +183,39 @@ export function closeTrackedPosition(
   return realizedPnl;
 }
 
+function trackOpenedPosition(
+  newState: TradingEngineState,
+  symbol: string,
+  entryPrice: number,
+  quantity: number,
+  orderId: string,
+): void {
+  const existing = newState.openPositions.get(symbol) ?? [];
+  newState.openPositions = new Map(newState.openPositions);
+  newState.openPositions.set(symbol, [...existing, {
+    symbol,
+    side: 'buy' as const,
+    entryPrice,
+    quantity,
+    entryTimestamp: Date.now(),
+    orderId,
+  }]);
+  const prevHigh = newState.highWater.get(symbol) ?? entryPrice;
+  newState.highWater.set(symbol, prevHigh);
+  if (newState.config.strategy === 'dca') {
+    newState.lastDcaBuy = new Map(newState.lastDcaBuy);
+    newState.lastDcaBuy.set(symbol, Date.now());
+  }
+}
+
+function countManagedOpenPositions(
+  trackedPositions: Map<string, OpenPosition[]>,
+  adapterPositions: Position[],
+): number {
+  const trackedCount = Array.from(trackedPositions.values()).reduce((sum, positions) => sum + positions.length, 0);
+  return trackedCount > 0 ? trackedCount : adapterPositions.length;
+}
+
 export async function executeTradingTick(
   state: TradingEngineState,
   adapter: TradingAdapter
@@ -438,7 +471,7 @@ export async function executeTradingTick(
       }
 
       // Check if we can open more positions
-      if (signal.direction === 'buy' && positions.length >= state.config.maxOpenPositions) continue;
+      if (signal.direction === 'buy' && countManagedOpenPositions(newState.openPositions, positions) >= state.config.maxOpenPositions) continue;
 
       // Position sizing — prefer volatility-based (ATR) when available, fall back to Kelly
       const winRate = state.totalTrades > 0 ? state.winningTrades / state.totalTrades : 0.5;
@@ -495,7 +528,12 @@ export async function executeTradingTick(
         state.safety,
         `${signal.direction} ${symbol}`,
         estimatedCost,
-        signal.confidence > 70 ? 'low' : 'medium'
+        signal.confidence > 70 ? 'low' : 'medium',
+        {
+          bot: { totalTicks: updatedHistory.prices.length },
+          config: state.config as unknown as Record<string, unknown>,
+          metrics: { totalPnlUsd: newState.totalPnl },
+        },
       );
 
       if (!safetyResult.allowed) {
@@ -524,6 +562,18 @@ export async function executeTradingTick(
       };
 
       if (state.config.paperTrading) {
+        if (signal.direction === 'buy') {
+          trackOpenedPosition(newState, symbol, marketData.price, tradeSignal.quantity, `paper-${Date.now()}`);
+        } else {
+          closeTrackedPosition(newState, symbol, marketData.price, tradeSignal.quantity);
+        }
+
+        newState.safety = {
+          ...newState.safety,
+          budget: recordSpend(newState.safety.budget, estimatedCost),
+          circuitBreaker: recordSuccess(newState.safety.circuitBreaker),
+        };
+
         logAuditEntry({
           tenantId: state.safety.tenantId,
           botId: state.safety.botId,
@@ -577,19 +627,7 @@ export async function executeTradingTick(
         });
       } else {
         if (signal.direction === 'buy') {
-          // Record new position in engine-tracked openPositions
-          const existing = newState.openPositions.get(symbol) ?? [];
-          newState.openPositions = new Map(newState.openPositions);
-          newState.openPositions.set(symbol, [...existing, {
-            symbol,
-            side: 'buy' as const,
-            entryPrice: marketData.price,
-            quantity: tradeSignal.quantity,
-            entryTimestamp: Date.now(),
-            orderId: orderResult.orderId,
-          }]);
-          const prevHigh = newState.highWater.get(symbol) ?? marketData.price;
-          newState.highWater.set(symbol, prevHigh);
+          trackOpenedPosition(newState, symbol, marketData.price, tradeSignal.quantity, orderResult.orderId);
         } else {
           // Close tracked position (FIFO) — updates P&L, totalTrades, winningTrades, consecutiveLosses
           closeTrackedPosition(newState, symbol, marketData.price, tradeSignal.quantity);

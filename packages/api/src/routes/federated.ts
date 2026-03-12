@@ -10,7 +10,7 @@ import {
   buildContribution,
   aggregateBenchmark,
 } from '@beastbots/shared';
-import { getRuntime } from '@beastbots/workers';
+import { getRuntimeMetricsSnapshot } from '../lib/runtime-snapshot.js';
 
 export const federatedRouter = new Hono();
 
@@ -92,9 +92,7 @@ federatedRouter.post('/contribute', async (c) => {
   const contributions: FederatedContribution[] = [];
 
   for (const bot of bots) {
-    const runtime = getRuntime(auth.tenantId, bot.id);
-    if (!runtime) continue;
-    const metrics = runtime.getMetrics();
+    const metrics = (await getRuntimeMetricsSnapshot(auth.tenantId, bot.id)).metrics;
     if (!metrics) continue;
 
     const config = JSON.parse(bot.config) as { strategy?: string };

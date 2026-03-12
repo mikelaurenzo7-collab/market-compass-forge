@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { BotFamily, Platform, BotStatus, TradingBotConfig, StoreBotConfig, SocialBotConfig, WorkforceBotConfig, TradingPlatform, StorePlatform, SocialPlatform, AutonomyLevel, StoreStrategy, SocialStrategy, TradingStrategy } from '@beastbots/shared';
+import type { BotFamily, Platform, BotStatus, TradingBotConfig, StoreBotConfig, SocialBotConfig, WorkforceBotConfig, TradingPlatform, StorePlatform, SocialPlatform, AutonomyLevel, StoreStrategy, SocialStrategy, TradingStrategy, WorkforceCategory, WorkforceStrategy } from '@beastbots/shared';
 import {
   INTEGRATIONS,
   DEFAULT_PRICING,
@@ -40,6 +40,153 @@ interface CredRow { id: string; }
 interface TickRow { ts: number; json: string; }
 interface StateRow { state_json: string; tick_history: string; }
 
+interface WorkerRuntimeMetrics {
+  totalTicks: number;
+  successfulActions: number;
+  failedActions: number;
+  deniedActions: number;
+  totalPnlUsd: number;
+  uptimeMs: number;
+  lastErrorMessage?: string;
+  lastErrorAt?: number;
+}
+
+interface WorkerRuntimeState {
+  status: BotStatus;
+  lastTickAt: number;
+}
+
+interface WorkerTickResult {
+  botId: string;
+  timestamp: number;
+  action: string;
+  result: string;
+  details: Record<string, unknown>;
+  durationMs: number;
+}
+
+function getWorkersBaseUrl(): string | null {
+  const value = process.env.WORKERS_BASE_URL?.trim();
+  return value ? value.replace(/\/+$/, '') : null;
+}
+
+function isWorkerControlPlaneEnabled(): boolean {
+  return Boolean(getWorkersBaseUrl() && process.env.WORKER_AUTH_TOKEN);
+}
+
+function buildWorkerUrl(tenantId: string, botId: string, action: string, query?: Record<string, string | number | undefined>): string {
+  const baseUrl = getWorkersBaseUrl();
+  if (!baseUrl) throw new Error('WORKERS_BASE_URL is not configured');
+  const url = new URL(`${baseUrl}/bot/${tenantId}/${botId}/${action}`);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined) url.searchParams.set(key, String(value));
+    }
+  }
+  return url.toString();
+}
+
+async function callWorkerControlPlane<T>(
+  tenantId: string,
+  botId: string,
+  action: string,
+  init?: { method?: string; body?: unknown; query?: Record<string, string | number | undefined> },
+): Promise<T> {
+  const authToken = process.env.WORKER_AUTH_TOKEN;
+  if (!authToken) throw new Error('WORKER_AUTH_TOKEN is not configured');
+
+  const response = await fetch(buildWorkerUrl(tenantId, botId, action, init?.query), {
+    method: init?.method ?? 'GET',
+    headers: {
+      Authorization: `Bearer ${authToken}`,
+      ...(init?.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+    },
+    body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+  });
+
+  const json = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = typeof json?.message === 'string'
+      ? json.message
+      : typeof json?.error === 'string'
+        ? json.error
+        : `Worker control plane request failed: ${response.status}`;
+    throw new Error(message);
+  }
+
+  return json as T;
+}
+
+async function initWorkerRuntime(params: {
+  botId: string;
+  tenantId: string;
+  family: BotFamily;
+  platform: Platform;
+  config: BotConfig;
+  tickIntervalMs: number;
+  credentials?: BotCredentials;
+}): Promise<void> {
+  await callWorkerControlPlane(params.tenantId, params.botId, 'init', {
+    method: 'POST',
+    body: {
+      botId: params.botId,
+      tenantId: params.tenantId,
+      family: params.family,
+      platform: params.platform,
+      config: params.config,
+      tickIntervalMs: params.tickIntervalMs,
+      credentials: params.credentials,
+    },
+  });
+}
+
+async function syncRuntimeConfig(params: {
+  tenantId: string;
+  botId: string;
+  family: BotFamily;
+  platform: Platform;
+  config: Record<string, unknown>;
+}): Promise<void> {
+  const normalizedConfig = normalizeRuntimeConfig(params.family, params.platform, params.config);
+  const tickIntervalMs = familyTickIntervalMs(params.family);
+
+  if (isWorkerControlPlaneEnabled()) {
+    await callWorkerControlPlane(params.tenantId, params.botId, 'update', {
+      method: 'POST',
+      body: { config: normalizedConfig, tickIntervalMs },
+    });
+    return;
+  }
+
+  const runtime = getRuntime(params.tenantId, params.botId);
+  runtime?.applyConfig({ config: normalizedConfig, tickIntervalMs });
+}
+
+async function getRuntimeMetricsSnapshot(tenantId: string, botId: string): Promise<{ metrics: WorkerRuntimeMetrics | null; status: BotStatus | null; heartbeat: number | null; history: WorkerTickResult[] }> {
+  if (isWorkerControlPlaneEnabled()) {
+    const [metrics, state, history] = await Promise.all([
+      callWorkerControlPlane<WorkerRuntimeMetrics | { error: string }>(tenantId, botId, 'metrics').catch(() => null),
+      callWorkerControlPlane<WorkerRuntimeState | { error: string }>(tenantId, botId, 'state').catch(() => null),
+      callWorkerControlPlane<WorkerTickResult[] | { error: string }>(tenantId, botId, 'history', { query: { limit: 200 } }).catch(() => []),
+    ]);
+
+    return {
+      metrics: metrics && !('error' in metrics) ? metrics : null,
+      status: state && !('error' in state) ? state.status : null,
+      heartbeat: state && !('error' in state) ? state.lastTickAt : null,
+      history: Array.isArray(history) ? history : [],
+    };
+  }
+
+  const runtime = getRuntime(tenantId, botId);
+  return {
+    metrics: runtime?.getMetrics() ?? null,
+    status: runtime?.getStatus() ?? null,
+    heartbeat: runtime?.getHeartbeat() ?? null,
+    history: runtime?.getTickHistory(200) as WorkerTickResult[] ?? [],
+  };
+}
+
 // Build a callback that persists runtime state to bot_state table
 function makePersistCallback(botId: string, tenantId: string, family: BotFamily, platform: Platform) {
   return (state: RuntimeState) => {
@@ -78,6 +225,36 @@ function lookupCredentials(tenantId: string, platform: string): BotCredentials |
 
 type BotConfig = TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
 
+function inferWorkforceCategory(platform: string, config: Record<string, unknown>): WorkforceCategory {
+  const explicitCategory = config.category;
+  if (typeof explicitCategory === 'string') {
+    return explicitCategory as WorkforceCategory;
+  }
+
+  const strategyHints = ((config.strategies as WorkforceStrategy[] | undefined) ?? []).concat(
+    typeof config.strategy === 'string' ? [config.strategy as WorkforceStrategy] : []
+  );
+  if (strategyHints.some((strategy) => ['ticket_triage', 'auto_response'].includes(strategy))) return 'customer_support';
+  if (strategyHints.some((strategy) => ['lead_scoring', 'crm_enrichment'].includes(strategy))) return 'sales_crm';
+  if (strategyHints.some((strategy) => ['invoice_processing', 'expense_reconciliation'].includes(strategy))) return 'finance';
+  if (strategyHints.some((strategy) => ['employee_onboarding'].includes(strategy))) return 'hr';
+  if (strategyHints.some((strategy) => ['document_classification', 'data_extraction'].includes(strategy))) return 'document_processing';
+  if (strategyHints.some((strategy) => ['email_triage', 'meeting_scheduler'].includes(strategy))) return 'email_management';
+  if (strategyHints.some((strategy) => ['compliance_monitoring', 'audit_preparation', 'contract_review'].includes(strategy))) return 'compliance';
+  if (strategyHints.some((strategy) => ['system_health_check'].includes(strategy))) return 'it_ops';
+  if (strategyHints.some((strategy) => ['report_generation', 'knowledge_base_sync'].includes(strategy))) return 'reporting';
+  if (strategyHints.some((strategy) => ['task_orchestration'].includes(strategy))) return 'project_management';
+  if (strategyHints.some((strategy) => ['vendor_evaluation'].includes(strategy))) return 'procurement';
+
+  if (platform === 'salesforce' || platform === 'hubspot') return 'sales_crm';
+  if (platform === 'gmail') return 'email_management';
+  if (platform === 'jira' || platform === 'github' || platform === 'notion') return 'project_management';
+  if (platform === 'quickbooks' || platform === 'xero') return 'finance';
+  if (platform === 'slack' || platform === 'teams') return 'customer_support';
+
+  return 'project_management';
+}
+
 function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Record<string, unknown>): BotConfig {
   if (family === 'trading') {
     return {
@@ -89,10 +266,22 @@ function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Rec
       maxOpenPositions: Number(config.maxOpenPositions ?? 3),
       stopLossPercent: Number(config.stopLossPercent ?? 0.02),
       takeProfitPercent: Number(config.takeProfitPercent ?? 0.04),
+      trailingStopPercent: config.trailingStopPercent !== undefined ? Number(config.trailingStopPercent) : undefined,
       cooldownAfterLossMs: Number(config.cooldownAfterLossMs ?? 60_000),
       paperTrading: Boolean(config.paperTrading ?? true),
       useLLM: Boolean(config.useLLM ?? false),
       autonomyLevel: (config.autonomyLevel as AutonomyLevel) ?? 'manual',
+      multiTimeframeConfirmation: Boolean(config.multiTimeframeConfirmation ?? false),
+      platformConfig: (config.platformConfig as Record<string, unknown> | undefined) ?? undefined,
+      gridLevels: (config.gridLevels as number[] | undefined) ?? undefined,
+      openOrders: (config.openOrders as { price: number; side: 'buy' | 'sell' }[] | undefined) ?? undefined,
+      arbitrageThresholdPercent: config.arbitrageThresholdPercent !== undefined ? Number(config.arbitrageThresholdPercent) : undefined,
+      arbitragePrices: (config.arbitragePrices as number[] | undefined) ?? undefined,
+      arbitragePlatforms: (config.arbitragePlatforms as TradingPlatform[] | undefined) ?? undefined,
+      marketMakingSpread: config.marketMakingSpread !== undefined ? Number(config.marketMakingSpread) : undefined,
+      marketMakingBid: config.marketMakingBid !== undefined ? Number(config.marketMakingBid) : undefined,
+      marketMakingAsk: config.marketMakingAsk !== undefined ? Number(config.marketMakingAsk) : undefined,
+      eventProbabilityData: (config.eventProbabilityData as TradingBotConfig['eventProbabilityData'] | undefined) ?? undefined,
     };
   }
 
@@ -111,14 +300,33 @@ function normalizeRuntimeConfig(family: BotFamily, platform: string, config: Rec
     };
   }
 
+  if (family === 'social') {
+    return {
+      platform: platform as SocialPlatform,
+      strategies: (config.strategies as SocialStrategy[]) ?? ['content_calendar'],
+      maxPostsPerDay: Number(config.maxPostsPerDay ?? 2),
+      maxEngagementsPerHour: Number(config.maxEngagementsPerHour ?? 10),
+      contentApprovalRequired: Boolean(config.contentApprovalRequired ?? true),
+      sensitiveTopicKeywords: (config.sensitiveTopicKeywords as string[]) ?? [],
+      brandVoiceGuidelines: (config.brandVoiceGuidelines as string) ?? 'professional',
+      brandVoice: (config.brandVoice as string | undefined) ?? undefined,
+      brandDescription: (config.brandDescription as string | undefined) ?? undefined,
+      paperMode: Boolean(config.paperMode ?? true),
+      useLLM: Boolean(config.useLLM ?? false),
+      autonomyLevel: (config.autonomyLevel as AutonomyLevel) ?? 'manual',
+      platformConfig: (config.platformConfig as Record<string, unknown> | undefined) ?? undefined,
+    };
+  }
+
   return {
-    platform: platform as SocialPlatform,
-    strategies: (config.strategies as SocialStrategy[]) ?? ['content_calendar'],
-    maxPostsPerDay: Number(config.maxPostsPerDay ?? 2),
-    maxEngagementsPerHour: Number(config.maxEngagementsPerHour ?? 10),
-    contentApprovalRequired: Boolean(config.contentApprovalRequired ?? true),
-    sensitiveTopicKeywords: (config.sensitiveTopicKeywords as string[]) ?? [],
-    brandVoiceGuidelines: (config.brandVoiceGuidelines as string) ?? 'professional',
+    category: inferWorkforceCategory(platform, config),
+    strategies: (config.strategies as WorkforceStrategy[]) ?? ['task_orchestration'],
+    maxTasksPerHour: Number(config.maxTasksPerHour ?? 20),
+    maxConcurrentTasks: Number(config.maxConcurrentTasks ?? 3),
+    requireApprovalForExternal: Boolean(config.requireApprovalForExternal ?? true),
+    escalationThresholdConfidence: Number(config.escalationThresholdConfidence ?? 0.75),
+    dataAccessScopes: (config.dataAccessScopes as string[]) ?? ['tasks'],
+    workingHoursUtc: (config.workingHoursUtc as WorkforceBotConfig['workingHoursUtc'] | undefined) ?? undefined,
     paperMode: Boolean(config.paperMode ?? true),
     useLLM: Boolean(config.useLLM ?? false),
     autonomyLevel: (config.autonomyLevel as AutonomyLevel) ?? 'manual',
@@ -325,10 +533,48 @@ botsRouter.patch('/:id', async (c) => {
   }
 
   const newName = parsed.data.name ?? row.name;
-  const newConfig = parsed.data.config ? JSON.stringify({ ...JSON.parse(row.config || '{}'), ...parsed.data.config }) : row.config;
+  const previousConfig = JSON.parse(row.config || '{}') as Record<string, unknown>;
+  const mergedConfig = parsed.data.config ? { ...previousConfig, ...parsed.data.config } : previousConfig;
+  const newConfig = JSON.stringify(mergedConfig);
   const now = Date.now();
 
-  db.prepare('UPDATE bots SET name = ?, config = ?, updated_at = ? WHERE id = ?').run(newName, newConfig, now, id);
+  const shouldSyncRuntime = row.status !== 'idle';
+  if (shouldSyncRuntime) {
+    try {
+      await syncRuntimeConfig({
+        tenantId: auth.tenantId,
+        botId: id,
+        family: row.family as BotFamily,
+        platform: row.platform as Platform,
+        config: mergedConfig,
+      });
+    } catch (error) {
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to apply config to active runtime',
+      }, 502);
+    }
+  }
+
+  try {
+    db.prepare('UPDATE bots SET name = ?, config = ?, updated_at = ? WHERE id = ?').run(newName, newConfig, now, id);
+  } catch (error) {
+    if (shouldSyncRuntime) {
+      try {
+        await syncRuntimeConfig({
+          tenantId: auth.tenantId,
+          botId: id,
+          family: row.family as BotFamily,
+          platform: row.platform as Platform,
+          config: previousConfig,
+        });
+      } catch (rollbackError) {
+        console.error('Failed to roll back runtime config after DB update failure', rollbackError);
+      }
+    }
+
+    throw error;
+  }
 
   logAudit({
     tenantId: auth.tenantId,
@@ -373,21 +619,42 @@ botsRouter.post('/:id/start', async (c) => {
     }
   }
 
-  let runtime = getRuntime(auth.tenantId, id);
-  if (!runtime) {
-    const credentials = lookupCredentials(auth.tenantId, row.platform);
-    runtime = createRuntime({
+  const normalizedConfig = normalizeRuntimeConfig(row.family as BotFamily, row.platform, parsedConfig);
+  const credentials = lookupCredentials(auth.tenantId, row.platform);
+
+  if (isWorkerControlPlaneEnabled()) {
+    await initWorkerRuntime({
       botId: id,
       tenantId: auth.tenantId,
       family: row.family as BotFamily,
       platform: row.platform as Platform,
-      config: normalizeRuntimeConfig(row.family as BotFamily, row.platform, parsedConfig),
+      config: normalizedConfig,
       tickIntervalMs: familyTickIntervalMs(row.family as BotFamily),
-      onStateChange: makePersistCallback(id, auth.tenantId, row.family as BotFamily, row.platform as Platform),
       credentials,
     });
+    const startResult = await callWorkerControlPlane<{ ok: boolean; status: BotStatus; reason?: string }>(auth.tenantId, id, 'start', { method: 'POST' });
+    if (!startResult.ok) {
+      return c.json({ success: false, error: startResult.reason ?? 'Failed to start bot runtime' }, 400);
+    }
+  } else {
+    let runtime = getRuntime(auth.tenantId, id);
+    if (!runtime) {
+      runtime = createRuntime({
+        botId: id,
+        tenantId: auth.tenantId,
+        family: row.family as BotFamily,
+        platform: row.platform as Platform,
+        config: normalizedConfig,
+        tickIntervalMs: familyTickIntervalMs(row.family as BotFamily),
+        onStateChange: makePersistCallback(id, auth.tenantId, row.family as BotFamily, row.platform as Platform),
+        credentials,
+      });
+    }
+    const started = runtime.start();
+    if (!started.ok) {
+      return c.json({ success: false, error: 'Failed to start bot runtime' }, 400);
+    }
   }
-  runtime.start();
 
   db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?').run('running', Date.now(), id);
   logAudit({
@@ -407,8 +674,12 @@ botsRouter.post('/:id/pause', async (c) => {
   const db = getDb();
   const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
-  const runtime = getRuntime(auth.tenantId, id);
-  runtime?.pause();
+  if (isWorkerControlPlaneEnabled()) {
+    await callWorkerControlPlane(auth.tenantId, id, 'pause', { method: 'POST' });
+  } else {
+    const runtime = getRuntime(auth.tenantId, id);
+    runtime?.pause();
+  }
   db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?').run('paused', Date.now(), id);
   logAudit({
     tenantId: auth.tenantId,
@@ -427,27 +698,31 @@ botsRouter.post('/:id/stop', async (c) => {
   const db = getDb();
   const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
-  const runtime = getRuntime(auth.tenantId, id);
+  const runtimeSnapshot = await getRuntimeMetricsSnapshot(auth.tenantId, id);
 
   // Persist metrics snapshot + tick history before stopping
-  if (runtime) {
-    const metrics = runtime.getMetrics();
-    if (metrics) {
+  if (runtimeSnapshot.metrics) {
+      const metrics = runtimeSnapshot.metrics;
       db.prepare(
         'INSERT INTO bot_metrics (bot_id, total_ticks, successful_actions, failed_actions, denied_actions, total_pnl_usd, uptime_ms, last_error_message, last_error_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       ).run(id, metrics.totalTicks, metrics.successfulActions, metrics.failedActions, metrics.deniedActions, metrics.totalPnlUsd, metrics.uptimeMs, metrics.lastErrorMessage ?? null, metrics.lastErrorAt ?? null, Date.now());
-    }
+  }
 
-    const history = runtime.getTickHistory(200);
+  if (runtimeSnapshot.history.length > 0) {
     const insertDecision = db.prepare(
       'INSERT INTO decision_log (bot_id, tenant_id, action, result, details, duration_ms, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
     );
-    for (const t of history) {
+    for (const t of runtimeSnapshot.history) {
       insertDecision.run(id, auth.tenantId, t.action, t.result, JSON.stringify(t.details), t.durationMs, t.timestamp);
     }
   }
 
-  runtime?.stop();
+  if (isWorkerControlPlaneEnabled()) {
+    await callWorkerControlPlane(auth.tenantId, id, 'stop', { method: 'POST' });
+  } else {
+    const runtime = getRuntime(auth.tenantId, id);
+    runtime?.stop();
+  }
   db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?').run('stopped', Date.now(), id);
   logAudit({
     tenantId: auth.tenantId,
@@ -466,8 +741,12 @@ botsRouter.post('/:id/kill', async (c) => {
   const db = getDb();
   const row = db.prepare('SELECT id, tenant_id, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
-  const runtime = getRuntime(auth.tenantId, id);
-  runtime?.killSwitch();
+  if (isWorkerControlPlaneEnabled()) {
+    await callWorkerControlPlane(auth.tenantId, id, 'kill', { method: 'POST' });
+  } else {
+    const runtime = getRuntime(auth.tenantId, id);
+    runtime?.killSwitch();
+  }
   db.prepare('UPDATE bots SET status = ?, updated_at = ? WHERE id = ?').run('stopped', Date.now(), id);
   logAudit({
     tenantId: auth.tenantId,
@@ -493,7 +772,11 @@ botsRouter.delete('/:id', async (c) => {
   if (row.status === 'running') {
     return c.json({ success: false, error: 'Cannot delete a running bot — stop it first' }, 400);
   }
-  destroyRuntime(auth.tenantId, id);
+  if (isWorkerControlPlaneEnabled()) {
+    await callWorkerControlPlane(auth.tenantId, id, 'delete', { method: 'POST' }).catch(() => undefined);
+  } else {
+    destroyRuntime(auth.tenantId, id);
+  }
   db.prepare('DELETE FROM bots WHERE id = ?').run(id);
   db.prepare('DELETE FROM bot_state WHERE bot_id = ?').run(id);
   logAudit({
@@ -531,10 +814,10 @@ botsRouter.get('/:id/metrics', async (c) => {
   const row = db.prepare('SELECT id, tenant_id, family, status FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
-  const runtime = getRuntime(auth.tenantId, id);
-  const metrics = runtime?.getMetrics() ?? null;
-  const status = runtime?.getStatus() ?? row.status;
-  const heartbeat = runtime?.getHeartbeat() ?? null;
+  const runtimeSnapshot = await getRuntimeMetricsSnapshot(auth.tenantId, id);
+  const metrics = runtimeSnapshot.metrics;
+  const status = runtimeSnapshot.status ?? row.status;
+  const heartbeat = runtimeSnapshot.heartbeat;
 
   return c.json({
     success: true,
@@ -543,6 +826,11 @@ botsRouter.get('/:id/metrics', async (c) => {
       family: row.family,
       status,
       heartbeat,
+      authority: {
+        mode: isWorkerControlPlaneEnabled() ? 'worker-control-plane' : 'local-runtime',
+        label: isWorkerControlPlaneEnabled() ? 'Cloudflare Durable Object' : 'Local runtime registry',
+        live: Boolean(metrics || heartbeat),
+      },
       metrics: metrics ?? {
         totalTicks: 0,
         successfulActions: 0,
@@ -565,8 +853,9 @@ botsRouter.get('/:id/trace', async (c) => {
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
   const limit = Math.min(Number(c.req.query('limit') ?? '50'), 200);
-  const runtime = getRuntime(auth.tenantId, id);
-  const history = runtime?.getTickHistory(limit) ?? [];
+  const history = isWorkerControlPlaneEnabled()
+    ? await callWorkerControlPlane<WorkerTickResult[]>(auth.tenantId, id, 'history', { query: { limit } }).catch(() => [])
+    : (getRuntime(auth.tenantId, id)?.getTickHistory(limit) as WorkerTickResult[] ?? []);
 
   return c.json({ success: true, data: { botId: id, ticks: history } });
 });
@@ -580,8 +869,9 @@ botsRouter.get('/:id/decisions', async (c) => {
   const row = db.prepare('SELECT id, tenant_id FROM bots WHERE id = ? AND tenant_id = ?').get(id, auth.tenantId) as BotRow | undefined;
   if (!row) return c.json({ success: false, error: 'Bot not found' }, 404);
 
-  const runtime = getRuntime(auth.tenantId, id);
-  const history = runtime?.getTickHistory(200) ?? [];
+  const history = isWorkerControlPlaneEnabled()
+    ? await callWorkerControlPlane<WorkerTickResult[]>(auth.tenantId, id, 'history', { query: { limit: 200 } }).catch(() => [])
+    : (getRuntime(auth.tenantId, id)?.getTickHistory(200) as WorkerTickResult[] ?? []);
 
   // Filter to only actionable decisions (not heartbeats)
   const decisions = history.filter((t) => t.result !== 'skipped' || (t.details as Record<string, unknown>)?.suggestedSignal);
@@ -629,6 +919,11 @@ botsRouter.get('/:id/history', async (c) => {
  * Called once during API startup.
  */
 export function restoreRuntimes(): void {
+  if (isWorkerControlPlaneEnabled()) {
+    console.log('[Restore] Worker control plane enabled; skipping local runtime restoration');
+    return;
+  }
+
   try {
     const db = getDb();
     const rows = db.prepare(

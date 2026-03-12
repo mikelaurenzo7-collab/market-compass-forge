@@ -3,6 +3,7 @@ import {
   checkPolicies,
   requestApproval,
   resolveApproval,
+  consumeApprovalForAction,
   getPendingApprovals,
   checkBudget,
   recordSpend,
@@ -61,6 +62,45 @@ describe('Safety Model', () => {
       expect(result.allowed).toBe(false);
       expect(result.requiresApproval).toBe(true);
     });
+
+    it('evaluates policy conditions against runtime context', () => {
+      const safety = makeSafetyContext({
+        policies: [
+          { id: 'position-cap', description: 'test', condition: 'action.amountUsd > config.maxPositionSizeUsd', action: 'deny', riskLevel: 'high' },
+        ],
+      });
+      const denied = checkPolicies(safety, 'high', {
+        action: { amountUsd: 250 },
+        config: { maxPositionSizeUsd: 100 },
+      });
+      const allowed = checkPolicies(safety, 'high', {
+        action: { amountUsd: 50 },
+        config: { maxPositionSizeUsd: 100 },
+      });
+      expect(denied.allowed).toBe(false);
+      expect(allowed.allowed).toBe(true);
+    });
+
+    it('supports abs and includes condition operators', () => {
+      const safety = makeSafetyContext({
+        policies: [
+          { id: 'reprice-cap', description: 'test', condition: 'abs(priceChange) > config.maxPriceChangePercent', action: 'require_approval', riskLevel: 'medium' },
+          { id: 'scope-guard', description: 'test', condition: '!config.dataAccessScopes.includes(scope)', action: 'deny', riskLevel: 'critical' },
+        ],
+      });
+      const approval = checkPolicies(safety, 'medium', {
+        priceChange: -12,
+        config: { maxPriceChangePercent: 5, dataAccessScopes: ['tasks'] },
+        scope: 'tasks',
+      });
+      const denial = checkPolicies(safety, 'critical', {
+        priceChange: 0,
+        config: { maxPriceChangePercent: 5, dataAccessScopes: ['tasks'] },
+        scope: 'payroll',
+      });
+      expect(approval.requiresApproval).toBe(true);
+      expect(denial.allowed).toBe(false);
+    });
   });
 
   // ─── Layer 2: Approval Queue ─────────────────────────────
@@ -83,6 +123,18 @@ describe('Safety Model', () => {
       const resolved = resolveApproval(req.id, true, 'admin@test.com');
       expect(resolved?.status).toBe('approved');
       expect(resolved?.resolvedBy).toBe('admin@test.com');
+    });
+
+    it('consumes approved action grants exactly once', () => {
+      const safety = makeSafetyContext();
+      const req = requestApproval(safety, 'buy BTC-USD', 'high', 'policy-2');
+      resolveApproval(req.id, true, 'admin@test.com');
+
+      const consumed = consumeApprovalForAction(safety, 'buy BTC-USD');
+      expect(consumed?.status).toBe('consumed');
+
+      const missing = consumeApprovalForAction(safety, 'buy BTC-USD');
+      expect(missing).toBeUndefined();
     });
 
     it('returns undefined for non-existent approval', () => {
@@ -137,6 +189,19 @@ describe('Safety Model', () => {
       const result = checkBudget(budget, 100);
       expect(result.warningTriggered).toBe(true);
     });
+
+    it('resets the hourly budget window after one hour', () => {
+      const budget: BudgetConfig = {
+        maxDailySpendUsd: 1000,
+        maxPerActionUsd: 500,
+        warningThresholdPercent: 80,
+        currentSpentUsd: 200,
+        currentHourlySpentUsd: 260,
+        currentHourlyWindowStartedAt: Date.now() - 3_700_000,
+      };
+      const result = checkBudget(budget, 100);
+      expect(result.allowed).toBe(true);
+    });
   });
 
   describe('recordSpend', () => {
@@ -182,6 +247,15 @@ describe('Safety Model', () => {
       cb = resetCircuitBreaker(cb);
       expect(cb.isTripped).toBe(false);
       expect(cb.currentErrors).toBe(0);
+    });
+
+    it('allows recovery after breaker cooldown elapses', () => {
+      const cb: CircuitBreakerConfig = {
+        ...createDefaultCircuitBreaker(),
+        isTripped: true,
+        trippedAt: Date.now() - 301_000,
+      };
+      expect(checkCircuitBreaker(cb)).toBe(true);
     });
   });
 
@@ -246,6 +320,28 @@ describe('Safety Model', () => {
       expect(result.allowed).toBe(false);
       expect(result.requiresApproval).toBe(true);
       expect(result.approvalRequest).toBeDefined();
+    });
+
+    it('executes once after a matching approval is resolved', () => {
+      const safety = makeSafetyContext({
+        policies: [
+          { id: 'req-approval', description: 'test', condition: 'true', action: 'require_approval', riskLevel: 'medium' },
+        ],
+      });
+
+      const first = runSafetyPipeline(safety, 'buy BTC-USD', 50, 'medium');
+      expect(first.allowed).toBe(false);
+      expect(first.approvalRequest?.id).toBeDefined();
+
+      resolveApproval(first.approvalRequest!.id, true, 'admin@test.com');
+
+      const second = runSafetyPipeline(safety, 'buy BTC-USD', 50, 'medium');
+      expect(second.allowed).toBe(true);
+      expect(second.requiresApproval).toBe(false);
+
+      const third = runSafetyPipeline(safety, 'buy BTC-USD', 50, 'medium');
+      expect(third.allowed).toBe(false);
+      expect(third.requiresApproval).toBe(true);
     });
   });
 });

@@ -12,6 +12,7 @@ process.env.ENCRYPTION_KEY = 'test-encryption-key-32bytes!';
 import app from '../../server';
 import { getDb, closeDb } from '../../lib/db';
 import { signAccessToken } from '../../lib/auth';
+import { getRuntime } from '@beastbots/workers';
 
 describe('bots endpoints (DB-backed)', () => {
   let db: any;
@@ -109,6 +110,7 @@ describe('bots endpoints (DB-backed)', () => {
     expect(metricsBody.data.botId).toBe(createdBotId);
     expect(metricsBody.data.metrics).toHaveProperty('totalTicks');
     expect(metricsBody.data.status).toBe('running');
+    expect(metricsBody.data.authority.mode).toBe('local-runtime');
 
     // ── Observability: trace endpoint ──
     const traceRes = await app.request(`/api/bots/${createdBotId}/trace`, { headers: { Authorization: authHeader } });
@@ -137,5 +139,145 @@ describe('bots endpoints (DB-backed)', () => {
     expect(delRes2.status).toBe(200);
     const delBody = await delRes2.json();
     expect(delBody.data.deleted).toBe(createdBotId);
+  });
+
+  it('starts a workforce bot with inferred category and preserves workforce config updates', async () => {
+    const createRes = await app.request('/api/bots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({
+        family: 'workforce',
+        platform: 'slack',
+        name: 'Support Workflow',
+        config: {
+          strategies: ['task_triage'],
+          paperMode: true,
+          escalationThresholdConfidence: 0.72,
+        },
+      }),
+    });
+    expect(createRes.status).toBe(201);
+    const createBody = await createRes.json();
+    const workforceBotId = createBody.data.id;
+
+    const patchRes = await app.request(`/api/bots/${workforceBotId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({
+        config: {
+          workingHoursUtc: { start: 13, end: 21 },
+          maxConcurrentTasks: 2,
+        },
+      }),
+    });
+    expect(patchRes.status).toBe(200);
+    const patchBody = await patchRes.json();
+    expect(patchBody.data.config.workingHoursUtc).toEqual({ start: 13, end: 21 });
+    expect(patchBody.data.config.maxConcurrentTasks).toBe(2);
+
+    const startRes = await app.request(`/api/bots/${workforceBotId}/start`, {
+      method: 'POST',
+      headers: { Authorization: authHeader },
+    });
+    expect(startRes.status).toBe(200);
+
+    const metricsRes = await app.request(`/api/bots/${workforceBotId}/metrics`, {
+      headers: { Authorization: authHeader },
+    });
+    expect(metricsRes.status).toBe(200);
+    const metricsBody = await metricsRes.json();
+    expect(metricsBody.data.botId).toBe(workforceBotId);
+    expect(metricsBody.data.metrics).toHaveProperty('totalTicks');
+
+    const stopRes = await app.request(`/api/bots/${workforceBotId}/stop`, {
+      method: 'POST',
+      headers: { Authorization: authHeader },
+    });
+    expect(stopRes.status).toBe(200);
+  });
+
+  it('syncs config patches into an already running runtime', async () => {
+    db.prepare('UPDATE tenants SET plan = ? WHERE id = ?').run('enterprise', tenantId);
+
+    const createRes = await app.request('/api/bots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({
+        family: 'workforce',
+        platform: 'slack',
+        name: 'Live Config Sync',
+        config: {
+          strategies: ['task_triage'],
+          paperMode: true,
+          maxConcurrentTasks: 1,
+        },
+      }),
+    });
+    expect(createRes.status).toBe(201);
+    const botId = (await createRes.json()).data.id;
+
+    const startRes = await app.request(`/api/bots/${botId}/start`, {
+      method: 'POST',
+      headers: { Authorization: authHeader },
+    });
+    expect(startRes.status).toBe(200);
+
+    const patchRes = await app.request(`/api/bots/${botId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({ config: { maxConcurrentTasks: 3 } }),
+    });
+    expect(patchRes.status).toBe(200);
+
+    const runtime = getRuntime(tenantId, botId);
+    expect(runtime?.getState()?.config).toMatchObject({ maxConcurrentTasks: 3 });
+    expect((runtime?.getState()?.engineState as any)?.config?.maxConcurrentTasks).toBe(3);
+
+    const stopRes = await app.request(`/api/bots/${botId}/stop`, {
+      method: 'POST',
+      headers: { Authorization: authHeader },
+    });
+    expect(stopRes.status).toBe(200);
+  });
+
+  it('does not persist config changes when active runtime sync fails', async () => {
+    const createRes = await app.request('/api/bots', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+      body: JSON.stringify({
+        family: 'workforce',
+        platform: 'slack',
+        name: 'Runtime Sync Failure',
+        config: { maxConcurrentTasks: 1 },
+      }),
+    });
+    expect(createRes.status).toBe(201);
+    const botId = (await createRes.json()).data.id;
+
+    db.prepare('UPDATE bots SET status = ? WHERE id = ?').run('running', botId);
+
+    const previousWorkersBaseUrl = process.env.WORKERS_BASE_URL;
+    const previousWorkerToken = process.env.WORKER_AUTH_TOKEN;
+    process.env.WORKERS_BASE_URL = 'http://127.0.0.1:9';
+    process.env.WORKER_AUTH_TOKEN = 'test-worker-token';
+
+    try {
+      const patchRes = await app.request(`/api/bots/${botId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: authHeader },
+        body: JSON.stringify({ config: { maxConcurrentTasks: 4 } }),
+      });
+
+      expect(patchRes.status).toBe(502);
+
+      const stored = db.prepare('SELECT config FROM bots WHERE id = ?').get(botId) as { config: string };
+      expect(JSON.parse(stored.config)).toMatchObject({ maxConcurrentTasks: 1 });
+    } finally {
+      if (previousWorkersBaseUrl === undefined) delete process.env.WORKERS_BASE_URL;
+      else process.env.WORKERS_BASE_URL = previousWorkersBaseUrl;
+
+      if (previousWorkerToken === undefined) delete process.env.WORKER_AUTH_TOKEN;
+      else process.env.WORKER_AUTH_TOKEN = previousWorkerToken;
+    }
   });
 });

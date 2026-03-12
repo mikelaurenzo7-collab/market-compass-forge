@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { getDb } from '../lib/db.js';
 import { verifyAuthHeader } from '../lib/auth.js';
-import { getRuntime } from '@beastbots/workers';
+import { getRuntimeMetricsSnapshot } from '../lib/runtime-snapshot.js';
 
 export const analyticsRouter = new Hono();
 
@@ -14,6 +14,21 @@ interface DecisionRow { action: string; result: string; ts: number; family: stri
 interface PnlRow { pnlUsd: number; ts: number; family: string }
 interface BotNameRow { id: string; family: string; platform: string; status: string; name: string }
 interface BotMetricRow { total_ticks: number; successful_actions: number; failed_actions: number; denied_actions: number; total_pnl_usd: number; uptime_ms: number; recorded_at: number }
+interface StoreOutcomeRow {
+  revenueUsd: number | null;
+  ordersCount: number | null;
+  fulfilledOrdersCount: number | null;
+  unitsSold: number | null;
+  stockoutAlerts: number | null;
+  restocks: number | null;
+}
+interface StoreOutcomeEventRow {
+  eventType: string;
+  revenueUsd: number;
+  units: number;
+  payload: string;
+  createdAt: number;
+}
 interface CurrentBotMetrics {
   totalTicks: number;
   successfulActions: number;
@@ -56,9 +71,22 @@ function formatPercent(value: number) {
   return `${Math.round(value * 10) / 10}%`;
 }
 
-function getCurrentBotMetrics(tenantId: string, bot: BotNameRow | BotRow, latestMetricsStmt: ReturnType<ReturnType<typeof getDb>['prepare']>): CurrentBotMetrics {
-  const runtime = getRuntime(tenantId, bot.id);
-  const liveMetrics = runtime?.getMetrics();
+function getPeriodConfig(period: string, now: number) {
+  switch (period) {
+    case '7d':
+      return { sinceMs: now - 7 * 86_400_000, bucketMs: 86_400_000 };
+    case '30d':
+      return { sinceMs: now - 30 * 86_400_000, bucketMs: 86_400_000 };
+    case '90d':
+      return { sinceMs: now - 90 * 86_400_000, bucketMs: 86_400_000 };
+    default:
+      return { sinceMs: now - 86_400_000, bucketMs: 3_600_000 };
+  }
+}
+
+async function getCurrentBotMetrics(tenantId: string, bot: BotNameRow | BotRow, latestMetricsStmt: ReturnType<ReturnType<typeof getDb>['prepare']>): Promise<CurrentBotMetrics> {
+  const liveSnapshot = await getRuntimeMetricsSnapshot(tenantId, bot.id);
+  const liveMetrics = liveSnapshot.metrics;
   if (liveMetrics) {
     return {
       totalTicks: liveMetrics.totalTicks,
@@ -92,7 +120,39 @@ function getCurrentBotMetrics(tenantId: string, bot: BotNameRow | BotRow, latest
   };
 }
 
-function buildFamilyRoiSummaries(rows: Array<BotNameRow | BotRow>, metricsByBotId: Map<string, CurrentBotMetrics>) {
+function getStoreOutcomeSummary(db: ReturnType<typeof getDb>, tenantId: string, platform?: string, sinceMs?: number) {
+  const platformClause = platform ? 'AND platform = ?' : '';
+  const periodClause = sinceMs ? 'AND created_at >= ?' : '';
+  const params: Array<string | number> = [tenantId];
+  if (sinceMs) params.push(sinceMs);
+  if (platform) params.push(platform);
+  const row = db.prepare(`
+    SELECT
+      SUM(CASE WHEN event_type = 'order_created' THEN revenue_usd ELSE 0 END) AS revenueUsd,
+      COUNT(CASE WHEN event_type = 'order_created' THEN 1 END) AS ordersCount,
+      COUNT(CASE WHEN event_type = 'order_fulfilled' THEN 1 END) AS fulfilledOrdersCount,
+      SUM(CASE WHEN event_type = 'order_created' THEN units ELSE 0 END) AS unitsSold,
+      COUNT(CASE WHEN event_type = 'inventory_stockout' THEN 1 END) AS stockoutAlerts,
+      COUNT(CASE WHEN event_type = 'inventory_restocked' THEN 1 END) AS restocks
+    FROM store_roi_events
+    WHERE tenant_id = ? ${periodClause} ${platformClause}
+  `).get(...params) as StoreOutcomeRow | undefined;
+
+  return {
+    revenueUsd: row?.revenueUsd ?? 0,
+    ordersCount: row?.ordersCount ?? 0,
+    fulfilledOrdersCount: row?.fulfilledOrdersCount ?? 0,
+    unitsSold: row?.unitsSold ?? 0,
+    stockoutAlerts: row?.stockoutAlerts ?? 0,
+    restocks: row?.restocks ?? 0,
+  };
+}
+
+function buildFamilyRoiSummaries(
+  rows: Array<BotNameRow | BotRow>,
+  metricsByBotId: Map<string, CurrentBotMetrics>,
+  storeOutcomes: ReturnType<typeof getStoreOutcomeSummary>,
+) {
   const grouped = new Map<string, FamilyRoiSummary>();
 
   for (const bot of rows) {
@@ -165,6 +225,28 @@ function buildFamilyRoiSummaries(rows: Array<BotNameRow | BotRow>, metricsByBotI
     }
 
     if (summary.family === 'store') {
+      if (storeOutcomes.ordersCount > 0 || storeOutcomes.stockoutAlerts > 0 || storeOutcomes.revenueUsd > 0) {
+        summary.primarySignal = {
+          label: 'Revenue Captured',
+          value: formatCurrency(storeOutcomes.revenueUsd),
+          hint: `${storeOutcomes.ordersCount.toLocaleString()} Shopify orders · ${storeOutcomes.unitsSold.toLocaleString()} units sold`,
+          tone: storeOutcomes.revenueUsd > 0 ? 'positive' : 'neutral',
+        };
+        summary.secondarySignal = {
+          label: 'Orders Captured',
+          value: storeOutcomes.ordersCount.toLocaleString(),
+          hint: `${storeOutcomes.fulfilledOrdersCount.toLocaleString()} fulfilled from live webhook events`,
+          tone: storeOutcomes.ordersCount > 0 ? 'positive' : 'neutral',
+        };
+        summary.tertiarySignal = {
+          label: 'Stockout Alerts',
+          value: storeOutcomes.stockoutAlerts.toLocaleString(),
+          hint: `${storeOutcomes.restocks.toLocaleString()} restocks recorded across connected stores`,
+          tone: storeOutcomes.stockoutAlerts > 0 ? 'warning' : 'positive',
+        };
+        continue;
+      }
+
       summary.primarySignal = {
         label: 'Tracked Value',
         value: formatCurrency(summary.totalPnlUsd),
@@ -257,7 +339,7 @@ analyticsRouter.get('/summary', async (c) => {
     familyCounts[b.family].total++;
     if (b.status === 'running') familyCounts[b.family].running++;
 
-    metricsByBotId.set(b.id, getCurrentBotMetrics(auth.tenantId, b, latestMetricsStmt));
+    metricsByBotId.set(b.id, await getCurrentBotMetrics(auth.tenantId, b, latestMetricsStmt));
   }
 
   let totalTicks = 0;
@@ -285,6 +367,7 @@ analyticsRouter.get('/summary', async (c) => {
   const credCount = db.prepare(
     'SELECT COUNT(*) AS cnt FROM credentials WHERE tenant_id = ?'
   ).get(auth.tenantId) as CountRow | undefined;
+  const storeOutcomes = getStoreOutcomeSummary(db, auth.tenantId);
 
   return c.json({
     success: true,
@@ -304,7 +387,7 @@ analyticsRouter.get('/summary', async (c) => {
         successRate,
         totalActions,
       },
-      familyRoi: buildFamilyRoiSummaries(bots, metricsByBotId),
+      familyRoi: buildFamilyRoiSummaries(bots, metricsByBotId, storeOutcomes),
       connectedPlatforms: credCount?.cnt ?? 0,
     },
   });
@@ -340,6 +423,67 @@ analyticsRouter.get('/activity', async (c) => {
   return c.json({ success: true, data: merged });
 });
 
+// ─── GET /api/analytics/store-outcomes ────────────────────────
+// Explicit commerce outcomes from Shopify webhook events
+analyticsRouter.get('/store-outcomes', async (c) => {
+  const auth = await verifyAuthHeader(c.req.header('Authorization'));
+  if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
+
+  const period = c.req.query('period') ?? '24h';
+  const platform = c.req.query('platform') ?? undefined;
+  const now = Date.now();
+  const { sinceMs, bucketMs } = getPeriodConfig(period, now);
+  const db = getDb();
+
+  const summary = getStoreOutcomeSummary(db, auth.tenantId, platform, sinceMs);
+  const platformClause = platform ? 'AND platform = ?' : '';
+  const periodEvents = db.prepare(`
+    SELECT event_type AS eventType, revenue_usd AS revenueUsd, units, payload, created_at AS createdAt
+    FROM store_roi_events
+    WHERE tenant_id = ? AND created_at >= ? ${platformClause}
+    ORDER BY created_at ASC
+  `).all(...(platform ? [auth.tenantId, sinceMs, platform] : [auth.tenantId, sinceMs])) as StoreOutcomeEventRow[];
+  const recentEvents = db.prepare(`
+    SELECT event_type AS eventType, revenue_usd AS revenueUsd, units, payload, created_at AS createdAt
+    FROM store_roi_events
+    WHERE tenant_id = ? AND created_at >= ? ${platformClause}
+    ORDER BY created_at DESC
+    LIMIT 20
+  `).all(...(platform ? [auth.tenantId, sinceMs, platform] : [auth.tenantId, sinceMs])) as StoreOutcomeEventRow[];
+
+  const buckets: Record<number, { ts: number; revenueUsd: number; ordersCount: number; fulfilledOrdersCount: number; stockoutAlerts: number; unitsSold: number }> = {};
+  for (const event of periodEvents) {
+    const bucketKey = Math.floor(event.createdAt / bucketMs) * bucketMs;
+    if (!buckets[bucketKey]) {
+      buckets[bucketKey] = { ts: bucketKey, revenueUsd: 0, ordersCount: 0, fulfilledOrdersCount: 0, stockoutAlerts: 0, unitsSold: 0 };
+    }
+    const bucket = buckets[bucketKey];
+    if (event.eventType === 'order_created') {
+      bucket.revenueUsd += event.revenueUsd;
+      bucket.ordersCount += 1;
+      bucket.unitsSold += event.units;
+    }
+    if (event.eventType === 'order_fulfilled') bucket.fulfilledOrdersCount += 1;
+    if (event.eventType === 'inventory_stockout') bucket.stockoutAlerts += 1;
+  }
+
+  const timeseries = [];
+  for (let t = Math.floor(sinceMs / bucketMs) * bucketMs; t <= now; t += bucketMs) {
+    timeseries.push(buckets[t] ?? { ts: t, revenueUsd: 0, ordersCount: 0, fulfilledOrdersCount: 0, stockoutAlerts: 0, unitsSold: 0 });
+  }
+
+  return c.json({
+    success: true,
+    data: {
+      period,
+      platform: platform ?? 'all',
+      summary,
+      timeseries,
+      recentEvents,
+    },
+  });
+});
+
 // ─── GET /api/analytics/timeseries ─────────────────────────────
 // Time-series data for charts — from bot_metrics + decision_log
 analyticsRouter.get('/timeseries', async (c) => {
@@ -348,27 +492,7 @@ analyticsRouter.get('/timeseries', async (c) => {
 
   const period = c.req.query('period') ?? '24h';
   const now = Date.now();
-
-  let sinceMs: number;
-  let bucketMs: number;
-  switch (period) {
-    case '7d':
-      sinceMs = now - 7 * 86_400_000;
-      bucketMs = 3_600_000; // 1 hour buckets
-      break;
-    case '30d':
-      sinceMs = now - 30 * 86_400_000;
-      bucketMs = 86_400_000; // 1 day buckets
-      break;
-    case '90d':
-      sinceMs = now - 90 * 86_400_000;
-      bucketMs = 86_400_000;
-      break;
-    default: // 24h
-      sinceMs = now - 86_400_000;
-      bucketMs = 3_600_000;
-      break;
-  }
+  const { sinceMs, bucketMs } = getPeriodConfig(period, now);
 
   const db = getDb();
 
@@ -413,10 +537,9 @@ analyticsRouter.get('/timeseries', async (c) => {
   const bots = db.prepare('SELECT id, family FROM bots WHERE tenant_id = ?').all(auth.tenantId) as { id: string; family: string }[];
   const livePnl: PnlRow[] = [];
   for (const b of bots) {
-    const runtime = getRuntime(auth.tenantId, b.id);
-    if (runtime) {
-      const m = runtime.getMetrics();
-      if (m) livePnl.push({ pnlUsd: m.totalPnlUsd, ts: now, family: b.family });
+    const snapshot = await getRuntimeMetricsSnapshot(auth.tenantId, b.id);
+    if (snapshot.metrics) {
+      livePnl.push({ pnlUsd: snapshot.metrics.totalPnlUsd, ts: now, family: b.family });
     }
   }
 
@@ -444,8 +567,8 @@ analyticsRouter.get('/per-bot', async (c) => {
     'SELECT total_ticks, successful_actions, failed_actions, denied_actions, total_pnl_usd, uptime_ms, recorded_at FROM bot_metrics WHERE bot_id = ? ORDER BY recorded_at DESC LIMIT 1'
   );
 
-  const perBot = bots.map((b) => {
-    const metrics = getCurrentBotMetrics(auth.tenantId, b, latestMetricsStmt);
+  const perBot = await Promise.all(bots.map(async (b) => {
+    const metrics = await getCurrentBotMetrics(auth.tenantId, b, latestMetricsStmt);
 
     return {
       id: b.id,
@@ -455,7 +578,7 @@ analyticsRouter.get('/per-bot', async (c) => {
       status: b.status,
       metrics,
     };
-  });
+  }));
 
   return c.json({ success: true, data: perBot });
 });

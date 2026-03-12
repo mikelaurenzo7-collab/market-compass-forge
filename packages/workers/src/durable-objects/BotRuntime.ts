@@ -22,6 +22,7 @@ import {
   createDefaultBudget,
   createDefaultCircuitBreaker,
   createDefaultPolicies,
+  resetCircuitBreaker,
   createTradingAdapter,
   createStoreAdapter,
   createSocialAdapter,
@@ -35,6 +36,59 @@ import {
   createWorkforceEngineState,
   executeWorkforceTick,
 } from '@beastbots/shared';
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function serializeComplexValue(value: unknown): unknown {
+  if (value instanceof Map) {
+    return {
+      __type: 'Map',
+      entries: Array.from(value.entries()).map(([key, entryValue]) => [key, serializeComplexValue(entryValue)]),
+    };
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => serializeComplexValue(entry));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, serializeComplexValue(entryValue)])
+    );
+  }
+
+  return value;
+}
+
+function deserializeComplexValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => deserializeComplexValue(entry));
+  }
+
+  if (isPlainObject(value) && value.__type === 'Map' && Array.isArray(value.entries)) {
+    return new Map(value.entries.map((entry) => {
+      const [key, entryValue] = entry as [unknown, unknown];
+      return [key, deserializeComplexValue(entryValue)];
+    }));
+  }
+
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [key, deserializeComplexValue(entryValue)])
+    );
+  }
+
+  return value;
+}
+
+function isSimulationMode(
+  config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig,
+): boolean {
+  if ('paperTrading' in config) return Boolean(config.paperTrading);
+  return Boolean(config.paperMode);
+}
 
 // simple stub adapters used when no real provider is injected
 function createStubAdapter(family: BotFamily): TradingAdapter | StoreAdapter | SocialAdapter | WorkforceAdapter {
@@ -214,10 +268,12 @@ export type StateChangeCallback = (state: RuntimeState) => void;
 export class BotRuntime {
   private state: RuntimeState | null = null;
   private lastHeartbeat = Date.now();
-  private tickTimer: ReturnType<typeof setInterval> | null = null;
+  private tickTimer: ReturnType<typeof setTimeout> | null = null;
   private adapter: TradingAdapter | StoreAdapter | SocialAdapter | WorkforceAdapter | null = null;
   private onStateChange: StateChangeCallback | null = null;
   private tickHistory: TickResult[] = [];
+  private tickInFlight = false;
+  private usingStubAdapter = false;
 
   // ─── Lifecycle ────────────────────────────────
 
@@ -265,6 +321,7 @@ export class BotRuntime {
     // attach adapter: use real adapter when credentials provided, stub otherwise
     if (params.adapter) {
       this.adapter = params.adapter;
+      this.usingStubAdapter = false;
     } else if (params.credentials) {
       switch (params.family) {
         case 'trading':
@@ -277,14 +334,16 @@ export class BotRuntime {
           this.adapter = createSocialAdapter(params.platform as SocialPlatform, params.credentials);
           break;
         case 'workforce':
-          this.adapter = createWorkforceAdapter(params.platform as WorkforceCategory, params.credentials);
+          this.adapter = createWorkforceAdapter((params.config as WorkforceBotConfig).category, params.credentials);
           break;
         default:
           this.adapter = createStubAdapter(params.family);
+          this.usingStubAdapter = true;
       }
     } else {
       console.warn(`[BotRuntime] Bot ${params.botId} (${params.family}/${params.platform}): no credentials provided — using stub adapter (no real actions will execute)`);
       this.adapter = createStubAdapter(params.family);
+      this.usingStubAdapter = true;
     }
 
     // initialize engine-specific state
@@ -320,17 +379,60 @@ export class BotRuntime {
     return this.state as RuntimeState;
   }
 
+  applyConfig(params: {
+    config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
+    tickIntervalMs?: number;
+  }): RuntimeState | null {
+    if (!this.state) return null;
+
+    this.state.config = params.config;
+    if (params.tickIntervalMs !== undefined) {
+      this.state.tickIntervalMs = params.tickIntervalMs;
+    }
+
+    if (this.state.engineState && typeof this.state.engineState === 'object') {
+      this.state.engineState = {
+        ...this.state.engineState,
+        config: params.config,
+        safety: this.state.safety,
+      };
+    }
+
+    if (this.state.family === 'workforce' && this.adapter && 'category' in this.adapter) {
+      (this.adapter as WorkforceAdapter).category = (params.config as WorkforceBotConfig).category;
+    }
+
+    if (this.tickTimer) {
+      clearTimeout(this.tickTimer);
+      this.tickTimer = null;
+    }
+    if (this.state.status === 'running') {
+      this.scheduleNextTick();
+    }
+
+    this.notifyStateChange();
+    return this.state;
+  }
+
   start(): { ok: boolean; status: BotStatus } {
     if (!this.state) return { ok: false, status: 'error' };
+
+    if (this.state.status === 'running') {
+      return { ok: true, status: this.state.status };
+    }
+
+    if (this.usingStubAdapter && !isSimulationMode(this.state.config)) {
+      this.state.status = 'error';
+      this.notifyStateChange();
+      return { ok: false, status: this.state.status };
+    }
 
     if (this.state.safety.circuitBreaker.isTripped) {
       return { ok: false, status: 'error' };
     }
 
     this.state.status = 'running';
-    this.tickTimer = setInterval(() => {
-      this.tick().catch((err) => console.error('tick error', err));
-    }, this.state.tickIntervalMs);
+    this.scheduleNextTick();
 
     this.notifyStateChange();
     return { ok: true, status: this.state.status };
@@ -340,7 +442,7 @@ export class BotRuntime {
     if (!this.state) return { ok: false, status: 'error' };
     this.state.status = 'paused';
     if (this.tickTimer) {
-      clearInterval(this.tickTimer);
+      clearTimeout(this.tickTimer);
       this.tickTimer = null;
     }
     this.notifyStateChange();
@@ -351,7 +453,7 @@ export class BotRuntime {
     if (!this.state) return { ok: false, status: 'error' };
     this.state.status = 'stopped';
     if (this.tickTimer) {
-      clearInterval(this.tickTimer);
+      clearTimeout(this.tickTimer);
       this.tickTimer = null;
     }
     this.notifyStateChange();
@@ -364,93 +466,151 @@ export class BotRuntime {
     if (!this.state) return { ok: false, status: 'error' };
     this.state.status = 'stopped';
     this.state.safety.circuitBreaker.isTripped = true;
+    this.state.safety.circuitBreaker.trippedAt = Date.now();
     if (this.tickTimer) {
-      clearInterval(this.tickTimer);
+      clearTimeout(this.tickTimer);
       this.tickTimer = null;
     }
     this.notifyStateChange();
     return { ok: true, status: 'stopped' };
   }
 
+  private scheduleNextTick(): void {
+    if (!this.state || this.state.status !== 'running' || this.tickTimer) return;
+    this.tickTimer = setTimeout(() => {
+      this.tickTimer = null;
+      this.tick().catch((err) => console.error('tick error', err)).finally(() => {
+        this.scheduleNextTick();
+      });
+    }, this.state.tickIntervalMs);
+  }
+
+  private syncMetricsFromEngineState(): void {
+    if (!this.state || !this.state.engineState || typeof this.state.engineState !== 'object') return;
+    const engineState = this.state.engineState as { totalPnl?: number };
+    if (typeof engineState.totalPnl === 'number' && Number.isFinite(engineState.totalPnl)) {
+      this.state.metrics.totalPnlUsd = engineState.totalPnl;
+    }
+  }
+
   // ─── Core Tick ────────────────────────────────
 
   async tick(): Promise<TickResult> {
-    this.lastHeartbeat = Date.now();
-
-    if (!this.state || this.state.status !== 'running') {
+    if (this.tickInFlight) {
       return {
         botId: this.state?.botId ?? 'unknown',
         timestamp: Date.now(),
-        action: 'heartbeat',
+        action: 'tick',
         result: 'skipped',
-        details: { status: this.state?.status ?? 'uninitialized' },
+        details: { reason: 'tick_in_progress' },
         durationMs: 0,
       };
     }
 
-    // Circuit breaker check
-    if (this.state.safety.circuitBreaker.isTripped) {
-      this.state.status = 'error';
-      if (this.tickTimer) {
-        clearInterval(this.tickTimer);
-        this.tickTimer = null;
+    this.tickInFlight = true;
+    this.lastHeartbeat = Date.now();
+
+    try {
+      if (!this.state || this.state.status !== 'running') {
+        return {
+          botId: this.state?.botId ?? 'unknown',
+          timestamp: Date.now(),
+          action: 'heartbeat',
+          result: 'skipped',
+          details: { status: this.state?.status ?? 'uninitialized' },
+          durationMs: 0,
+        };
       }
-      return {
+
+      if (this.state.safety.circuitBreaker.isTripped && this.state.safety.circuitBreaker.trippedAt) {
+        const cooldownElapsed = Date.now() - this.state.safety.circuitBreaker.trippedAt >= this.state.safety.circuitBreaker.cooldownMs;
+        if (cooldownElapsed) {
+          this.state.safety = {
+            ...this.state.safety,
+            circuitBreaker: resetCircuitBreaker(this.state.safety.circuitBreaker),
+          };
+        }
+      }
+
+      // Circuit breaker check
+      if (this.state.safety.circuitBreaker.isTripped) {
+        this.state.status = 'error';
+        if (this.tickTimer) {
+          clearTimeout(this.tickTimer);
+          this.tickTimer = null;
+        }
+        return {
+          botId: this.state.botId,
+          timestamp: Date.now(),
+          action: 'circuit_breaker_halt',
+          result: 'denied',
+          details: { errors: this.state.safety.circuitBreaker.currentErrors },
+          durationMs: 0,
+        };
+      }
+
+      if (this.usingStubAdapter && !isSimulationMode(this.state.config)) {
+        this.state.status = 'error';
+        return {
+          botId: this.state.botId,
+          timestamp: Date.now(),
+          action: 'tick',
+          result: 'error',
+          details: { reason: 'live_credentials_missing' },
+          durationMs: 0,
+        };
+      }
+
+      const startTime = Date.now();
+      this.state.metrics.totalTicks++;
+      this.state.lastTickAt = Date.now();
+      this.state.metrics.uptimeMs = Date.now() - this.state.createdAt;
+
+      // dispatch to the engine corresponding to the bot family
+      let engineResult: { result: TickResult; newState: any } | null = null;
+      switch (this.state.family) {
+        case 'trading':
+          engineResult = await executeTradingTick(this.state.engineState, this.adapter as TradingAdapter);
+          break;
+        case 'store':
+          engineResult = await executeStoreTick(this.state.engineState, this.adapter as StoreAdapter);
+          break;
+        case 'social':
+          engineResult = await executeSocialTick(this.state.engineState, this.adapter as SocialAdapter);
+          break;
+        case 'workforce':
+          engineResult = await executeWorkforceTick(this.state.engineState, this.adapter as WorkforceAdapter);
+          break;
+      }
+
+      if (engineResult) {
+        this.state.engineState = engineResult.newState;
+        this.syncMetricsFromEngineState();
+        // update metrics based on result
+        const r = engineResult.result;
+        if (r.result === 'executed') this.state.metrics.successfulActions++;
+        else if (r.result === 'denied') this.state.metrics.deniedActions++;
+        else if (r.result === 'error') this.state.metrics.failedActions++;
+
+        this.recordTick(r);
+        return r;
+      }
+
+      // fallback if no engine executed
+      const result: TickResult = {
         botId: this.state.botId,
         timestamp: Date.now(),
-        action: 'circuit_breaker_halt',
-        result: 'denied',
-        details: { errors: this.state.safety.circuitBreaker.currentErrors },
-        durationMs: 0,
+        action: `${this.state.family}_tick`,
+        result: 'skipped',
+        details: { reason: 'no_engine' },
+        durationMs: Date.now() - startTime,
       };
+
+      this.recordTick(result);
+      return result;
+    } finally {
+      this.tickInFlight = false;
     }
-
-    const startTime = Date.now();
-    this.state.metrics.totalTicks++;
-    this.state.lastTickAt = Date.now();
-    this.state.metrics.uptimeMs = Date.now() - this.state.createdAt;
-
-    // dispatch to the engine corresponding to the bot family
-    let engineResult: { result: TickResult; newState: any } | null = null;
-    switch (this.state.family) {
-      case 'trading':
-        engineResult = await executeTradingTick(this.state.engineState, this.adapter as TradingAdapter);
-        break;
-      case 'store':
-        engineResult = await executeStoreTick(this.state.engineState, this.adapter as StoreAdapter);
-        break;
-      case 'social':
-        engineResult = await executeSocialTick(this.state.engineState, this.adapter as SocialAdapter);
-        break;
-      case 'workforce':
-        engineResult = await executeWorkforceTick(this.state.engineState, this.adapter as WorkforceAdapter);
-        break;
-    }
-
-    if (engineResult) {
-      this.state.engineState = engineResult.newState;
-      // update metrics based on result
-      const r = engineResult.result;
-      if (r.result === 'executed') this.state.metrics.successfulActions++;
-      else if (r.result === 'denied') this.state.metrics.deniedActions++;
-      else if (r.result === 'error') this.state.metrics.failedActions++;
-
-      this.recordTick(r);
-      return r;
-    }
-
-    // fallback if no engine executed
-    const result: TickResult = {
-      botId: this.state.botId,
-      timestamp: Date.now(),
-      action: `${this.state.family}_tick`,
-      result: 'skipped',
-      details: { reason: 'no_engine' },
-      durationMs: Date.now() - startTime,
-    };
-
-    this.recordTick(result);
-    return result;
   }
 
   // ─── Tick History ──────────────────────────────
@@ -504,8 +664,8 @@ export class BotRuntime {
   } | null {
     if (!this.state) return null;
     return {
-      engineState: JSON.stringify(this.state.engineState ?? {}),
-      safetyState: JSON.stringify(this.state.safety),
+      engineState: JSON.stringify(serializeComplexValue(this.state.engineState ?? {})),
+      safetyState: JSON.stringify(serializeComplexValue(this.state.safety)),
       metrics: JSON.stringify(this.state.metrics),
       tickHistory: JSON.stringify(this.tickHistory.slice(-50)),
       status: this.state.status,
@@ -524,12 +684,13 @@ export class BotRuntime {
   }): void {
     if (!this.state) return;
     try {
-      this.state.engineState = JSON.parse(data.engineState);
-      this.state.safety = JSON.parse(data.safetyState);
+      this.state.engineState = deserializeComplexValue(JSON.parse(data.engineState));
+      this.state.safety = deserializeComplexValue(JSON.parse(data.safetyState)) as SafetyContext;
       this.state.metrics = JSON.parse(data.metrics);
       this.tickHistory = JSON.parse(data.tickHistory);
       this.state.status = data.status as BotStatus;
       this.state.lastTickAt = data.lastTickAt;
+      this.syncMetricsFromEngineState();
     } catch {
       // If any parse fails, keep the freshly-initialized state
     }

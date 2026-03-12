@@ -226,18 +226,17 @@ describe('position tracking integration', () => {
   it('records position in openPositions on buy fill', async () => {
     const config = makeConfig({ strategy: 'dca' });
     const state = createTradingEngineState(config, makeSafety());
+    prefillHistory(state, 'BTC-USD', 100);
     const adapter = makeStubAdapter({ prices: { 'BTC-USD': 100 } });
 
     const { newState } = await executeTradingTick(state, adapter as any);
 
-    // DCA should place a buy — check if position was recorded
-    if (adapter.orders.length > 0 && adapter.orders[0].side === 'buy') {
-      const positions = newState.openPositions.get('BTC-USD');
-      expect(positions).toBeDefined();
-      expect(positions!.length).toBeGreaterThan(0);
-      expect(positions![0].entryPrice).toBe(100);
-      expect(positions![0].side).toBe('buy');
-    }
+    const positions = newState.openPositions.get('BTC-USD');
+    expect(positions).toBeDefined();
+    expect(positions!.length).toBeGreaterThan(0);
+    expect(positions![0].entryPrice).toBe(100);
+    expect(positions![0].side).toBe('buy');
+    expect(newState.lastDcaBuy.get('BTC-USD')).toBeTypeOf('number');
   });
 
   it('stop-loss triggers closeTrackedPosition and updates trade stats', async () => {
@@ -259,9 +258,11 @@ describe('position tracking integration', () => {
 
     const { newState } = await executeTradingTick(state, adapter as any);
 
-    // Position should be closed
+    // Stop-loss should close at least one tracked position and book the loss.
+    // In paper mode the strategy may also open a fresh simulated position later in the same tick,
+    // so we assert on trade outcomes rather than requiring the book to be empty.
     const remaining = newState.openPositions.get('BTC-USD');
-    expect(!remaining || remaining.length === 0).toBe(true);
+    expect((remaining?.length ?? 0)).toBeLessThanOrEqual(1);
     // Should have counted the trade
     expect(newState.totalTrades).toBeGreaterThanOrEqual(1);
     // P&L should be negative

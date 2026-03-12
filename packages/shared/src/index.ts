@@ -46,6 +46,7 @@ export interface BudgetConfig {
   warningThresholdPercent: number;
   currentSpentUsd: number;
   currentHourlySpentUsd?: number;
+  currentHourlyWindowStartedAt?: number;
 }
 
 export interface CircuitBreakerConfig {
@@ -54,6 +55,10 @@ export interface CircuitBreakerConfig {
   windowSizeMs: number;
   cooldownMs: number;
   currentErrors: number;
+  currentWindowStartedAt?: number;
+  currentWindowRequests?: number;
+  currentWindowErrors?: number;
+  trippedAt?: number;
   isTripped: boolean;
 }
 
@@ -522,6 +527,8 @@ export function createDefaultBudget(family: BotFamily): BudgetConfig {
     maxPerActionUsd: limit.perAction,
     warningThresholdPercent: 80,
     currentSpentUsd: 0,
+    currentHourlySpentUsd: 0,
+    currentHourlyWindowStartedAt: Date.now(),
   };
 }
 
@@ -532,6 +539,9 @@ export function createDefaultCircuitBreaker(): CircuitBreakerConfig {
     windowSizeMs: 60_000,
     cooldownMs: 300_000,
     currentErrors: 0,
+    currentWindowStartedAt: Date.now(),
+    currentWindowRequests: 0,
+    currentWindowErrors: 0,
     isTripped: false,
   };
 }

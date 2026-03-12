@@ -118,7 +118,13 @@ export async function executeSocialTick(
           state.safety,
           `publish_${slot.format}_${slot.platform}`,
           0,
-          state.config.contentApprovalRequired ? 'high' : 'low'
+          state.config.contentApprovalRequired ? 'high' : 'low',
+          {
+            bot: { totalTicks: newState.postsPublishedToday + newState.engagementsToday },
+            config: state.config as unknown as Record<string, unknown>,
+            dailyPosts: postsToday,
+            content: { matchesSensitiveKeywords: false },
+          },
         );
 
         if (!safetyResult.allowed) {
@@ -265,6 +271,14 @@ export async function executeSocialTick(
               `trend_post_${trend.hashtag}`,
               0,
               'medium',
+              {
+                bot: { totalTicks: newState.postsPublishedToday + newState.engagementsToday },
+                config: state.config as unknown as Record<string, unknown>,
+                dailyPosts: newState.postsPublishedToday,
+                content: {
+                  matchesSensitiveKeywords: state.config.sensitiveTopicKeywords.some((keyword) => contentText.toLowerCase().includes(keyword.toLowerCase())),
+                },
+              },
             );
 
             if (safetyResult.allowed) {

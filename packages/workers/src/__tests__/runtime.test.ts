@@ -223,6 +223,32 @@ describe('workforce runtime', () => {
     runtime.stop();
     destroyRuntime('tw', 'wf1');
   });
+
+  it('keeps the configured workforce category inside engine state', () => {
+    const runtime = createRuntime({
+      botId: 'wf-category', tenantId: 'tw', family: 'workforce', platform: 'slack' as any,
+      config: {
+        category: 'customer_support',
+        strategies: ['task_orchestration'],
+        maxTasksPerHour: 40,
+        maxConcurrentTasks: 2,
+        requireApprovalForExternal: true,
+        escalationThresholdConfidence: 0.8,
+        dataAccessScopes: ['tickets'],
+        paperMode: true,
+        autonomyLevel: 'manual',
+      },
+      adapter: stubWorkforceAdapter,
+    });
+
+    const state = runtime.getState();
+    expect(state?.family).toBe('workforce');
+    expect(state?.platform).toBe('slack');
+    expect((state?.engineState as any)?.config?.category).toBe('customer_support');
+
+    runtime.stop();
+    destroyRuntime('tw', 'wf-category');
+  });
 });
 
 // ─── Lifecycle & Safety ───────────────────────────────────────
@@ -313,10 +339,30 @@ describe('state serialization', () => {
     expect(metrics?.totalTicks).toBe(3);
     expect(r2.getStatus()).toBe('running');
     expect(r2.getTickHistory().length).toBe(3);
+    expect((r2.getState()?.engineState as any)?.priceHistories).toBeInstanceOf(Map);
 
     r1.stop();
     r2.stop();
     destroyRuntime('ts', 'ser1');
+  });
+
+  it('syncs trading engine pnl into runtime metrics', async () => {
+    const runtime = createRuntime({
+      botId: 'pnl-sync', tenantId: 'ts', family: 'trading', platform: 'coinbase',
+      config: tradingConfig, adapter: stubTradingAdapter,
+    });
+
+    const state = runtime.getState();
+    expect(state).not.toBeNull();
+    (state!.engineState as any).totalPnl = 42.5;
+
+    runtime.start();
+    await runtime.tick();
+
+    expect(runtime.getMetrics()?.totalPnlUsd).toBe(42.5);
+
+    runtime.stop();
+    destroyRuntime('ts', 'pnl-sync');
   });
 });
 

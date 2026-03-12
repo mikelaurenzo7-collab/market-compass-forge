@@ -95,6 +95,14 @@ const STRATEGIES: Record<string, { id: string; name: string; desc: string }[]> =
   ],
 };
 
+function inferWorkforceCategory(platform: string): string {
+  if (platform === 'salesforce' || platform === 'hubspot') return 'sales_crm';
+  if (platform === 'gmail') return 'email_management';
+  if (platform === 'jira' || platform === 'github' || platform === 'notion') return 'project_management';
+  if (platform === 'slack' || platform === 'teams') return 'customer_support';
+  return 'project_management';
+}
+
 
 
 export default function CreateBotPage() {
@@ -164,6 +172,9 @@ export default function CreateBotPage() {
     } else {
       const defaults: Record<string, string> = { store: 'dynamic_pricing', social: 'content_calendar', workforce: 'task_triage' };
       config.strategies = selectedStrategies.length > 0 ? selectedStrategies : [defaults[family] ?? 'task_triage'];
+      if (family === 'workforce') {
+        config.category = inferWorkforceCategory(platform);
+      }
     }
 
     try {

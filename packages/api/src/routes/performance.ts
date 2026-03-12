@@ -9,7 +9,7 @@ import {
   type StrategyBenchmark,
   generatePerformanceReport,
 } from '@beastbots/shared';
-import { getRuntime } from '@beastbots/workers';
+import { getRuntimeMetricsSnapshot } from '../lib/runtime-snapshot.js';
 
 export const performanceRouter = new Hono();
 
@@ -41,9 +41,8 @@ performanceRouter.post('/generate', async (c) => {
   const bots = db.prepare('SELECT id, name, family, platform, config, status, created_at FROM bots WHERE tenant_id = ?').all(auth.tenantId) as BotRow[];
 
   // Current period metrics per bot
-  const currentMetrics = bots.map(bot => {
-    const runtime = getRuntime(auth.tenantId, bot.id);
-    const liveMetrics = runtime?.getMetrics() ?? null;
+  const currentMetrics = await Promise.all(bots.map(async (bot) => {
+    const liveMetrics = (await getRuntimeMetricsSnapshot(auth.tenantId, bot.id)).metrics;
 
     // If running, use live metrics; otherwise use latest persisted snapshot
     let metrics: BotMetrics;
@@ -85,7 +84,7 @@ performanceRouter.post('/generate', async (c) => {
       status: bot.status,
       metrics,
     };
-  });
+  }));
 
   // Previous period metrics for comparison
   const previousMetrics = bots.map(bot => {

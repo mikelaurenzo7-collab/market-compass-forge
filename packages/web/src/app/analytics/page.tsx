@@ -64,6 +64,35 @@ interface TimeseriesBucket {
   fail: number;
 }
 interface PnlSnapshot { ts: number; pnlUsd: number }
+interface StoreOutcomeSummary {
+  revenueUsd: number;
+  ordersCount: number;
+  fulfilledOrdersCount: number;
+  unitsSold: number;
+  stockoutAlerts: number;
+  restocks: number;
+}
+interface StoreOutcomePoint {
+  ts: number;
+  revenueUsd: number;
+  ordersCount: number;
+  fulfilledOrdersCount: number;
+  stockoutAlerts: number;
+  unitsSold: number;
+}
+interface StoreOutcomeEvent {
+  eventType: string;
+  revenueUsd: number;
+  units: number;
+  payload: string;
+  createdAt: number;
+}
+interface StoreOutcomeData {
+  period: string;
+  summary: StoreOutcomeSummary;
+  timeseries: StoreOutcomePoint[];
+  recentEvents: StoreOutcomeEvent[];
+}
 interface PerBotMetric {
   botId: string;
   name: string;
@@ -120,24 +149,27 @@ export default function AnalyticsPage() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [timeseries, setTimeseries] = useState<TimeseriesBucket[]>([]);
   const [pnlSnapshots, setPnlSnapshots] = useState<PnlSnapshot[]>([]);
+  const [storeOutcomes, setStoreOutcomes] = useState<StoreOutcomeData | null>(null);
   const [perBot, setPerBot] = useState<PerBotMetric[]>([]);
   const [fetching, setFetching] = useState(true);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [sumRes, tsRes, pbRes] = await Promise.all([
+      const [sumRes, tsRes, storeRes, pbRes] = await Promise.all([
         apiFetch('/api/analytics/summary'),
         apiFetch(`/api/analytics/timeseries?period=${PERIOD_MAP[period]}`),
+        apiFetch(`/api/analytics/store-outcomes?period=${PERIOD_MAP[period]}`),
         apiFetch('/api/analytics/per-bot'),
       ]);
-      const [sumJson, tsJson, pbJson] = await Promise.all([
-        sumRes.json(), tsRes.json(), pbRes.json(),
+      const [sumJson, tsJson, storeJson, pbJson] = await Promise.all([
+        sumRes.json(), tsRes.json(), storeRes.json(), pbRes.json(),
       ]);
       if (sumJson.success) setSummary(sumJson.data);
       if (tsJson.success) {
         setTimeseries(tsJson.data?.activity ?? []);
         setPnlSnapshots(tsJson.data?.pnlSnapshots ?? []);
       }
+      if (storeJson.success) setStoreOutcomes(storeJson.data ?? null);
       if (pbJson.success) setPerBot(pbJson.data ?? []);
     } catch { /* API may not be available */ }
     setFetching(false);
@@ -201,6 +233,13 @@ export default function AnalyticsPage() {
   const totalActions = m?.totalActions ?? 0;
   const totalPnl = m?.totalPnlUsd ?? 0;
   const uptimeStr = formatUptime(m?.totalUptimeMs ?? 0);
+  const hasStoreOutcomes = (storeOutcomes?.summary.ordersCount ?? 0) > 0 || (storeOutcomes?.summary.stockoutAlerts ?? 0) > 0;
+  const storeOutcomeChartData = (storeOutcomes?.timeseries ?? []).map((point) => ({
+    date: new Date(point.ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    revenueUsd: Math.round(point.revenueUsd * 100) / 100,
+    ordersCount: point.ordersCount,
+    stockoutAlerts: point.stockoutAlerts,
+  }));
 
   // Per-bot performance for gauges
   const topBot = perBot.length > 0
@@ -334,6 +373,66 @@ export default function AnalyticsPage() {
               })}
             </div>
           </motion.section>
+        )}
+
+        {!fetching && hasStoreOutcomes && (
+          <motion.div variants={fade} className="charts-row">
+            <div className="chart-container">
+              <div className="chart-header">
+                <div>
+                  <div className="chart-title">Store Revenue Timeline</div>
+                  <div className="chart-subtitle">
+                    Explicit Shopify order revenue captured over time
+                  </div>
+                </div>
+              </div>
+              <div style={{ height: 240 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={storeOutcomeChartData} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
+                    <defs>
+                      <linearGradient id="storeRevenueGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.28} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#454860' }} axisLine={false} tickLine={false} interval={Math.max(0, Math.floor(storeOutcomeChartData.length / 7))} />
+                    <YAxis tick={{ fontSize: 10, fill: '#454860' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [name === 'revenueUsd' ? `$${value}` : value, name === 'revenueUsd' ? 'Revenue' : name === 'ordersCount' ? 'Orders' : 'Stockouts']} />
+                    <Area type="monotone" dataKey="revenueUsd" stroke="#3b82f6" strokeWidth={2} fill="url(#storeRevenueGrad)" dot={false} />
+                    <Line type="monotone" dataKey="ordersCount" stroke="#00e87b" strokeWidth={2} dot={false} name="ordersCount" />
+                    <Line type="monotone" dataKey="stockoutAlerts" stroke="#ef4444" strokeWidth={2} dot={false} name="stockoutAlerts" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="chart-container">
+              <div className="chart-header">
+                <div>
+                  <div className="chart-title">Recent Store Outcomes</div>
+                  <div className="chart-subtitle">
+                    {storeOutcomes?.summary.ordersCount ?? 0} orders, {storeOutcomes?.summary.fulfilledOrdersCount ?? 0} fulfilled, {storeOutcomes?.summary.stockoutAlerts ?? 0} stockout alerts
+                  </div>
+                </div>
+              </div>
+              <div className="store-outcome-list">
+                {(storeOutcomes?.recentEvents ?? []).slice(0, 8).map((event, index) => (
+                  <div key={`${event.eventType}-${event.createdAt}-${index}`} className={`store-outcome-item ${event.eventType}`}>
+                    <div className="store-outcome-item-header">
+                      <div className="store-outcome-item-title">{event.eventType.replace(/_/g, ' ')}</div>
+                      <div className="store-outcome-item-time">{new Date(event.createdAt).toLocaleString()}</div>
+                    </div>
+                    <div className="store-outcome-item-meta">
+                      {event.revenueUsd > 0 && <span>Revenue: ${event.revenueUsd.toLocaleString()}</span>}
+                      {event.units > 0 && <span>Units: {event.units.toLocaleString()}</span>}
+                      {event.revenueUsd === 0 && event.units === 0 && <span>Inventory risk or fulfillment event captured</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
         )}
 
         {/* P&L + Actions charts */}

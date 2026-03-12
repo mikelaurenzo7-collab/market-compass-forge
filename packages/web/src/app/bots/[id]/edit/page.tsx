@@ -45,6 +45,15 @@ const STRATEGIES: Record<string, { id: string; name: string }[]> = {
   ],
 };
 
+function inferWorkforceCategory(platform: string, existingCategory: unknown): string {
+  if (typeof existingCategory === 'string' && existingCategory.length > 0) return existingCategory;
+  if (platform === 'salesforce' || platform === 'hubspot') return 'sales_crm';
+  if (platform === 'gmail') return 'email_management';
+  if (platform === 'jira' || platform === 'github' || platform === 'notion') return 'project_management';
+  if (platform === 'slack' || platform === 'teams') return 'customer_support';
+  return 'project_management';
+}
+
 interface BotDetail {
   id: string;
   name: string;
@@ -130,6 +139,9 @@ export default function EditBotPage({ params }: { params: Promise<{ id: string }
       config.stopLossPercent = Number(stopLossPercent) / 100;
     } else {
       config.strategies = strategies;
+      if (bot.family === 'workforce') {
+        config.category = inferWorkforceCategory(bot.platform, bot.config?.category);
+      }
     }
 
     try {

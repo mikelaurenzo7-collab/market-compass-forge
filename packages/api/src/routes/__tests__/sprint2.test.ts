@@ -150,7 +150,7 @@ describe('Webhooks API', () => {
        VALUES (?, ?, 'shopify', ?, 'api_key', '{}', 'active', ?, ?)`
     ).run(`cred-shop-${now}`, tenantId, 'test-shop.myshopify.com', now, now);
 
-    const body = JSON.stringify({ id: 123, total_price: '49.99' });
+    const body = JSON.stringify({ id: 123, total_price: '49.99', line_items: [{ quantity: 2 }, { quantity: 1 }] });
     const hmac = crypto.createHmac('sha256', 'shopify-test-secret').update(body, 'utf8').digest('base64');
 
     const res = await app.request('/api/webhooks/shopify', {
@@ -173,6 +173,37 @@ describe('Webhooks API', () => {
     ).get() as any;
     expect(event).toBeDefined();
     expect(event.tenant_id).toBe(tenantId);
+
+    const roiEvent = db.prepare(
+      "SELECT * FROM store_roi_events WHERE platform = 'shopify' AND event_type = 'order_created' AND external_id = '123'"
+    ).get() as any;
+    expect(roiEvent).toBeDefined();
+    expect(roiEvent.tenant_id).toBe(tenantId);
+    expect(roiEvent.revenue_usd).toBe(49.99);
+    expect(roiEvent.units).toBe(3);
+  });
+
+  it('POST /api/webhooks/shopify records inventory stockout outcomes', async () => {
+    const body = JSON.stringify({ inventory_item_id: 'sku-123', location_id: 'loc-1', available: 0 });
+    const hmac = crypto.createHmac('sha256', 'shopify-test-secret').update(body, 'utf8').digest('base64');
+
+    const res = await app.request('/api/webhooks/shopify', {
+      method: 'POST',
+      body,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-shopify-hmac-sha256': hmac,
+        'x-shopify-shop-domain': 'test-shop.myshopify.com',
+        'x-shopify-topic': 'inventory_levels/update',
+      },
+    });
+    expect(res.status).toBe(200);
+
+    const roiEvent = db.prepare(
+      "SELECT * FROM store_roi_events WHERE platform = 'shopify' AND event_type = 'inventory_stockout'"
+    ).get() as any;
+    expect(roiEvent).toBeDefined();
+    expect(roiEvent.tenant_id).toBe(tenantId);
   });
 
   it('POST /api/webhooks/coinbase rejects missing signature', async () => {

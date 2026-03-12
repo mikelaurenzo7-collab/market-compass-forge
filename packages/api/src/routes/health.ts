@@ -25,6 +25,10 @@ healthRouter.get('/', (c) => {
       checks: {
         database: dbOk ? 'ok' : 'error',
         email: process.env.RESEND_API_KEY ? 'configured' : 'not_configured',
+        workers: {
+          baseUrl: process.env.WORKERS_BASE_URL ? 'configured' : 'not_configured',
+          authToken: process.env.WORKER_AUTH_TOKEN ? 'configured' : 'not_configured',
+        },
         webhooks: {
           shopify: process.env.SHOPIFY_WEBHOOK_SECRET ? 'configured' : 'not_configured',
           coinbase: process.env.COINBASE_WEBHOOK_SECRET ? 'configured' : 'not_configured',

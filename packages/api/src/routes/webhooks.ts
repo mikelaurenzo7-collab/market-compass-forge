@@ -35,6 +35,45 @@ function safeJsonParse(raw: string): { ok: true; data: unknown } | { ok: false }
   }
 }
 
+function parseMoney(value: unknown): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseInteger(value: unknown): number {
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? Math.round(parsed) : 0;
+}
+
+function payloadHash(input: string): string {
+  return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
+}
+
+function insertStoreRoiEvent(db: ReturnType<typeof getDb>, params: {
+  tenantId: string;
+  platform: string;
+  eventType: string;
+  externalId: string;
+  revenueUsd?: number;
+  units?: number;
+  payload: string;
+}) {
+  db.prepare(`
+    INSERT OR IGNORE INTO store_roi_events (id, tenant_id, platform, event_type, external_id, revenue_usd, units, payload, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(),
+    params.tenantId,
+    params.platform,
+    params.eventType,
+    params.externalId,
+    params.revenueUsd ?? 0,
+    params.units ?? 0,
+    params.payload,
+    Date.now(),
+  );
+}
+
 /** Known platforms that may register dedicated webhook routes */
 const KNOWN_PLATFORMS = new Set(['shopify', 'coinbase', 'alpaca', 'binance', 'kraken', 'etsy', 'amazon', 'square']);
 
@@ -98,15 +137,81 @@ webhooksRouter.post('/shopify', async (c) => {
 
   switch (topic) {
     case 'orders/create':
+      db.prepare(
+        `INSERT INTO webhook_events (tenant_id, platform, event_type, payload, created_at)
+         VALUES (?, 'shopify', ?, ?, ?)`
+      ).run(cred.tenant_id, topic, rawBody, Date.now());
+
+      {
+        const order = parsed.data as Record<string, unknown>;
+        const lineItems = Array.isArray(order.line_items) ? order.line_items as Array<Record<string, unknown>> : [];
+        const units = lineItems.reduce((sum, item) => sum + parseInteger(item.quantity), 0);
+        const orderId = String(order.id ?? payloadHash(`shopify:${topic}:${rawBody}`));
+        insertStoreRoiEvent(db, {
+          tenantId: cred.tenant_id,
+          platform: 'shopify',
+          eventType: 'order_created',
+          externalId: orderId,
+          revenueUsd: parseMoney(order.total_price),
+          units,
+          payload: rawBody,
+        });
+      }
+      break;
+
     case 'orders/updated':
-    case 'orders/fulfilled':
     case 'products/update':
-    case 'inventory_levels/update':
       db.prepare(
         `INSERT INTO webhook_events (tenant_id, platform, event_type, payload, created_at)
          VALUES (?, 'shopify', ?, ?, ?)`
       ).run(cred.tenant_id, topic, rawBody, Date.now());
       break;
+
+    case 'orders/fulfilled':
+      db.prepare(
+        `INSERT INTO webhook_events (tenant_id, platform, event_type, payload, created_at)
+         VALUES (?, 'shopify', ?, ?, ?)`
+      ).run(cred.tenant_id, topic, rawBody, Date.now());
+
+      {
+        const order = parsed.data as Record<string, unknown>;
+        const lineItems = Array.isArray(order.line_items) ? order.line_items as Array<Record<string, unknown>> : [];
+        const units = lineItems.reduce((sum, item) => sum + parseInteger(item.quantity), 0);
+        const orderId = String(order.id ?? payloadHash(`shopify:${topic}:${rawBody}`));
+        insertStoreRoiEvent(db, {
+          tenantId: cred.tenant_id,
+          platform: 'shopify',
+          eventType: 'order_fulfilled',
+          externalId: orderId,
+          units,
+          payload: rawBody,
+        });
+      }
+      break;
+
+    case 'inventory_levels/update':
+      db.prepare(
+        `INSERT INTO webhook_events (tenant_id, platform, event_type, payload, created_at)
+         VALUES (?, 'shopify', ?, ?, ?)`
+      ).run(cred.tenant_id, topic, rawBody, Date.now());
+
+      {
+        const inventory = parsed.data as Record<string, unknown>;
+        const available = parseInteger(inventory.available);
+        const inventoryItemId = String(inventory.inventory_item_id ?? 'unknown-item');
+        const locationId = String(inventory.location_id ?? 'unknown-location');
+        const eventType = available <= 0 ? 'inventory_stockout' : 'inventory_restocked';
+        insertStoreRoiEvent(db, {
+          tenantId: cred.tenant_id,
+          platform: 'shopify',
+          eventType,
+          externalId: `${inventoryItemId}:${locationId}:${payloadHash(rawBody)}`,
+          units: available,
+          payload: rawBody,
+        });
+      }
+      break;
+
     default:
       break;
   }

@@ -153,7 +153,12 @@ export async function executeWorkforceTick(
           logAuditEntry({ tenantId: state.safety.tenantId, botId: state.safety.botId, platform: state.config.category, action: 'llm_prompt', result: 'success', riskLevel: 'low', details: { prompt, response: resp } });
         }
 
-        const safetyResult = runSafetyPipeline(state.safety, `ticket_triage ${task.id}`, 0, priorityScore.priority === 'critical' ? 'high' : 'low');
+        const safetyResult = runSafetyPipeline(state.safety, `ticket_triage ${task.id}`, 0, priorityScore.priority === 'critical' ? 'high' : 'low', {
+          bot: { totalTicks: newState.tasksProcessedThisHour },
+          config: state.config as unknown as Record<string, unknown>,
+          tasksThisHour: newState.tasksProcessedThisHour,
+          confidence: priorityScore.overallScore / 100,
+        });
         if (!safetyResult.allowed) { actions.push(`Triage blocked for ${task.id}: ${safetyResult.reason}`); continue; }
 
         if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
@@ -174,7 +179,14 @@ export async function executeWorkforceTick(
       for (const task of tasksToProcess.filter((t) => t.strategy === 'auto_response')) {
         const isExternal = Boolean(task.inputData.isExternal);
         const riskLevel = isExternal && state.config.requireApprovalForExternal ? 'high' : 'medium';
-        const safetyResult = runSafetyPipeline(state.safety, `auto_response ${task.id}`, 0, riskLevel);
+        const safetyResult = runSafetyPipeline(state.safety, `auto_response ${task.id}`, 0, riskLevel, {
+          bot: { totalTicks: newState.tasksProcessedThisHour },
+          config: state.config as unknown as Record<string, unknown>,
+          tasksThisHour: newState.tasksProcessedThisHour,
+          confidence: Number(task.inputData.confidence ?? 0.5),
+          action: { type: isExternal ? 'external_communication' : 'internal_automation' },
+          scope: String(task.inputData.scope ?? 'tasks'),
+        });
         if (!safetyResult.allowed) { actions.push(`Auto-response blocked for ${task.id}: ${safetyResult.reason}`); continue; }
 
         if (state.config.useLLM) {
