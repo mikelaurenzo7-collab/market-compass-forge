@@ -1,6 +1,8 @@
 import EditBotPage from './edit-bot-client';
 
 export async function generateStaticParams() {
+  // A non-empty array is required for Next.js 14 static export; actual
+  // bot pages are rendered entirely on the client side.
   return [{ id: '_' }];
 }
 
