@@ -26,9 +26,32 @@ interface SummaryMetrics {
   successRate: number;
   totalActions: number;
 }
+interface FamilySignal {
+  label: string;
+  value: string;
+  hint: string;
+  tone: 'positive' | 'neutral' | 'warning';
+}
+interface FamilyRoiSummary {
+  family: string;
+  totalBots: number;
+  runningBots: number;
+  totalTicks: number;
+  totalActions: number;
+  successfulActions: number;
+  failedActions: number;
+  deniedActions: number;
+  successRate: number;
+  totalPnlUsd: number;
+  totalUptimeMs: number;
+  primarySignal: FamilySignal;
+  secondarySignal: FamilySignal;
+  tertiarySignal: FamilySignal;
+}
 interface SummaryData {
   bots: { total: number; running: number; byFamily: Record<string, { total: number; running: number }> };
   metrics: SummaryMetrics;
+  familyRoi: FamilyRoiSummary[];
   connectedPlatforms: number;
 }
 interface TimeseriesBucket {
@@ -84,6 +107,12 @@ function formatUptime(ms: number): string {
   return `${(ms / 86_400_000).toFixed(1)}d`;
 }
 
+function toneColor(tone: FamilySignal['tone']) {
+  if (tone === 'positive') return 'var(--green)';
+  if (tone === 'warning') return 'var(--red)';
+  return 'var(--text-primary)';
+}
+
 export default function AnalyticsPage() {
   const { user, loading, apiFetch, onboardingRequired } = useAuth();
   const router = useRouter();
@@ -130,6 +159,7 @@ export default function AnalyticsPage() {
   const totalBots = summary?.bots.total ?? 0;
   const singleBot = totalBots === 1;
   const hasBots = totalBots > 0;
+  const familyRoi = summary?.familyRoi ?? [];
 
   // Chart data
   const pnlChartData = pnlSnapshots.map((s) => ({
@@ -259,6 +289,49 @@ export default function AnalyticsPage() {
               <div className="stat-change" style={{ color: 'var(--purple)' }}>
                 {summary?.bots.running ?? 0} of {totalBots} bots active
               </div>
+            </div>
+          </motion.section>
+        )}
+
+        {!fetching && familyRoi.length > 0 && (
+          <motion.section variants={fade} style={{ marginBottom: 'var(--space-2xl)' }}>
+            <h2 className="section-title" style={{ marginTop: 0 }}>
+              <Target size={16} /> Family ROI Signals
+            </h2>
+            <div className="roi-signal-grid">
+              {familyRoi.map((entry) => {
+                const icon = entry.family === 'trading'
+                  ? <TrendingUp size={16} />
+                  : entry.family === 'store'
+                    ? <ShoppingCart size={16} />
+                    : entry.family === 'social'
+                      ? <Share2 size={16} />
+                      : <Users size={16} />;
+
+                return (
+                  <motion.div key={entry.family} variants={fade} className={`roi-signal-card ${entry.family}`}>
+                    <div className="roi-signal-header">
+                      <div className="roi-signal-family" style={{ color: FAMILY_COLORS[entry.family] ?? 'var(--text-primary)' }}>
+                        {icon}
+                        <span>{FAMILY_LABELS[entry.family] ?? entry.family}</span>
+                      </div>
+                      <span className={`badge ${entry.family}`}>{entry.runningBots}/{entry.totalBots} live</span>
+                    </div>
+                    <div className="roi-signal-primary-label">{entry.primarySignal.label}</div>
+                    <div className="roi-signal-primary-value" style={{ color: toneColor(entry.primarySignal.tone) }}>{entry.primarySignal.value}</div>
+                    <div className="roi-signal-primary-hint">{entry.primarySignal.hint}</div>
+                    <div className="roi-signal-metrics">
+                      {[entry.secondarySignal, entry.tertiarySignal].map((signal) => (
+                        <div key={signal.label} className="roi-signal-metric">
+                          <div className="roi-signal-metric-label">{signal.label}</div>
+                          <div className="roi-signal-metric-value" style={{ color: toneColor(signal.tone) }}>{signal.value}</div>
+                          <div className="roi-signal-metric-hint">{signal.hint}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.section>
         )}

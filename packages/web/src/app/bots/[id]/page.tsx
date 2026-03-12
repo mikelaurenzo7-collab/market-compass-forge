@@ -50,6 +50,14 @@ interface DecisionEntry {
   durationMs: number;
 }
 
+interface OperatorPlaybookItem {
+  title: string;
+  action: string;
+  reason: string;
+  impact: string;
+  tone: 'positive' | 'neutral' | 'warning';
+}
+
 const FAMILY_ICONS: Record<string, React.ReactNode> = {
   trading: <TrendingUp size={28} />,
   store: <ShoppingCart size={28} />,
@@ -177,6 +185,143 @@ function FamilyMetricContext({ family, metrics }: { family: string; metrics: Bot
   );
 }
 
+function buildOperatorPlaybook(bot: BotDetail, metrics: BotMetrics | null, decisions: DecisionEntry[]): OperatorPlaybookItem[] {
+  const config = bot.config as Record<string, unknown>;
+  const totalActions = metrics ? metrics.successfulActions + metrics.failedActions + metrics.deniedActions : 0;
+  const successRate = metrics && totalActions > 0
+    ? Math.round((metrics.successfulActions / totalActions) * 100)
+    : 0;
+  const recentFailures = decisions.filter((entry) => entry.result === 'error' || entry.result === 'failed').length;
+  const recentBlocks = decisions.filter((entry) => entry.result === 'denied' || entry.result === 'blocked').length;
+  const playbook: OperatorPlaybookItem[] = [];
+
+  if (bot.family === 'trading') {
+    if (Boolean(config.paperTrading)) {
+      playbook.push({
+        title: 'Graduate your best symbol',
+        action: 'Keep paper mode on for wide exploration, then move one proven symbol into live execution with the current risk caps.',
+        reason: 'Launch customers need a controlled path from simulation to measurable live performance.',
+        impact: 'Higher trust with real P&L proof and contained downside.',
+        tone: 'positive',
+      });
+    }
+    if (!Boolean(config.multiTimeframeConfirmation)) {
+      playbook.push({
+        title: 'Raise signal quality',
+        action: 'Enable multi-timeframe confirmation before expanding size or adding symbols.',
+        reason: 'This bot is still relying on single-frame entries, which is weaker during volatile launch conditions.',
+        impact: 'Fewer low-conviction trades and better execution quality.',
+        tone: 'neutral',
+      });
+    }
+    if (metrics && (successRate < 60 || recentFailures > 0)) {
+      playbook.push({
+        title: 'Tighten trading risk',
+        action: 'Reduce position size or widen cooldowns until the recent error and loss pattern stabilizes.',
+        reason: `${successRate}% execution quality with ${recentFailures} recent failed decisions is below launch-grade consistency.`,
+        impact: 'Lower drawdown risk while preserving decision throughput.',
+        tone: 'warning',
+      });
+    }
+  } else if (bot.family === 'store') {
+    if (!Boolean(config.autoApplyPricing)) {
+      playbook.push({
+        title: 'Automate winning price moves',
+        action: 'Turn on auto-apply pricing once your floor and ceiling rules are validated.',
+        reason: 'Manual approval slows down the exact pricing windows that create measurable store ROI.',
+        impact: 'Faster margin capture on demand and inventory swings.',
+        tone: 'positive',
+      });
+    }
+    if (!Boolean(config.autoReorder)) {
+      playbook.push({
+        title: 'Protect against stockouts',
+        action: 'Enable auto-reorder or add a human-in-the-loop reorder workflow before launch.',
+        reason: 'Inventory forecasting is more valuable when it closes the loop instead of only flagging risk.',
+        impact: 'Better in-stock rate and less revenue leakage.',
+        tone: 'neutral',
+      });
+    }
+    if (metrics && (recentBlocks > 0 || Number(config.syncIntervalMs ?? 0) > 3_600_000)) {
+      playbook.push({
+        title: 'Shorten your commerce feedback loop',
+        action: 'Lower sync cadence and review min-margin rules on the products getting blocked most often.',
+        reason: `${recentBlocks} recent guardrail blocks suggest the bot is seeing opportunities it cannot safely execute.`,
+        impact: 'More usable catalog actions with fewer missed pricing windows.',
+        tone: recentBlocks > 0 ? 'warning' : 'neutral',
+      });
+    }
+  } else if (bot.family === 'social') {
+    if (Boolean(config.paperMode)) {
+      playbook.push({
+        title: 'Move from draft mode to publishing proof',
+        action: 'Launch one platform live with your safest content lane while keeping other channels in paper mode.',
+        reason: 'You need public proof of reach and consistency before the broader social operator story lands.',
+        impact: 'Live audience data without opening every risk surface at once.',
+        tone: 'positive',
+      });
+    }
+    if (Number(config.maxPostsPerDay ?? 0) < 3) {
+      playbook.push({
+        title: 'Increase content volume carefully',
+        action: 'Raise daily posting limits for the best-performing platform and pair it with hashtag or trend strategies.',
+        reason: 'Low publishing cadence can cap growth even when execution quality is strong.',
+        impact: 'More reach opportunities and more signal for content optimization.',
+        tone: 'neutral',
+      });
+    }
+    if (metrics && (successRate < 70 || recentBlocks > 0)) {
+      playbook.push({
+        title: 'Refine safety and brand guardrails',
+        action: 'Expand sensitive topic keywords and tighten brand voice guidance before scaling output.',
+        reason: `${recentBlocks} recent blocks or ${successRate}% delivery quality indicates the bot is still brushing against content boundaries.`,
+        impact: 'Cleaner publishing flow and fewer preventable content rejections.',
+        tone: 'warning',
+      });
+    }
+  } else {
+    if (Boolean(config.paperMode)) {
+      playbook.push({
+        title: 'Prove one live workflow',
+        action: 'Pick a single repetitive workflow and run it live with approvals still enabled for external actions.',
+        reason: 'Launch users need visible hours-saved proof, not just simulated automation.',
+        impact: 'Faster path to an ROI case study without widening operational risk.',
+        tone: 'positive',
+      });
+    }
+    if (!config.workingHoursUtc) {
+      playbook.push({
+        title: 'Define operating hours',
+        action: 'Set explicit working hours so automation runs when downstream teams can respond.',
+        reason: 'Unchecked 24/7 task execution creates handoff gaps in support, ops, and finance workflows.',
+        impact: 'Better SLA adherence and cleaner human escalation paths.',
+        tone: 'neutral',
+      });
+    }
+    if (metrics && (successRate < 75 || recentFailures > 0)) {
+      playbook.push({
+        title: 'Raise confidence thresholds',
+        action: 'Increase escalation confidence or reduce concurrent task load until completion quality improves.',
+        reason: `${successRate}% completion quality with ${recentFailures} recent failures is not strong enough for a broad production rollout.`,
+        impact: 'Higher task reliability and fewer manual cleanup cycles.',
+        tone: 'warning',
+      });
+    }
+  }
+
+  if (playbook.length < 3 && metrics && totalActions === 0) {
+    playbook.push({
+      title: 'Generate live operating data',
+      action: bot.status === 'running' ? 'Keep this operator active long enough to gather at least a few execution cycles.' : 'Start or resume this operator and let it run through a first live cycle.',
+      reason: 'The product can only prove ROI after it has real execution history to analyze.',
+      impact: 'Better optimization guidance and stronger launch proof.',
+      tone: 'neutral',
+    });
+  }
+
+  return playbook.slice(0, 3);
+}
+
 export default function BotDetailPage() {
   const { user, loading, apiFetch } = useAuth();
   const router = useRouter();
@@ -289,6 +434,7 @@ export default function BotDetailPage() {
       {bot && (() => {
         const brand = getPlatformBrand(bot.platform);
         const famCfg = DETAIL_FAMILY_CONFIG[bot.family];
+        const playbook = buildOperatorPlaybook(bot, metricsData?.metrics ?? null, decisions);
         return (
         <>
           {/* Platform-branded hero banner */}
@@ -368,6 +514,30 @@ export default function BotDetailPage() {
           {/* Family-specific metrics */}
           {metricsData && (
             <FamilyMetricContext family={bot.family} metrics={metricsData.metrics} />
+          )}
+
+          {playbook.length > 0 && (
+            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
+              <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                <Zap size={16} style={{ color: famCfg?.color }} />
+                Operator Playbook
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 'auto' }}>
+                  tuned for {famCfg?.label?.toLowerCase() ?? bot.family} outcomes
+                </span>
+              </div>
+              <div className="operator-playbook-grid">
+                {playbook.map((item) => (
+                  <div key={item.title} className={`operator-playbook-card ${item.tone}`}>
+                    <div className="operator-playbook-title-row">
+                      <div className="operator-playbook-title">{item.title}</div>
+                      <div className={`operator-playbook-impact ${item.tone}`}>{item.impact}</div>
+                    </div>
+                    <div className="operator-playbook-action">{item.action}</div>
+                    <div className="operator-playbook-reason">{item.reason}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Strategies & Config panels */}

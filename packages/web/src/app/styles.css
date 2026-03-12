@@ -1578,6 +1578,87 @@ body::before {
 .stat-card.social-accent { border-left: 3px solid var(--color-social); }
 .stat-card.workforce-accent { border-left: 3px solid var(--color-workforce); }
 
+/* ─── Family ROI Signals ───────────────────────────────────── */
+
+.roi-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-md);
+}
+
+.roi-signal-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.roi-signal-card.trading { border-left: 3px solid var(--color-trading); }
+.roi-signal-card.store { border-left: 3px solid var(--color-store); }
+.roi-signal-card.social { border-left: 3px solid var(--color-social); }
+.roi-signal-card.workforce { border-left: 3px solid var(--color-workforce); }
+
+.roi-signal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.roi-signal-family {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.roi-signal-primary-label,
+.roi-signal-metric-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.roi-signal-primary-value {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 1.65rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.roi-signal-primary-hint,
+.roi-signal-metric-hint {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.roi-signal-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.roi-signal-metric {
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.roi-signal-metric-value {
+  margin-top: 6px;
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
 /* ─── Family Hero Banner (Bot Detail / Bots Page) ──────────── */
 
 .family-banner {
@@ -3560,6 +3641,59 @@ body::before {
   width: 11px;
   height: 11px;
   opacity: 0.5;
+}
+
+.operator-playbook-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-md);
+}
+
+.operator-playbook-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.operator-playbook-card.positive { border-left: 3px solid var(--green); }
+.operator-playbook-card.neutral { border-left: 3px solid var(--blue); }
+.operator-playbook-card.warning { border-left: 3px solid var(--red); }
+
+.operator-playbook-title-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.operator-playbook-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.operator-playbook-impact {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.operator-playbook-impact.positive { color: var(--green); }
+.operator-playbook-impact.neutral { color: var(--blue); }
+.operator-playbook-impact.warning { color: var(--red); }
+
+.operator-playbook-action {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+.operator-playbook-reason {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
 }
 
 @media (max-width: 768px) {

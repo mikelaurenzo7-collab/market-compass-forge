@@ -36,9 +36,34 @@ interface SummaryMetrics {
   totalActions: number;
 }
 
+interface FamilySignal {
+  label: string;
+  value: string;
+  hint: string;
+  tone: 'positive' | 'neutral' | 'warning';
+}
+
+interface FamilyRoiSummary {
+  family: string;
+  totalBots: number;
+  runningBots: number;
+  totalTicks: number;
+  totalActions: number;
+  successfulActions: number;
+  failedActions: number;
+  deniedActions: number;
+  successRate: number;
+  totalPnlUsd: number;
+  totalUptimeMs: number;
+  primarySignal: FamilySignal;
+  secondarySignal: FamilySignal;
+  tertiarySignal: FamilySignal;
+}
+
 interface SummaryData {
   bots: { total: number; running: number; byFamily: Record<string, { total: number; running: number }> };
   metrics: SummaryMetrics;
+  familyRoi: FamilyRoiSummary[];
   connectedPlatforms: number;
 }
 
@@ -91,6 +116,12 @@ function timeAgo(ts: number): string {
   if (diff < 3_600_000) return `${Math.round(diff / 60_000)}m ago`;
   if (diff < 86_400_000) return `${Math.round(diff / 3_600_000)}h ago`;
   return `${Math.round(diff / 86_400_000)}d ago`;
+}
+
+function toneColor(tone: FamilySignal['tone']) {
+  if (tone === 'positive') return 'var(--green)';
+  if (tone === 'warning') return 'var(--red)';
+  return 'var(--text-primary)';
 }
 
 function FamilyBotSection({ family, bots }: { family: string; bots: BotSummary[] }) {
@@ -179,6 +210,7 @@ export default function DashboardPage() {
   const m = summary?.metrics;
   const singleBot = bots.length === 1;
   const activeFamilies = Object.keys(summary?.bots.byFamily ?? {});
+  const familyRoi = summary?.familyRoi ?? [];
 
   // Chart data from real timeseries
   const chartData = timeseries.map((b) => ({
@@ -277,6 +309,42 @@ export default function DashboardPage() {
             ))}
           </motion.section>
         ) : null}
+
+        {!fetching && familyRoi.length > 0 && (
+          <motion.section variants={fade} style={{ marginBottom: 'var(--space-2xl)' }}>
+            <h2 className="section-title">
+              <TrendingUp size={16} /> Family ROI Signals
+            </h2>
+            <div className="roi-signal-grid">
+              {familyRoi.map((entry) => {
+                const cfg = FAMILY_CONFIG[entry.family] ?? { icon: <Bot size={16} />, label: entry.family, cssVar: 'var(--text-primary)' };
+                return (
+                  <motion.div key={entry.family} variants={fade} className={`roi-signal-card ${entry.family}`}>
+                    <div className="roi-signal-header">
+                      <div className="roi-signal-family" style={{ color: cfg.cssVar }}>
+                        {cfg.icon}
+                        <span>{cfg.label}</span>
+                      </div>
+                      <span className={`badge ${entry.family}`}>{entry.runningBots}/{entry.totalBots} live</span>
+                    </div>
+                    <div className="roi-signal-primary-label">{entry.primarySignal.label}</div>
+                    <div className="roi-signal-primary-value" style={{ color: toneColor(entry.primarySignal.tone) }}>{entry.primarySignal.value}</div>
+                    <div className="roi-signal-primary-hint">{entry.primarySignal.hint}</div>
+                    <div className="roi-signal-metrics">
+                      {[entry.secondarySignal, entry.tertiarySignal].map((signal) => (
+                        <div key={signal.label} className="roi-signal-metric">
+                          <div className="roi-signal-metric-label">{signal.label}</div>
+                          <div className="roi-signal-metric-value" style={{ color: toneColor(signal.tone) }}>{signal.value}</div>
+                          <div className="roi-signal-metric-hint">{signal.hint}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </motion.section>
+        )}
 
         {!fetching && hasBots && (
           <motion.div variants={fade} className="charts-row">
