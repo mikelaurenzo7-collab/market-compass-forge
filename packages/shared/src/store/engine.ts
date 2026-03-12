@@ -26,6 +26,8 @@ import {
   type PricingContext,
   type SalesHistory,
 } from './strategies.js';
+import { fetchGoogleTrends, trendDemandSignal } from '../market-intelligence.js';
+import { analyzeProductImage, forecastTimeSeries } from '../vertex-ai.js';
 
 // ─── Store Adapter Interface ──────────────────────────────────
 
@@ -98,9 +100,43 @@ export async function executeStoreTick(
         newState.competitorPriceHistory.set(product.id, hist);
 
         const totalSold = salesHistory.reduce((s, d) => s + d.unitsSold, 0);
-        const demandScore = Math.min(100, totalSold * 3);
+        let demandScore = Math.min(100, totalSold * 3);
         const velocity = salesHistory.length > 0 ? totalSold / salesHistory.length : 0;
         const daysRemaining = velocity > 0 ? product.inventory / velocity : 9999;
+
+        // ── Google Trends demand enrichment ─────
+        // Boost or dampen demand score based on real-time search interest
+        try {
+          const keywords = product.title.split(/\s+/).slice(0, 3);
+          const trends = await fetchGoogleTrends(keywords);
+          if (trends.length > 0) {
+            const avgSignal = trends.reduce((s, t) => s + trendDemandSignal(t), 0) / trends.length;
+            // avgSignal: -1 (declining) to +2 (breakout). Map to ±20 demand points
+            demandScore = Math.max(0, Math.min(100, demandScore + avgSignal * 15));
+          }
+        } catch {
+          // Trends enrichment is non-blocking
+        }
+
+        // ── Vertex AI demand forecasting ────────
+        // Use historical sales data for ML-based demand prediction
+        if (salesHistory.length >= 14) {
+          try {
+            const salesValues: Array<[number, number]> = salesHistory.map((d, i) => [Date.now() - (salesHistory.length - 1 - i) * 86400000, d.unitsSold]);
+            const forecast = await forecastTimeSeries(salesValues, 7, 86400000);
+            if (forecast) {
+              const forecastAvg = forecast.predictions.reduce((s, p) => s + p.value, 0) / forecast.predictions.length;
+              const historicalAvg = salesValues.reduce((s, v) => s + v[1], 0) / salesValues.length;
+              // If forecast predicts surge/decline, adjust demand score
+              if (historicalAvg > 0) {
+                const ratio = forecastAvg / historicalAvg;
+                demandScore = Math.max(0, Math.min(100, demandScore * ratio));
+              }
+            }
+          } catch {
+            // AI forecasting is enrichment only
+          }
+        }
 
         const pricingCtx: PricingContext = {
           product,
@@ -253,6 +289,43 @@ export async function executeStoreTick(
     if (state.config.strategies.includes('listing_optimization')) {
       for (const product of activeProducts) {
         const score = scoreListingQuality(product);
+
+        // ── Vision AI image quality check ───────
+        // Analyze primary product image for quality, background, and category
+        const imageUrl = (product as unknown as Record<string, unknown>).imageBase64 as string | undefined;
+        if (imageUrl) {
+          try {
+            const imageAnalysis = await analyzeProductImage(imageUrl, 'image/jpeg');
+            if (imageAnalysis) {
+              if (imageAnalysis.qualityScore < 60) {
+                actions.push(
+                  `📸 ${product.title}: image quality ${imageAnalysis.qualityScore}/100 — ${imageAnalysis.backgroundQuality} background`
+                );
+                score.suggestions.push(`Improve product photo (quality: ${imageAnalysis.qualityScore}/100)`);
+              }
+              if (imageAnalysis.backgroundQuality === 'cluttered') {
+                score.suggestions.push('Use a clean, plain background for product photos');
+              }
+              logAuditEntry({
+                tenantId: state.safety.tenantId,
+                botId: state.safety.botId,
+                platform: state.config.platform,
+                action: `VISION_ANALYSIS ${product.id}`,
+                result: 'success',
+                riskLevel: 'low',
+                details: {
+                  qualityScore: imageAnalysis.qualityScore,
+                  backgroundQuality: imageAnalysis.backgroundQuality,
+                  labels: imageAnalysis.labels.slice(0, 5),
+                  dominantColors: imageAnalysis.dominantColors.slice(0, 3),
+                },
+              });
+            }
+          } catch {
+            // Vision AI is enrichment only
+          }
+        }
+
         if (score.overallScore < 70) {
           const optimization = optimizeListing(product);
           actions.push(

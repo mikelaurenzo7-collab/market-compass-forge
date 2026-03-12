@@ -17,6 +17,7 @@ import {
   findScheduleGaps,
   type ShiftSlot,
 } from './strategies.js';
+import { processDocument } from '../vertex-ai.js';
 
 // ─── Workforce Adapter Interface ──────────────────────────────
 
@@ -224,7 +225,44 @@ export async function executeWorkforceTick(
     if (state.config.strategies.includes('invoice_processing')) {
       for (const task of tasksToProcess.filter((t) => t.strategy === 'invoice_processing')) {
         const rawText = String(task.inputData.rawText ?? '');
-        const extracted = parseInvoiceText(rawText);
+        const rawBase64 = task.inputData.documentBase64 as string | undefined;
+
+        // ── Document AI enrichment ──────────────
+        // If a base64 document is provided, use Vertex AI Document AI for structured extraction
+        let docAiExtracted: { invoiceNumber: string; vendorName: string; totalAmount: number; confidence: number } | null = null;
+        if (rawBase64) {
+          try {
+            const mimeType = (task.inputData.mimeType as string) ?? 'application/pdf';
+            const docResult = await processDocument(rawBase64, mimeType, 'invoice');
+            if (docResult) {
+              const invoiceNum = docResult.entities.find(e => e.type === 'invoice_id' || e.type === 'invoice_number');
+              const vendor = docResult.entities.find(e => e.type === 'supplier_name' || e.type === 'vendor_name');
+              const total = docResult.entities.find(e => e.type === 'total_amount' || e.type === 'net_amount');
+              docAiExtracted = {
+                invoiceNumber: invoiceNum?.value ?? '',
+                vendorName: vendor?.value ?? '',
+                totalAmount: total ? parseFloat(total.value.replace(/[^0-9.]/g, '')) || 0 : 0,
+                confidence: docResult.entities.reduce((s, e) => s + e.confidence, 0) / Math.max(docResult.entities.length, 1),
+              };
+              logAuditEntry({
+                tenantId: state.safety.tenantId,
+                botId: state.safety.botId,
+                platform: state.config.category,
+                action: `DOCAI_INVOICE ${task.id}`,
+                result: 'success',
+                riskLevel: 'low',
+                details: { entitiesFound: docResult.entities.length, confidence: docAiExtracted.confidence },
+              });
+            }
+          } catch {
+            // Document AI is enrichment — fall back to regex parser
+          }
+        }
+
+        // Use Document AI result if available and confident, otherwise fall back to regex
+        const extracted = docAiExtracted && docAiExtracted.confidence >= 0.7
+          ? docAiExtracted
+          : parseInvoiceText(rawText);
         const costEstimate = extracted.totalAmount > 0 ? 0.01 : 0;
         const safetyResult = runSafetyPipeline(state.safety, `invoice_processing ${task.id}`, costEstimate, 'medium');
         if (!safetyResult.allowed) { actions.push(`Invoice blocked for ${task.id}: ${safetyResult.reason}`); continue; }
@@ -458,6 +496,31 @@ export async function executeWorkforceTick(
       for (const task of tasksToProcess.filter((t) => t.strategy === 'contract_review')) {
         const safetyResult = runSafetyPipeline(state.safety, `contract_review ${task.id}`, 0, 'high');
         if (!safetyResult.allowed) { actions.push(`Contract review blocked for ${task.id}: ${safetyResult.reason}`); continue; }
+
+        // ── Document AI contract extraction ─────
+        const contractBase64 = task.inputData.documentBase64 as string | undefined;
+        if (contractBase64) {
+          try {
+            const mimeType = (task.inputData.mimeType as string) ?? 'application/pdf';
+            const docResult = await processDocument(contractBase64, mimeType, 'contract');
+            if (docResult) {
+              const keyEntities = docResult.entities.filter(e => e.confidence >= 0.6);
+              actions.push(`📑 Document AI: ${keyEntities.length} contract clauses extracted from ${task.id}`);
+              logAuditEntry({
+                tenantId: state.safety.tenantId,
+                botId: state.safety.botId,
+                platform: state.config.category,
+                action: `DOCAI_CONTRACT ${task.id}`,
+                result: 'success',
+                riskLevel: 'low',
+                details: { entitiesFound: docResult.entities.length, topEntities: keyEntities.slice(0, 10).map(e => ({ type: e.type, text: e.value.slice(0, 60) })) },
+              });
+            }
+          } catch {
+            // Document AI is enrichment — proceed with LLM/manual
+          }
+        }
+
         if (state.config.useLLM) {
           const prompt = `Review contract for key terms, renewal dates, and risk clauses: "${task.title}"`;
           await promptLLM(prompt);

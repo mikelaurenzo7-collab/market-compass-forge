@@ -26,6 +26,7 @@ import {
   generateCommentReply,
   type ContentSlot,
 } from './strategies.js';
+import { fetchGoogleTrends, trendDemandSignal, type GoogleTrend } from '../market-intelligence.js';
 
 // ─── Social Adapter Interface ─────────────────────────────────
 
@@ -200,6 +201,21 @@ export async function executeSocialTick(
       const brandKeywords = state.config.sensitiveTopicKeywords.length > 0
         ? state.config.sensitiveTopicKeywords
         : ['technology', 'ai', 'automation', 'business'];
+
+      // ── Google Trends enrichment ──────────────
+      // Fetch real-time search interest for brand-relevant keywords
+      let googleTrendData: GoogleTrend[] = [];
+      try {
+        googleTrendData = await fetchGoogleTrends(brandKeywords.slice(0, 5));
+        if (googleTrendData.length > 0) {
+          const breakouts = googleTrendData.filter(t => trendDemandSignal(t) >= 1.5);
+          for (const bo of breakouts) {
+            actions.push(`🔎 Google Trends breakout: "${bo.keyword}" — ${bo.interestChange7d > 0 ? '+' : ''}${bo.interestChange7d.toFixed(0)}% (7d)`);
+          }
+        }
+      } catch {
+        // Google Trends is enrichment—never blocks
+      }
 
       for (const trend of trends.slice(0, 10)) {
         if (newState.trendsActedOn.includes(trend.hashtag)) continue;

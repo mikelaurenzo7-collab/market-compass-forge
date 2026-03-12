@@ -681,3 +681,7 @@ export * from './federated-learning.js';
 export * from './compliance.js';
 export * from './push-notifications.js';
 export * from './performance-reports.js';
+export * from './market-intelligence.js';
+export * from './vertex-ai.js';
+export * from './twilio-alerts.js';
+export * from './resend-email.js';

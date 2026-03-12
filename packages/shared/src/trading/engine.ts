@@ -4,6 +4,9 @@ import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess, recordSpe
 import { promptLLM, promptWithTemplate } from '../llm.js';
 import { TRADING_INSIGHT_TEMPLATE } from '../prompts.js';
 import { computeIndicators, momentumSignal, meanReversionSignal, dcaSignal, gridSignal, arbitrageSignal, marketMakingSignal, eventProbabilitySignal } from './indicators.js';
+import { gatherMarketContext, marketSentimentModifier, type MarketContext } from '../market-intelligence.js';
+import { forecastTimeSeries } from '../vertex-ai.js';
+import { dispatchAlert, getTwilioConfig, type AlertRecipient } from '../twilio-alerts.js';
 
 // ─── Platform Adapter Interface ───────────────────────────────
 
@@ -103,6 +106,11 @@ export interface TradingEngineState {
   totalPnl: number;
   totalTrades: number;
   winningTrades: number;
+  // enrichment: external market context (refreshed periodically)
+  marketContext?: MarketContext | null;
+  lastMarketContextFetch: number;
+  // alert recipients for Twilio/WhatsApp notifications
+  alertRecipients: AlertRecipient[];
 }
 
 export function createTradingEngineState(
@@ -122,6 +130,9 @@ export function createTradingEngineState(
     totalPnl: 0,
     totalTrades: 0,
     winningTrades: 0,
+    marketContext: null,
+    lastMarketContextFetch: 0,
+    alertRecipients: [],
   };
 }
 
@@ -223,6 +234,57 @@ export async function executeTradingTick(
     // reset cooldown if it has expired
     if (newState.cooldownUntil > 0 && Date.now() >= newState.cooldownUntil) {
       newState.cooldownUntil = 0;
+    }
+
+    // ─── Market Intelligence Enrichment ───────────
+    // Refresh external market context every 15 minutes (non-blocking)
+    const MARKET_CTX_INTERVAL = 15 * 60 * 1000;
+    if (Date.now() - newState.lastMarketContextFetch > MARKET_CTX_INTERVAL) {
+      try {
+        const ctx = await gatherMarketContext({
+          ticker: state.config.symbols[0],
+          keywords: state.config.symbols,
+        });
+        newState.marketContext = ctx;
+        newState.lastMarketContextFetch = Date.now();
+        logAuditEntry({
+          tenantId: state.safety.tenantId,
+          botId: state.safety.botId,
+          platform: state.config.platform,
+          action: 'market_context_refresh',
+          result: 'success',
+          riskLevel: 'low',
+          details: {
+            fearGreed: ctx.fearGreed?.value,
+            newsSentiment: ctx.newsSentiment?.overallSentiment,
+            trendingCoins: ctx.trendingCoins?.length,
+          },
+        });
+      } catch {
+        // Market intelligence is enrichment only — never blocks trading
+      }
+    }
+
+    // ─── Vertex AI Price Forecasting ──────────────
+    // Run forecasting once per context refresh cycle for the primary symbol
+    let priceForecast: { predictions: number[]; confidence: number } | null = null;
+    if (state.config.symbols.length > 0) {
+      const primaryHistory = newState.priceHistories.get(state.config.symbols[0]);
+      if (primaryHistory && primaryHistory.prices.length >= 30) {
+        try {
+          const priceValues: Array<[number, number]> = primaryHistory.prices.slice(-60).map((p, i) => [Date.now() - (59 - i) * 60000, p]);
+          const forecast = await forecastTimeSeries(
+            priceValues,
+            5,     // predict 5 steps ahead
+            60000, // assume 1-minute candles
+          );
+          if (forecast) {
+            priceForecast = { predictions: forecast.predictions.map(p => p.value), confidence: forecast.confidence };
+          }
+        } catch {
+          // Forecasting is enrichment — never blocks
+        }
+      }
     }
 
     for (const symbol of state.config.symbols) {
@@ -349,6 +411,24 @@ export async function executeTradingTick(
 
       // Generate signal based on strategy
       const signal = generateStrategySignal(state.config, indicators, marketData, state);
+
+      // ─── Market Intelligence Confidence Modifier ──
+      // Adjust signal confidence based on fear/greed + news sentiment
+      if (newState.marketContext && signal.direction !== 'hold') {
+        const modifier = marketSentimentModifier(newState.marketContext);
+        signal.confidence = Math.max(0, Math.min(100, signal.confidence + modifier));
+        // If forecast disagrees with direction, reduce confidence
+        if (priceForecast && priceForecast.predictions.length > 0) {
+          const forecastTrend = priceForecast.predictions[priceForecast.predictions.length - 1] - marketData.price;
+          const forecastAgrees = (signal.direction === 'buy' && forecastTrend > 0) || (signal.direction === 'sell' && forecastTrend < 0);
+          if (!forecastAgrees) {
+            signal.confidence = Math.max(0, signal.confidence - 10);
+          } else {
+            signal.confidence = Math.min(100, signal.confidence + 5);
+          }
+        }
+      }
+
       if (signal.direction === 'hold') continue;
 
       // Multi-timeframe gate: secondary timeframe must agree on direction
@@ -523,6 +603,20 @@ export async function executeTradingTick(
         circuitBreaker: recordSuccess(newState.safety.circuitBreaker),
       };
 
+      // ─── Twilio Trade Alert ─────────────────────
+      if (newState.alertRecipients.length > 0) {
+        const twilioConfig = getTwilioConfig();
+        if (twilioConfig) {
+          dispatchAlert(
+            twilioConfig,
+            newState.alertRecipients,
+            'trade_executed',
+            `${signal.direction.toUpperCase()} ${symbol} — $${positionSize.toFixed(2)} at $${marketData.price.toFixed(2)} (confidence: ${signal.confidence}%)`,
+            { botId: state.safety.botId },
+          ).catch(() => { /* alert delivery is best-effort */ });
+        }
+      }
+
       logAuditEntry({
         tenantId: state.safety.tenantId,
         botId: state.safety.botId,
@@ -570,6 +664,20 @@ export async function executeTradingTick(
       riskLevel: 'high',
       details: { error: error instanceof Error ? error.message : String(error) },
     });
+
+    // ─── Twilio Circuit-Breaker Alert ─────────────
+    if (newState.alertRecipients.length > 0) {
+      const twilioConfig = getTwilioConfig();
+      if (twilioConfig) {
+        dispatchAlert(
+          twilioConfig,
+          newState.alertRecipients,
+          'circuit_breaker_tripped',
+          `Trading engine error: ${error instanceof Error ? error.message : String(error)}`,
+          { botId: state.safety.botId },
+        ).catch(() => {});
+      }
+    }
 
     return {
       result: {

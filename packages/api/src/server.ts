@@ -22,6 +22,7 @@ import { federatedRouter } from './routes/federated.js';
 import { complianceRouter } from './routes/compliance.js';
 import { pushRouter } from './routes/push.js';
 import { performanceRouter } from './routes/performance.js';
+import { alertsRouter } from './routes/alerts.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
@@ -147,6 +148,7 @@ app.route('/api/federated', federatedRouter);
 app.route('/api/compliance', complianceRouter);
 app.route('/api/push', pushRouter);
 app.route('/api/performance', performanceRouter);
+app.route('/api/alerts', alertsRouter);
 app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
