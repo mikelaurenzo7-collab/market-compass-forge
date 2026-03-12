@@ -170,6 +170,8 @@ export interface TradingBotConfig {
   gridLevels?: number[];
   openOrders?: { price: number; side: 'buy' | 'sell' }[];
   arbitrageThresholdPercent?: number;
+  // cross-exchange arbitrage: list of platforms to compare prices across
+  arbitragePlatforms?: TradingPlatform[];
   marketMakingSpread?: number;
   eventProbabilityData?: EventProbabilityData;
 }

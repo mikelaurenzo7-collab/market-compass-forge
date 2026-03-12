@@ -330,26 +330,32 @@ export async function executeTradingTick(
         }
       }
 
-      // Compute indicators (and optionally merge with secondary timeframe)
+      // Compute indicators (and optionally confirm with secondary timeframe)
       let indicators = computeIndicators(
         updatedHistory.prices,
         updatedHistory.volumes,
         updatedHistory.highs,
         updatedHistory.lows
       );
+
+      // Multi-timeframe confirmation: require same direction on secondary (15m) timeframe
+      let secondarySignal: ReturnType<typeof computeIndicators> | null = null;
       if (state.config.multiTimeframeConfirmation) {
         const sec = newState.secondaryHistories.get(symbol + '_15m');
         if (sec && sec.prices.length >= 20) {
-          const secInd = computeIndicators(sec.prices, sec.volumes, sec.highs, sec.lows);
-          indicators = Object.fromEntries(
-            Object.keys(indicators).map((k) => [k, (((indicators as any)[k] ?? 0) + ((secInd as any)[k] ?? 0)) / 2])
-          ) as any;
+          secondarySignal = computeIndicators(sec.prices, sec.volumes, sec.highs, sec.lows);
         }
       }
 
       // Generate signal based on strategy
       const signal = generateStrategySignal(state.config, indicators, marketData, state);
       if (signal.direction === 'hold') continue;
+
+      // Multi-timeframe gate: secondary timeframe must agree on direction
+      if (secondarySignal) {
+        const secSignal = generateStrategySignal(state.config, secondarySignal, marketData, state);
+        if (secSignal.direction !== signal.direction) continue; // timeframes disagree — skip
+      }
 
       // Check if we can open more positions
       if (signal.direction === 'buy' && positions.length >= state.config.maxOpenPositions) continue;
@@ -577,6 +583,175 @@ export async function executeTradingTick(
       newState,
     };
   }
+}
+
+// ─── Cross-Exchange Arbitrage ─────────────────────────────────
+
+/** Fetch prices from multiple exchanges for the same symbol, detect spread,
+ *  and execute simultaneous buy (cheap) + sell (expensive) if profitable. */
+export async function executeArbitrageTick(
+  state: TradingEngineState,
+  adapters: Map<string, TradingAdapter>,
+  symbol: string,
+): Promise<{ result: TickResult; newState: TradingEngineState }> {
+  const startTime = Date.now();
+  let newState = { ...state };
+
+  const threshold = state.config.arbitrageThresholdPercent ?? 1;
+
+  // Fetch prices from all provided exchanges concurrently
+  const priceEntries: { platform: string; adapter: TradingAdapter; marketData: MarketData }[] = [];
+  const fetchResults = await Promise.allSettled(
+    Array.from(adapters.entries()).map(async ([platform, adapter]) => {
+      const md = await adapter.fetchMarketData(symbol);
+      return { platform, adapter, marketData: md };
+    }),
+  );
+
+  for (const r of fetchResults) {
+    if (r.status === 'fulfilled') priceEntries.push(r.value);
+  }
+
+  if (priceEntries.length < 2) {
+    return {
+      result: {
+        botId: state.safety.botId,
+        timestamp: Date.now(),
+        action: 'arbitrage_scan',
+        result: 'skipped',
+        details: { reason: 'insufficient_exchanges', available: priceEntries.length },
+        durationMs: Date.now() - startTime,
+      },
+      newState,
+    };
+  }
+
+  // Find cheapest and most expensive exchange
+  priceEntries.sort((a, b) => a.marketData.price - b.marketData.price);
+  const cheapest = priceEntries[0];
+  const expensive = priceEntries[priceEntries.length - 1];
+
+  const spread = ((expensive.marketData.price - cheapest.marketData.price) / cheapest.marketData.price) * 100;
+
+  if (spread < threshold) {
+    return {
+      result: {
+        botId: state.safety.botId,
+        timestamp: Date.now(),
+        action: 'arbitrage_scan',
+        result: 'skipped',
+        details: {
+          reason: 'spread_below_threshold',
+          spread: spread.toFixed(4),
+          threshold,
+          cheapest: { platform: cheapest.platform, price: cheapest.marketData.price },
+          expensive: { platform: expensive.platform, price: expensive.marketData.price },
+        },
+        durationMs: Date.now() - startTime,
+      },
+      newState,
+    };
+  }
+
+  // Calculate position size
+  const positionSizeUsd = Math.min(
+    state.config.maxPositionSizeUsd,
+    state.config.maxDailyLossUsd * 0.05, // risk max 5% of daily limit per arb
+  );
+  const quantity = positionSizeUsd / cheapest.marketData.price;
+  if (quantity <= 0) {
+    return {
+      result: {
+        botId: state.safety.botId,
+        timestamp: Date.now(),
+        action: 'arbitrage_scan',
+        result: 'skipped',
+        details: { reason: 'zero_quantity' },
+        durationMs: Date.now() - startTime,
+      },
+      newState,
+    };
+  }
+
+  // Execute both legs concurrently
+  const makeSignal = (side: 'buy' | 'sell', price: number): TradeSignal => ({
+    platform: state.config.platform,
+    symbol,
+    side,
+    type: 'market',
+    quantity,
+    confidence: Math.min(spread * 10, 100),
+    strategy: 'arbitrage',
+    indicators: { spread, buyPrice: cheapest.marketData.price, sellPrice: expensive.marketData.price },
+    timestamp: Date.now(),
+  });
+
+  const [buyResult, sellResult] = await Promise.allSettled([
+    cheapest.adapter.placeOrder(makeSignal('buy', cheapest.marketData.price)),
+    expensive.adapter.placeOrder(makeSignal('sell', expensive.marketData.price)),
+  ]);
+
+  const buyFilled = buyResult.status === 'fulfilled' && buyResult.value.filled;
+  const sellFilled = sellResult.status === 'fulfilled' && sellResult.value.filled;
+
+  // If only one leg fills, record as partial (needs manual attention)
+  const bothFilled = buyFilled && sellFilled;
+  const netPnl = bothFilled
+    ? (expensive.marketData.price - cheapest.marketData.price) * quantity
+    : 0;
+
+  if (bothFilled) {
+    newState.totalPnl += netPnl;
+    newState.totalTrades += 1;
+    if (netPnl >= 0) {
+      newState.winningTrades += 1;
+      newState.consecutiveLosses = 0;
+    } else {
+      newState.consecutiveLosses += 1;
+    }
+  }
+
+  const riskLevel = bothFilled ? 'low' : (buyFilled || sellFilled ? 'high' : 'medium');
+
+  logAuditEntry({
+    tenantId: state.safety.tenantId,
+    botId: state.safety.botId,
+    platform: state.config.platform,
+    action: 'arbitrage_execution',
+    result: bothFilled ? 'success' : 'failure',
+    riskLevel,
+    details: {
+      spread: spread.toFixed(4),
+      buyPlatform: cheapest.platform,
+      sellPlatform: expensive.platform,
+      buyPrice: cheapest.marketData.price,
+      sellPrice: expensive.marketData.price,
+      quantity,
+      buyFilled,
+      sellFilled,
+      netPnl: bothFilled ? netPnl : undefined,
+      partial: (buyFilled || sellFilled) && !bothFilled,
+    },
+  });
+
+  return {
+    result: {
+      botId: state.safety.botId,
+      timestamp: Date.now(),
+      action: `arbitrage ${symbol}`,
+      result: bothFilled ? 'executed' : 'error',
+      details: {
+        buyPlatform: cheapest.platform,
+        sellPlatform: expensive.platform,
+        spread: spread.toFixed(4),
+        netPnl: bothFilled ? netPnl : undefined,
+        buyFilled,
+        sellFilled,
+      },
+      durationMs: Date.now() - startTime,
+    },
+    newState,
+  };
 }
 
 // ─── Strategy Router ──────────────────────────────────────────

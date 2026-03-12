@@ -538,13 +538,32 @@ export class PolymarketAdapter implements TradingAdapter {
   }
 
   async getPositions(): Promise<Position[]> {
-    // Polymarket positions are tracked on-chain; simplified view
-    return [];
+    const resp = await jsonFetch<any>('https://clob.polymarket.com/positions', {
+      headers: this.headers(),
+    });
+
+    return (resp.positions ?? []).map((p: any) => ({
+      platform: 'polymarket' as TradingPlatform,
+      symbol: p.asset?.token_id ?? p.market ?? 'unknown',
+      side: 'buy' as const,
+      entryPrice: parseFloat(p.avg_price_paid ?? '0'),
+      currentPrice: parseFloat(p.cur_price ?? p.avg_price_paid ?? '0'),
+      quantity: parseFloat(p.size ?? '0'),
+      unrealizedPnl:
+        (parseFloat(p.cur_price ?? '0') - parseFloat(p.avg_price_paid ?? '0')) *
+        parseFloat(p.size ?? '0'),
+      openedAt: Date.now(),
+    }));
   }
 
   async getBalance(): Promise<{ availableUsd: number; totalUsd: number }> {
-    // Polymarket balances are on-chain USDC
-    return { availableUsd: 0, totalUsd: 0 };
+    const resp = await jsonFetch<any>('https://clob.polymarket.com/balance', {
+      headers: this.headers(),
+    });
+
+    const available = parseFloat(resp.available_balance ?? resp.balance ?? '0');
+    const total = parseFloat(resp.total_balance ?? resp.balance ?? '0');
+    return { availableUsd: available, totalUsd: total };
   }
 }
 
