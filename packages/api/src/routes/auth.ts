@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import crypto from 'node:crypto';
 import { hashSync, compareSync } from 'bcryptjs';
 import { jwtVerify } from 'jose';
 import { getDb } from '../lib/db.js';
@@ -280,6 +281,131 @@ authRouter.post('/logout', async (c) => {
 // ─── Auth Middleware Helper ───────────────────────────────────
 
 // Auth helpers are implemented in ../lib/auth.js
+// ─── POST /forgot-password ───────────────────────────────
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+authRouter.post('/forgot-password', async (c) => {
+  const body = await c.req.json();
+  const parsed = forgotPasswordSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0].message }, 400);
+  }
+
+  const { email } = parsed.data;
+  const db = getDb();
+  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email) as any;
+
+  // Always return success to prevent email enumeration
+  if (!user) {
+    return c.json({ success: true, data: { message: 'If that email is registered, a reset link has been sent.' } });
+  }
+
+  // Invalidate any existing unused tokens for this user
+  db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0').run(user.id);
+
+  // Generate a secure random token
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const id = `prt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const now = Date.now();
+  const expiresAt = now + 60 * 60 * 1000; // 1 hour
+
+  db.prepare(
+    'INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, used, created_at) VALUES (?, ?, ?, ?, 0, ?)'
+  ).run(id, user.id, tokenHash, expiresAt, now);
+
+  // In production, send email with: /reset-password?token=<rawToken>
+  // For now, log the token in dev mode and return it in test mode
+  const resetUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/reset-password?token=${rawToken}`;
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`[Password Reset] ${email} → ${resetUrl}`);
+  }
+
+  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any;
+  logAudit({
+    tenantId: membership?.tenant_id ?? '',
+    userId: user.id,
+    action: 'password_reset_request',
+    result: 'success',
+    riskLevel: 'medium',
+    details: email,
+  });
+
+  return c.json({
+    success: true,
+    data: {
+      message: 'If that email is registered, a reset link has been sent.',
+      // Include token in non-production for testing
+      ...(process.env.NODE_ENV !== 'production' ? { resetToken: rawToken } : {}),
+    },
+  });
+});
+
+// ─── POST /reset-password ────────────────────────────────
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
+authRouter.post('/reset-password', async (c) => {
+  const body = await c.req.json();
+  const parsed = resetPasswordSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ success: false, error: parsed.error.issues[0].message }, 400);
+  }
+
+  const { token, password } = parsed.data;
+  const db = getDb();
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  const resetRow = db.prepare(
+    'SELECT id, user_id, expires_at, used FROM password_reset_tokens WHERE token_hash = ?'
+  ).get(tokenHash) as any;
+
+  if (!resetRow) {
+    return c.json({ success: false, error: 'Invalid or expired reset link' }, 400);
+  }
+
+  if (resetRow.used) {
+    return c.json({ success: false, error: 'This reset link has already been used' }, 400);
+  }
+
+  if (Date.now() > resetRow.expires_at) {
+    return c.json({ success: false, error: 'This reset link has expired. Please request a new one.' }, 400);
+  }
+
+  const passwordHash = hashSync(password, 12);
+
+  db.transaction(() => {
+    // Update password
+    db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?')
+      .run(passwordHash, Date.now(), resetRow.user_id);
+
+    // Mark token as used
+    db.prepare('UPDATE password_reset_tokens SET used = 1 WHERE id = ?').run(resetRow.id);
+
+    // Revoke all refresh tokens (force re-login on all devices)
+    db.prepare('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ?').run(resetRow.user_id);
+  })();
+
+  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(resetRow.user_id) as any;
+  logAudit({
+    tenantId: membership?.tenant_id ?? '',
+    userId: resetRow.user_id,
+    action: 'password_reset_complete',
+    result: 'success',
+    riskLevel: 'high',
+    details: 'Password changed via reset link. All sessions revoked.',
+  });
+
+  return c.json({
+    success: true,
+    data: { message: 'Password has been reset. Please log in with your new password.' },
+  });
+});
 // end of file
 

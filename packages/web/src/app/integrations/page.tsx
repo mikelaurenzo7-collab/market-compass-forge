@@ -341,8 +341,8 @@ function IntegrationsPageContent() {
           {activeCategoryList.map((cat) => {
             const catItems = activeIntegrations.filter((p) => p.category === cat);
             if (catItems.length === 0) return null;
-            const meta = CATEGORY_Mnew Set(catItems.filter((p) => connected.includes(p.id)).map(p => p.id)).size
-            const connectedInCat = catItems.filter((p) => connected.includes(p.id)).length;
+            const meta = CATEGORY_META[cat];
+            const connectedInCat = new Set(catItems.filter((p) => connected.includes(p.id)).map(p => p.id)).size;
             return (
               <div key={cat} className="platform-category-block">
                 {/* Category header */}

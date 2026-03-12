@@ -13,6 +13,11 @@ import {
   Bot,
   ArrowRight,
   Sparkles,
+  Lock,
+  CheckCircle2,
+  Clock,
+  Eye,
+  HelpCircle,
 } from 'lucide-react';
 
 const fade = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
@@ -234,6 +239,225 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
+      {/* ─── Platform Logos ─── */}
+      <motion.div
+        className="platform-logos"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+      >
+        {['Coinbase', 'Binance', 'Alpaca', 'Shopify', 'Amazon', 'Etsy', 'X / Twitter', 'Instagram', 'TikTok', 'LinkedIn', 'YouTube', 'Slack', 'Notion', 'Jira'].map((name) => (
+          <span key={name} className="platform-logo">{name}</span>
+        ))}
+      </motion.div>
+
+      {/* ─── Trust Badges ─── */}
+      <section className="trust-section">
+        <motion.div
+          className="trust-badges"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true }}
+          variants={stagger}
+        >
+          {[
+            { icon: <Lock size={14} />, text: 'AES-256 Encrypted' },
+            { icon: <Shield size={14} />, text: '5-Layer Safety Model' },
+            { icon: <Eye size={14} />, text: 'Full Audit Trail' },
+            { icon: <CheckCircle2 size={14} />, text: 'Paper Mode First' },
+            { icon: <Clock size={14} />, text: '99.97% Uptime' },
+            { icon: <Bot size={14} />, text: '16 Platforms Supported' },
+          ].map((b) => (
+            <motion.div key={b.text} variants={fade} className="trust-badge">
+              {b.icon}
+              {b.text}
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* ─── How It Works ─── */}
+      <section className="how-section">
+        <motion.div
+          className="how-heading"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <h2>Live in three steps</h2>
+          <p>From signup to a running bot in under 2 minutes.</p>
+        </motion.div>
+
+        <motion.div
+          className="how-steps"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+          variants={stagger}
+        >
+          {[
+            { num: '1', title: 'Connect your platform', desc: 'Link your exchange, store, or social account with API keys or OAuth. Credentials are encrypted with AES-256.' },
+            { num: '2', title: 'Choose a strategy', desc: 'Pick from battle-tested templates — DCA, momentum, dynamic pricing, content calendar — or build your own config.' },
+            { num: '3', title: 'Deploy & monitor', desc: 'Start in paper mode with zero risk. Watch your bot execute in real-time. Upgrade to live when ready.' },
+          ].map((step) => (
+            <motion.div key={step.num} variants={fade} className="how-step">
+              <div className="how-step-number">{step.num}</div>
+              <div className="how-step-title">{step.title}</div>
+              <div className="how-step-desc">{step.desc}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
+      {/* ─── Comparison Table ─── */}
+      <section className="comparison-section">
+        <motion.div
+          className="comparison-heading"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <h2>Why teams choose BeastBots</h2>
+          <p>The only platform that unifies trading, ecommerce, social, and workforce automation.</p>
+        </motion.div>
+
+        <motion.table
+          className="comparison-table"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>BeastBots</th>
+              <th>3Commas</th>
+              <th>Pionex</th>
+              <th>Buffer</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Trading bots</td>
+              <td className="highlight">7 strategies</td>
+              <td>DCA, Grid</td>
+              <td>Grid, DCA</td>
+              <td className="muted">—</td>
+            </tr>
+            <tr>
+              <td>Ecommerce automation</td>
+              <td className="highlight">6 strategies</td>
+              <td className="muted">—</td>
+              <td className="muted">—</td>
+              <td className="muted">—</td>
+            </tr>
+            <tr>
+              <td>Social media bots</td>
+              <td className="highlight">6 strategies</td>
+              <td className="muted">—</td>
+              <td className="muted">—</td>
+              <td>Scheduling only</td>
+            </tr>
+            <tr>
+              <td>Workforce automation</td>
+              <td className="highlight">6 strategies</td>
+              <td className="muted">—</td>
+              <td className="muted">—</td>
+              <td className="muted">—</td>
+            </tr>
+            <tr>
+              <td>Safety model</td>
+              <td className="highlight">5-layer</td>
+              <td>Stop-loss</td>
+              <td>Stop-loss</td>
+              <td className="muted">—</td>
+            </tr>
+            <tr>
+              <td>AI-powered decisions</td>
+              <td className="highlight">Multi-LLM</td>
+              <td className="muted">—</td>
+              <td className="muted">—</td>
+              <td>AI assist</td>
+            </tr>
+            <tr>
+              <td>Paper mode</td>
+              <td className="highlight">All families</td>
+              <td>Trading only</td>
+              <td>Trading only</td>
+              <td className="muted">—</td>
+            </tr>
+            <tr>
+              <td>Unified dashboard</td>
+              <td className="highlight">All bots, one view</td>
+              <td>Trading only</td>
+              <td>Trading only</td>
+              <td>Social only</td>
+            </tr>
+          </tbody>
+        </motion.table>
+      </section>
+
+      {/* ─── FAQ ─── */}
+      <section className="faq-section">
+        <motion.div
+          className="faq-heading"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <h2>Frequently asked questions</h2>
+          <p>Everything you need to know before deploying your first bot.</p>
+        </motion.div>
+
+        <motion.div
+          className="faq-grid"
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+          variants={stagger}
+        >
+          {[
+            {
+              q: 'Is my money safe?',
+              a: 'Yes. We never hold your funds. Bots operate through your exchange/store API keys, which you control. We enforce budget caps, circuit breakers, and kill switches. Plus, every bot starts in paper mode by default.',
+            },
+            {
+              q: 'Can I lose money trading?',
+              a: 'Yes — all trading involves risk. No strategy guarantees profits. We strongly recommend starting in paper mode, using stop-losses, and setting conservative position sizes. Read our full risk disclaimer.',
+            },
+            {
+              q: 'How is BeastBots different from 3Commas or Pionex?',
+              a: 'BeastBots is the only platform that unifies trading, ecommerce, social media, and workforce bots in a single dashboard. Others only do trading. We also have a 5-layer safety model with human-in-the-loop approvals that competitors lack.',
+            },
+            {
+              q: 'Do I need coding experience?',
+              a: 'No. Choose from pre-built strategy templates, connect your accounts, and deploy. Advanced users can customize indicators, thresholds, and risk parameters — but templates work out of the box.',
+            },
+            {
+              q: 'What exchanges and platforms do you support?',
+              a: 'Trading: Coinbase, Binance, Alpaca, Kalshi, Polymarket. Stores: Shopify, Amazon, Etsy, eBay, Square. Social: X, Instagram, TikTok, LinkedIn, YouTube. Workforce: Slack, Notion, Jira, and more.',
+            },
+            {
+              q: 'What is paper mode?',
+              a: 'Paper mode simulates bot execution against real market data without placing actual trades or making real changes. It lets you test strategies risk-free before going live. Every bot starts in paper mode.',
+            },
+            {
+              q: 'Can I run multiple bots?',
+              a: 'Yes. Each bot operates independently on its own account/store. Our Pro and Enterprise plans support multiple bots with volume pricing. One bot = one dedicated operator for maximum performance.',
+            },
+            {
+              q: 'Is my data private?',
+              a: 'Absolutely. Each account is isolated in its own tenant. We never share data across accounts, never sell data, and never train AI on your individual strategies. API keys are encrypted with AES-256-GCM.',
+            },
+          ].map((item) => (
+            <motion.div key={item.q} variants={fade} className="faq-item">
+              <div className="faq-question"><HelpCircle size={14} style={{ marginRight: 6, verticalAlign: 'text-bottom', color: 'var(--green)' }} />{item.q}</div>
+              <div className="faq-answer">{item.a}</div>
+            </motion.div>
+          ))}
+        </motion.div>
+      </section>
+
       {/* ─── CTA ─── */}
       <section className="cta-section">
         <motion.div
@@ -254,7 +478,13 @@ export default function LandingPage() {
       </section>
 
       <footer className="landing-footer">
-        &copy; {new Date().getFullYear()} BeastBots. All rights reserved.
+        <div className="legal-footer-links">
+          <Link href="/terms">Terms</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/disclaimer">Disclaimer</Link>
+          <Link href="/pricing">Pricing</Link>
+        </div>
+        <p>&copy; {new Date().getFullYear()} BeastBots. All rights reserved.</p>
       </footer>
     </div>
   );

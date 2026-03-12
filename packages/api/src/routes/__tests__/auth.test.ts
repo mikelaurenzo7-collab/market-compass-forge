@@ -209,4 +209,146 @@ describe('auth endpoints', () => {
     expect(actions).toContain('login');
     expect(actions).toContain('logout');
   });
+
+  // ─── Password Reset Flow ──────────────────────────────────
+
+  it('forgot-password returns success for any email (no enumeration)', async () => {
+    clearRateLimits();
+    const res = await app.request('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'nonexistent@example.com' }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json() as any;
+    expect(json.success).toBe(true);
+    // Should NOT include resetToken for unknown emails (no token created)
+    expect(json.data.resetToken).toBeUndefined();
+  });
+
+  it('forgot-password generates token for registered user', async () => {
+    clearRateLimits();
+    // Re-signup a fresh user for password reset testing
+    const signupRes = await app.request('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'reset-test@example.com',
+        password: 'OldPassword123!',
+      }),
+    });
+    expect(signupRes.status).toBe(201);
+
+    clearRateLimits();
+    const res = await app.request('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'reset-test@example.com' }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json() as any;
+    expect(json.success).toBe(true);
+    expect(json.data.resetToken).toBeDefined();
+  });
+
+  it('reset-password updates password and revokes sessions', async () => {
+    clearRateLimits();
+    // Get a reset token
+    const forgotRes = await app.request('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'reset-test@example.com' }),
+    });
+    const forgotJson = await forgotRes.json() as any;
+    const resetToken = forgotJson.data.resetToken;
+
+    clearRateLimits();
+    // Reset the password
+    const res = await app.request('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, password: 'NewPassword456!' }),
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json() as any;
+    expect(json.success).toBe(true);
+
+    // Old password should no longer work
+    clearRateLimits();
+    const oldLoginRes = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'reset-test@example.com', password: 'OldPassword123!' }),
+    });
+    expect(oldLoginRes.status).toBe(401);
+
+    // New password should work
+    clearRateLimits();
+    const newLoginRes = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'reset-test@example.com', password: 'NewPassword456!' }),
+    });
+    expect(newLoginRes.status).toBe(200);
+  });
+
+  it('reset-password rejects used token', async () => {
+    clearRateLimits();
+    const forgotRes = await app.request('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'reset-test@example.com' }),
+    });
+    const forgotJson = await forgotRes.json() as any;
+    const resetToken = forgotJson.data.resetToken;
+
+    // Use the token
+    clearRateLimits();
+    await app.request('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, password: 'AnotherPass789!' }),
+    });
+
+    // Try to reuse it
+    clearRateLimits();
+    const res = await app.request('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: resetToken, password: 'YetAnother000!' }),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json() as any;
+    expect(json.error).toContain('already been used');
+  });
+
+  it('reset-password rejects invalid token', async () => {
+    clearRateLimits();
+    const res = await app.request('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'fake-token-123', password: 'Something123!' }),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json() as any;
+    expect(json.error).toContain('Invalid or expired');
+  });
+
+  it('reset-password rejects short password', async () => {
+    clearRateLimits();
+    const res = await app.request('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'some-token', password: 'short' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('password reset is recorded in audit log', async () => {
+    const db = getDb();
+    const rows = db.prepare('SELECT action FROM audit_log ORDER BY created_at ASC').all() as any[];
+    const actions = rows.map((r: any) => r.action);
+    expect(actions).toContain('password_reset_request');
+    expect(actions).toContain('password_reset_complete');
+  });
 });
