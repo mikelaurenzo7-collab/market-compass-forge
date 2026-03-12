@@ -28,7 +28,7 @@ const FAMILIES = [
     id: 'trading',
     icon: <TrendingUp size={28} />,
     title: 'Trading Operators',
-    desc: 'Execute momentum, mean-reversion, and arbitrage strategies across crypto and equities with real-time risk management.',
+    desc: 'Optimize your market returns with bots that track P&L, win rates, and risk-adjusted performance in real time.',
     tags: ['StochRSI', 'ADX', 'Paper Mode', 'Alpaca', 'Binance'],
     color: 'var(--color-trading)',
     platforms: [
@@ -44,7 +44,7 @@ const FAMILIES = [
     id: 'store',
     icon: <ShoppingCart size={28} />,
     title: 'Store Operators',
-    desc: 'Dynamic pricing, inventory forecasting, listing optimization, and catalog sync across your entire storefront.',
+    desc: 'Boost your store’s revenue with bots for dynamic pricing, abandoned cart recovery, and inventory forecasting.',
     tags: ['Shopify', 'Amazon', 'Etsy', 'Dynamic Pricing', 'Inventory'],
     color: 'var(--color-store)',
     platforms: [
@@ -61,7 +61,7 @@ const FAMILIES = [
     id: 'social',
     icon: <Share2 size={28} />,
     title: 'Social Operators',
-    desc: 'Smart content scheduling, engagement algorithms, audience analytics, and cross-platform amplification.',
+    desc: 'Maximize your marketing ROI by automating content that drives engagement, follower growth, and lead conversion.',
     tags: ['X / Twitter', 'Instagram', 'YouTube', 'TikTok', 'LinkedIn'],
     color: 'var(--color-social)',
     platforms: [
@@ -78,7 +78,7 @@ const FAMILIES = [
     id: 'workforce',
     icon: <Users size={28} />,
     title: 'Workforce Pods',
-    desc: 'Orchestrate multi-agent teams for hiring, onboarding, support triage, and knowledge management workflows.',
+    desc: 'Improve your team’s operational efficiency with bots that track SLA compliance, ticket resolution times, and cost savings.',
     tags: ['Slack', 'Notion', 'Jira', 'Asana', 'HubSpot'],
     color: 'var(--color-workforce)',
     platforms: [
@@ -95,26 +95,26 @@ const FAMILIES = [
 const FEATURES = [
   {
     icon: <Shield size={20} />,
-    title: '5-Layer Safety Model',
-    desc: 'Budget caps, circuit breakers, human-in-the-loop approvals, kill switches, and full audit trails.',
+    title: 'Capital Protection',
+    desc: 'Our 5-layer safety model is the foundation that enables the confident pursuit of performance.',
     variant: 'green' as const,
   },
   {
     icon: <Zap size={20} />,
     title: 'Real-Time Execution',
-    desc: 'Cloudflare Durable Objects provide low-latency, always-on bot runtimes at the edge — globally.',
+    desc: 'Low-latency, always-on bot runtimes at the edge provide the speed needed to capture fleeting opportunities.',
     variant: 'blue' as const,
   },
   {
     icon: <BarChart3 size={20} />,
-    title: 'Meaningful Analytics',
-    desc: 'Track P&L, success rates, latency, and sentiment scores with interactive charts and sparklines.',
+    title: 'ROI-Centric Analytics',
+    desc: 'Track P&L, revenue impact, and cost savings with a unified dashboard that connects actions to outcomes.',
     variant: 'purple' as const,
   },
   {
     icon: <Bot size={20} />,
-    title: 'AI-Powered Decisions',
-    desc: 'Multi-provider LLM router (OpenAI, Anthropic, Grok) with structured prompts and automatic failover.',
+    title: 'AI-Powered Optimization',
+    desc: 'Use multi-provider LLMs to analyze performance, suggest strategy adjustments, and maximize your ROI.',
     variant: 'gold' as const,
   },
 ];
@@ -127,6 +127,7 @@ export default function LandingPage() {
         <Link href="/" className="landing-brand">BeastBots</Link>
         <div className="landing-nav-links">
           <Link href="/pricing" className="landing-nav-link">Pricing</Link>
+          <Link href="/safety" className="landing-nav-link">Safety</Link>
           <Link href="/login" className="landing-nav-link">Log in</Link>
           <Link href="/signup" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '0.82rem' }}>
             Get Started
@@ -147,28 +148,28 @@ export default function LandingPage() {
           style={{ position: 'relative', zIndex: 1 }}
         >
           <motion.div variants={fade} className="hero-badge">
-            <span className="hero-badge-dot" />
-            Now with multi-provider AI routing
+            <BarChart3 size={12} style={{ marginRight: 6 }}/>
+            The ROI-Focused Automation Platform
           </motion.div>
 
           <motion.h1 variants={fade} className="hero-title">
-            Autonomous operators that{' '}
-            <span className="hero-title-gradient">run like beasts</span>
+            Bots that build
+            <span className="hero-title-gradient"> your bottom line</span>
           </motion.h1>
 
           <motion.p variants={fade} className="hero-desc">
-            Deploy self-driving bots for trading, ecommerce, social media, and workforce
-            automation — with built-in safety, real-time analytics, and edge-native execution.
+            Deploy autonomous operators for trading, ecommerce, social media, and your workforce.
+            The only platform that lets you measure and optimize ROI across your entire business.
           </motion.p>
 
           <motion.div variants={fade} className="hero-actions">
             <Link href="/signup" className="hero-btn-primary">
               <Sparkles size={16} />
-              Start for free
+              Start Optimizing ROI
               <ArrowRight size={16} />
             </Link>
-            <Link href="/pricing" className="hero-btn-secondary">
-              View pricing
+            <Link href="/safety" className="hero-btn-secondary">
+              Learn About Safety
             </Link>
           </motion.div>
         </motion.div>
@@ -187,10 +188,10 @@ export default function LandingPage() {
           }}
         >
           {[
-            { label: 'Bots Deployed', value: '2,400+' },
-            { label: 'Trades Executed', value: '1.2M' },
+            { label: 'Decisions Analyzed', value: '18.4M' },
+            { label: 'Actions Optimized for ROI', value: '3.1M' },
             { label: 'Uptime', value: '99.97%' },
-            { label: 'Platforms', value: '16' },
+            { label: 'Integrations', value: '16' },
           ].map((s) => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '1.5rem', fontWeight: 800, color: 'var(--green)' }}>
@@ -231,7 +232,7 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            Four operator families. One command center.
+            One platform to optimize every asset
           </motion.h2>
           <motion.p
             initial={{ opacity: 0 }}
@@ -239,7 +240,7 @@ export default function LandingPage() {
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
           >
-            Each family has purpose-built strategies, platform adapters, and safety controls.
+            Each operator family is equipped with ROI-centric analytics and performance benchmarks.
           </motion.p>
         </div>
 
@@ -417,7 +418,7 @@ export default function LandingPage() {
             <tr>
               <td>Ecommerce automation</td>
               <td className="highlight">6 strategies</td>
-              <td className="muted">—</td>
+              <d className="muted">—</td>
               <td className="muted">—</td>
               <td className="muted">—</td>
             </tr>
@@ -488,36 +489,28 @@ export default function LandingPage() {
         >
           {[
             {
+              q: 'Can your bots guarantee a return on investment (ROI)?',
+              a: 'No, and any platform that guarantees a return is not being honest. All business activities involve risk. What we provide is a platform to rigorously measure and optimize the factors that lead to ROI, backed by a 5-layer safety model to protect your capital while you do so.',
+            },
+            {
+              q: 'How do you measure ROI for non-trading bots?',
+              a: 'ROI isn\'t just about direct profit. For store bots, we track revenue impact from dynamic pricing. For social bots, we measure follower growth and engagement. For workforce bots, we track cost savings from efficiency gains. It\'s about making every action accountable to your bottom line.',
+            },
+            {
               q: 'Is my money safe?',
-              a: 'Yes. We never hold your funds. Bots operate through your exchange/store API keys, which you control. We enforce budget caps, circuit breakers, and kill switches. Plus, every bot starts in paper mode by default.',
-            },
-            {
-              q: 'Can I lose money trading?',
-              a: 'Yes — all trading involves risk. No strategy guarantees profits. We strongly recommend starting in paper mode, using stop-losses, and setting conservative position sizes. Read our full risk disclaimer.',
-            },
-            {
-              q: 'How is BeastBots different from 3Commas or Pionex?',
-              a: 'BeastBots is the only platform that unifies trading, ecommerce, social media, and workforce bots in a single dashboard. Others only do trading. We also have a 5-layer safety model with human-in-the-loop approvals that competitors lack.',
+              a: 'Yes. We never hold your funds. Bots operate through your exchange/store API keys, which you control. Our 5-Layer Safety Model, which includes budget caps, circuit breakers, and human-in-the-loop approvals, is designed to protect your capital.',
             },
             {
               q: 'Do I need coding experience?',
-              a: 'No. Choose from pre-built strategy templates, connect your accounts, and deploy. Advanced users can customize indicators, thresholds, and risk parameters — but templates work out of the box.',
+              a: 'No. Choose from pre-built strategy templates focused on performance, connect your accounts, and deploy in paper mode. Advanced users can customize every parameter to fine-tune their ROI-generating strategies.',
             },
             {
-              q: 'What exchanges and platforms do you support?',
-              a: 'Trading: Coinbase, Binance, Alpaca, Kalshi, Polymarket. Stores: Shopify, Amazon, Etsy, eBay, Square. Social: X, Instagram, TikTok, LinkedIn, YouTube. Workforce: Slack, Notion, Jira, and more.',
+              q: 'How is BeastBots different from other automation tools?',
+              a: 'Most tools are siloed. You use one for trading, another for social media, and a third for store automation. BeastBots is the only platform that unifies these functions and allows you to track their performance against your business goals from a single command center.',
             },
             {
               q: 'What is paper mode?',
-              a: 'Paper mode simulates bot execution against real market data without placing actual trades or making real changes. It lets you test strategies risk-free before going live. Every bot starts in paper mode.',
-            },
-            {
-              q: 'Can I run multiple bots?',
-              a: 'Yes. Each bot operates independently on its own account/store. Our Pro and Enterprise plans support multiple bots with volume pricing. One bot = one dedicated operator for maximum performance.',
-            },
-            {
-              q: 'Is my data private?',
-              a: 'Absolutely. Each account is isolated in its own tenant. We never share data across accounts, never sell data, and never train AI on your individual strategies. API keys are encrypted with AES-256-GCM.',
+              a: 'Paper mode simulates bot execution against real-world data without using real money or making live changes. It is the perfect environment to test your strategies and tune your ROI parameters with zero risk.',
             },
           ].map((item) => (
             <motion.div key={item.q} variants={fade} className="faq-item">
@@ -535,13 +528,13 @@ export default function LandingPage() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="cta-title">Ready to deploy your first beast?</h2>
+          <h2 className="cta-title">Ready to build your bottom line?</h2>
           <p className="cta-desc">
-            Start in paper mode with zero risk. Upgrade when you&apos;re ready to go live.
+            Start in paper mode with zero risk. Go live when you see the performance.
           </p>
           <Link href="/signup" className="hero-btn-primary">
             <Sparkles size={16} />
-            Get started free
+            Start Optimizing ROI
             <ArrowRight size={16} />
           </Link>
         </motion.div>

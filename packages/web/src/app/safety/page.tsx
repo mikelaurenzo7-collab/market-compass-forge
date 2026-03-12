@@ -1,235 +1,173 @@
+
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
-  Shield, FileCheck, Users, DollarSign, AlertTriangle, ScrollText,
-  Check, X,
+  Shield, Zap, BarChart3, Bot, ArrowRight, Sparkles, Lock, CheckCircle2, Clock, Eye, HelpCircle, DollarSign, AlertTriangle, UserCheck, PowerOff, ListChecks
 } from 'lucide-react';
-import { useAuth } from '../../lib/auth-context';
-import AppShell from '../components/AppShell';
 
-interface AuditEntry {
-  id: string;
-  action: string;
-  botId?: string;
-  platform?: string;
-  result: string;
-  timestamp: string;
-}
-
-interface Approval {
-  id: string;
-  botId: string;
-  action: string;
-  status: string;
-  requestedAt: string;
-}
-
-const SAFETY_ICONS = [
-  <FileCheck size={14} key={0} />,
-  <Users size={14} key={1} />,
-  <DollarSign size={14} key={2} />,
-  <AlertTriangle size={14} key={3} />,
-  <ScrollText size={14} key={4} />,
-];
+const fade = { hidden: { opacity: 0, y: 20 }, show: { opacity: 1, y: 0 } };
+const stagger = { show: { transition: { staggerChildren: 0.15 } } };
 
 const SAFETY_LAYERS = [
-  { num: 1, name: 'Policy Checks', desc: 'Rule-based constraints evaluated before every action', status: 'Active' },
-  { num: 2, name: 'Approval Queue', desc: 'High-risk actions require human sign-off', status: 'Active' },
-  { num: 3, name: 'Budget Caps', desc: 'Per-action and daily spend limits enforced in real time', status: 'Active' },
-  { num: 4, name: 'Circuit Breakers', desc: 'Auto-halt on consecutive errors or error-rate spikes', status: 'Active' },
-  { num: 5, name: 'Audit Trail', desc: 'Immutable log of every decision for compliance review', status: 'Active' },
+  {
+    icon: <DollarSign size={28} />,
+    title: 'Layer 1: Budget Caps',
+    desc: 'Set hard limits on how much a bot can spend per day and per individual action. This is your first line of defense against overspending, ensuring bots operate strictly within your financial boundaries.',
+    details: [
+      'Max Daily Spend (USD): The total amount a bot can use in a 24-hour period.',
+      'Max Per-Action Spend (USD): The maximum for any single trade, purchase, or bid.',
+      'Warning Thresholds: Receive alerts when you approach your set limits.',
+    ],
+    color: 'var(--color-green)',
+  },
+  {
+    icon: <AlertTriangle size={28} />,
+    title: 'Layer 2: Circuit Breakers',
+    desc: 'Protect your account from black swan events or buggy strategies. The system automatically halts a bot if it detects an unusual rate of errors or losses, preventing a bad situation from getting worse.',
+    details: [
+      'Max Consecutive Errors: Pauses the bot after a specific number of failed actions in a row.',
+      'Max Error Rate: Trips if the percentage of errors in a given time window exceeds a threshold.',
+      'Automatic Cooldown: After a circuit breaker is tripped, the bot enters a mandatory cooldown period.',
+    ],
+    color: 'var(--color-orange)',
+  },
+  {
+    icon: <UserCheck size={28} />,
+    title: 'Layer 3: Human-in-the-Loop',
+    desc: 'Certain actions can be configured to require your explicit approval before execution. You maintain ultimate control over sensitive operations, from large trades to sending external communications.',
+    details: [
+      'Configurable Approvals: Decide which actions require a manual check.',
+      'Multi-Factor Confirmation: Secure approvals via email or a mobile app push notification.',
+      'Context-Rich Requests: Get all the data you need to make an informed approve/deny decision.',
+    ],
+    color: 'var(--color-blue)',
+  },
+  {
+    icon: <PowerOff size={28} />,
+    title: 'Layer 4: Kill Switches',
+    desc: 'Immediately and irrevocably halt any or all bot activity with a single click. The master kill switch provides a foolproof way to stop everything, ensuring you can intervene instantly if you notice any unexpected behavior.',
+    details: [
+      'Per-Bot Kill Switch: Instantly stop a single misbehaving bot.',
+      'Family-Wide Kill Switch: Halt all bots of a specific type (e.g., all trading bots).',
+      'Global Kill Switch: A master override to cease all activity across your entire account.',
+    ],
+    color: 'var(--color-red)',
+  },
+  {
+    icon: <ListChecks size={28} />,
+    title: 'Layer 5: Immutable Audit Trails',
+    desc: 'Every action, every decision, and every error is logged and stored in a tamper-proof audit trail. Get a complete, chronological history of what your bots have done, providing full transparency and traceability.',
+    details: [
+      'Detailed Event Logging: Records the action type, input data, outcome, and timestamp.',
+      'Risk & Safety Context: Logs which safety rules were evaluated for each action.',
+      'Exportable History: Download your full audit log for offline analysis or record-keeping.',
+    ],
+    color: 'var(--color-purple)',
+  },
 ];
 
 export default function SafetyPage() {
-  const { user, loading, apiFetch } = useAuth();
-  const router = useRouter();
-  const [audit, setAudit] = useState<AuditEntry[]>([]);
-  const [systemAudit, setSystemAudit] = useState<AuditEntry[]>([]);
-  const [approvals, setApprovals] = useState<Approval[]>([]);
-  const [fetching, setFetching] = useState(true);
-
-  const fetchSafety = useCallback(async () => {
-    try {
-      const res = await apiFetch('/api/safety/audit');
-      const json = await res.json();
-      setAudit(json.data ?? []);
-    } catch { /* API may not have this endpoint */ }
-
-    try {
-      const res = await apiFetch('/api/audit');
-      const json = await res.json();
-      if (json.success) setSystemAudit(json.data ?? []);
-    } catch {}
-
-    try {
-      const res = await apiFetch('/api/safety/approvals');
-      const json = await res.json();
-      setApprovals(json.data ?? []);
-    } catch { /* ignore */ }
-
-    setFetching(false);
-  }, [apiFetch]);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) { router.push('/login'); return; }
-    fetchSafety();
-  }, [user, loading, router, fetchSafety]);
-
-  async function handleApproval(id: string, decision: 'approved' | 'denied') {
-    await apiFetch(`/api/safety/approvals/${id}/resolve`, {
-      method: 'POST',
-      body: JSON.stringify({ approved: decision === 'approved', resolvedBy: user?.email ?? 'user' }),
-    });
-    fetchSafety();
-  }
-
-  if (loading || !user) return null;
-
-  const pendingApprovals = approvals.filter((a) => a.status === 'pending');
-
   return (
-    <AppShell>
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-        <div className="page-header-row">
-          <div>
-            <h1 className="page-title"><Shield size={22} style={{ marginRight: 8, verticalAlign: 'text-bottom' }} />Safety Center</h1>
-            <p className="page-subtitle">5-layer safety model protecting all autonomous operations</p>
-          </div>
+    <div className="landing">
+      {/* ─── Navigation ─── */}
+      <nav className="landing-nav">
+        <Link href="/" className="landing-brand">BeastBots</Link>
+        <div className="landing-nav-links">
+          <Link href="/pricing" className="landing-nav-link">Pricing</Link>
+          <Link href="/safety" className="landing-nav-link active">Safety</Link>
+          <Link href="/login" className="landing-nav-link">Log in</Link>
+          <Link href="/signup" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '0.82rem' }}>
+            Get Started
+          </Link>
         </div>
+      </nav>
 
-        {/* Safety Layers */}
-        <h2 className="section-title">Safety Layers</h2>
-        <div className="safety-layers">
-          {SAFETY_LAYERS.map((layer, i) => (
-            <motion.div key={layer.num} className="safety-layer" initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.07, duration: 0.35 }}>
-              <div className="safety-layer-number">{SAFETY_ICONS[i]}</div>
-              <div style={{ flex: 1 }}>
-                <div className="safety-layer-name">{layer.name}</div>
-                <div className="safety-layer-desc">{layer.desc}</div>
+      {/* ─── Hero ─── */}
+      <section className="hero">
+        <div className="hero-glow green" />
+        <div className="hero-glow blue" />
+
+        <motion.div
+          initial="hidden"
+          animate="show"
+          variants={stagger}
+          style={{ position: 'relative', zIndex: 1 }}
+        >
+          <motion.div variants={fade} className="hero-badge">
+            <Shield size={12} style={{ marginRight: 6 }}/>
+            The foundation for performance
+          </motion.div>
+
+          <motion.h1 variants={fade} className="hero-title">
+            Pursue ROI
+            <span className="hero-title-gradient"> with Confidence</span>
+          </motion.h1>
+
+          <motion.p variants={fade} className="hero-desc">
+            You can't optimize for return without first protecting your capital. Our 5-Layer Safety Model
+            is designed to secure your assets so you can focus on performance.
+          </motion.p>
+        </motion.div>
+      </section>
+
+      {/* ─── Layers Section ─── */}
+      <section className="safety-layers-section">
+        <motion.div
+            className="safety-layers-grid"
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-80px' }}
+            variants={stagger}
+        >
+          {SAFETY_LAYERS.map((layer, index) => (
+            <motion.div key={index} variants={fade} className="safety-layer-card">
+              <div className="safety-layer-icon" style={{ background: `${layer.color}20`, color: layer.color }}>
+                {layer.icon}
               </div>
-              <span className="connect-badge connected">{layer.status}</span>
+              <h3 className="safety-layer-title">{layer.title}</h3>
+              <p className="safety-layer-desc">{layer.desc}</p>
+              <ul className="safety-layer-details">
+                {layer.details.map((detail, i) => (
+                  <li key={i}><CheckCircle2 size={12} style={{ color: 'var(--color-green)', marginRight: 8, flexShrink: 0 }} />{detail}</li>
+                ))}
+              </ul>
             </motion.div>
           ))}
+        </motion.div>
+      </section>
+
+
+      {/* ─── CTA ─── */}
+      <section className="cta-section">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <h2 className="cta-title">Ready to automate with confidence?</h2>
+          <p className="cta-desc">
+            Experience the peace of mind that comes with our industry-leading safety features.
+          </p>
+          <Link href="/signup" className="hero-btn-primary">
+            <Sparkles size={16} />
+            Get started for free
+            <ArrowRight size={16} />
+          </Link>
+        </motion.div>
+      </section>
+
+      <footer className="landing-footer">
+        <div className="legal-footer-links">
+          <Link href="/templates">Templates</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/disclaimer">Disclaimer</Link>
+          <Link href="/pricing">Pricing</Link>
         </div>
-
-        {/* Pending Approvals */}
-        <h2 className="section-title">
-          Pending Approvals
-          {pendingApprovals.length > 0 && (
-            <span className="badge trading">{pendingApprovals.length}</span>
-          )}
-        </h2>
-        {pendingApprovals.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon"><Check size={28} /></div>
-            <div className="empty-state-title">No pending approvals</div>
-            <div className="empty-state-desc">All actions within normal parameters.</div>
-          </div>
-        ) : (
-          <table className="data-table" style={{ marginBottom: 'var(--space-2xl)' }}>
-            <thead>
-              <tr>
-                <th>Bot ID</th>
-                <th>Action</th>
-                <th>Requested</th>
-                <th>Decision</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingApprovals.map((a) => (
-                <tr key={a.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>{a.botId}</td>
-                  <td>{a.action}</td>
-                  <td>{new Date(a.requestedAt).toLocaleString()}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="btn btn-primary btn-sm" onClick={() => handleApproval(a.id, 'approved')}><Check size={14} /> Approve</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleApproval(a.id, 'denied')}><X size={14} /> Deny</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {/* Audit Log */}
-        <h2 className="section-title"><ScrollText size={16} style={{ marginRight: 6 }} />Audit Log</h2>
-        {fetching && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-            {[1,2,3].map(i => (
-              <div key={i} className="skeleton-card">
-                <div className="skeleton-line w-80" />
-                <div className="skeleton-line w-40" />
-              </div>
-            ))}
-          </div>
-        )}
-        {!fetching && audit.length === 0 && (
-          <div className="empty-state">
-            <div className="empty-state-icon"><ScrollText size={28} /></div>
-            <div className="empty-state-title">No audit entries yet</div>
-            <div className="empty-state-desc">Actions will be logged here as your bots operate.</div>
-          </div>
-        )}
-        {audit.length > 0 && (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Bot</th>
-                <th>Action</th>
-                <th>Result</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audit.map((entry) => (
-                <tr key={entry.id}>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                  <td>{entry.botId}</td>
-                  <td>{entry.action}</td>
-                  <td>
-                    <span className={`connect-badge ${entry.result === 'allowed' ? 'connected' : 'disconnected'}`}>
-                      {entry.result}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {/* System audit logs from auth/credentials */}
-        {systemAudit.length > 0 && (
-          <>
-            <h3 className="section-subtitle">System audit</h3>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Platform</th>
-                  <th>Action</th>
-                  <th>Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                {systemAudit.map((entry) => (
-                  <tr key={entry.id}>
-                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(entry.timestamp).toLocaleString()}</td>
-                    <td>{entry.platform}</td>
-                    <td>{entry.action}</td>
-                    <td>{entry.result}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-      </motion.div>
-    </AppShell>
+        <p>&copy; {new Date().getFullYear()} BeastBots. All rights reserved.</p>
+      </footer>
+    </div>
   );
 }
