@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { BotFamily, Platform, BotStatus } from '@beastbots/shared';
 import {
   INTEGRATIONS,
+  DEFAULT_PRICING,
   createDefaultBudget,
   createDefaultCircuitBreaker,
   createDefaultPolicies,
@@ -115,6 +116,7 @@ const createBotSchema = z.object({
   platform: z.string().min(1).max(50),
   name: z.string().min(1).max(200),
   config: z.record(z.unknown()).optional(),
+  credentialId: z.string().optional(),
 });
 
 const updateBotSchema = z.object({
@@ -191,7 +193,9 @@ botsRouter.post('/', async (c) => {
     return c.json({ success: false, error: parsed.error.issues }, 400);
   }
 
-  const { family, platform, name, config } = parsed.data;
+  const { family, platform, name, config, credentialId } = parsed.data;
+
+  const db = getDb();
 
   // Validate platform exists
   const validPlatform = INTEGRATIONS.find((i) => i.id === platform);
@@ -199,11 +203,44 @@ botsRouter.post('/', async (c) => {
     return c.json({ success: false, error: `Unknown platform: ${platform}` }, 400);
   }
 
+  // Enforce plan bot limits
+  const tenant = db.prepare('SELECT plan FROM tenants WHERE id = ?').get(auth.tenantId) as { plan: string } | undefined;
+  const tier = (tenant?.plan ?? 'starter') as 'starter' | 'pro' | 'enterprise';
+  const planDef = DEFAULT_PRICING.find((p) => p.family === family && p.tier === tier);
+  if (planDef) {
+    const currentCount = db.prepare('SELECT COUNT(*) as cnt FROM bots WHERE tenant_id = ? AND family = ?').get(auth.tenantId, family) as { cnt: number };
+    if (currentCount.cnt >= planDef.maxBots) {
+      const nextTier = tier === 'starter' ? 'pro' : tier === 'pro' ? 'enterprise' : null;
+      const upgradeMsg = nextTier
+        ? `Upgrade to ${nextTier} for up to ${DEFAULT_PRICING.find(p => p.family === family && p.tier === nextTier)?.maxBots} ${family} bots`
+        : `Contact sales for additional ${family} bot capacity`;
+      const addOnMsg = planDef.addOnBotUsd > 0
+        ? `, or add extra bots at $${planDef.addOnBotUsd}/mo each`
+        : '';
+      return c.json({
+        success: false,
+        error: `${tier.charAt(0).toUpperCase() + tier.slice(1)} plan allows ${planDef.maxBots} ${family} bot${planDef.maxBots > 1 ? 's' : ''}. ${upgradeMsg}${addOnMsg}.`,
+        code: 'PLAN_BOT_LIMIT',
+        currentCount: currentCount.cnt,
+        maxBots: planDef.maxBots,
+        tier,
+        family,
+      }, 403);
+    }
+  }
+
+  // Validate credentialId if provided
+  if (credentialId) {
+    const cred = db.prepare('SELECT id FROM credentials WHERE id = ? AND tenant_id = ? AND platform = ?').get(credentialId, auth.tenantId, platform) as { id: string } | undefined;
+    if (!cred) {
+      return c.json({ success: false, error: 'Invalid credential — must belong to your account and match the bot platform' }, 400);
+    }
+  }
+
   const id = `bot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const now = Date.now();
-  const db = getDb();
-  db.prepare('INSERT INTO bots (id, tenant_id, name, family, platform, status, config, safety_config, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-    .run(id, auth.tenantId, name, family, platform, 'idle', JSON.stringify(config ?? {}), JSON.stringify({}), now, now);
+  db.prepare('INSERT INTO bots (id, tenant_id, name, family, platform, status, config, safety_config, credential_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(id, auth.tenantId, name, family, platform, 'idle', JSON.stringify(config ?? {}), JSON.stringify({}), credentialId ?? null, now, now);
 
   logAudit({
     tenantId: auth.tenantId,

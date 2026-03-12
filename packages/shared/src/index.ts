@@ -26,6 +26,8 @@ export interface PricingPlan {
   tier: 'starter' | 'pro' | 'enterprise';
   monthlyUsd: number;
   includedUsageUsd: number;
+  maxBots: number;
+  addOnBotUsd: number;
 }
 
 // ─── Safety Model Types ────────────────────────────────────────
@@ -481,18 +483,22 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
 ];
 
 export const DEFAULT_PRICING: PricingPlan[] = [
-  { family: 'trading', tier: 'starter', monthlyUsd: 399, includedUsageUsd: 75 },
-  { family: 'trading', tier: 'pro', monthlyUsd: 1249, includedUsageUsd: 300 },
-  { family: 'trading', tier: 'enterprise', monthlyUsd: 4999, includedUsageUsd: 2000 },
-  { family: 'store', tier: 'starter', monthlyUsd: 249, includedUsageUsd: 50 },
-  { family: 'store', tier: 'pro', monthlyUsd: 799, includedUsageUsd: 150 },
-  { family: 'store', tier: 'enterprise', monthlyUsd: 2999, includedUsageUsd: 1000 },
-  { family: 'social', tier: 'starter', monthlyUsd: 149, includedUsageUsd: 25 },
-  { family: 'social', tier: 'pro', monthlyUsd: 499, includedUsageUsd: 75 },
-  { family: 'social', tier: 'enterprise', monthlyUsd: 1499, includedUsageUsd: 500 },
-  { family: 'workforce', tier: 'starter', monthlyUsd: 999, includedUsageUsd: 200 },
-  { family: 'workforce', tier: 'pro', monthlyUsd: 2999, includedUsageUsd: 500 },
-  { family: 'workforce', tier: 'enterprise', monthlyUsd: 9999, includedUsageUsd: 5000 },
+  // Trading: Starter=1 bot, Pro=3 bots ($299 add-on), Enterprise=10 bots ($199 add-on)
+  { family: 'trading', tier: 'starter', monthlyUsd: 399, includedUsageUsd: 75, maxBots: 1, addOnBotUsd: 0 },
+  { family: 'trading', tier: 'pro', monthlyUsd: 1249, includedUsageUsd: 300, maxBots: 3, addOnBotUsd: 299 },
+  { family: 'trading', tier: 'enterprise', monthlyUsd: 4999, includedUsageUsd: 2000, maxBots: 10, addOnBotUsd: 199 },
+  // Store: Starter=1 bot, Pro=3 bots ($179 add-on), Enterprise=10 bots ($119 add-on)
+  { family: 'store', tier: 'starter', monthlyUsd: 249, includedUsageUsd: 50, maxBots: 1, addOnBotUsd: 0 },
+  { family: 'store', tier: 'pro', monthlyUsd: 799, includedUsageUsd: 150, maxBots: 3, addOnBotUsd: 179 },
+  { family: 'store', tier: 'enterprise', monthlyUsd: 2999, includedUsageUsd: 1000, maxBots: 10, addOnBotUsd: 119 },
+  // Social: Starter=1 bot, Pro=5 bots ($79 add-on), Enterprise=15 bots ($49 add-on)
+  { family: 'social', tier: 'starter', monthlyUsd: 149, includedUsageUsd: 25, maxBots: 1, addOnBotUsd: 0 },
+  { family: 'social', tier: 'pro', monthlyUsd: 499, includedUsageUsd: 75, maxBots: 5, addOnBotUsd: 79 },
+  { family: 'social', tier: 'enterprise', monthlyUsd: 1499, includedUsageUsd: 500, maxBots: 15, addOnBotUsd: 49 },
+  // Workforce: Starter=1 bot, Pro=3 bots ($599 add-on), Enterprise=10 bots ($399 add-on)
+  { family: 'workforce', tier: 'starter', monthlyUsd: 999, includedUsageUsd: 200, maxBots: 1, addOnBotUsd: 0 },
+  { family: 'workforce', tier: 'pro', monthlyUsd: 2999, includedUsageUsd: 500, maxBots: 3, addOnBotUsd: 599 },
+  { family: 'workforce', tier: 'enterprise', monthlyUsd: 9999, includedUsageUsd: 5000, maxBots: 10, addOnBotUsd: 399 },
 ];
 
 // ─── Safety Model Defaults ─────────────────────────────────────

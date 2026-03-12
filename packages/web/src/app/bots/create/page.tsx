@@ -109,12 +109,17 @@ export default function CreateBotPage() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  const [planUsage, setPlanUsage] = useState<{ tier: string; usage: { family: string; currentBots: number; maxBots: number; canAddMore: boolean; addOnBotUsd: number }[] } | null>(null);
 
   const fetchConnected = useCallback(async () => {
     try {
-      const res = await apiFetch('/api/credentials');
-      const json = await res.json();
-      setConnectedPlatforms((json.data ?? []).map((c: any) => c.platform));
+      const [credRes, usageRes] = await Promise.all([
+        apiFetch('/api/credentials'),
+        apiFetch('/api/pricing/usage'),
+      ]);
+      const [credJson, usageJson] = await Promise.all([credRes.json(), usageRes.json()]);
+      setConnectedPlatforms((credJson.data ?? []).map((c: any) => c.platform));
+      if (usageJson.success) setPlanUsage(usageJson.data);
     } catch { /* ignore */ }
   }, [apiFetch]);
 
@@ -183,6 +188,8 @@ export default function CreateBotPage() {
   const availablePlatforms = PLATFORMS[family] ?? [];
   const availableStrategies = STRATEGIES[family] ?? [];
   const currentFamilyMeta = FAMILY_META[family];
+  const familyUsage = planUsage?.usage.find(u => u.family === family);
+  const atBotLimit = familyUsage ? !familyUsage.canAddMore : false;
 
   return (
     <AppShell>
@@ -210,6 +217,27 @@ export default function CreateBotPage() {
         </div>
 
         {error && <div className="auth-error" style={{ marginBottom: 'var(--space-md)' }}>{error}</div>}
+
+        {familyUsage && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
+            padding: 'var(--space-sm) var(--space-md)',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 'var(--space-md)',
+            background: atBotLimit ? 'rgba(239,68,68,0.08)' : 'rgba(0,232,123,0.06)',
+            border: `1px solid ${atBotLimit ? 'rgba(239,68,68,0.2)' : 'rgba(0,232,123,0.15)'}`,
+            fontSize: '0.8rem',
+          }}>
+            <span style={{ color: atBotLimit ? 'var(--red)' : 'var(--text-secondary)' }}>
+              {currentFamilyMeta?.label} bots: {familyUsage.currentBots}/{familyUsage.maxBots} ({planUsage?.tier} plan)
+            </span>
+            {atBotLimit && (
+              <Link href="/pricing" style={{ color: 'var(--accent-green)', fontWeight: 600, textDecoration: 'none', fontSize: '0.8rem' }}>
+                Upgrade Plan
+              </Link>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {/* Step 1: Family + Platform */}

@@ -17,6 +17,7 @@ const saveCredentialSchema = z.object({
   apiSecret: z.string().optional(),
   passphrase: z.string().optional(),
   additionalFields: z.record(z.string()).optional(),
+  accountLabel: z.string().min(1).max(100).optional(),
 });
 
 // ─── GET / — List connected platforms ────────────────────────
@@ -27,9 +28,9 @@ credentialsRouter.get('/', async (c) => {
 
   const db = getDb();
   const rows = db.prepare(
-    'SELECT id, platform, credential_type, status, created_at, updated_at FROM credentials WHERE tenant_id = ?'
+    'SELECT id, platform, account_label, credential_type, status, created_at, updated_at FROM credentials WHERE tenant_id = ?'
   ).all(auth.tenantId) as {
-    id: string; platform: string; credential_type: string;
+    id: string; platform: string; account_label: string; credential_type: string;
     status: string; created_at: number; updated_at: number;
   }[];
 
@@ -38,6 +39,7 @@ credentialsRouter.get('/', async (c) => {
     data: rows.map((r) => ({
       id: r.id,
       platform: r.platform,
+      accountLabel: r.account_label,
       credentialType: r.credential_type,
       status: r.status,
       connectedAt: r.created_at,
@@ -67,15 +69,16 @@ credentialsRouter.post('/:platform', async (c) => {
   const id = `cred_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
   const now = Date.now();
   const encryptedData = encrypt(JSON.stringify(parsed.data));
+  const label = parsed.data.accountLabel ?? 'default';
 
-  // Upsert — replace if already connected
+  // Upsert — replace if same platform + label already connected
   db.prepare(
-    'DELETE FROM credentials WHERE tenant_id = ? AND platform = ?'
-  ).run(auth.tenantId, platform);
+    'DELETE FROM credentials WHERE tenant_id = ? AND platform = ? AND account_label = ?'
+  ).run(auth.tenantId, platform, label);
 
   db.prepare(
-    'INSERT INTO credentials (id, tenant_id, platform, credential_type, encrypted_data, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  ).run(id, auth.tenantId, platform, 'api_key', encryptedData, 'active', now, now);
+    'INSERT INTO credentials (id, tenant_id, platform, account_label, credential_type, encrypted_data, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  ).run(id, auth.tenantId, platform, label, 'api_key', encryptedData, 'active', now, now);
 
   // audit
   logAudit({
@@ -90,7 +93,7 @@ credentialsRouter.post('/:platform', async (c) => {
 
   return c.json({
     success: true,
-    data: { id, platform, credentialType: 'api_key', status: 'active', connectedAt: now },
+    data: { id, platform, accountLabel: label, credentialType: 'api_key', status: 'active', connectedAt: now },
   }, 201);
 });
 
@@ -101,14 +104,15 @@ credentialsRouter.delete('/:platform', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
 
   const platform = c.req.param('platform');
+  const label = c.req.query('label') ?? 'default';
   const db = getDb();
 
   const result = db.prepare(
-    'DELETE FROM credentials WHERE tenant_id = ? AND platform = ?'
-  ).run(auth.tenantId, platform);
+    'DELETE FROM credentials WHERE tenant_id = ? AND platform = ? AND account_label = ?'
+  ).run(auth.tenantId, platform, label);
 
   if (result.changes === 0) {
-    return c.json({ success: false, error: 'No credentials found for this platform' }, 404);
+    return c.json({ success: false, error: 'No credentials found for this platform/account' }, 404);
   }
 
   logAudit({

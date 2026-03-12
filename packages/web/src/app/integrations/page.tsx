@@ -51,27 +51,37 @@ export default function IntegrationsPage() {
   );
 }
 
+interface ConnectedCredential {
+  id: string;
+  platform: string;
+  accountLabel: string;
+  status: string;
+}
+
 function IntegrationsPageContent() {
   const { user, loading, apiFetch } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const [integrations, setIntegrations] = useState<IntegrationInfo[]>([]);
-  const [connected, setConnected] = useState<string[]>([]);
+  const [connectedCreds, setConnectedCreds] = useState<ConnectedCredential[]>([]);
   const [fetching, setFetching] = useState(true);
   const [activeTab, setActiveTab] = useState<'platforms' | 'tools'>('platforms');
   const [modal, setModal] = useState<IntegrationInfo | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
+  const [accountLabel, setAccountLabel] = useState('');
   const [connectError, setConnectError] = useState('');
   const [connecting, setConnecting] = useState(false);
   const [notification, setNotification] = useState('');
+
+  const connected = connectedCreds.map(c => c.platform);
 
   const fetchCredentials = useCallback(async () => {
     try {
       const res = await apiFetch('/api/credentials');
       const json = await res.json();
-      setConnected((json.data ?? []).map((c: any) => c.platform));
+      setConnectedCreds(json.data ?? []);
     } catch { /* ignore */ }
     setFetching(false);
   }, [apiFetch]);
@@ -115,7 +125,7 @@ function IntegrationsPageContent() {
     try {
       const res = await apiFetch(`/api/credentials/${modal.id}`, {
         method: 'POST',
-        body: JSON.stringify({ apiKey, apiSecret: apiSecret || undefined }),
+        body: JSON.stringify({ apiKey, apiSecret: apiSecret || undefined, accountLabel: accountLabel.trim() || undefined }),
       });
       const json = await res.json();
       if (!json.success) {
@@ -126,6 +136,7 @@ function IntegrationsPageContent() {
       setModal(null);
       setApiKey('');
       setApiSecret('');
+      setAccountLabel('');
       setConnecting(false);
       fetchCredentials();
     } catch {
@@ -134,9 +145,10 @@ function IntegrationsPageContent() {
     }
   }
 
-  async function handleDisconnect(platformId: string) {
-    if (!confirm(`Disconnect ${platformId}?`)) return;
-    await apiFetch(`/api/credentials/${platformId}`, { method: 'DELETE' });
+  async function handleDisconnect(platformId: string, label?: string) {
+    if (!confirm(`Disconnect ${platformId}${label && label !== 'default' ? ` (${label})` : ''}?`)) return;
+    const queryStr = label ? `?label=${encodeURIComponent(label)}` : '';
+    await apiFetch(`/api/credentials/${platformId}${queryStr}`, { method: 'DELETE' });
     fetchCredentials();
   }
 
@@ -160,58 +172,91 @@ function IntegrationsPageContent() {
   const platformIntegrations = integrations.filter((p) => BOT_PLATFORM_CATEGORIES.includes(p.category));
   const toolIntegrations = integrations.filter((p) => WORKFORCE_TOOL_CATEGORIES.includes(p.category));
 
-  const platformConnected = connected.filter((id) =>
+  const platformConnectedIds = [...new Set(connected.filter((id) =>
     platformIntegrations.some((p) => p.id === id)
-  );
-  const toolConnected = connected.filter((id) =>
+  ))];
+  const toolConnectedIds = [...new Set(connected.filter((id) =>
     toolIntegrations.some((p) => p.id === id)
-  );
+  ))];
+  // backwards-compat aliases for tab badge counts
+  const platformConnected = platformConnectedIds;
+  const toolConnected = toolConnectedIds;
 
   const activeCategoryList = activeTab === 'platforms' ? BOT_PLATFORM_CATEGORIES : WORKFORCE_TOOL_CATEGORIES;
   const activeIntegrations = activeTab === 'platforms' ? platformIntegrations : toolIntegrations;
 
   function renderIntegrationCard(p: IntegrationInfo) {
-    const isConnected = connected.includes(p.id);
+    const platformCreds = connectedCreds.filter(c => c.platform === p.id);
+    const isConnected = platformCreds.length > 0;
+
+    function openConnectModal() {
+      setModal(p);
+      setConnectError('');
+      setApiKey('');
+      setApiSecret('');
+      setAccountLabel('');
+    }
+
     return (
-      <div key={p.id} className="connect-card">
-        <div className="connect-info">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
-            <span className="connect-name">{p.displayName}</span>
-            {p.status !== 'ga' && (
-              <span style={{
-                fontSize: '0.65rem',
-                padding: '1px 6px',
-                borderRadius: 4,
-                background: p.status === 'beta' ? 'var(--blue-dim)' : 'var(--surface-secondary)',
-                color: p.status === 'beta' ? 'var(--blue)' : 'var(--text-muted)',
-                fontWeight: 600,
-              }}>
-                {p.status}
-              </span>
+      <div key={p.id} className="connect-card" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="connect-info">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+              <span className="connect-name">{p.displayName}</span>
+              {p.status !== 'ga' && (
+                <span style={{
+                  fontSize: '0.65rem',
+                  padding: '1px 6px',
+                  borderRadius: 4,
+                  background: p.status === 'beta' ? 'var(--blue-dim)' : 'var(--surface-secondary)',
+                  color: p.status === 'beta' ? 'var(--blue)' : 'var(--text-muted)',
+                  fontWeight: 600,
+                }}>
+                  {p.status}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="connect-status">
+            <span className={`connect-badge ${isConnected ? 'connected' : 'disconnected'}`}>
+              {isConnected ? `${platformCreds.length} account${platformCreds.length !== 1 ? 's' : ''}` : 'Not connected'}
+            </span>
+            {p.oauth ? (
+              <button className="btn btn-primary btn-sm" onClick={() => handleOAuthConnect(p.id)}>
+                <Plug size={14} /> {isConnected ? 'Add Account' : 'Connect'}
+              </button>
+            ) : (
+              <button className="btn btn-primary btn-sm" onClick={openConnectModal}>
+                <Plug size={14} /> {isConnected ? 'Add Account' : 'Connect'}
+              </button>
             )}
           </div>
         </div>
-        <div className="connect-status">
-          <span className={`connect-badge ${isConnected ? 'connected' : 'disconnected'}`}>
-            {isConnected ? 'Connected' : 'Not connected'}
-          </span>
-          {isConnected ? (
-            <button className="btn btn-danger btn-sm" onClick={() => handleDisconnect(p.id)}>
-              <Unplug size={14} /> Disconnect
-            </button>
-          ) : p.oauth ? (
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => handleOAuthConnect(p.id)}
-            >
-              <Plug size={14} /> Connect
-            </button>
-          ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => { setModal(p); setConnectError(''); setApiKey(''); setApiSecret(''); }}>
-              <Plug size={14} /> Connect
-            </button>
-          )}
-        </div>
+
+        {/* Show connected accounts */}
+        {platformCreds.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', marginTop: 'var(--space-sm)', paddingTop: 'var(--space-sm)', borderTop: '1px solid var(--border-subtle)' }}>
+            {platformCreds.map(cred => (
+              <div key={cred.id} style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-xs)',
+                background: 'var(--surface-secondary)', borderRadius: 'var(--radius-sm)',
+                padding: '4px 10px', fontSize: '0.78rem',
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)', flexShrink: 0 }} />
+                <span style={{ color: 'var(--text-primary)' }}>
+                  {cred.accountLabel === 'default' ? 'Default' : cred.accountLabel}
+                </span>
+                <button
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-muted)', display: 'flex' }}
+                  onClick={() => handleDisconnect(p.id, cred.accountLabel)}
+                  title={`Disconnect ${cred.accountLabel}`}
+                >
+                  <Unplug size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -222,7 +267,8 @@ function IntegrationsPageContent() {
         <div>
           <h1 className="page-title">Integrations</h1>
           <p className="page-subtitle">
-            {connected.length} platform{connected.length !== 1 ? 's' : ''} connected
+            {new Set(connected).size} platform{new Set(connected).size !== 1 ? 's' : ''} connected
+            {connectedCreds.length > new Set(connected).size ? ` (${connectedCreds.length} accounts)` : ''}
           </p>
         </div>
       </div>
@@ -295,7 +341,7 @@ function IntegrationsPageContent() {
           {activeCategoryList.map((cat) => {
             const catItems = activeIntegrations.filter((p) => p.category === cat);
             if (catItems.length === 0) return null;
-            const meta = CATEGORY_META[cat];
+            const meta = CATEGORY_Mnew Set(catItems.filter((p) => connected.includes(p.id)).map(p => p.id)).size
             const connectedInCat = catItems.filter((p) => connected.includes(p.id)).length;
             return (
               <div key={cat} className="platform-category-block">
@@ -364,6 +410,20 @@ function IntegrationsPageContent() {
                   onChange={(e) => setApiSecret(e.target.value)}
                   placeholder="Enter API secret"
                 />
+              </label>
+              <label className="auth-label">
+                Account Label (optional)
+                <input
+                  type="text"
+                  className="auth-input"
+                  value={accountLabel}
+                  onChange={(e) => setAccountLabel(e.target.value)}
+                  placeholder='e.g. "Main Store", "Outlet"'
+                  maxLength={100}
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                  Label to distinguish multiple accounts on the same platform
+                </span>
               </label>
               <div className="modal-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setModal(null)}>Cancel</button>

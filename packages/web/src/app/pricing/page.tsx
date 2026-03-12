@@ -11,6 +11,8 @@ interface PricingPlan {
   tier: string;
   monthlyUsd: number;
   includedUsageUsd: number;
+  maxBots: number;
+  addOnBotUsd: number;
 }
 
 const FAMILY_ICONS: Record<string, React.ReactNode> = {
@@ -25,36 +27,36 @@ const FAMILY_INFO: Record<string, { icon: React.ReactNode; tagline: string; feat
     icon: FAMILY_ICONS.trading,
     tagline: 'Autonomous trading across crypto, equities, and prediction markets',
     features: {
-      starter: ['1 bot', '5 strategies', 'Paper trading', 'Daily reports', 'Email support'],
-      pro: ['5 bots', 'All strategies', 'Live trading', 'Real-time alerts', 'Priority support', 'API access'],
-      enterprise: ['Unlimited bots', 'Custom strategies', 'Co-location', 'Dedicated account manager', '99.9% SLA', 'SSO & audit logs'],
+      starter: ['1 dedicated bot', '5 strategies', 'Paper trading', 'Daily reports', 'Email support'],
+      pro: ['Up to 3 bots', 'All strategies', 'Live trading', 'Real-time alerts', 'Priority support', 'API access', 'Add more bots at $299/mo each'],
+      enterprise: ['Up to 10 bots', 'Custom strategies', 'Co-location', 'Dedicated account manager', '99.9% SLA', 'SSO & audit logs', 'Add more bots at $199/mo each'],
     },
   },
   store: {
     icon: FAMILY_ICONS.store,
-    tagline: 'Smart ecommerce operations across all major marketplaces',
+    tagline: 'Smart ecommerce operations — one bot per store, fully dedicated',
     features: {
-      starter: ['1 bot', '3 strategies', '1 marketplace', 'Weekly reports', 'Email support'],
-      pro: ['10 bots', 'All strategies', '3 marketplaces', 'Real-time sync', 'Priority support', 'API access'],
-      enterprise: ['Unlimited bots', 'Custom integrations', 'All marketplaces', 'Dedicated CSM', '99.9% SLA', 'SSO & audit logs'],
+      starter: ['1 dedicated bot', '3 strategies', '1 store', 'Weekly reports', 'Email support'],
+      pro: ['Up to 3 bots', 'All strategies', '3 stores', 'Real-time sync', 'Priority support', 'API access', 'Add more bots at $179/mo each'],
+      enterprise: ['Up to 10 bots', 'Custom integrations', 'All stores', 'Dedicated CSM', '99.9% SLA', 'SSO & audit logs', 'Add more bots at $119/mo each'],
     },
   },
   social: {
     icon: FAMILY_ICONS.social,
-    tagline: 'Automated content, engagement, and analytics across platforms',
+    tagline: 'Automated content, engagement, and analytics — one bot per account',
     features: {
-      starter: ['1 bot', '2 strategies', '1 platform', 'Weekly analytics', 'Email support'],
-      pro: ['10 bots', 'All strategies', '3 platforms', 'Real-time analytics', 'Priority support', 'API access'],
-      enterprise: ['Unlimited bots', 'Custom workflows', 'All platforms', 'Dedicated CSM', '99.9% SLA', 'SSO & audit logs'],
+      starter: ['1 dedicated bot', '2 strategies', '1 account', 'Weekly analytics', 'Email support'],
+      pro: ['Up to 5 bots', 'All strategies', '5 accounts', 'Real-time analytics', 'Priority support', 'API access', 'Add more bots at $79/mo each'],
+      enterprise: ['Up to 15 bots', 'Custom workflows', 'Unlimited accounts', 'Dedicated CSM', '99.9% SLA', 'SSO & audit logs', 'Add more bots at $49/mo each'],
     },
   },
   workforce: {
     icon: FAMILY_ICONS.workforce,
     tagline: 'General-purpose autonomous operators for business workflows',
     features: {
-      starter: ['1 bot', 'Basic automations', '100 actions/day', 'Weekly reports', 'Email support'],
-      pro: ['10 bots', 'Advanced workflows', '1,000 actions/day', 'Real-time monitoring', 'Priority support', 'API access'],
-      enterprise: ['Unlimited bots', 'Custom pipelines', 'Unlimited actions', 'Dedicated engineer', '99.9% SLA', 'SSO & audit logs'],
+      starter: ['1 dedicated bot', 'Basic automations', '100 actions/day', 'Weekly reports', 'Email support'],
+      pro: ['Up to 3 bots', 'Advanced workflows', '1,000 actions/day', 'Real-time monitoring', 'Priority support', 'API access', 'Add more bots at $599/mo each'],
+      enterprise: ['Up to 10 bots', 'Custom pipelines', 'Unlimited actions', 'Dedicated engineer', '99.9% SLA', 'SSO & audit logs', 'Add more bots at $399/mo each'],
     },
   },
 };
@@ -203,8 +205,21 @@ export default function PricingPage() {
               </div>
 
               {plan && (
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 24 }}>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12 }}>
                   Includes ${plan.includedUsageUsd.toLocaleString()} usage credits
+                </div>
+              )}
+
+              {plan && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--accent-green)', marginBottom: 24, fontWeight: 600 }}>
+                  {plan.maxBots === 1
+                    ? '1 dedicated bot included'
+                    : `Up to ${plan.maxBots} bots included`}
+                  {plan.addOnBotUsd > 0 && (
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
+                      {' '}· +${plan.addOnBotUsd}/mo per extra bot
+                    </span>
+                  )}
                 </div>
               )}
 
