@@ -606,8 +606,20 @@ function generatePolymarketSignal(
   marketData: MarketData,
   state: TradingEngineState
 ) {
-  // Currently stubbed; signal always hold
-  return { direction: 'hold', confidence: 0, indicators: {} };
+  // Polymarket is an on-chain prediction market — same event probability logic as Kalshi
+  // Use market price as the current probability, compare to user's estimated value
+  if (config.strategy === 'event_probability' && config.eventProbabilityData) {
+    const estimated = config.eventProbabilityData.estimated ?? config.eventProbabilityData.currentProbability;
+    const fair = config.eventProbabilityData.fair ?? marketData.price;
+    return eventProbabilitySignal(estimated, fair);
+  }
+  // For non-event strategies on Polymarket, use base signal with conservative thresholds
+  const signal = baseStrategySignal(config, indicators, marketData, state);
+  // Require higher confidence for on-chain trades (gas costs, slippage)
+  if (signal.direction !== 'hold' && signal.confidence < 65) {
+    return { direction: 'hold' as const, confidence: signal.confidence, indicators: signal.indicators };
+  }
+  return signal;
 }
 
 // ─── Platform-Specific Configurations ─────────────────────────

@@ -479,6 +479,7 @@ export default function LandingPage() {
 
       <footer className="landing-footer">
         <div className="legal-footer-links">
+          <Link href="/templates">Templates</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/disclaimer">Disclaimer</Link>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, ShoppingCart, Share2, Users, Play, Pause, Square,
-  Trash2, AlertOctagon, ArrowLeft, Activity,
+  Trash2, AlertOctagon, ArrowLeft, Activity, Zap,
 } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
@@ -39,6 +39,15 @@ interface MetricsResponse {
   metrics: BotMetrics;
 }
 
+interface DecisionEntry {
+  botId: string;
+  timestamp: number;
+  action: string;
+  result: string;
+  details: Record<string, unknown>;
+  durationMs: number;
+}
+
 const FAMILY_ICONS: Record<string, React.ReactNode> = {
   trading: <TrendingUp size={28} />,
   store: <ShoppingCart size={28} />,
@@ -57,6 +66,7 @@ export default function BotDetailPage() {
   const botId = params.id as string;
   const [bot, setBot] = useState<BotDetail | null>(null);
   const [metricsData, setMetricsData] = useState<MetricsResponse | null>(null);
+  const [decisions, setDecisions] = useState<DecisionEntry[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
 
@@ -84,6 +94,12 @@ export default function BotDetailPage() {
       const res = await apiFetch(`/api/bots/${botId}/metrics`);
       const json = await res.json();
       if (json.success) setMetricsData(json.data ?? null);
+    } catch { /* ignore */ }
+    // Fetch decisions
+    try {
+      const res = await apiFetch(`/api/bots/${botId}/decisions`);
+      const json = await res.json();
+      if (json.success) setDecisions(json.data ?? []);
     } catch { /* ignore */ }
   }, [apiFetch, botId]);
 
@@ -295,6 +311,46 @@ export default function BotDetailPage() {
                   <span className="settings-value" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(metricsData.heartbeat).toLocaleString()}</span>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Decision Activity Stream */}
+          {decisions.length > 0 && (
+            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
+              <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
+                <Zap size={16} style={{ color: 'var(--color-primary)' }} />
+                Live Activity Stream
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 'auto' }}>
+                  Last {decisions.length} decisions
+                </span>
+              </div>
+              <div className="decision-stream">
+                {decisions.map((d, i) => (
+                  <div key={`${d.timestamp}-${i}`} className={`decision-item ${d.result}`}>
+                    <span className="decision-time">
+                      {new Date(d.timestamp).toLocaleTimeString()}
+                    </span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                        <span className="decision-action">{d.action.replace(/_/g, ' ')}</span>
+                        <span className={`decision-result ${d.result}`}>{d.result}</span>
+                        {d.durationMs > 0 && (
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                            {d.durationMs}ms
+                          </span>
+                        )}
+                      </div>
+                      {d.details && Object.keys(d.details).length > 0 && (
+                        <div className="decision-details">
+                          {Object.entries(d.details).map(([k, v]) => (
+                            <span key={k}>{k}: {typeof v === 'object' ? JSON.stringify(v) : String(v)} </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>

@@ -1,20 +1,71 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Settings, User, Shield, AlertTriangle, LogOut } from 'lucide-react';
+import { Settings, User, Shield, AlertTriangle, LogOut, Bell } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 import AppShell from '../components/AppShell';
 
+interface NotificationPrefs {
+  emailTradeAlerts: boolean;
+  emailDailyDigest: boolean;
+  emailSecurityAlerts: boolean;
+  emailWeeklyReport: boolean;
+  tradeAlertMinConfidence: number;
+  tradeAlertMinPnlUsd: number;
+}
+
+const DEFAULT_PREFS: NotificationPrefs = {
+  emailTradeAlerts: true,
+  emailDailyDigest: true,
+  emailSecurityAlerts: true,
+  emailWeeklyReport: false,
+  tradeAlertMinConfidence: 80,
+  tradeAlertMinPnlUsd: 10,
+};
+
 export default function SettingsPage() {
-  const { user, loading, tenantId, logout } = useAuth();
+  const { user, loading, tenantId, apiFetch, logout } = useAuth();
   const router = useRouter();
+  const [prefs, setPrefs] = useState<NotificationPrefs>(DEFAULT_PREFS);
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  const [prefsSaving, setPrefsSaving] = useState(false);
+
+  const fetchPrefs = useCallback(async () => {
+    try {
+      const res = await apiFetch('/api/notifications/preferences');
+      const json = await res.json();
+      if (json.success) setPrefs({ ...DEFAULT_PREFS, ...json.data });
+    } catch { /* ignore */ } finally {
+      setPrefsLoading(false);
+    }
+  }, [apiFetch]);
 
   useEffect(() => {
     if (loading) return;
     if (!user) { router.push('/login'); return; }
-  }, [user, loading, router]);
+    fetchPrefs();
+  }, [user, loading, router, fetchPrefs]);
+
+  async function savePrefs(updated: NotificationPrefs) {
+    setPrefs(updated);
+    setPrefsSaving(true);
+    try {
+      await apiFetch('/api/notifications/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    } catch { /* ignore */ } finally {
+      setPrefsSaving(false);
+    }
+  }
+
+  function togglePref(key: keyof NotificationPrefs) {
+    const updated = { ...prefs, [key]: !prefs[key] };
+    savePrefs(updated);
+  }
 
   async function handleLogout() {
     await logout();
@@ -73,6 +124,45 @@ export default function SettingsPage() {
           <span className="settings-label">Audit Trail</span>
           <span className="connect-badge connected">Enabled</span>
         </div>
+      </div>
+
+      {/* Notification Preferences */}
+      <div className="settings-section">
+        <div className="settings-section-title"><Bell size={16} style={{ marginRight: 6 }} />Notifications {prefsSaving && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>(saving...)</span>}</div>
+        {prefsLoading ? (
+          <div style={{ padding: 'var(--space-md)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading preferences...</div>
+        ) : (
+          <>
+            <div className="notification-toggle">
+              <div>
+                <div className="notification-toggle-label">Trade Alerts</div>
+                <div className="notification-toggle-desc">Get emailed when a bot executes a trade</div>
+              </div>
+              <div className={`toggle-switch ${prefs.emailTradeAlerts ? 'active' : ''}`} onClick={() => togglePref('emailTradeAlerts')} />
+            </div>
+            <div className="notification-toggle">
+              <div>
+                <div className="notification-toggle-label">Daily Digest</div>
+                <div className="notification-toggle-desc">Morning summary of all bot activity and P&L</div>
+              </div>
+              <div className={`toggle-switch ${prefs.emailDailyDigest ? 'active' : ''}`} onClick={() => togglePref('emailDailyDigest')} />
+            </div>
+            <div className="notification-toggle">
+              <div>
+                <div className="notification-toggle-label">Security Alerts</div>
+                <div className="notification-toggle-desc">Login notifications, API key changes, and safety events</div>
+              </div>
+              <div className={`toggle-switch ${prefs.emailSecurityAlerts ? 'active' : ''}`} onClick={() => togglePref('emailSecurityAlerts')} />
+            </div>
+            <div className="notification-toggle">
+              <div>
+                <div className="notification-toggle-label">Weekly Report</div>
+                <div className="notification-toggle-desc">Weekly performance summary across all bots</div>
+              </div>
+              <div className={`toggle-switch ${prefs.emailWeeklyReport ? 'active' : ''}`} onClick={() => togglePref('emailWeeklyReport')} />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Danger Zone */}

@@ -7,6 +7,7 @@ import { getDb } from '../lib/db.js';
 import { signAccessToken, issueRefreshToken, verifyAccessToken, verifyAuthHeader, rotateRefreshToken, revokeRefreshTokensForUser } from '../lib/auth.js';
 import { logAudit } from '../lib/audit.js';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
+import { sendEmail, passwordResetEmail } from './notifications.js';
 
 export const authRouter = new Hono();
 
@@ -318,11 +319,16 @@ authRouter.post('/forgot-password', async (c) => {
   ).run(id, user.id, tokenHash, expiresAt, now);
 
   // In production, send email with: /reset-password?token=<rawToken>
-  // For now, log the token in dev mode and return it in test mode
   const resetUrl = `${process.env.FRONTEND_URL ?? 'http://localhost:3000'}/reset-password?token=${rawToken}`;
   if (process.env.NODE_ENV !== 'production') {
     console.log(`[Password Reset] ${email} → ${resetUrl}`);
   }
+
+  // Send the reset email (non-blocking — don't fail the request if email fails)
+  const emailTemplate = passwordResetEmail(resetUrl);
+  sendEmail({ ...emailTemplate, to: email }).catch((err) => {
+    console.error('[Email] Password reset email failed:', err);
+  });
 
   const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as any;
   logAudit({

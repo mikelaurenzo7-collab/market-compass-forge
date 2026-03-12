@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   BarChart3,
+  Sparkles,
 } from 'lucide-react';
 
 const BOT_NAV = [
@@ -25,6 +26,7 @@ const BOT_NAV = [
 ];
 
 const SYSTEM_ITEMS = [
+  { label: 'Templates', icon: <Sparkles size={16} />, href: '/templates' },
   { label: 'Analytics', icon: <BarChart3 size={16} />, href: '/analytics' },
   { label: 'Safety', icon: <Shield size={16} />, href: '/safety' },
   { label: 'Integrations', icon: <Plug size={16} />, href: '/integrations' },

@@ -14,6 +14,9 @@ import { credentialsRouter } from './routes/credentials.js';
 import { provisioningRouter } from './routes/provisioning.js';
 import { analyticsRouter } from './routes/analytics.js';
 import mcpRouter from './routes/mcp.js';
+import { templatesRouter } from './routes/templates.js';
+import { webhooksRouter } from './routes/webhooks.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
@@ -114,6 +117,9 @@ app.route('/api/safety', safetyRouter);
 app.route('/api/audit', auditRouter);
 app.route('/api/analytics', analyticsRouter);
 app.route('/api/provisioning', provisioningRouter);
+app.route('/api/templates', templatesRouter);
+app.route('/api/webhooks', webhooksRouter);
+app.route('/api/notifications', notificationsRouter);
 app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
 
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {

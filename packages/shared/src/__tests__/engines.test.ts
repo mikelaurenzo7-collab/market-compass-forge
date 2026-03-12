@@ -201,6 +201,71 @@ describe('engine units', () => {
     expect(signal.confidence).toBeGreaterThanOrEqual(0);
   });
 
+  it('generateStrategySignal handles polymarket event_probability strategy', () => {
+    const indicators = {
+      rsi: 50,
+      macd: { macd: 0, signal: 0, histogram: 0 },
+      ema12: 100,
+      ema26: 100,
+      sma20: 100,
+      sma50: 100,
+      bollingerBands: { upper: 110, middle: 100, lower: 90, bandwidth: 0.2 },
+      atr: 2,
+      vwap: 100,
+    } as any;
+    const config = {
+      platform: 'polymarket',
+      strategy: 'event_probability',
+      symbols: ['ELECTION-YES'],
+      maxPositionSizeUsd: 50,
+      maxDailyLossUsd: 100,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.2,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+      eventProbabilityData: { estimated: 0.70, fair: 0.55, currentProbability: 0.55 },
+    } as any;
+    const state = createTradingEngineState(config, makeSafety('t1', 'bot-poly', 'polymarket'));
+    const signal = generateStrategySignal(config, indicators, { price: 0.55, bid: 0.54, ask: 0.56, symbol: 'ELECTION-YES', volume24h: 1000, high24h: 0.6, low24h: 0.5, change24hPercent: 2, timestamp: Date.now() } as any, state);
+    // With estimated > fair, should signal buy (not hold)
+    expect(signal.direction).not.toBe('hold');
+    expect(signal.confidence).toBeGreaterThan(0);
+  });
+
+  it('generateStrategySignal polymarket applies 65% confidence threshold for non-event strategies', () => {
+    const indicators = {
+      rsi: 50,
+      macd: { macd: 0, signal: 0, histogram: 0 },
+      ema12: 100,
+      ema26: 100,
+      sma20: 100,
+      sma50: 100,
+      bollingerBands: { upper: 110, middle: 100, lower: 90, bandwidth: 0.2 },
+      atr: 2,
+      vwap: 100,
+    } as any;
+    const config = {
+      platform: 'polymarket',
+      strategy: 'momentum',
+      symbols: ['BTC-YES'],
+      maxPositionSizeUsd: 50,
+      maxDailyLossUsd: 100,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    } as any;
+    const state = createTradingEngineState(config, makeSafety('t1', 'bot-poly2', 'polymarket'));
+    const signal = generateStrategySignal(config, indicators, { price: 100, bid: 100, ask: 101, symbol: 'BTC-YES', volume24h: 1000, high24h: 105, low24h: 95, change24hPercent: 0, timestamp: Date.now() } as any, state);
+    // Low-confidence signals on Polymarket should be held (threshold is 65%)
+    if (signal.confidence < 65) {
+      expect(signal.direction).toBe('hold');
+    }
+    expect(signal.confidence).toBeGreaterThanOrEqual(0);
+  });
+
   it('store engine tick handles empty product list', async () => {
     const config: StoreBotConfig = {
       platform: 'shopify',

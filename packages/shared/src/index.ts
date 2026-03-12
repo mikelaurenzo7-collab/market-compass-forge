@@ -654,3 +654,4 @@ export * from './workforce/team.js';
 export * from './workforce/learning.js';
 export * from './workforce/safety.js';
 export * from './workforce/intelligence.js';
+export * from './templates.js';
