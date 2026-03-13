@@ -41,6 +41,7 @@ COPY --from=builder /app/packages/workers/package.json packages/workers/
 RUN npm ci --omit=dev --workspace=@beastbots/api --workspace=@beastbots/shared --workspace=@beastbots/workers
 
 COPY --from=builder /app/packages/shared/dist/ packages/shared/dist/
+COPY --from=builder /app/packages/shared/src/ packages/shared/src/
 COPY --from=builder /app/packages/api/dist/ packages/api/dist/
 COPY --from=builder /app/packages/api/src/lib/migrations/ packages/api/dist/lib/migrations/
 COPY --from=builder /app/packages/workers/dist/ packages/workers/dist/
