@@ -6,12 +6,12 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm -w @beastbots/api run dev",
+    "dev": "npm run dev:api",
     "dev:local": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-local.ps1",
-    "dev:api": "npm -w @beastbots/api run dev",
-    "dev:web": "npm -w @beastbots/web run dev",
-    "dev:workers": "npm -w @beastbots/workers run dev",
-    "dev:mcp": "npm -w @beastbots/mcp run dev",
+    "dev:api": "npm run build:shared && npm run build:workers && npm -w @beastbots/api run dev",
+    "dev:web": "npm run build:shared && npm -w @beastbots/web run dev",
+    "dev:workers": "npm run build:shared && npm -w @beastbots/workers run dev",
+    "dev:mcp": "npm run build:shared && npm -w @beastbots/mcp run dev",
     "build": "npm run build:shared && npm run build:api && npm run build:web && npm run build:mcp && npm run build:workers && npm run build:sdk",
     "build:shared": "npm -w @beastbots/shared run build",
     "build:api": "npm -w @beastbots/api run build",
@@ -26,7 +26,7 @@
     "typecheck:shared": "npm -w @beastbots/shared run typecheck",
     "typecheck:sdk": "npm -w @beastbots/sdk run typecheck",
     "typecheck:mcp": "npm -w @beastbots/mcp run typecheck",
-    "test": "vitest run"
+    "test": "npm run build:shared && npm run build:workers && vitest run"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260310.1",
