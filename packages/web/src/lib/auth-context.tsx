@@ -142,8 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           if (!cancelled) {
-            localStorage.removeItem('bb_session');
-            setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
+            setState((s) => ({ ...s, loading: false }));
           }
         };
 

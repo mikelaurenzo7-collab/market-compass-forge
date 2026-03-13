@@ -78,13 +78,14 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // ─── Rate Limiting ────────────────────────────────────────────
-function rateLimit(windowMs: number, maxRequests: number) {
+function rateLimit(scope: string, windowMs: number, maxRequests: number) {
   return async (c: any, next: any) => {
     // In production behind Cloudflare, cf-connecting-ip is set by CF edge and cannot be spoofed.
     // In non-CF environments, fall back to the socket remote address via c.env to avoid header spoofing.
-    const key = c.req.header('cf-connecting-ip')
+    const ip = c.req.header('cf-connecting-ip')
       ?? (c.env?.incoming?.socket?.remoteAddress as string | undefined)
       ?? 'unknown';
+    const key = `${scope}:${ip}`;
     const now = Date.now();
     const resetAt = now + windowMs;
     const db = getDb();
@@ -133,9 +134,9 @@ app.use('*', async (c, next) => {
 });
 
 // Rate limit auth endpoints: 20 requests per minute
-app.use('/api/auth/*', rateLimit(60_000, 20));
+app.use('/api/auth/*', rateLimit('auth', 60_000, 20));
 // Global rate limiter: 100 requests per minute per IP
-app.use('*', rateLimit(60_000, 100));
+app.use('*', rateLimit('global', 60_000, 100));
 
 // ─── Error Handler ────────────────────────────────────────────
 app.onError((err, c) => {
