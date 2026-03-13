@@ -50,7 +50,7 @@ EXPOSE 4000
 
 USER node
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "--experimental-specifier-resolution=node", "packages/api/dist/server.js"]
+CMD ["node", "packages/api/dist/server.js"]
 
 # ─── Stage 3: Web production image ────────────────────────────
 FROM node:20-alpine AS web
