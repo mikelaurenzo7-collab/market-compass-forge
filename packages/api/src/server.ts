@@ -1,3 +1,4 @@
+// @ts-ignore missing types for dotenv (dev dependency)
 import dotenv from 'dotenv';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import { serve } from '@hono/node-server';

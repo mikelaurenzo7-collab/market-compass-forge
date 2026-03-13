@@ -84,25 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore session from localStorage (user info only — token is obtained via refresh cookie)
   useEffect(() => {
-<<<<<<< HEAD
-    const stored = storageGet('bb_auth');
-    if (!stored) {
-      setState((s) => ({ ...s, loading: false }));
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(stored);
-      setState({
-        user: parsed.user,
-        tenantId: parsed.tenantId,
-        accessToken: parsed.accessToken,
-        loading: false,
-        onboardingRequired: parsed.onboardingRequired ?? false,
-      });
-    } catch {
-      storageRemove('bb_auth');
-=======
     const stored = localStorage.getItem('bb_session');
     if (stored) {
       try {
@@ -144,7 +125,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setState((s) => ({ ...s, loading: false }));
       }
     } else {
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
       setState((s) => ({ ...s, loading: false }));
     }
   }, []);
@@ -155,12 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: string;
     onboardingRequired: boolean;
   }) => {
-<<<<<<< HEAD
-    storageSet('bb_auth', JSON.stringify({
-=======
-    // Store user/tenant info only — never persist the access token to localStorage
     localStorage.setItem('bb_session', JSON.stringify({
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
       user: data.user,
       tenantId: data.tenantId,
       onboardingRequired: data.onboardingRequired,
@@ -175,19 +150,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeOnboarding = useCallback(() => {
-<<<<<<< HEAD
-    const stored = storageGet('bb_auth');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      parsed.onboardingRequired = false;
-      storageSet('bb_auth', JSON.stringify(parsed));
-=======
     const stored = localStorage.getItem('bb_session');
     if (stored) {
       const parsed = JSON.parse(stored);
       parsed.onboardingRequired = false;
       localStorage.setItem('bb_session', JSON.stringify(parsed));
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
     }
     setState((s) => ({ ...s, onboardingRequired: false }));
   }, []);
@@ -243,11 +210,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       credentials: 'include',
       headers: state.accessToken ? { Authorization: `Bearer ${state.accessToken}` } : {},
     }).catch(() => {});
-<<<<<<< HEAD
-    storageRemove('bb_auth');
-=======
     localStorage.removeItem('bb_session');
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
     setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
   }, [state.accessToken]);
 
@@ -279,18 +242,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         const jr = await r.json();
         if (jr?.success && jr.data?.accessToken) {
-<<<<<<< HEAD
-          const stored = storageGet('bb_auth');
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored);
-              parsed.accessToken = jr.data.accessToken;
-              storageSet('bb_auth', JSON.stringify(parsed));
-            } catch {}
-          }
-=======
           // Store new access token in memory only — never in localStorage
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
           setState((s) => ({ ...s, accessToken: jr.data.accessToken }));
 
           const retry = await makeRequest(jr.data.accessToken);

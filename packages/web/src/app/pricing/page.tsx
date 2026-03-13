@@ -76,17 +76,6 @@ export default function PricingPage() {
   const [pricingError, setPricingError] = useState('');
 
   useEffect(() => {
-<<<<<<< HEAD
-    let apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
-    if (typeof window !== 'undefined') {
-      const localhostApi = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(apiBase);
-      const pageOnLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-      if (localhostApi && !pageOnLocalhost) apiBase = '';
-    }
-    fetch(`${apiBase}/api/pricing`).then(r => r.json()).then(json => {
-      if (json.data) setPlans(json.data);
-    }).catch(() => {});
-=======
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
     setPricingError('');
     setLoadingPlans(true);
@@ -107,7 +96,6 @@ export default function PricingPage() {
         setPricingError('Pricing is temporarily unavailable. Please try again shortly.');
       })
       .finally(() => setLoadingPlans(false));
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
   }, []);
 
   const familyPlans = plans.filter(p => p.family === selectedFamily);

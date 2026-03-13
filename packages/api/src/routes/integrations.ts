@@ -115,20 +115,6 @@ integrationsRouter.get('/:id/connect', async (c) => {
     console.error('[OAuth init error]', err);
     return c.json({ success: false, error: 'oauth_not_configured' }, 500);
   }
-  const dataJson = stateData ? JSON.stringify(stateData) : null;
-  db.prepare('INSERT INTO oauth_states (state, user_id, tenant_id, provider, created_at, expires_at, data) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(state, auth.userId, auth.tenantId, id, now, expiresAt, dataJson);
-
-  // Support JSON response for SPA callers (avoids fetch() cross-origin redirect issues)
-  // Frontend should check Accept header or pass ?format=url to get the URL as JSON
-  const wantsJson =
-    (c.req.header('Accept') ?? '').includes('application/json') ||
-    c.req.query('format') === 'url';
-
-  if (wantsJson) {
-    return c.json({ success: true, url });
-  }
-  return c.redirect(url);
 });
 
 // ─── OAuth callback ──────────────────────────────────────────

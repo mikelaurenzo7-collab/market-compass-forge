@@ -312,9 +312,6 @@ export class BotRuntime {
         totalPnlUsd: 0,
         initialBalanceUsd: 0,
         uptimeMs: 0,
-        totalTrades: 0,
-        winningTrades: 0,
-        consecutiveLosses: 0,
         custom: {},
       },
       lastTickAt: 0,
@@ -354,25 +351,25 @@ export class BotRuntime {
     // initialize engine-specific state
     switch (params.family) {
       case 'trading':
-        this.state.engineState = createTradingEngineState(
+        this.state!.engineState = createTradingEngineState(
           params.config as TradingBotConfig,
           this.state!.safety
         );
         break;
       case 'store':
-        this.state.engineState = createStoreEngineState(
+        this.state!.engineState = createStoreEngineState(
           params.config as StoreBotConfig,
           this.state!.safety
         );
         break;
       case 'social':
-        this.state.engineState = createSocialEngineState(
+        this.state!.engineState = createSocialEngineState(
           params.config as SocialBotConfig,
           this.state!.safety
         );
         break;
       case 'workforce':
-        this.state.engineState = createWorkforceEngineState(
+        this.state!.engineState = createWorkforceEngineState(
           params.config as WorkforceBotConfig,
           this.state!.safety
         );

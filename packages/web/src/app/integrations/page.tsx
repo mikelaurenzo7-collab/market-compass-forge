@@ -173,19 +173,8 @@ function IntegrationsPageContent() {
         setNotification(json.error || 'Connection not configured');
         return;
       }
-<<<<<<< HEAD
-      if (json.url) {
-        window.location.href = json.url;
-      } else {
-        setNotification('No redirect URL returned');
-      }
-    } catch (err: any) {
-      setNotification('Failed to initiate connection: ' + (err?.message || '')); 
-=======
     } catch (err) {
-      console.error('OAuth connect error:', err);
-      setNotification('Failed to initiate connection. Please try again.');
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
+      console.error('OAuth connect failed', err);
     }
   }
 
@@ -254,31 +243,6 @@ function IntegrationsPageContent() {
             )}
           </div>
         </div>
-<<<<<<< HEAD
-        <div className="connect-status">
-          <span className={`connect-badge ${isConnected ? 'connected' : 'disconnected'}`}>
-            {isConnected ? 'Connected' : 'Not connected'}
-          </span>
-          {isConnected ? (
-            <button className="btn btn-danger btn-sm" onClick={() => handleDisconnect(p.id)}>
-              Disconnect
-            </button>
-          ) : p.oauth ? (
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => handleOAuthConnect(p.id)}
-              disabled={!p['oauthReady']}
-              title={p['oauthReady'] ? '' : 'Not configured; check .env variables'}
-            >
-              Connect
-            </button>
-          ) : (
-            <button className="btn btn-primary btn-sm" onClick={() => { setModal(p); setConnectError(''); setApiKey(''); setApiSecret(''); }}>
-              Connect
-            </button>
-          )}
-        </div>
-=======
 
         {/* Show connected accounts */}
         {platformCreds.length > 0 && (
@@ -304,7 +268,6 @@ function IntegrationsPageContent() {
             ))}
           </div>
         )}
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
       </div>
     );
   }

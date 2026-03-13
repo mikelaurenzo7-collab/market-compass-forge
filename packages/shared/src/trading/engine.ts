@@ -632,6 +632,8 @@ export async function executeTradingTick(
       }
 
       const orderResult = await adapter.placeOrder(tradeSignal);
+      // ensure pnlUsd available for audit details (some adapters may include it)
+      const pnlUsd = (orderResult as any).pnlUsd ?? 0;
 
       // validate fill
       if (!orderResult.filled) {
