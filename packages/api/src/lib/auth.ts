@@ -28,7 +28,8 @@ export async function signAccessToken({ userId, tenantId, email }: { userId: str
 }
 
 export async function issueRefreshToken({ userId, tenantId }: { userId: string; tenantId: string; }) {
-  const token = await new SignJWT({ sub: userId, type: 'refresh' })
+  const jti = uid('rtj');
+  const token = await new SignJWT({ sub: userId, type: 'refresh', jti })
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime(REFRESH_TOKEN_TTL)
     .setIssuedAt()
