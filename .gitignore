@@ -13,3 +13,7 @@ out.js
 # Compiled JS in shared src (use dist/ for compiled output)
 packages/shared/src/**/*.js
 packages/shared/src/**/*.d.ts
+
+beastbot.db
+beastbot.db-wal
+beastbot.db-shm
