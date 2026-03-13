@@ -23,7 +23,10 @@ COPY packages/sdk/ packages/sdk/
 COPY packages/mcp/ packages/mcp/
 COPY packages/web/ packages/web/
 
-# Build shared → api, workers, sdk, mcp, web
+# Ensure public dir exists (Next.js standalone needs it)
+RUN mkdir -p packages/web/public
+
+# Build all packages (shared → api, workers, sdk, mcp, web)
 RUN npm run build
 
 # ─── Stage 2: API production image ────────────────────────────
@@ -38,7 +41,7 @@ COPY --from=builder /app/packages/api/package.json packages/api/
 COPY --from=builder /app/packages/workers/package.json packages/workers/
 COPY --from=builder /app/packages/mcp/package.json packages/mcp/
 
-# Install production deps + tsx for TS module resolution
+# Install production deps + tsx (workspace packages export .ts source)
 RUN npm ci --omit=dev --workspace=@beastbots/api --workspace=@beastbots/shared --workspace=@beastbots/workers --workspace=@beastbots/mcp && npm install tsx
 
 COPY --from=builder /app/packages/shared/src/ packages/shared/src/
