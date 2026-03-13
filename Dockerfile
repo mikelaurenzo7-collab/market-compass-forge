@@ -59,12 +59,12 @@ WORKDIR /app
 RUN apk add --no-cache dumb-init
 
 COPY --from=builder /app/packages/web/.next/standalone ./
-COPY --from=builder /app/packages/web/.next/static ./.next/static
-COPY --from=builder /app/packages/web/public ./public
+COPY --from=builder /app/packages/web/.next/static ./packages/web/.next/static
+COPY --from=builder /app/packages/web/public ./packages/web/public
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
 USER node
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "server.js"]
+CMD ["node", "packages/web/server.js"]
