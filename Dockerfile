@@ -68,9 +68,9 @@ COPY --from=builder /app/packages/web/.next/standalone ./
 COPY --from=builder /app/packages/web/.next/static ./.next/static
 COPY --from=builder /app/packages/web/public ./public
 
+ENV NODE_ENV=production
 ENV PORT=8080
-EXPOSE 808NV=production
-EXPOSE 3000
+EXPOSE 8080
 
 USER node
 ENTRYPOINT ["dumb-init", "--"]
