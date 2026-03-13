@@ -243,13 +243,22 @@ function IntegrationsPageContent() {
               {isConnected ? `${platformCreds.length} account${platformCreds.length !== 1 ? 's' : ''}` : 'Not connected'}
             </span>
             {p.oauth ? (
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={() => handleOAuthConnect(p.id, p)}
-                disabled={p.oauthReady === false}
-              >
-                <Plug size={14} /> {isConnected ? 'Add Account' : 'Connect'}
-              </button>
+              p.oauthReady === false ? (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  disabled
+                  style={{ cursor: 'not-allowed', opacity: 0.6 }}
+                >
+                  <Plug size={14} /> Unavailable
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => handleOAuthConnect(p.id, p)}
+                >
+                  <Plug size={14} /> {isConnected ? 'Add Account' : 'Connect'}
+                </button>
+              )
             ) : (
               <button className="btn btn-primary btn-sm" onClick={openConnectModal}>
                 <Plug size={14} /> {isConnected ? 'Add Account' : 'Connect'}
