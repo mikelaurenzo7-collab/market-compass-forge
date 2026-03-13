@@ -49,13 +49,15 @@ const PLATFORMS: Record<string, { id: string; name: string }[]> = {
   ],
   workforce: [
     { id: 'slack', name: 'Slack' },
-    { id: 'teams', name: 'Teams' },
+    { id: 'microsoft_teams', name: 'Microsoft Teams' },
     { id: 'notion', name: 'Notion' },
     { id: 'jira', name: 'Jira' },
-    { id: 'github', name: 'GitHub' },
     { id: 'salesforce', name: 'Salesforce' },
     { id: 'hubspot', name: 'HubSpot' },
     { id: 'gmail', name: 'Gmail' },
+    { id: 'outlook', name: 'Outlook / M365' },
+    { id: 'quickbooks', name: 'QuickBooks' },
+    { id: 'google_drive', name: 'Google Drive' },
   ],
 };
 
@@ -86,20 +88,36 @@ const STRATEGIES: Record<string, { id: string; name: string; desc: string }[]> =
     { id: 'cross_post_optimization', name: 'Cross-Post', desc: 'Optimize content for each platform format' },
   ],
   workforce: [
-    { id: 'task_triage', name: 'Task Triage', desc: 'Auto-prioritize and assign incoming tasks based on rules' },
+    { id: 'ticket_triage', name: 'Ticket Triage', desc: 'Auto-prioritize and route incoming support requests' },
+    { id: 'auto_response', name: 'Auto Response', desc: 'Draft and execute low-risk responses with guardrails' },
+    { id: 'lead_scoring', name: 'Lead Scoring', desc: 'Score and prioritize inbound sales leads automatically' },
+    { id: 'crm_enrichment', name: 'CRM Enrichment', desc: 'Enrich account/contact records from task context' },
+    { id: 'invoice_processing', name: 'Invoice Processing', desc: 'Extract and process invoice data with checks' },
+    { id: 'expense_reconciliation', name: 'Expense Reconciliation', desc: 'Reconcile expenses and flag anomalies' },
+    { id: 'employee_onboarding', name: 'Employee Onboarding', desc: 'Run onboarding workflows and checklists' },
+    { id: 'shift_scheduling', name: 'Shift Scheduling', desc: 'Detect staffing gaps and coordinate schedules' },
+    { id: 'document_classification', name: 'Document Classification', desc: 'Classify incoming documents for workflows' },
+    { id: 'data_extraction', name: 'Data Extraction', desc: 'Extract structured fields from documents and forms' },
+    { id: 'email_triage', name: 'Email Triage', desc: 'Sort inbox tasks by urgency and intent' },
+    { id: 'meeting_scheduler', name: 'Meeting Scheduler', desc: 'Coordinate and schedule meetings with constraints' },
     { id: 'report_generation', name: 'Report Generation', desc: 'Auto-generate daily/weekly status reports' },
-    { id: 'escalation_routing', name: 'Escalation Routing', desc: 'Detect blockers and escalate to the right person' },
-    { id: 'onboarding_automation', name: 'Onboarding Automation', desc: 'Automate new-hire tasks, docs, and tool provisioning' },
-    { id: 'data_sync', name: 'Data Sync', desc: 'Keep records in sync across CRM, PM, and comms tools' },
+    { id: 'task_orchestration', name: 'Task Orchestration', desc: 'Coordinate multi-step workflows across tools' },
+    { id: 'browser_automation', name: 'Browser Automation', desc: 'Execute Playwright browser steps for repetitive ops' },
+    { id: 'system_health_check', name: 'System Health Check', desc: 'Monitor systems and trigger proactive alerts' },
     { id: 'compliance_monitoring', name: 'Compliance Monitoring', desc: 'Detect policy violations and flag for review' },
+    { id: 'audit_preparation', name: 'Audit Preparation', desc: 'Prepare evidence packages and compliance artifacts' },
+    { id: 'vendor_evaluation', name: 'Vendor Evaluation', desc: 'Evaluate vendor proposals and recommendations' },
+    { id: 'contract_review', name: 'Contract Review', desc: 'Analyze contract terms and risk clauses' },
+    { id: 'knowledge_base_sync', name: 'Knowledge Base Sync', desc: 'Synchronize key updates into documentation systems' },
   ],
 };
 
 function inferWorkforceCategory(platform: string): string {
   if (platform === 'salesforce' || platform === 'hubspot') return 'sales_crm';
-  if (platform === 'gmail') return 'email_management';
-  if (platform === 'jira' || platform === 'github' || platform === 'notion') return 'project_management';
-  if (platform === 'slack' || platform === 'teams') return 'customer_support';
+  if (platform === 'gmail' || platform === 'outlook') return 'email_management';
+  if (platform === 'jira' || platform === 'notion') return 'project_management';
+  if (platform === 'slack' || platform === 'microsoft_teams') return 'customer_support';
+  if (platform === 'quickbooks') return 'finance';
   return 'project_management';
 }
 
@@ -170,8 +188,8 @@ export default function CreateBotPage() {
     if (family === 'trading') {
       config.strategy = selectedStrategies[0] ?? 'dca';
     } else {
-      const defaults: Record<string, string> = { store: 'dynamic_pricing', social: 'content_calendar', workforce: 'task_triage' };
-      config.strategies = selectedStrategies.length > 0 ? selectedStrategies : [defaults[family] ?? 'task_triage'];
+      const defaults: Record<string, string> = { store: 'dynamic_pricing', social: 'content_calendar', workforce: 'ticket_triage' };
+      config.strategies = selectedStrategies.length > 0 ? selectedStrategies : [defaults[family] ?? 'ticket_triage'];
       if (family === 'workforce') {
         config.category = inferWorkforceCategory(platform);
       }

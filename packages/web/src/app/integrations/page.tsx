@@ -173,8 +173,14 @@ function IntegrationsPageContent() {
         setNotification(json.error || 'Connection not configured');
         return;
       }
+      if (json.url) {
+        window.location.href = json.url;
+        return;
+      }
+      setNotification('Connection initiated, but no redirect URL was returned.');
     } catch (err) {
       console.error('OAuth connect failed', err);
+      setNotification('OAuth connection failed. Please try again.');
     }
   }
 

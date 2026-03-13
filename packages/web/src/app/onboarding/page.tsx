@@ -29,7 +29,7 @@ const INTEGRATIONS: Record<string, IntegrationData[]> = {
 };
 
 export default function OnboardingPage() {
-  const { apiFetch, completeOnboarding } = useAuth();
+  const { user, loading, apiFetch, completeOnboarding } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
@@ -54,6 +54,12 @@ export default function OnboardingPage() {
   });
 
   useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
     async function load() {
       setLoadError('');
       setLoadingIntegrations(true);
@@ -73,16 +79,25 @@ export default function OnboardingPage() {
       }
     }
     load();
-  }, [apiFetch]);
+  }, [apiFetch, loading, user, router]);
 
   async function handleFamilySelect(family: string) {
     setConnectError('');
     setSelectedFamily(family);
-    await apiFetch('/api/onboarding', {
-      method: 'PATCH',
-      body: JSON.stringify({ currentStep: 1, selectedFamily: family }),
-    });
-    setStep(1);
+    try {
+      const res = await apiFetch('/api/onboarding', {
+        method: 'PATCH',
+        body: JSON.stringify({ currentStep: 1, selectedFamily: family }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setConnectError(json.error ?? 'Failed to save onboarding step');
+        return;
+      }
+      setStep(1);
+    } catch {
+      setConnectError('Network error while saving onboarding step');
+    }
   }
 
   async function handleIntegrationSelect(platform: string) {
@@ -145,18 +160,36 @@ export default function OnboardingPage() {
   }
 
   async function handleComplete() {
-    await apiFetch('/api/onboarding', {
-      method: 'PATCH',
-      body: JSON.stringify({ completed: true }),
-    });
-    completeOnboarding();
-    router.push('/');
+    try {
+      const res = await apiFetch('/api/onboarding', {
+        method: 'PATCH',
+        body: JSON.stringify({ completed: true }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        setConnectError(json.error ?? 'Failed to complete onboarding');
+        return;
+      }
+      completeOnboarding();
+      router.push('/');
+    } catch {
+      setConnectError('Network error while completing onboarding');
+    }
   }
 
   async function handleSkip() {
-    await apiFetch('/api/onboarding/skip', { method: 'POST' });
-    completeOnboarding();
-    router.push('/');
+    try {
+      const res = await apiFetch('/api/onboarding/skip', { method: 'POST' });
+      const json = await res.json();
+      if (!json.success) {
+        setConnectError(json.error ?? 'Failed to skip onboarding');
+        return;
+      }
+      completeOnboarding();
+      router.push('/');
+    } catch {
+      setConnectError('Network error while skipping onboarding');
+    }
   }
 
   return (

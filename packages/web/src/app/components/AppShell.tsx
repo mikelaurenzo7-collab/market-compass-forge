@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../../lib/auth-context';
@@ -40,7 +40,7 @@ const SYSTEM_ITEMS = [
 export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, loading, onboardingRequired, logout } = useAuth();
 
   const currentFamily = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('family')
@@ -61,6 +61,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
     await logout();
     router.push('/login');
   }
+
+  useEffect(() => {
+    if (loading) return;
+    if (user && onboardingRequired) {
+      router.push('/onboarding');
+    }
+  }, [loading, user, onboardingRequired, router]);
 
   return (
     <div className="app-layout">
