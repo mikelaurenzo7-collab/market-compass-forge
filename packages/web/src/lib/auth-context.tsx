@@ -83,6 +83,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
 
+  const clearSession = useCallback(() => {
+    storageRemove('bb_session');
+    setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
+  }, []);
+
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     if (refreshInFlightRef.current) {
       return refreshInFlightRef.current;
@@ -105,10 +110,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return request;
   }, []);
 
+  const syncSessionFromMe = useCallback(async (token: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (!json?.success || !json?.data?.user || !json?.data?.tenantId) return false;
+
+      const onboardingRequired = !json.data.onboarding?.completed;
+      storageSet('bb_session', JSON.stringify({
+        user: json.data.user,
+        tenantId: json.data.tenantId,
+        onboardingRequired,
+      }));
+      setState({
+        user: json.data.user,
+        tenantId: json.data.tenantId,
+        accessToken: token,
+        loading: false,
+        onboardingRequired,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   // Restore session from localStorage (user info only — token is obtained via refresh cookie)
   useEffect(() => {
     let cancelled = false;
-    const stored = localStorage.getItem('bb_session');
+    const stored = storageGet('bb_session');
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
@@ -127,7 +160,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const token = await refreshAccessToken();
           if (token) {
             if (!cancelled) {
-              setState((s) => ({ ...s, accessToken: token, loading: false }));
+              const synced = await syncSessionFromMe(token);
+              if (!synced && !cancelled) {
+                setState((s) => ({ ...s, accessToken: token, loading: false }));
+              }
             }
             return;
           }
@@ -136,21 +172,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const retryToken = await refreshAccessToken();
           if (retryToken) {
             if (!cancelled) {
-              setState((s) => ({ ...s, accessToken: retryToken, loading: false }));
+              const synced = await syncSessionFromMe(retryToken);
+              if (!synced && !cancelled) {
+                setState((s) => ({ ...s, accessToken: retryToken, loading: false }));
+              }
             }
             return;
           }
 
           if (!cancelled) {
-            setState((s) => ({ ...s, loading: false }));
+            clearSession();
           }
         };
 
         void restore();
       } catch {
-        localStorage.removeItem('bb_session');
         if (!cancelled) {
-          setState((s) => ({ ...s, loading: false }));
+          clearSession();
         }
       }
     } else {
@@ -161,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [refreshAccessToken]);
+  }, [clearSession, refreshAccessToken, syncSessionFromMe]);
 
   const persistAuth = useCallback((data: {
     user: User;
@@ -169,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: string;
     onboardingRequired: boolean;
   }) => {
-    localStorage.setItem('bb_session', JSON.stringify({
+    storageSet('bb_session', JSON.stringify({
       user: data.user,
       tenantId: data.tenantId,
       onboardingRequired: data.onboardingRequired,
@@ -184,11 +222,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeOnboarding = useCallback(() => {
-    const stored = localStorage.getItem('bb_session');
+    const stored = storageGet('bb_session');
     if (stored) {
       const parsed = JSON.parse(stored);
       parsed.onboardingRequired = false;
-      localStorage.setItem('bb_session', JSON.stringify(parsed));
+      storageSet('bb_session', JSON.stringify(parsed));
     }
     setState((s) => ({ ...s, onboardingRequired: false }));
   }, []);
@@ -244,9 +282,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       credentials: 'include',
       headers: state.accessToken ? { Authorization: `Bearer ${state.accessToken}` } : {},
     }).catch(() => {});
-    localStorage.removeItem('bb_session');
-    setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
-  }, [state.accessToken]);
+    clearSession();
+  }, [clearSession, state.accessToken]);
 
   const apiFetch = useCallback(async (path: string, init?: RequestInit): Promise<Response> => {
     const makeRequest = async (token?: string) => {
@@ -267,7 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.status !== 401) return res;
 
       // Attempt refresh once — cookie sent automatically
-      const refreshedToken = await refreshAccessToken();
+      const refreshedToken = await refreshAccessToken() ?? await refreshAccessToken();
       if (refreshedToken) {
         // Store new access token in memory only — never in localStorage
         setState((s) => ({ ...s, accessToken: refreshedToken }));
@@ -275,11 +312,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return retry;
       }
 
+      clearSession();
       return res;
     } catch (err) {
       throw err;
     }
-  }, [state.accessToken, refreshAccessToken]);
+  }, [clearSession, state.accessToken, refreshAccessToken]);
 
   return (
     <AuthContext.Provider value={{ ...state, signup, login, logout, completeOnboarding, apiFetch }}>
