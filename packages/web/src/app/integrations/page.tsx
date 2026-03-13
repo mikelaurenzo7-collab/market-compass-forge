@@ -162,8 +162,12 @@ function IntegrationsPageContent() {
     fetchCredentials();
   }
 
-  async function handleOAuthConnect(platformId: string) {
+  async function handleOAuthConnect(platformId: string, integration?: IntegrationInfo) {
     setNotification('');
+    if (integration?.oauthReady === false) {
+      setNotification('oauth_not_configured');
+      return;
+    }
     try {
       const res = await apiFetch(`/api/integrations/${platformId}/connect`, {
         headers: { Accept: 'application/json' },
@@ -239,7 +243,11 @@ function IntegrationsPageContent() {
               {isConnected ? `${platformCreds.length} account${platformCreds.length !== 1 ? 's' : ''}` : 'Not connected'}
             </span>
             {p.oauth ? (
-              <button className="btn btn-primary btn-sm" onClick={() => handleOAuthConnect(p.id)}>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => handleOAuthConnect(p.id, p)}
+                disabled={p.oauthReady === false}
+              >
                 <Plug size={14} /> {isConnected ? 'Add Account' : 'Connect'}
               </button>
             ) : (
@@ -249,6 +257,11 @@ function IntegrationsPageContent() {
             )}
           </div>
         </div>
+        {p.oauth && p.oauthReady === false && (
+          <div style={{ marginTop: 'var(--space-xs)', fontSize: '0.75rem', color: 'var(--accent-gold)' }}>
+            OAuth is not configured for this integration yet.
+          </div>
+        )}
 
         {/* Show connected accounts */}
         {platformCreds.length > 0 && (

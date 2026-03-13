@@ -5,6 +5,12 @@ import { verifyAuthHeader } from '../lib/auth.js';
 
 export const onboardingRouter = new Hono();
 
+function ensureOnboardingRow(userId: string) {
+  const db = getDb();
+  db.prepare('INSERT OR IGNORE INTO onboarding (user_id, completed, current_step) VALUES (?, 0, 0)')
+    .run(userId);
+}
+
 const updateSchema = z.object({
   currentStep: z.number().min(0).max(4).optional(),
   selectedFamily: z.enum(['trading', 'store', 'social', 'workforce']).optional(),
@@ -65,6 +71,7 @@ onboardingRouter.patch('/', async (c) => {
 
   const db = getDb();
   const updates = parsed.data;
+  ensureOnboardingRow(auth.userId);
 
   if (updates.currentStep !== undefined) {
     db.prepare('UPDATE onboarding SET current_step = ? WHERE user_id = ?')
@@ -97,6 +104,7 @@ onboardingRouter.post('/skip', async (c) => {
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
 
   const db = getDb();
+  ensureOnboardingRow(auth.userId);
   db.prepare('UPDATE onboarding SET completed = 1, completed_at = ? WHERE user_id = ?')
     .run(Date.now(), auth.userId);
 

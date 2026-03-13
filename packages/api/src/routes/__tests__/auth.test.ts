@@ -27,6 +27,7 @@ function extractRefreshCookie(res: Response): string | null {
 describe('auth endpoints', () => {
   let accessToken: string;
   let refreshCookie: string;
+  let primaryTenantId: string;
 
   afterAll(() => {
     try {
@@ -51,6 +52,7 @@ describe('auth endpoints', () => {
     expect(json.success).toBe(true);
     expect(json.data.accessToken).toBeDefined();
     expect(json.data.user.email).toBe('auth-test@example.com');
+    primaryTenantId = json.data.tenantId;
     // Refresh token should be in HttpOnly cookie, not in body
     const cookie = extractRefreshCookie(res);
     expect(cookie).toBeTruthy();
@@ -100,6 +102,57 @@ describe('auth endpoints', () => {
     expect(cookie).toBeTruthy();
     accessToken = json.data.accessToken;
     refreshCookie = cookie!;
+  });
+
+  it('login and refresh keep deterministic primary tenant for multi-tenant user', async () => {
+    clearRateLimits();
+    const db = getDb();
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get('auth-test@example.com') as { id: string } | undefined;
+    expect(user).toBeDefined();
+
+    const secondaryTenantId = `tenant-secondary-${Date.now()}`;
+    const now = Date.now();
+    db.prepare('INSERT INTO tenants (id, name, owner_id, plan, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(secondaryTenantId, 'Secondary Tenant', user!.id, 'starter', now);
+    db.prepare('INSERT INTO tenant_members (tenant_id, user_id, role) VALUES (?, ?, ?)')
+      .run(secondaryTenantId, user!.id, 'owner');
+
+    const loginRes = await app.request('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'auth-test@example.com',
+        password: 'SecurePassword123!',
+      }),
+    });
+    expect(loginRes.status).toBe(200);
+    const loginJson = await loginRes.json() as any;
+    expect(loginJson.data.tenantId).toBe(primaryTenantId);
+
+    const loginCookie = extractRefreshCookie(loginRes);
+    expect(loginCookie).toBeTruthy();
+    if (!loginCookie) throw new Error('Missing refresh cookie');
+
+    clearRateLimits();
+    const refreshRes = await app.request('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: `bb_refresh=${loginCookie}`,
+      },
+      body: JSON.stringify({}),
+    });
+    expect(refreshRes.status).toBe(200);
+    const refreshJson = await refreshRes.json() as any;
+    expect(refreshJson.success).toBe(true);
+
+    clearRateLimits();
+    const meRes = await app.request('/api/auth/me', {
+      headers: { Authorization: `Bearer ${refreshJson.data.accessToken}` },
+    });
+    expect(meRes.status).toBe(200);
+    const meJson = await meRes.json() as any;
+    expect(meJson.data.tenantId).toBe(primaryTenantId);
   });
 
   it('login rejects wrong password', async () => {

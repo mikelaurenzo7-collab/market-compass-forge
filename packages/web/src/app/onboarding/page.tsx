@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShoppingCart, Share2, CheckCircle } from 'lucide-react';
+import { TrendingUp, ShoppingCart, Share2, Users, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../lib/auth-context';
 
 const FAMILY_ICONS: Record<string, React.ReactNode> = {
   trading: <TrendingUp size={28} />,
   store: <ShoppingCart size={28} />,
   social: <Share2 size={28} />,
+  workforce: <Users size={28} />,
 };
 
 const FAMILIES = [
@@ -44,13 +45,14 @@ export default function OnboardingPage() {
 
   const familyIntegrations = available.filter((int) => {
     if (!selectedFamily) return false;
-    const categoryMap: Record<string, string> = {
-      trading: 'trading',
-      store: 'ecommerce',
-      social: 'social',
-      workforce: 'workforce',
+    const categoryMap: Record<string, string[]> = {
+      trading: ['trading'],
+      store: ['ecommerce'],
+      social: ['social'],
+      workforce: ['workforce', 'communication', 'project_management', 'crm'],
     };
-    return int.category === (categoryMap[selectedFamily] ?? selectedFamily);
+    const allowed = categoryMap[selectedFamily] ?? [selectedFamily];
+    return allowed.includes(int.category);
   });
 
   useEffect(() => {

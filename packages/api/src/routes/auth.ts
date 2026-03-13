@@ -25,6 +25,13 @@ interface VerifyTokenRow { id: string; user_id: string; token_hash: string; expi
 const REFRESH_COOKIE = 'bb_refresh';
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
 
+function getPrimaryMembership(userId: string): (MemberRow & { role?: string }) | undefined {
+  const db = getDb();
+  return db.prepare(
+    'SELECT tenant_id, role FROM tenant_members WHERE user_id = ? ORDER BY created_at ASC LIMIT 1'
+  ).get(userId) as (MemberRow & { role?: string }) | undefined;
+}
+
 function setRefreshCookie(c: Context, token: string) {
   setCookie(c, REFRESH_COOKIE, token, {
     httpOnly: true,
@@ -178,9 +185,7 @@ authRouter.post('/login', async (c) => {
       }
     }
     // audit failed login
-    const failedTenantId = user?.id
-      ? (db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as MemberRow | undefined)?.tenant_id
-      : null;
+    const failedTenantId = user?.id ? getPrimaryMembership(user.id)?.tenant_id ?? null : null;
     if (failedTenantId) {
       logAudit({
         tenantId: failedTenantId,
@@ -200,9 +205,7 @@ authRouter.post('/login', async (c) => {
       .run(Date.now(), user.id);
   }
 
-  const membership = db.prepare(
-    'SELECT tenant_id, role FROM tenant_members WHERE user_id = ?'
-  ).get(user.id) as (MemberRow & { role?: string }) | undefined;
+  const membership = getPrimaryMembership(user.id);
 
   const tenantId = membership?.tenant_id ?? '';
 
@@ -283,7 +286,7 @@ authRouter.post('/refresh', async (c) => {
     const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId) as UserBasicRow | undefined;
     if (!user) return c.json({ success: false, error: 'User not found' }, 401);
 
-    const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(userId) as MemberRow | undefined;
+    const membership = getPrimaryMembership(userId);
 
     const rotation = await rotateRefreshToken(token);
 
@@ -404,7 +407,7 @@ authRouter.post('/forgot-password', async (c) => {
     console.error('[Email] Password reset email failed:', err);
   });
 
-  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as MemberRow | undefined;
+  const membership = getPrimaryMembership(user.id);
   logAudit({
     tenantId: membership?.tenant_id ?? '',
     userId: user.id,
@@ -472,7 +475,7 @@ authRouter.post('/reset-password', async (c) => {
     db.prepare('UPDATE refresh_tokens SET revoked = 1 WHERE user_id = ?').run(resetRow.user_id);
   })();
 
-  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(resetRow.user_id) as MemberRow | undefined;
+  const membership = getPrimaryMembership(resetRow.user_id);
   logAudit({
     tenantId: membership?.tenant_id ?? '',
     userId: resetRow.user_id,
@@ -518,7 +521,7 @@ authRouter.post('/verify-email', async (c) => {
   db.prepare('UPDATE users SET email_verified = 1, email_verification_token = NULL, updated_at = ? WHERE id = ?')
     .run(Date.now(), user.id);
 
-  const membership = db.prepare('SELECT tenant_id FROM tenant_members WHERE user_id = ?').get(user.id) as MemberRow | undefined;
+  const membership = getPrimaryMembership(user.id);
   logAudit({
     tenantId: membership?.tenant_id ?? '',
     userId: user.id,

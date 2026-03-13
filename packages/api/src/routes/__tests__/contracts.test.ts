@@ -122,4 +122,38 @@ describe('API contracts and auth hardening', () => {
     expect(getJson.data.currentStep).toBe(1);
     expect(getJson.data.selectedFamily).toBe('workforce');
   });
+
+  it('upserts onboarding state when row is missing', async () => {
+    const db = getDb();
+    const now = Date.now();
+    const userNoOnboarding = `user-no-onboarding-${now}`;
+    const tenantNoOnboarding = `tenant-no-onboarding-${now}`;
+
+    db.prepare('INSERT INTO users (id, email, password_hash, display_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(userNoOnboarding, 'no-onboarding@example.com', 'hashed', 'No Onboarding', now, now);
+    db.prepare('INSERT INTO tenants (id, name, owner_id, plan, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(tenantNoOnboarding, 'No Onboarding Tenant', userNoOnboarding, 'starter', now);
+    db.prepare('INSERT INTO tenant_members (tenant_id, user_id, role) VALUES (?, ?, ?)')
+      .run(tenantNoOnboarding, userNoOnboarding, 'owner');
+    db.prepare('DELETE FROM onboarding WHERE user_id = ?').run(userNoOnboarding);
+
+    const token = await signAccessToken({ userId: userNoOnboarding, tenantId: tenantNoOnboarding, email: 'no-onboarding@example.com' });
+    const noOnboardingAuth = `Bearer ${token}`;
+
+    const patchRes = await app.request('/api/onboarding', {
+      method: 'PATCH',
+      headers: { Authorization: noOnboardingAuth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentStep: 2, selectedFamily: 'store' }),
+    });
+    expect(patchRes.status).toBe(200);
+
+    const getRes = await app.request('/api/onboarding', {
+      headers: { Authorization: noOnboardingAuth },
+    });
+    expect(getRes.status).toBe(200);
+    const getJson = await getRes.json() as any;
+    expect(getJson.success).toBe(true);
+    expect(getJson.data.currentStep).toBe(2);
+    expect(getJson.data.selectedFamily).toBe('store');
+  });
 });

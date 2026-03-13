@@ -34,6 +34,16 @@ describe('API Routes', () => {
       expect(json.data.length).toBeGreaterThan(0);
       expect(json.meta).toBeDefined();
       expect(json.meta.total).toBe(json.data.length);
+
+      const coinbase = json.data.find((i: any) => i.id === 'coinbase');
+      expect(coinbase).toBeDefined();
+      expect(coinbase.oauth).toBe(true);
+      expect(coinbase.oauthReady).toBe(true);
+
+      const vertex = json.data.find((i: any) => i.id === 'vertex_ai');
+      expect(vertex).toBeDefined();
+      expect(vertex.oauth).toBe(false);
+      expect(vertex.oauthReady).toBe(true);
     });
 
     it('filters by category',async () => {
@@ -60,6 +70,7 @@ describe('API Routes', () => {
       const json = await response.json();
       expect(json.success).toBe(true);
       expect(json.data.id).toBe('coinbase');
+      expect(json.data.oauthReady).toBe(true);
     });
 
     it('returns 404 for unknown id', async () => {
@@ -205,7 +216,7 @@ describe('API Routes', () => {
 
     it('shopify connect requires shop query', async () => {
       const res1 = await app.request('/api/integrations/shopify/connect', { headers: { Authorization: authHeader } });
-      expect(res1.status).toBe(500); // adapter will throw
+      expect(res1.status).toBe(400);
       const res2 = await app.request('/api/integrations/shopify/connect?shop=myshop', { headers: { Authorization: authHeader } });
       expect(res2.status).toBe(302);
       expect(res2.headers.get('location')).toContain('shop=myshop');

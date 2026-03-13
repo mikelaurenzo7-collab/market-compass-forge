@@ -4,7 +4,7 @@ import type { IntegrationCategory } from '@beastbots/shared';
 import { getDb } from '../lib/db.js';
 import { verifyAuthHeader } from '../lib/auth.js';
 import { encrypt } from '../lib/crypto.js';
-import { getAdapter } from '../lib/oauthProviders.js';
+import { getAdapter, isOAuthProviderConfigured } from '../lib/oauthProviders.js';
 import crypto from 'node:crypto';
 import { logAudit } from '../lib/audit.js';
 
@@ -18,19 +18,24 @@ integrationsRouter.get('/', (c) => {
   if (category) results = results.filter((i) => i.category === category);
   if (status) results = results.filter((i) => i.status === status);
 
+  const withReadiness = results.map((integration) => ({
+    ...integration,
+    oauthReady: integration.oauth ? isOAuthProviderConfigured(integration.id) : true,
+  }));
+
   return c.json({
     success: true,
-    data: results,
+    data: withReadiness,
     meta: {
-      total: results.length,
+      total: withReadiness.length,
       byCategory: {
-        trading: results.filter((i) => i.category === 'trading').length,
-        ecommerce: results.filter((i) => i.category === 'ecommerce').length,
-        social: results.filter((i) => i.category === 'social').length,
-        workforce: results.filter((i) => i.category === 'workforce').length,
-        communication: results.filter((i) => i.category === 'communication').length,
-        project_management: results.filter((i) => i.category === 'project_management').length,
-        crm: results.filter((i) => i.category === 'crm').length,
+        trading: withReadiness.filter((i) => i.category === 'trading').length,
+        ecommerce: withReadiness.filter((i) => i.category === 'ecommerce').length,
+        social: withReadiness.filter((i) => i.category === 'social').length,
+        workforce: withReadiness.filter((i) => i.category === 'workforce').length,
+        communication: withReadiness.filter((i) => i.category === 'communication').length,
+        project_management: withReadiness.filter((i) => i.category === 'project_management').length,
+        crm: withReadiness.filter((i) => i.category === 'crm').length,
       },
     },
   });
@@ -41,18 +46,7 @@ integrationsRouter.get('/:id', (c) => {
   if (!integration) {
     return c.json({ success: false, error: 'Integration not found' }, 404);
   }
-  // compute whether OAuth flow is actually configured (env vars present)
-  let oauthReady = false;
-  if (integration.oauth) {
-    try {
-      const adapter = getAdapter(integration.id);
-      // use dummy values; adapter should throw if config missing
-      adapter.authorizeUrl({ provider: integration.id, redirectUri: 'https://example.com', state: 'test' });
-      oauthReady = true;
-    } catch {
-      oauthReady = false;
-    }
-  }
+  const oauthReady = integration.oauth ? isOAuthProviderConfigured(integration.id) : true;
   return c.json({ success: true, data: { ...integration, oauthReady } });
 });
 
@@ -64,6 +58,8 @@ integrationsRouter.get('/:id/connect', async (c) => {
   const id = c.req.param('id');
   const integration = INTEGRATIONS.find((i) => i.id === id);
   if (!integration) return c.json({ success: false, error: 'Integration not found' }, 404);
+  if (!integration.oauth) return c.json({ success: false, error: 'oauth_not_supported' }, 400);
+  if (!isOAuthProviderConfigured(id)) return c.json({ success: false, error: 'oauth_not_configured' }, 500);
 
   const state = crypto.randomUUID();
   const now = Date.now();
@@ -113,7 +109,14 @@ integrationsRouter.get('/:id/connect', async (c) => {
     return c.redirect(url);
   } catch (err) {
     console.error('[OAuth init error]', err);
-    return c.json({ success: false, error: 'oauth_not_configured' }, 500);
+    const code = err instanceof Error ? err.message : 'oauth_init_failed';
+    if (code === 'shop_required') {
+      return c.json({ success: false, error: 'shop_required' }, 400);
+    }
+    if (code === 'missing_oauth_config') {
+      return c.json({ success: false, error: 'oauth_not_configured' }, 500);
+    }
+    return c.json({ success: false, error: 'oauth_init_failed' }, 502);
   }
 });
 
@@ -159,7 +162,19 @@ integrationsRouter.get('/:id/callback', async (c) => {
     return c.redirect(`${frontend}/integrations?connected=${id}`);
   } catch (e: any) {
     console.error(`[OAuth callback error] provider=${id}:`, e.message);
+    logAudit({
+      tenantId: row.tenant_id,
+      userId: row.user_id,
+      platform: id,
+      action: 'oauth_connect',
+      result: 'failure',
+      riskLevel: 'medium',
+      details: JSON.stringify({ provider: id, error: e?.message ?? 'unknown' }),
+    });
     const frontend = process.env.FRONTEND_URL ?? 'http://localhost:3000';
-    return c.redirect(`${frontend}/integrations?error=oauth_failed`);
+    const errorCode = typeof e?.message === 'string' && e.message.startsWith('token_exchange_error:')
+      ? 'oauth_token_exchange_failed'
+      : 'oauth_failed';
+    return c.redirect(`${frontend}/integrations?error=${errorCode}`);
   }
 });
