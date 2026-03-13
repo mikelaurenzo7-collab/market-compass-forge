@@ -244,13 +244,12 @@ function IntegrationsPageContent() {
             </span>
             {p.oauth ? (
               p.oauthReady === false ? (
-                <button
+                <span
                   className="btn btn-secondary btn-sm"
-                  disabled
                   style={{ cursor: 'not-allowed', opacity: 0.6 }}
                 >
                   <Plug size={14} /> Unavailable
-                </button>
+                </span>
               ) : (
                 <button
                   className="btn btn-primary btn-sm"
