@@ -17,6 +17,10 @@ npm run dev:api
 npm run dev:web
 ```
 
+## Deployment
+- Docker-first deployment runbook: `docs/deployment.md`
+- Optional Cloudflare Workers hybrid runtime instructions: `docs/deployment.md`
+
 ## Product lanes
 1. Trading Operator Bots (crypto, prediction markets, stocks)
 2. Store Operator Bots (Shopify, Amazon, Etsy, Square, WooCommerce, eBay)

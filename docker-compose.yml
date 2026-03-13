@@ -29,7 +29,9 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      NEXT_PUBLIC_API_URL: http://api:4000
+      # Keep browser calls same-origin (/api/*) and proxy internally to API service.
+      NEXT_PUBLIC_API_URL: ""
+      INTERNAL_API_URL: http://api:4000
     depends_on:
       api:
         condition: service_healthy
