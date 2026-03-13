@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 
 function resolveApiUrl(): string {
@@ -81,9 +81,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
     onboardingRequired: false,
   });
+  const refreshInFlightRef = useRef<Promise<string | null> | null>(null);
+
+  const refreshAccessToken = useCallback(async (): Promise<string | null> => {
+    if (refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
+    }
+
+    const request = fetch(`${API_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({}),
+    })
+      .then((r) => r.json().catch(() => ({ success: false })))
+      .then((jr) => (jr?.success && jr.data?.accessToken ? jr.data.accessToken as string : null))
+      .catch(() => null)
+      .finally(() => {
+        refreshInFlightRef.current = null;
+      });
+
+    refreshInFlightRef.current = request;
+    return request;
+  }, []);
 
   // Restore session from localStorage (user info only — token is obtained via refresh cookie)
   useEffect(() => {
+    let cancelled = false;
     const stored = localStorage.getItem('bb_session');
     if (stored) {
       try {
@@ -99,35 +123,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           onboardingRequired: parsed.onboardingRequired ?? false,
         });
 
-        // Obtain a fresh access token from the HttpOnly refresh cookie
-        fetch(`${API_URL}/api/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({}),
-        })
-          .then((r) => r.json())
-          .then((jr) => {
-            if (jr?.success && jr.data?.accessToken) {
-              setState((s) => ({ ...s, accessToken: jr.data.accessToken, loading: false }));
-            } else {
-              // Refresh failed — session expired, clear stored data
-              localStorage.removeItem('bb_session');
-              setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
+        const restore = async () => {
+          const token = await refreshAccessToken();
+          if (token) {
+            if (!cancelled) {
+              setState((s) => ({ ...s, accessToken: token, loading: false }));
             }
-          })
-          .catch(() => {
+            return;
+          }
+
+          // Retry once to handle refresh-token rotation races on dev remounts.
+          const retryToken = await refreshAccessToken();
+          if (retryToken) {
+            if (!cancelled) {
+              setState((s) => ({ ...s, accessToken: retryToken, loading: false }));
+            }
+            return;
+          }
+
+          if (!cancelled) {
             localStorage.removeItem('bb_session');
             setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
-          });
+          }
+        };
+
+        void restore();
       } catch {
         localStorage.removeItem('bb_session');
-        setState((s) => ({ ...s, loading: false }));
+        if (!cancelled) {
+          setState((s) => ({ ...s, loading: false }));
+        }
       }
     } else {
-      setState((s) => ({ ...s, loading: false }));
+      if (!cancelled) {
+        setState((s) => ({ ...s, loading: false }));
+      }
     }
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshAccessToken]);
 
   const persistAuth = useCallback((data: {
     user: User;
@@ -233,30 +268,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.status !== 401) return res;
 
       // Attempt refresh once — cookie sent automatically
-      try {
-        const r = await fetch(`${API_URL}/api/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({}),
-        });
-        const jr = await r.json();
-        if (jr?.success && jr.data?.accessToken) {
-          // Store new access token in memory only — never in localStorage
-          setState((s) => ({ ...s, accessToken: jr.data.accessToken }));
-
-          const retry = await makeRequest(jr.data.accessToken);
-          return retry;
-        }
-      } catch {
-        return res;
+      const refreshedToken = await refreshAccessToken();
+      if (refreshedToken) {
+        // Store new access token in memory only — never in localStorage
+        setState((s) => ({ ...s, accessToken: refreshedToken }));
+        const retry = await makeRequest(refreshedToken);
+        return retry;
       }
 
       return res;
     } catch (err) {
       throw err;
     }
-  }, [state.accessToken]);
+  }, [state.accessToken, refreshAccessToken]);
 
   return (
     <AuthContext.Provider value={{ ...state, signup, login, logout, completeOnboarding, apiFetch }}>
