@@ -14,10 +14,13 @@ bindings = [
   { name = "BOT_RUNTIME", class_name = "BotRuntimeDO" }
 ]
 
-# Durable Object migrations must be applied with `wrangler deploy`.
-# Cloudflare's managed build pipeline for this repo currently uses
-# `wrangler versions upload`, which rejects migration operations.
-# Existing production DO classes are already provisioned for this worker.
+[[migrations]]
+tag = "v1"
+new_classes = ["BotRuntimeDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["BOT_RUNTIME"]
 
 # ─── Environments ─────────────────────────────────────────────
 
