@@ -45,6 +45,7 @@ COPY --from=builder /app/packages/shared/src/ packages/shared/src/
 COPY --from=builder /app/packages/api/dist/ packages/api/dist/
 COPY --from=builder /app/packages/api/src/lib/migrations/ packages/api/dist/lib/migrations/
 COPY --from=builder /app/packages/workers/dist/ packages/workers/dist/
+COPY --from=builder /app/packages/workers/src/ packages/workers/src/
 
 ENV NODE_ENV=production
 EXPOSE 4000
