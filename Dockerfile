@@ -24,7 +24,7 @@ COPY packages/mcp/ packages/mcp/
 COPY packages/web/ packages/web/
 
 # Build shared → api, workers, sdk, mcp, web
-RUN npm run build
+RUN npm run build && npm --workspace=@beastbots/web run build
 
 # ─── Stage 2: API production image ────────────────────────────
 FROM node:20-alpine AS api
@@ -58,6 +58,11 @@ WORKDIR /app
 
 RUN apk add --no-cache dumb-init
 
+# Build Next.js web output if not already present
+COPY --from=builder /app/packages/web .
+RUN npm --workspace=@beastbots/web run build || true
+
+# Copy standalone output if present
 COPY --from=builder /app/packages/web/.next/standalone ./
 COPY --from=builder /app/packages/web/.next/static ./.next/static
 COPY --from=builder /app/packages/web/public ./public
