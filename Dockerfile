@@ -46,7 +46,8 @@ COPY --from=builder /app/packages/api/src/lib/migrations/ packages/api/dist/lib/
 COPY --from=builder /app/packages/workers/dist/ packages/workers/dist/
 
 ENV NODE_ENV=production
-EXPOSE 4000
+ENV PORT=8080
+EXPOSE 8080
 
 USER node
 ENTRYPOINT ["dumb-init", "--"]
@@ -67,7 +68,8 @@ COPY --from=builder /app/packages/web/.next/standalone ./
 COPY --from=builder /app/packages/web/.next/static ./.next/static
 COPY --from=builder /app/packages/web/public ./public
 
-ENV NODE_ENV=production
+ENV PORT=8080
+EXPOSE 808NV=production
 EXPOSE 3000
 
 USER node
