@@ -36,16 +36,16 @@ COPY --from=builder /app/package.json /app/package-lock.json ./
 COPY --from=builder /app/packages/shared/package.json packages/shared/
 COPY --from=builder /app/packages/api/package.json packages/api/
 COPY --from=builder /app/packages/workers/package.json packages/workers/
+COPY --from=builder /app/packages/mcp/package.json packages/mcp/
 
 # Install production deps + tsx for TS module resolution
-RUN npm ci --omit=dev --workspace=@beastbots/api --workspace=@beastbots/shared --workspace=@beastbots/workers && npm install tsx
+RUN npm ci --omit=dev --workspace=@beastbots/api --workspace=@beastbots/shared --workspace=@beastbots/workers --workspace=@beastbots/mcp && npm install tsx
 
-COPY --from=builder /app/packages/shared/dist/ packages/shared/dist/
 COPY --from=builder /app/packages/shared/src/ packages/shared/src/
 COPY --from=builder /app/packages/api/dist/ packages/api/dist/
 COPY --from=builder /app/packages/api/src/lib/migrations/ packages/api/dist/lib/migrations/
-COPY --from=builder /app/packages/workers/dist/ packages/workers/dist/
 COPY --from=builder /app/packages/workers/src/ packages/workers/src/
+COPY --from=builder /app/packages/mcp/src/ packages/mcp/src/
 
 ENV NODE_ENV=production
 EXPOSE 4000
