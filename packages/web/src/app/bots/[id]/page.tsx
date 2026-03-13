@@ -418,15 +418,9 @@ export default function BotDetailPage() {
   const params = useParams();
   const botId = params.id as string;
   const [bot, setBot] = useState<BotDetail | null>(null);
-<<<<<<< HEAD
-  const [runtimeMetrics, setRuntimeMetrics] = useState<any | null>(null);
-  const [metricSnapshots, setMetricSnapshots] = useState<MetricEntry[]>([]);
-  const [decisions, setDecisions] = useState<any[]>([]);
-=======
   const [metricsData, setMetricsData] = useState<MetricsResponse | null>(null);
   const [decisions, setDecisions] = useState<DecisionEntry[]>([]);
   const [approvalHistory, setApprovalHistory] = useState<SafetyApprovalEntry[]>([]);
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
   const [optimizationState, setOptimizationState] = useState<{ title: string; saving: boolean } | null>(null);
@@ -459,21 +453,6 @@ export default function BotDetailPage() {
     try {
       const res = await apiFetch(`/api/bots/${botId}/metrics`);
       const json = await res.json();
-<<<<<<< HEAD
-      if (json.success) {
-        setRuntimeMetrics(json.data.metrics ?? null);
-      }
-    } catch { /* ignore */ }
-    // Fetch history + snapshots
-    try {
-      const res2 = await apiFetch(`/api/bots/${botId}/history?limit=100`);
-      const j2 = await res2.json();
-      if (j2.success) {
-        setDecisions(j2.data.decisions || []);
-        setMetricSnapshots(j2.data.metricsSnapshots || []);
-      }
-    } catch { /* ignore */ }
-=======
       if (json.success) setMetricsData(json.data ?? null);
     } catch (err) {
       console.error('Failed to load bot metrics:', err);
@@ -504,7 +483,6 @@ export default function BotDetailPage() {
     } catch (err) {
       console.error('Failed to load store outcomes:', err);
     }
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
   }, [apiFetch, botId]);
 
   useEffect(() => {
@@ -825,94 +803,6 @@ export default function BotDetailPage() {
             </div>
           )}
 
-<<<<<<< HEAD
-          {/* Runtime metrics (current) */}
-          {runtimeMetrics && (
-            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
-              <div className="settings-section-title">Live Performance</div>
-              <div className="stats-grid" style={{ marginBottom: 'var(--space-md)' }}>
-                <div className="stat-card">
-                  <div className="stat-label">Total P&amp;L</div>
-                  <div className={`stat-value ${runtimeMetrics.totalPnlUsd >= 0 ? 'green' : 'red'}`}>
-                    {runtimeMetrics.totalPnlUsd >= 0 ? '+' : ''}${runtimeMetrics.totalPnlUsd.toLocaleString()}
-                  </div>
-                </div>
-                {runtimeMetrics.initialBalanceUsd > 0 && (
-                  <div className="stat-card">
-                    <div className="stat-label">ROI</div>
-                    <div className="stat-value gold">
-                      {(runtimeMetrics.totalPnlUsd / runtimeMetrics.initialBalanceUsd * 100).toFixed(2)}%
-                    </div>
-                  </div>
-                )}
-              {/* custom metrics */}
-              {runtimeMetrics.custom && Object.keys(runtimeMetrics.custom).length > 0 && (
-                <div className="stat-card" style={{ gridColumn: 'span 2' }}>
-                  <div className="stat-label">Other metrics</div>
-                  <div className="stat-value" style={{ fontSize: '0.75rem', textAlign: 'left' }}>
-                    {Object.entries(runtimeMetrics.custom).map(([k,v]) => `${k}: ${String(v)}`).join(', ')}
-                  </div>
-                </div>
-              )}
-                <div className="stat-card">
-                  <div className="stat-label">Ticks</div>
-                  <div className="stat-value blue">{runtimeMetrics.totalTicks}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">Successes</div>
-                  <div className="stat-value green">{runtimeMetrics.successfulActions}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">Failures</div>
-                  <div className="stat-value red">{runtimeMetrics.failedActions}</div>
-                </div>
-                {bot.family === 'trading' && runtimeMetrics.totalTrades > 0 && (
-                  <>
-                    <div className="stat-card">
-                      <div className="stat-label">Trades</div>
-                      <div className="stat-value purple">{runtimeMetrics.totalTrades}</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-label">Win Rate</div>
-                      <div className="stat-value green">{(runtimeMetrics.winRate * 100).toFixed(1)}%</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-label">Consec. Losses</div>
-                      <div className="stat-value red">{runtimeMetrics.consecutiveLosses}</div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Historical snapshots */}
-          {metricSnapshots.length > 0 && (
-            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
-              <div className="settings-section-title">Metric History</div>
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Recorded At</th>
-                      <th>Ticks</th>
-                      <th>P&amp;L</th>
-                      <th>Uptime (ms)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {metricSnapshots.map((m, i) => (
-                      <tr key={i} style={{ fontSize: '0.85rem' }}>
-                        <td>{new Date(m.recordedAt).toLocaleString()}</td>
-                        <td>{m.totalTicks}</td>
-                        <td>{m.totalPnlUsd >= 0 ? '+' : ''}${m.totalPnlUsd}</td>
-                        <td>{m.uptimeMs}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-=======
-          {/* Heartbeat */}
           {metricsData?.heartbeat && (
             <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
               <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
@@ -932,37 +822,10 @@ export default function BotDetailPage() {
                   if (ms < 86_400_000) return `${(ms / 3_600_000).toFixed(1)}h`;
                   return `${(ms / 86_400_000).toFixed(1)}d`;
                 })()}</span>
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
               </div>
             </div>
           )}
 
-<<<<<<< HEAD
-          {decisions.length > 0 && (
-            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
-              <div className="settings-section-title">Decision History</div>
-              <div className="table-responsive">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Time</th>
-                      <th>Action</th>
-                      <th>Result</th>
-                      <th>Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {decisions.map((h, i) => (
-                      <tr key={i} style={{ fontSize: '0.85rem' }}>
-                        <td>{new Date(h.timestamp).toLocaleString()}</td>
-                        <td>{h.action}</td>
-                        <td>{h.result}</td>
-                        <td><pre style={{ whiteSpace: 'pre-wrap', maxWidth: 400 }}>{JSON.stringify(h.details)}</pre></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-=======
           {metricsData?.authority && (
             <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
               <div className="settings-section-title" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
@@ -1060,7 +923,6 @@ export default function BotDetailPage() {
                     </div>
                   </div>
                 ))}
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
               </div>
             </div>
           )}

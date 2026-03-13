@@ -616,85 +616,6 @@ export class BotRuntime {
     } finally {
       this.tickInFlight = false;
     }
-<<<<<<< HEAD:packages/workers/src/durable-objects/TradingRuntimeDO.ts
-
-    const startTime = Date.now();
-    this.state.metrics.totalTicks++;
-    this.state.lastTickAt = Date.now();
-    this.state.metrics.uptimeMs = Date.now() - this.state.createdAt;
-    // record initial balance on first tick (undefined or zero counts as uninitialized)
-    if (!this.state.metrics.initialBalanceUsd && this.adapter && typeof (this.adapter as any).getBalance === 'function') {
-      try {
-        const bal = await (this.adapter as any).getBalance();
-        if (bal?.totalUsd !== undefined) {
-          this.state.metrics.initialBalanceUsd = bal.totalUsd;
-        }
-      } catch {
-        // ignore failures
-      }
-    }
-
-    // dispatch to the engine corresponding to the bot family
-    let engineResult: { result: TickResult; newState: any } | null = null;
-    switch (this.state.family) {
-      case 'trading':
-        engineResult = await executeTradingTick(this.state.engineState, this.adapter as TradingAdapter);
-        break;
-      case 'store':
-        engineResult = await executeStoreTick(this.state.engineState, this.adapter as StoreAdapter);
-        break;
-      case 'social':
-        engineResult = await executeSocialTick(this.state.engineState, this.adapter as SocialAdapter);
-        break;
-      case 'workforce':
-        engineResult = await executeWorkforceTick(this.state.engineState, this.adapter as WorkforceAdapter);
-        break;
-    }
-
-    if (engineResult) {
-      this.state.engineState = engineResult.newState;
-      // sync PnL from engine state
-      if ((this.state.engineState as any).totalPnl !== undefined) {
-        this.state.metrics.totalPnlUsd = (this.state.engineState as any).totalPnl;
-      }
-      // sync trade counts
-      if ((this.state.engineState as any).totalTrades !== undefined) {
-        this.state.metrics.totalTrades = (this.state.engineState as any).totalTrades;
-      }
-      if ((this.state.engineState as any).winningTrades !== undefined) {
-        this.state.metrics.winningTrades = (this.state.engineState as any).winningTrades;
-      }
-      if ((this.state.engineState as any).consecutiveLosses !== undefined) {
-        this.state.metrics.consecutiveLosses = (this.state.engineState as any).consecutiveLosses;
-      }
-      // copy any custom metrics provided by engine
-      if ((this.state.engineState as any).customMetrics) {
-        this.state.metrics.custom = { ...(this.state.engineState as any).customMetrics };
-      }
-      // update metrics based on result
-      const r = engineResult.result;
-      if (r.result === 'executed') this.state.metrics.successfulActions++;
-      else if (r.result === 'denied') this.state.metrics.deniedActions++;
-      else if (r.result === 'error') this.state.metrics.failedActions++;
-
-      this.recordTick(r);
-      return r;
-    }
-
-    // fallback if no engine executed
-    const result: TickResult = {
-      botId: this.state.botId,
-      timestamp: Date.now(),
-      action: `${this.state.family}_tick`,
-      result: 'skipped',
-      details: { reason: 'no_engine' },
-      durationMs: Date.now() - startTime,
-    };
-
-    this.recordTick(result);
-    return result;
-=======
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662:packages/workers/src/durable-objects/BotRuntime.ts
   }
 
   // ─── Tick History ──────────────────────────────
@@ -765,13 +686,8 @@ export class BotRuntime {
       }
     }
     return {
-<<<<<<< HEAD:packages/workers/src/durable-objects/TradingRuntimeDO.ts
-      engineState: JSON.stringify(engineCopy),
-      safetyState: JSON.stringify(this.state.safety),
-=======
       engineState: JSON.stringify(serializeComplexValue(this.state.engineState ?? {})),
       safetyState: JSON.stringify(serializeComplexValue(this.state.safety)),
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662:packages/workers/src/durable-objects/BotRuntime.ts
       metrics: JSON.stringify(this.state.metrics),
       tickHistory: JSON.stringify(this.tickHistory.slice(-50)),
       status: this.state.status,
@@ -790,38 +706,9 @@ export class BotRuntime {
   }): void {
     if (!this.state) return;
     try {
-<<<<<<< HEAD:packages/workers/src/durable-objects/TradingRuntimeDO.ts
-      let parsed = JSON.parse(data.engineState);
-      // repair trading engine maps lost during JSON serialization
-      if (this.state.family === 'trading' && parsed) {
-        if (!(parsed.priceHistories instanceof Map)) {
-          parsed.priceHistories = new Map(Object.entries(parsed.priceHistories || {}));
-        }
-        if (!(parsed.secondaryHistories instanceof Map)) {
-          parsed.secondaryHistories = new Map(Object.entries(parsed.secondaryHistories || {}));
-        }
-        if (!(parsed.lastDcaBuy instanceof Map)) {
-          parsed.lastDcaBuy = new Map(Object.entries(parsed.lastDcaBuy || {}));
-        }
-        if (!(parsed.highWater instanceof Map)) {
-          parsed.highWater = new Map(Object.entries(parsed.highWater || {}));
-        }
-      }
-      this.state.engineState = parsed;
-      this.state.safety = JSON.parse(data.safetyState);
-      this.state.metrics = JSON.parse(data.metrics) as any;
-      // fill in new fields if missing
-      if (!this.state.metrics.initialBalanceUsd) {
-        this.state.metrics.initialBalanceUsd = 0;
-      }
-      if (this.state.metrics.initialBalanceUsd && this.state.metrics.initialBalanceUsd !== 0) {
-        this.state.metrics.roiPercent = (this.state.metrics.totalPnlUsd / this.state.metrics.initialBalanceUsd) * 100;
-      }
-=======
       this.state.engineState = deserializeComplexValue(JSON.parse(data.engineState));
       this.state.safety = deserializeComplexValue(JSON.parse(data.safetyState)) as SafetyContext;
       this.state.metrics = JSON.parse(data.metrics);
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662:packages/workers/src/durable-objects/BotRuntime.ts
       this.tickHistory = JSON.parse(data.tickHistory);
       this.state.status = data.status as BotStatus;
       this.state.lastTickAt = data.lastTickAt;

@@ -847,23 +847,12 @@ botsRouter.get('/:id/metrics', async (c) => {
       family: row.family,
       status,
       heartbeat,
-<<<<<<< HEAD
-      metrics: enriched,
-=======
       authority: {
         mode: isWorkerControlPlaneEnabled() ? 'worker-control-plane' : 'local-runtime',
         label: isWorkerControlPlaneEnabled() ? 'Cloudflare Durable Object' : 'Local runtime registry',
         live: Boolean(metrics || heartbeat),
       },
-      metrics: metrics ?? {
-        totalTicks: 0,
-        successfulActions: 0,
-        failedActions: 0,
-        deniedActions: 0,
-        totalPnlUsd: 0,
-        uptimeMs: 0,
-      },
->>>>>>> f42fb9ea410432b2e524632c6241d5d491145662
+      metrics: enriched,
     },
   });
 });
