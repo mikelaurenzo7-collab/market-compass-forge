@@ -18,6 +18,10 @@ bindings = [
 tag = "v1"
 new_classes = ["BotRuntimeDO"]
 
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["BOT_RUNTIME"]
+
 # ─── Environments ─────────────────────────────────────────────
 
 [env.dev]
