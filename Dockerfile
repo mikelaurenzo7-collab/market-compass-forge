@@ -37,8 +37,8 @@ COPY --from=builder /app/packages/shared/package.json packages/shared/
 COPY --from=builder /app/packages/api/package.json packages/api/
 COPY --from=builder /app/packages/workers/package.json packages/workers/
 
-# Install production deps only
-RUN npm ci --omit=dev --workspace=@beastbots/api --workspace=@beastbots/shared --workspace=@beastbots/workers
+# Install production deps + tsx for TS module resolution
+RUN npm ci --omit=dev --workspace=@beastbots/api --workspace=@beastbots/shared --workspace=@beastbots/workers && npm install tsx
 
 COPY --from=builder /app/packages/shared/dist/ packages/shared/dist/
 COPY --from=builder /app/packages/shared/src/ packages/shared/src/
@@ -51,7 +51,7 @@ EXPOSE 4000
 
 USER node
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "packages/api/dist/server.js"]
+CMD ["node", "--import", "tsx", "packages/api/dist/server.js"]
 
 # ─── Stage 3: Web production image ────────────────────────────
 FROM node:20-alpine AS web
