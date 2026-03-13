@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { z } from 'zod';
 import crypto from 'node:crypto';
+import { appendFileSync } from 'node:fs';
 import { hashSync, compareSync } from 'bcryptjs';
 import { jwtVerify } from 'jose';
 import { getDb } from '../lib/db.js';
@@ -24,6 +25,14 @@ interface VerifyTokenRow { id: string; user_id: string; token_hash: string; expi
 
 const REFRESH_COOKIE = 'bb_refresh';
 const REFRESH_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
+
+function writeDebugLog(payload: { hypothesisId: string; location: string; message: string; data: Record<string, unknown> }) {
+  try {
+    appendFileSync('/opt/cursor/logs/debug.log', `${JSON.stringify({ ...payload, timestamp: Date.now() })}\n`);
+  } catch {
+    // Best effort only for debug instrumentation.
+  }
+}
 
 function setRefreshCookie(c: Context, token: string) {
   setCookie(c, REFRESH_COOKIE, token, {
@@ -131,6 +140,18 @@ authRouter.post('/signup', async (c) => {
   const refreshTokenData = await issueRefreshToken({ userId, tenantId });
 
   setRefreshCookie(c, refreshTokenData.token);
+  // #region agent log
+  writeDebugLog({
+    hypothesisId: 'D',
+    location: 'packages/api/src/routes/auth.ts:signup',
+    message: 'Signup issued refresh cookie',
+    data: {
+      userId,
+      tenantId,
+      onboardingRequired: true,
+    },
+  });
+  // #endregion
 
   return c.json({
     success: true,
@@ -268,7 +289,28 @@ authRouter.post('/refresh', async (c) => {
   } catch { /* empty body is fine when cookie is present */ }
 
   const token = cookieToken ?? bodyToken;
+  // #region agent log
+  writeDebugLog({
+    hypothesisId: 'B',
+    location: 'packages/api/src/routes/auth.ts:refresh',
+    message: 'Refresh request received',
+    data: {
+      hasCookieToken: !!cookieToken,
+      hasBodyToken: !!bodyToken,
+      hasAnyToken: !!token,
+      userAgent: c.req.header('user-agent') ?? 'unknown',
+    },
+  });
+  // #endregion
   if (!token) {
+    // #region agent log
+    writeDebugLog({
+      hypothesisId: 'B',
+      location: 'packages/api/src/routes/auth.ts:refresh',
+      message: 'Refresh rejected due to missing token',
+      data: {},
+    });
+    // #endregion
     return c.json({ success: false, error: 'Missing refresh token' }, 400);
   }
 
@@ -290,6 +332,17 @@ authRouter.post('/refresh', async (c) => {
     const accessToken = await signAccessToken({ userId, tenantId: membership?.tenant_id ?? '', email: user.email });
 
     setRefreshCookie(c, rotation.refreshToken);
+    // #region agent log
+    writeDebugLog({
+      hypothesisId: 'A',
+      location: 'packages/api/src/routes/auth.ts:refresh',
+      message: 'Refresh rotation succeeded',
+      data: {
+        userId,
+        tenantId: membership?.tenant_id ?? '',
+      },
+    });
+    // #endregion
 
     logAudit({
       tenantId: membership?.tenant_id ?? '',
@@ -300,7 +353,17 @@ authRouter.post('/refresh', async (c) => {
       details: '',
     });
     return c.json({ success: true, data: { accessToken } });
-  } catch {
+  } catch (err) {
+    // #region agent log
+    writeDebugLog({
+      hypothesisId: 'C',
+      location: 'packages/api/src/routes/auth.ts:refresh',
+      message: 'Refresh failed in catch branch',
+      data: {
+        error: err instanceof Error ? err.message : 'unknown_error',
+      },
+    });
+    // #endregion
     clearRefreshCookie(c);
     return c.json({ success: false, error: 'Invalid or expired refresh token' }, 401);
   }
