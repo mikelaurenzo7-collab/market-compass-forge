@@ -338,6 +338,7 @@ export type WorkforceCategory =
 export type WorkforceStrategy =
   | 'ticket_triage'
   | 'auto_response'
+  | 'browser_automation'
   | 'lead_scoring'
   | 'crm_enrichment'
   | 'invoice_processing'
@@ -494,6 +495,8 @@ export const INTEGRATIONS: IntegrationDefinition[] = [
   { id: 'gusto', category: 'workforce', displayName: 'Gusto (HR)', oauth: true, status: 'planned' },
   { id: 'workday', category: 'workforce', displayName: 'Workday', oauth: false, status: 'planned' },
   { id: 'google_drive', category: 'workforce', displayName: 'Google Drive', oauth: true, status: 'beta' },
+  { id: 'browserless', category: 'workforce', displayName: 'Browserless (Playwright Cloud)', oauth: false, status: 'beta' },
+  { id: 'vertex_ai', category: 'workforce', displayName: 'Google Vertex AI', oauth: false, status: 'beta' },
   { id: 'dropbox', category: 'workforce', displayName: 'Dropbox', oauth: true, status: 'planned' },
   { id: 'docusign', category: 'workforce', displayName: 'DocuSign', oauth: true, status: 'planned' },
   { id: 'servicenow', category: 'workforce', displayName: 'ServiceNow', oauth: true, status: 'planned' }

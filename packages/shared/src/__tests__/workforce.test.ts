@@ -290,4 +290,20 @@ describe('GenericWorkforceAdapter', () => {
     const tasks = await adapter.fetchPendingTasks();
     expect(Array.isArray(tasks)).toBe(true);
   });
+
+  it('returns failed result when browser automation is requested without runtime config', async () => {
+    const adapter = new GenericWorkforceAdapter('it_ops');
+    const task = makeTask({
+      strategy: 'browser_automation',
+      inputData: {
+        browserAutomation: {
+          steps: [{ action: 'goto', url: 'https://example.com' }],
+        },
+      },
+    });
+    const result = await adapter.executeTask(task);
+    expect(result.status).toBe('failed');
+    expect(result.requiresHumanReview).toBe(true);
+    expect(String((result.outputData ?? {}).error ?? '')).toContain('Playwright');
+  });
 });

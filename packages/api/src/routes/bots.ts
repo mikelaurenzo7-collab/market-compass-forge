@@ -207,7 +207,19 @@ function makePersistCallback(botId: string, tenantId: string, family: BotFamily,
 }
 
 /** Look up and decrypt platform credentials for a tenant. Returns undefined if none stored. */
-type BotCredentials = { apiKey: string; apiSecret: string; passphrase?: string; shopDomain?: string; accessToken?: string; sandbox?: boolean };
+type BotCredentials = {
+  apiKey: string;
+  apiSecret: string;
+  passphrase?: string;
+  shopDomain?: string;
+  accessToken?: string;
+  sandbox?: boolean;
+  baseUrl?: string;
+  browserWsEndpoint?: string;
+  browserExecutablePath?: string;
+  browserSessionState?: string;
+  browserHeaders?: Record<string, string>;
+};
 
 function lookupCredentials(tenantId: string, platform: string): BotCredentials | undefined {
   const db = getDb();
@@ -241,6 +253,7 @@ function inferWorkforceCategory(platform: string, config: Record<string, unknown
   if (strategyHints.some((strategy) => ['document_classification', 'data_extraction'].includes(strategy))) return 'document_processing';
   if (strategyHints.some((strategy) => ['email_triage', 'meeting_scheduler'].includes(strategy))) return 'email_management';
   if (strategyHints.some((strategy) => ['compliance_monitoring', 'audit_preparation', 'contract_review'].includes(strategy))) return 'compliance';
+  if (strategyHints.some((strategy) => ['browser_automation'].includes(strategy))) return 'it_ops';
   if (strategyHints.some((strategy) => ['system_health_check'].includes(strategy))) return 'it_ops';
   if (strategyHints.some((strategy) => ['report_generation', 'knowledge_base_sync'].includes(strategy))) return 'reporting';
   if (strategyHints.some((strategy) => ['task_orchestration'].includes(strategy))) return 'project_management';

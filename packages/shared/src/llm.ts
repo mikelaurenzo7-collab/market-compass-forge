@@ -8,7 +8,7 @@ import type { PromptTemplate } from './prompts.js';
 
 // ─── Types ─────────────────────────────────────────────────────
 
-export type LLMProvider = 'openai' | 'anthropic' | 'grok';
+export type LLMProvider = 'openai' | 'anthropic' | 'grok' | 'vertex';
 
 export interface LLMUsage {
   promptTokens: number;
@@ -48,6 +48,7 @@ interface ProviderConfig {
     apiKey: string,
   ) => { headers: Record<string, string>; body: string };
   parseResponse: (data: unknown) => string;
+  resolveEndpoint?: (model: string, apiKey: string) => string;
 }
 
 const OPENAI_CONFIG: ProviderConfig = {
@@ -120,14 +121,65 @@ const GROK_CONFIG: ProviderConfig = {
   },
 };
 
+const VERTEX_CONFIG: ProviderConfig = {
+  name: 'vertex',
+  endpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
+  envKey: 'VERTEX_API_KEY',
+  defaultModel: 'gemini-2.5-flash',
+  costPer1k: [0.000075, 0.0003],
+  resolveEndpoint: (model, apiKey) =>
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`,
+  buildRequest: (_model, messages, maxTokens, _apiKey) => {
+    const system = messages.find((m) => m.role === 'system')?.content;
+    const userContent = messages
+      .filter((m) => m.role !== 'system')
+      .map((m) => m.content)
+      .join('\n\n');
+    return {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...(system
+          ? {
+            systemInstruction: {
+              role: 'system',
+              parts: [{ text: system }],
+            },
+          }
+          : {}),
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: userContent }],
+          },
+        ],
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature: 0.2,
+        },
+      }),
+    };
+  },
+  parseResponse: (data) => {
+    const d = data as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const parts = d.candidates?.[0]?.content?.parts ?? [];
+    const joined = parts.map((p) => p.text ?? '').join('').trim();
+    return joined || '[no response]';
+  },
+};
+
 export const PROVIDER_CONFIGS: Record<LLMProvider, ProviderConfig> = {
   openai: OPENAI_CONFIG,
   anthropic: ANTHROPIC_CONFIG,
   grok: GROK_CONFIG,
+  vertex: VERTEX_CONFIG,
 };
 
-/** Default failover order: openai → anthropic → grok */
-const FAILOVER_CHAIN: LLMProvider[] = ['openai', 'anthropic', 'grok'];
+/** Default failover order: vertex (preferred) → openai → anthropic → grok */
+const FAILOVER_CHAIN: LLMProvider[] = ['vertex', 'openai', 'anthropic', 'grok'];
 
 // ─── Defaults ─────────────────────────────────────────────────
 
@@ -206,9 +258,11 @@ function resolveModel(model: string | undefined, provider: LLMProvider): string 
   const isOpenAIModel = model.startsWith('gpt-') || model.startsWith('o1') || model.startsWith('o3');
   const isAnthropicModel = model.startsWith('claude-');
   const isGrokModel = model.startsWith('grok-');
+  const isVertexModel = model.startsWith('gemini-');
   if (provider === 'openai' && !isOpenAIModel) return PROVIDER_CONFIGS[provider].defaultModel;
   if (provider === 'anthropic' && !isAnthropicModel) return PROVIDER_CONFIGS[provider].defaultModel;
   if (provider === 'grok' && !isGrokModel) return PROVIDER_CONFIGS[provider].defaultModel;
+  if (provider === 'vertex' && !isVertexModel) return PROVIDER_CONFIGS[provider].defaultModel;
   return model;
 }
 
@@ -252,7 +306,8 @@ export async function promptLLM(prompt: string, options: LLMOptions = {}): Promi
 
   for (const providerName of chain) {
     const providerCfg = PROVIDER_CONFIGS[providerName];
-    const apiKey = process.env[providerCfg.envKey];
+    const apiKey = process.env[providerCfg.envKey]
+      ?? (providerName === 'vertex' ? process.env.GOOGLE_API_KEY : undefined);
     if (!apiKey) continue; // skip providers without keys
 
     const model = resolveModel(cfg.model, providerName);
@@ -260,8 +315,11 @@ export async function promptLLM(prompt: string, options: LLMOptions = {}): Promi
     for (let attempt = 0; attempt <= cfg.retries; attempt++) {
       try {
         const { headers, body } = providerCfg.buildRequest(model, messages, cfg.maxTokens, apiKey);
+        const endpoint = providerCfg.resolveEndpoint
+          ? providerCfg.resolveEndpoint(model, apiKey)
+          : providerCfg.endpoint;
         const resp = await fetchWithTimeout(
-          providerCfg.endpoint,
+          endpoint,
           { method: 'POST', headers, body },
           cfg.timeoutMs,
         );

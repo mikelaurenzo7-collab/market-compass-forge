@@ -8,10 +8,11 @@ import {
 // ─── Provider Configuration ───────────────────────────────────
 
 describe('PROVIDER_CONFIGS', () => {
-  it('has openai, anthropic, and grok providers', () => {
+  it('has openai, anthropic, grok, and vertex providers', () => {
     expect(PROVIDER_CONFIGS).toHaveProperty('openai');
     expect(PROVIDER_CONFIGS).toHaveProperty('anthropic');
     expect(PROVIDER_CONFIGS).toHaveProperty('grok');
+    expect(PROVIDER_CONFIGS).toHaveProperty('vertex');
   });
 
   it('each provider has required fields', () => {
@@ -130,6 +131,36 @@ describe('Grok provider', () => {
       choices: [{ message: { content: ' Grok says hi ' } }],
     };
     expect(cfg.parseResponse(data)).toBe('Grok says hi');
+  });
+});
+
+// ─── Vertex provider ───────────────────────────────────────────
+
+describe('Vertex provider', () => {
+  const cfg = PROVIDER_CONFIGS.vertex;
+
+  it('builds Gemini-compatible request payload', () => {
+    const { headers, body } = cfg.buildRequest(
+      'gemini-2.5-flash',
+      [
+        { role: 'system', content: 'You are precise.' },
+        { role: 'user', content: 'Analyze this input.' },
+      ],
+      180,
+      'vertex-key',
+    );
+    expect(headers['Content-Type']).toBe('application/json');
+    const parsed = JSON.parse(body);
+    expect(parsed.systemInstruction.parts[0].text).toContain('You are precise');
+    expect(parsed.contents[0].parts[0].text).toContain('Analyze this input');
+    expect(parsed.generationConfig.maxOutputTokens).toBe(180);
+  });
+
+  it('parses Gemini response format', () => {
+    const data = {
+      candidates: [{ content: { parts: [{ text: ' Vertex says hi ' }] } }],
+    };
+    expect(cfg.parseResponse(data)).toBe('Vertex says hi');
   });
 });
 

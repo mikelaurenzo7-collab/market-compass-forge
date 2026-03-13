@@ -15,5 +15,8 @@
       "import": "./src/index.ts",
       "default": "./src/index.ts"
     }
+  },
+  "dependencies": {
+    "playwright-core": "^1.58.2"
   }
 }

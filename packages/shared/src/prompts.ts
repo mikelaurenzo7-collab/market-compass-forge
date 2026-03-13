@@ -18,7 +18,7 @@ export interface PromptTemplate<TInput, TOutput> {
   /** Max tokens for this template */
   maxTokens?: number;
   /** Preferred LLM provider for this template */
-  provider?: 'openai' | 'anthropic' | 'grok';
+  provider?: 'openai' | 'anthropic' | 'grok' | 'vertex';
 }
 
 // ─── Trading Insight Types ─────────────────────────────────────

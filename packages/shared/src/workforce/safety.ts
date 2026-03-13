@@ -550,7 +550,7 @@ export function createDefaultWorkforceSafetyConfig(
     maxAutonomousFractionPerHour: 0.9,
     minConfidenceForAutonomousExecution: 0.65,
     mandatoryHumanReviewCategories: baseMandatoryReviewCategories,
-    mandatoryHumanReviewStrategies: ['contract_review', 'audit_preparation'],
+    mandatoryHumanReviewStrategies: ['contract_review', 'audit_preparation', 'browser_automation'],
     maxRepetitiveActionCount: 5,
     blockOnPrivacyViolation: privacyMode === 'strict' || privacyMode === 'hipaa_compliant',
     privacyMode,

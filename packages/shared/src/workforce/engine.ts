@@ -487,6 +487,44 @@ export async function executeWorkforceTick(
       }
     }
 
+    // ─── Browser Automation (Playwright) ──────────
+    if (state.config.strategies.includes('browser_automation')) {
+      for (const task of tasksToProcess.filter((t) => t.strategy === 'browser_automation')) {
+        const safetyResult = runSafetyPipeline(
+          state.safety,
+          `browser_automation ${task.id}`,
+          0,
+          state.config.requireApprovalForExternal ? 'high' : 'medium',
+          {
+            bot: { totalTicks: newState.tasksProcessedThisHour },
+            config: state.config as unknown as Record<string, unknown>,
+            tasksThisHour: newState.tasksProcessedThisHour,
+            confidence: Number(task.inputData.confidence ?? 0.8),
+            action: { type: 'external_communication' },
+            scope: String(task.inputData.scope ?? 'browser_automation'),
+          },
+        );
+        if (!safetyResult.allowed) {
+          actions.push(`Browser automation blocked for ${task.id}: ${safetyResult.reason}`);
+          continue;
+        }
+
+        if (!state.config.paperMode && (state.config.autonomyLevel ?? 'manual') === 'auto') {
+          const result = await executeWithRetry(() => adapter.executeTask(task));
+          newState.tasksProcessedThisHour++;
+          if (result.status === 'completed') {
+            newState.tasksCompleted++;
+            actions.push(`🧭 Browser automation completed for ${task.id}`);
+          } else {
+            newState.tasksFailed++;
+            actions.push(`🧭 Browser automation failed for ${task.id}: ${result.escalationReason ?? 'unknown error'}`);
+          }
+        } else {
+          actions.push(`[PAPER] Would run browser automation for ${task.id}`);
+        }
+      }
+    }
+
     // ─── Vendor Evaluation ────────────────────────
     if (state.config.strategies.includes('vendor_evaluation')) {
       for (const task of tasksToProcess.filter((t) => t.strategy === 'vendor_evaluation')) {
