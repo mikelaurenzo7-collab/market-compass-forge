@@ -28,7 +28,7 @@ const REFRESH_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
 function getPrimaryMembership(userId: string): (MemberRow & { role?: string }) | undefined {
   const db = getDb();
   return db.prepare(
-    'SELECT tenant_id, role FROM tenant_members WHERE user_id = ? ORDER BY created_at ASC LIMIT 1'
+    'SELECT tenant_id, role FROM tenant_members WHERE user_id = ? ORDER BY tenant_id ASC LIMIT 1'
   ).get(userId) as (MemberRow & { role?: string }) | undefined;
 }
 

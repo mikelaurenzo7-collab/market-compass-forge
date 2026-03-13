@@ -23,8 +23,10 @@ function envKey(provider: string, key: string): string {
   return `OAUTH_${provider.toUpperCase()}_${key}`;
 }
 
-export function isOAuthProviderConfigured(provider: string): boolean {
-  const required = ['AUTHORIZE_URL', 'TOKEN_URL', 'CLIENT_ID', 'CLIENT_SECRET'];
+export function isOAuthProviderConfigured(provider: string, stage: 'authorize' | 'exchange' = 'exchange'): boolean {
+  const required = stage === 'authorize'
+    ? ['AUTHORIZE_URL', 'CLIENT_ID']
+    : ['AUTHORIZE_URL', 'TOKEN_URL', 'CLIENT_ID', 'CLIENT_SECRET'];
   return required.every((key) => Boolean(process.env[envKey(provider, key)]));
 }
 

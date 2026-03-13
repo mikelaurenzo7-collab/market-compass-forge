@@ -110,7 +110,7 @@ export async function verifyAuthHeader(authHeader: string | undefined) {
   const claimedTenantId = typeof payload.tenantId === 'string' ? payload.tenantId : '';
   const membership = claimedTenantId
     ? db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ? AND tenant_id = ?').get(userId, claimedTenantId) as { tenant_id: string; role: string } | undefined
-    : db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ? ORDER BY created_at ASC LIMIT 1').get(userId) as { tenant_id: string; role: string } | undefined;
+    : db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ? ORDER BY tenant_id ASC LIMIT 1').get(userId) as { tenant_id: string; role: string } | undefined;
   const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId) as { id: string; email: string } | undefined;
   if (!user || !membership) return null;
 

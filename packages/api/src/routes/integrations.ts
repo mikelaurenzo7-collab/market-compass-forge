@@ -20,7 +20,7 @@ integrationsRouter.get('/', (c) => {
 
   const withReadiness = results.map((integration) => ({
     ...integration,
-    oauthReady: integration.oauth ? isOAuthProviderConfigured(integration.id) : true,
+    oauthReady: integration.oauth ? isOAuthProviderConfigured(integration.id, 'authorize') : true,
   }));
 
   return c.json({
@@ -46,7 +46,7 @@ integrationsRouter.get('/:id', (c) => {
   if (!integration) {
     return c.json({ success: false, error: 'Integration not found' }, 404);
   }
-  const oauthReady = integration.oauth ? isOAuthProviderConfigured(integration.id) : true;
+  const oauthReady = integration.oauth ? isOAuthProviderConfigured(integration.id, 'authorize') : true;
   return c.json({ success: true, data: { ...integration, oauthReady } });
 });
 
@@ -59,7 +59,7 @@ integrationsRouter.get('/:id/connect', async (c) => {
   const integration = INTEGRATIONS.find((i) => i.id === id);
   if (!integration) return c.json({ success: false, error: 'Integration not found' }, 404);
   if (!integration.oauth) return c.json({ success: false, error: 'oauth_not_supported' }, 400);
-  if (!isOAuthProviderConfigured(id)) return c.json({ success: false, error: 'oauth_not_configured' }, 500);
+  if (!isOAuthProviderConfigured(id, 'authorize')) return c.json({ success: false, error: 'oauth_not_configured' }, 500);
 
   const state = crypto.randomUUID();
   const now = Date.now();
