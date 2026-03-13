@@ -108,7 +108,7 @@ provisioningRouter.post('/store/resolve/:approvalId', async (c) => {
 
   const approvalId = c.req.param('approvalId');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, platform, status FROM approvals WHERE id = ?').get(approvalId) as any;
+  const row = db.prepare('SELECT id, tenant_id, platform, status FROM approvals WHERE id = ?').get(approvalId) as { id: string; tenant_id: string; platform: string; status: string } | undefined;
   if (!row) return c.json({ success: false, error: 'Approval not found' }, 404);
   if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
 
@@ -134,7 +134,7 @@ provisioningRouter.post('/store/execute/:approvalId', async (c) => {
 
   const approvalId = c.req.param('approvalId');
   const db = getDb();
-  const row = db.prepare('SELECT id, tenant_id, platform, status FROM approvals WHERE id = ?').get(approvalId) as any;
+  const row = db.prepare('SELECT id, tenant_id, platform, status FROM approvals WHERE id = ?').get(approvalId) as { id: string; tenant_id: string; platform: string; status: string } | undefined;
   if (!row) return c.json({ success: false, error: 'Approval not found' }, 404);
   if (row.tenant_id !== auth.tenantId) return c.json({ success: false, error: 'Not authorized' }, 403);
   if (row.status !== 'approved') return c.json({ success: false, error: 'Provisioning requires approved request' }, 400);

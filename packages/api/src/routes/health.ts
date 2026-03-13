@@ -7,7 +7,7 @@ healthRouter.get('/', (c) => {
   // Quick DB connectivity check
   let dbOk = false;
   try {
-    const row = getDb().prepare('SELECT 1 AS ok').get() as any;
+    const row = getDb().prepare('SELECT 1 AS ok').get() as { ok: number } | undefined;
     dbOk = row?.ok === 1;
   } catch { /* db down */ }
 
@@ -24,6 +24,16 @@ healthRouter.get('/', (c) => {
       timestamp: new Date().toISOString(),
       checks: {
         database: dbOk ? 'ok' : 'error',
+        email: process.env.RESEND_API_KEY ? 'configured' : 'not_configured',
+        workers: {
+          baseUrl: process.env.WORKERS_BASE_URL ? 'configured' : 'not_configured',
+          authToken: process.env.WORKER_AUTH_TOKEN ? 'configured' : 'not_configured',
+        },
+        webhooks: {
+          shopify: process.env.SHOPIFY_WEBHOOK_SECRET ? 'configured' : 'not_configured',
+          coinbase: process.env.COINBASE_WEBHOOK_SECRET ? 'configured' : 'not_configured',
+          alpaca: process.env.ALPACA_WEBHOOK_SECRET ? 'configured' : 'not_configured',
+        },
         memory: {
           rssBytes: mem.rss,
           heapUsedBytes: mem.heapUsed,

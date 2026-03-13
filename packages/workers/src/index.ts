@@ -1,13 +1,33 @@
-import { TradingRuntimeDO } from './durable-objects/TradingRuntimeDO.js';
-import type { StateChangeCallback } from './durable-objects/TradingRuntimeDO.js';
-import type { BotFamily, Platform, TradingBotConfig, StoreBotConfig, SocialBotConfig, WorkforceBotConfig } from '@beastbots/shared';
+// ─── BeastBots Worker Runtime ─────────────────────────────────
+//
+// Pure engine exports + local dev runtime registry.
+// This module has NO Cloudflare-specific imports so it works in
+// Node.js, vitest, and any other standard runtime.
+//
+// The Cloudflare Worker entry point is worker-entry.ts (referenced by wrangler.toml).
+// It re-exports BotRuntimeDO (the CF Durable Object wrapper) and the Worker fetch handler.
 
-export { TradingRuntimeDO };
-export type { StateChangeCallback, RuntimeState } from './durable-objects/TradingRuntimeDO.js';
+import { BotRuntime } from './durable-objects/BotRuntime.js';
+import type { RuntimeState, StateChangeCallback } from './durable-objects/BotRuntime.js';
+import type {
+  BotFamily,
+  Platform,
+  TradingBotConfig,
+  StoreBotConfig,
+  SocialBotConfig,
+  WorkforceBotConfig,
+} from '@beastbots/shared';
 
-// ─── Runtime Registry ─────────────────────────────────────────
+// Re-export the pure engine (safe for Node/vitest)
+export { BotRuntime };
+export type { RuntimeState, StateChangeCallback };
 
-const runtimes = new Map<string, TradingRuntimeDO>();
+// ─── Local Dev Runtime Registry ───────────────────────────────
+//
+// For local development and testing (outside Cloudflare).
+// Uses in-memory Map to store BotRuntime instances.
+
+const runtimes = new Map<string, BotRuntime>();
 
 function getRuntimeKey(tenantId: string, botId: string): string {
   return `${tenantId}:${botId}`;
@@ -21,10 +41,11 @@ export function createRuntime(params: {
   config: TradingBotConfig | StoreBotConfig | SocialBotConfig | WorkforceBotConfig;
   tickIntervalMs?: number;
   adapter?: any;
+  credentials?: { apiKey: string; apiSecret: string; passphrase?: string; shopDomain?: string; accessToken?: string; sandbox?: boolean };
   onStateChange?: StateChangeCallback;
-}): TradingRuntimeDO {
+}): BotRuntime {
   const key = getRuntimeKey(params.tenantId, params.botId);
-  const runtime = new TradingRuntimeDO();
+  const runtime = new BotRuntime();
   runtime.initialize(params);
   if (params.onStateChange) {
     runtime.setOnStateChange(params.onStateChange);
@@ -33,12 +54,12 @@ export function createRuntime(params: {
   return runtime;
 }
 
-export function getRuntime(tenantId: string, botId: string): TradingRuntimeDO | undefined {
+export function getRuntime(tenantId: string, botId: string): BotRuntime | undefined {
   return runtimes.get(getRuntimeKey(tenantId, botId));
 }
 
-export function listRuntimes(tenantId: string): TradingRuntimeDO[] {
-  const results: TradingRuntimeDO[] = [];
+export function listRuntimes(tenantId: string): BotRuntime[] {
+  const results: BotRuntime[] = [];
   for (const [key, runtime] of runtimes) {
     if (key.startsWith(`${tenantId}:`)) {
       results.push(runtime);
@@ -66,3 +87,4 @@ export function bootstrapWorkers(): { ok: boolean; message: string } {
     message: 'BeastBots Workers runtime ready — Durable Objects available for tenant allocation',
   };
 }
+

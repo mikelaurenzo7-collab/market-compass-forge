@@ -119,6 +119,75 @@ function pricingInfo(params: Record<string, unknown>): unknown {
   };
 }
 
+// ─── Tool: Market Intelligence ────────────────────────────────
+
+function marketIntelligence(params: Record<string, unknown>): unknown {
+  const ticker = params.ticker as string | undefined;
+  const source = params.source as string | undefined;
+
+  const sources = ['alpha_vantage', 'coingecko', 'google_trends'];
+  if (source && !sources.includes(source)) {
+    return { error: `Unknown source. Available: ${sources.join(', ')}` };
+  }
+
+  return {
+    description: 'Market intelligence aggregator for real-time data enrichment',
+    availableSources: [
+      { id: 'alpha_vantage', name: 'Alpha Vantage', provides: ['news sentiment', 'technical indicators', 'earnings data'] },
+      { id: 'coingecko', name: 'CoinGecko', provides: ['fear & greed index', 'trending coins', 'market dominance'] },
+      { id: 'google_trends', name: 'Google Trends (via SerpAPI)', provides: ['search interest', 'rising terms', 'demand signals'] },
+    ],
+    usage: ticker
+      ? `To get market context for ${ticker}, call gatherMarketContext({ ticker: '${ticker}' }) from @beastbots/shared`
+      : 'Provide a ticker symbol to get specific guidance',
+    envVarsRequired: ['ALPHA_VANTAGE_API_KEY', 'SERP_API_KEY'],
+    integrationPoints: {
+      trading: 'Sentiment modifier adjusts position confidence; forecast validates direction',
+      store: 'Google Trends demand signal adjusts dynamic pricing; Vision AI checks product images',
+      social: 'Google Trends detects breakout topics for content timing',
+      workforce: 'Document AI processes invoices and contracts automatically',
+    },
+  };
+}
+
+// ─── Tool: Alert Management ──────────────────────────────────
+
+function alertManagement(params: Record<string, unknown>): unknown {
+  const action = params.action as string | undefined;
+
+  const actions: Record<string, unknown> = {
+    overview: {
+      description: 'Multi-channel alert system (SMS + WhatsApp via Twilio, Email via Resend)',
+      eventTypes: [
+        'circuit_breaker_tripped', 'trade_executed', 'approval_required',
+        'budget_warning', 'bot_error', 'daily_summary', 'position_liquidation', 'liquidation_risk',
+      ],
+      priorities: ['critical', 'high', 'medium', 'low'],
+      channels: ['sms', 'whatsapp', 'email'],
+      apiEndpoints: [
+        'GET  /api/alerts/recipients — list alert recipients',
+        'POST /api/alerts/recipients — add recipient',
+        'PATCH /api/alerts/recipients/:id — update recipient',
+        'DELETE /api/alerts/recipients/:id — remove recipient',
+        'POST /api/alerts/test — send test alert',
+        'GET  /api/alerts/status — check Twilio config status',
+      ],
+    },
+    setup: {
+      steps: [
+        '1. Set env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER',
+        '2. Optional: TWILIO_WHATSAPP_NUMBER for WhatsApp',
+        '3. Optional: RESEND_API_KEY, RESEND_FROM_ADDRESS for email',
+        '4. Add recipients via POST /api/alerts/recipients',
+        '5. Send test alert via POST /api/alerts/test',
+      ],
+    },
+  };
+
+  if (action && actions[action]) return actions[action];
+  return actions.overview;
+}
+
 // ─── Tool Registry ────────────────────────────────────────────
 
 const tools: McpTool[] = [
@@ -153,6 +222,23 @@ const tools: McpTool[] = [
       family: { type: 'string', description: 'Filter by bot family', required: false },
     },
     handler: pricingInfo,
+  },
+  {
+    name: 'market_intelligence',
+    description: 'Explore BeastBots market intelligence capabilities — Alpha Vantage, CoinGecko, Google Trends data sources and how they enhance bot decisions',
+    parameters: {
+      ticker: { type: 'string', description: 'Stock or crypto ticker symbol for specific guidance', required: false },
+      source: { type: 'string', description: 'Filter by source: alpha_vantage, coingecko, or google_trends', required: false },
+    },
+    handler: marketIntelligence,
+  },
+  {
+    name: 'alert_management',
+    description: 'Manage BeastBots alert system — SMS, WhatsApp, and email notifications for bot events',
+    parameters: {
+      action: { type: 'string', description: 'Action: overview or setup', required: false },
+    },
+    handler: alertManagement,
   },
 ];
 

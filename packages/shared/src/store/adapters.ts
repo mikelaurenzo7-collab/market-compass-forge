@@ -14,13 +14,46 @@ interface StoreCredentials {
   sandbox?: boolean;
 }
 
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const MAX_RETRIES = 3;
+
 async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text.slice(0, 200)}`);
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url, init);
+
+      if (res.ok) return res.json() as Promise<T>;
+
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('Retry-After');
+        const waitMs = retryAfter
+          ? (Number(retryAfter) > 0 ? Number(retryAfter) * 1000 : 1000)
+          : 1000 * 2 ** attempt;
+        if (attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, Math.min(waitMs, 30_000)));
+          continue;
+        }
+      }
+
+      if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, 50 * 2 ** attempt));
+        continue;
+      }
+
+      const text = await res.text();
+      throw new Error(`API ${res.status}: ${text.slice(0, 200)}`);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < MAX_RETRIES && !lastError.message.startsWith('API ')) {
+        await new Promise(r => setTimeout(r, 50 * 2 ** attempt));
+        continue;
+      }
+      throw lastError;
+    }
   }
-  return res.json() as Promise<T>;
+  throw lastError ?? new Error('jsonFetch: exhausted retries');
 }
 
 // ─── Shopify Adapter ──────────────────────────────────────────

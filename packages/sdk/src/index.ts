@@ -65,6 +65,22 @@ export interface AuditLogEntry {
   details?: unknown;
 }
 
+export interface AlertRecipientInfo {
+  id: string;
+  name: string;
+  phone: string;
+  channels: ('sms' | 'whatsapp')[];
+  eventTypes: string[];
+  minPriority: string;
+  createdAt: number;
+}
+
+export interface AlertStatus {
+  twilioConfigured: boolean;
+  recipientCount: number;
+  channels: { sms: boolean; whatsapp: boolean };
+}
+
 // ─── Bot Manifest ─────────────────────────────────────────────
 
 export interface BotManifest {
@@ -196,19 +212,111 @@ export class BeastBotsClient {
     return this.request(`/api/safety/defaults/${encodeURIComponent(family)}`);
   }
 
-  async getAuditLog(tenantId: string, limit?: number): Promise<AuditLogEntry[]> {
-    const params = limit ? `?limit=${limit}` : '';
-    return this.request(`/api/safety/audit/${encodeURIComponent(tenantId)}${params}`);
+  async getAuditLog(limit?: number, offset?: number): Promise<AuditLogEntry[]> {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', String(limit));
+    if (offset) params.set('offset', String(offset));
+    const qs = params.toString();
+    return this.request(`/api/audit${qs ? `?${qs}` : ''}`);
   }
 
-  async getPendingApprovals(tenantId: string): Promise<unknown[]> {
-    return this.request(`/api/safety/approvals/${encodeURIComponent(tenantId)}`);
+  async getPendingApprovals(): Promise<unknown[]> {
+    return this.request('/api/safety/approvals');
   }
 
   async resolveApproval(id: string, approved: boolean, resolvedBy: string): Promise<unknown> {
     return this.request(`/api/safety/approvals/${encodeURIComponent(id)}/resolve`, {
       method: 'POST',
       body: JSON.stringify({ approved, resolvedBy }),
+    });
+  }
+
+  // ─── Analytics ─────────────────────────────────
+
+  async getAnalytics(botId?: string): Promise<unknown> {
+    const params = botId ? `?botId=${encodeURIComponent(botId)}` : '';
+    return this.request(`/api/analytics${params}`);
+  }
+
+  // ─── Compliance ───────────────────────────────
+
+  async generateComplianceReport(params: {
+    reportType: string;
+    families?: string[];
+    startDate?: string;
+    endDate?: string;
+  }): Promise<unknown> {
+    return this.request('/api/compliance/generate', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async listComplianceReports(): Promise<unknown[]> {
+    return this.request('/api/compliance/reports');
+  }
+
+  // ─── Performance ──────────────────────────────
+
+  async generatePerformanceReport(params: {
+    period: 'weekly' | 'monthly';
+  }): Promise<unknown> {
+    return this.request('/api/performance/generate', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async listPerformanceReports(): Promise<unknown[]> {
+    return this.request('/api/performance/reports');
+  }
+
+  // ─── Push Notifications ───────────────────────
+
+  async subscribePush(endpoint: string, keys: { p256dh: string; auth: string }): Promise<unknown> {
+    return this.request('/api/push/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ endpoint, keys }),
+    });
+  }
+
+  // ─── Federated Learning ───────────────────────
+
+  async getFederatedStatus(): Promise<unknown> {
+    return this.request('/api/federated/status');
+  }
+
+  async optInFederated(enabled: boolean): Promise<unknown> {
+    return this.request('/api/federated/opt-in', {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    });
+  }
+
+  // ─── Templates ────────────────────────────────
+
+  async listTemplates(family?: string): Promise<unknown[]> {
+    const params = family ? `?family=${encodeURIComponent(family)}` : '';
+    return this.request(`/api/templates${params}`);
+  }
+
+  async deployTemplate(templateId: string, config?: Record<string, unknown>): Promise<unknown> {
+    return this.request(`/api/templates/${encodeURIComponent(templateId)}/deploy`, {
+      method: 'POST',
+      body: JSON.stringify(config ?? {}),
+    });
+  }
+
+  // ─── Notification Preferences ─────────────────
+
+  async getNotificationPreferences(): Promise<unknown> {
+    return this.request('/api/notifications/preferences');
+  }
+
+  async updateNotificationPreferences(prefs: Record<string, unknown>): Promise<unknown> {
+    return this.request('/api/notifications/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(prefs),
     });
   }
 
@@ -224,6 +332,72 @@ export class BeastBotsClient {
 
   async getSocialPlatforms(): Promise<unknown[]> {
     return this.request('/api/bots/platforms/social');
+  }
+
+  // ─── Alerts ───────────────────────────────────
+
+  async listAlertRecipients(): Promise<AlertRecipientInfo[]> {
+    return this.request('/api/alerts/recipients');
+  }
+
+  async createAlertRecipient(params: {
+    name: string;
+    phone: string;
+    channels?: ('sms' | 'whatsapp')[];
+    eventTypes?: string[];
+    minPriority?: 'critical' | 'high' | 'medium' | 'low';
+  }): Promise<{ id: string }> {
+    return this.request('/api/alerts/recipients', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async updateAlertRecipient(id: string, params: {
+    name?: string;
+    phone?: string;
+    channels?: ('sms' | 'whatsapp')[];
+    eventTypes?: string[];
+    minPriority?: 'critical' | 'high' | 'medium' | 'low';
+  }): Promise<void> {
+    await this.request(`/api/alerts/recipients/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(params),
+    });
+  }
+
+  async deleteAlertRecipient(id: string): Promise<void> {
+    await this.request(`/api/alerts/recipients/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async sendTestAlert(): Promise<{ sent: number }> {
+    return this.request('/api/alerts/test', { method: 'POST' });
+  }
+
+  async getAlertStatus(): Promise<AlertStatus> {
+    return this.request('/api/alerts/status');
+  }
+
+  // ─── MFA ──────────────────────────────────────
+
+  async setupMfa(): Promise<{ secret: string; qrCodeUrl: string }> {
+    return this.request('/api/auth/mfa/setup', { method: 'POST' });
+  }
+
+  async verifyMfaSetup(code: string): Promise<{ success: boolean }> {
+    return this.request('/api/auth/mfa/verify-setup', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+  }
+
+  async disableMfa(code: string): Promise<void> {
+    await this.request('/api/auth/mfa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
   }
 }
 

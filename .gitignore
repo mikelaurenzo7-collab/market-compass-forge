@@ -5,6 +5,9 @@ coverage
 *.log
 .env
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 packages/**/tsconfig.tsbuildinfo
 
 # Build artifacts
@@ -13,6 +16,10 @@ out.js
 # Compiled JS in shared src (use dist/ for compiled output)
 packages/shared/src/**/*.js
 packages/shared/src/**/*.d.ts
+
+beastbot.db
+beastbot.db-wal
+beastbot.db-shm
 
 beastbot.db
 beastbot.db-wal

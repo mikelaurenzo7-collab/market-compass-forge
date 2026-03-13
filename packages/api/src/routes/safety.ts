@@ -5,6 +5,7 @@ import {
   createDefaultBudget,
   createDefaultCircuitBreaker,
   createDefaultPolicies,
+  getApprovals,
   getAuditLog,
   getPendingApprovals,
   resolveApproval,
@@ -50,8 +51,17 @@ safetyRouter.get('/audit', async (c) => {
 safetyRouter.get('/approvals', async (c) => {
   const auth = await verifyAuthHeader(c.req.header('Authorization'));
   if (!auth) return c.json({ success: false, error: 'Not authenticated' }, 401);
-  const pending = getPendingApprovals(auth.tenantId);
-  return c.json({ success: true, data: pending });
+
+  const includeResolved = c.req.query('includeResolved') === 'true';
+  const botId = c.req.query('botId')?.trim() || undefined;
+  const status = c.req.query('status')?.trim() as 'pending' | 'approved' | 'rejected' | 'consumed' | undefined;
+  const limit = Math.min(Math.max(Number(c.req.query('limit') ?? '50'), 1), 200);
+
+  const approvals = includeResolved
+    ? getApprovals(auth.tenantId, { botId, status, limit })
+    : getPendingApprovals(auth.tenantId).filter((approval) => !botId || approval.botId === botId).slice(0, limit);
+
+  return c.json({ success: true, data: approvals });
 });
 
 const resolveSchema = z.object({

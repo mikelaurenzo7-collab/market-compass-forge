@@ -3,7 +3,7 @@ export interface McpCall {
   args?: Record<string, unknown>;
 }
 
-export async function callMcp(tool: McpCall): Promise<any> {
+export async function callMcp<T = unknown>(tool: McpCall): Promise<T> {
   const payload = {
     jsonrpc: '2.0',
     id: Date.now(),

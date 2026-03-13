@@ -3,14 +3,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
+import { TrendingUp, ShoppingCart, Share2, Users, ArrowLeft, Check } from 'lucide-react';
 import { useAuth } from '../../../lib/auth-context';
 import AppShell from '../../components/AppShell';
+import LoadingScreen from '../../components/LoadingScreen';
 
-const FAMILY_META: Record<string, { icon: string; label: string; desc: string; color: string }> = {
-  trading: { icon: '📈', label: 'Trading', desc: 'Crypto & stock exchanges', color: 'var(--color-trading)' },
-  store: { icon: '🛒', label: 'Store', desc: 'Ecommerce & marketplaces', color: 'var(--color-store)' },
-  social: { icon: '📱', label: 'Social', desc: 'Social media platforms', color: 'var(--color-social)' },
-  workforce: { icon: '⚙️', label: 'Workforce', desc: 'Team & operations tools', color: 'var(--color-workforce)' },
+const CREATE_FAMILY_ICONS: Record<string, React.ReactNode> = {
+  trading: <TrendingUp size={20} />,
+  store: <ShoppingCart size={20} />,
+  social: <Share2 size={20} />,
+  workforce: <Users size={20} />,
+};
+
+const FAMILY_META: Record<string, { icon: React.ReactNode; label: string; desc: string; color: string }> = {
+  trading: { icon: CREATE_FAMILY_ICONS.trading, label: 'Trading', desc: 'Crypto & stock exchanges', color: 'var(--color-trading)' },
+  store: { icon: CREATE_FAMILY_ICONS.store, label: 'Store', desc: 'Ecommerce & marketplaces', color: 'var(--color-store)' },
+  social: { icon: CREATE_FAMILY_ICONS.social, label: 'Social', desc: 'Social media platforms', color: 'var(--color-social)' },
+  workforce: { icon: CREATE_FAMILY_ICONS.workforce, label: 'Workforce', desc: 'Team & operations tools', color: 'var(--color-workforce)' },
 };
 
 const PLATFORMS: Record<string, { id: string; name: string }[]> = {
@@ -85,6 +95,14 @@ const STRATEGIES: Record<string, { id: string; name: string; desc: string }[]> =
   ],
 };
 
+function inferWorkforceCategory(platform: string): string {
+  if (platform === 'salesforce' || platform === 'hubspot') return 'sales_crm';
+  if (platform === 'gmail') return 'email_management';
+  if (platform === 'jira' || platform === 'github' || platform === 'notion') return 'project_management';
+  if (platform === 'slack' || platform === 'teams') return 'customer_support';
+  return 'project_management';
+}
+
 
 
 export default function CreateBotPage() {
@@ -100,12 +118,17 @@ export default function CreateBotPage() {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  const [planUsage, setPlanUsage] = useState<{ tier: string; usage: { family: string; currentBots: number; maxBots: number; canAddMore: boolean; addOnBotUsd: number }[] } | null>(null);
 
   const fetchConnected = useCallback(async () => {
     try {
-      const res = await apiFetch('/api/credentials');
-      const json = await res.json();
-      setConnectedPlatforms((json.data ?? []).map((c: any) => c.platform));
+      const [credRes, usageRes] = await Promise.all([
+        apiFetch('/api/credentials'),
+        apiFetch('/api/pricing/usage'),
+      ]);
+      const [credJson, usageJson] = await Promise.all([credRes.json(), usageRes.json()]);
+      setConnectedPlatforms((credJson.data ?? []).map((c: any) => c.platform));
+      if (usageJson.success) setPlanUsage(usageJson.data);
     } catch { /* ignore */ }
   }, [apiFetch]);
 
@@ -149,6 +172,9 @@ export default function CreateBotPage() {
     } else {
       const defaults: Record<string, string> = { store: 'dynamic_pricing', social: 'content_calendar', workforce: 'task_triage' };
       config.strategies = selectedStrategies.length > 0 ? selectedStrategies : [defaults[family] ?? 'task_triage'];
+      if (family === 'workforce') {
+        config.category = inferWorkforceCategory(platform);
+      }
     }
 
     try {
@@ -169,17 +195,19 @@ export default function CreateBotPage() {
     }
   }
 
-  if (loading || !user) return null;
+  if (loading || !user) return <LoadingScreen />;
 
   const availablePlatforms = PLATFORMS[family] ?? [];
   const availableStrategies = STRATEGIES[family] ?? [];
   const currentFamilyMeta = FAMILY_META[family];
+  const familyUsage = planUsage?.usage.find(u => u.family === family);
+  const atBotLimit = familyUsage ? !familyUsage.canAddMore : false;
 
   return (
     <AppShell>
       <div style={{ marginBottom: 'var(--space-lg)' }}>
-        <Link href="/bots" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none' }}>
-          ← Back to Bots
+        <Link href="/bots" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <ArrowLeft size={14} /> Back to Bots
         </Link>
       </div>
 
@@ -201,6 +229,27 @@ export default function CreateBotPage() {
         </div>
 
         {error && <div className="auth-error" style={{ marginBottom: 'var(--space-md)' }}>{error}</div>}
+
+        {familyUsage && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap',
+            padding: 'var(--space-sm) var(--space-md)',
+            borderRadius: 'var(--radius-sm)',
+            marginBottom: 'var(--space-md)',
+            background: atBotLimit ? 'rgba(239,68,68,0.08)' : 'rgba(0,232,123,0.06)',
+            border: `1px solid ${atBotLimit ? 'rgba(239,68,68,0.2)' : 'rgba(0,232,123,0.15)'}`,
+            fontSize: '0.8rem',
+          }}>
+            <span style={{ color: atBotLimit ? 'var(--red)' : 'var(--text-secondary)' }}>
+              {currentFamilyMeta?.label} bots: {familyUsage.currentBots}/{familyUsage.maxBots} ({planUsage?.tier} plan)
+            </span>
+            {atBotLimit && (
+              <Link href="/pricing" style={{ color: 'var(--accent-green)', fontWeight: 600, textDecoration: 'none', fontSize: '0.8rem' }}>
+                Upgrade Plan
+              </Link>
+            )}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           {/* Step 1: Family + Platform */}
@@ -318,7 +367,7 @@ export default function CreateBotPage() {
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{s.desc}</span>
                     </div>
                     <span style={{ color: selectedStrategies.includes(s.id) ? (currentFamilyMeta?.color ?? 'var(--green)') : 'var(--text-muted)', fontSize: '1.2rem' }}>
-                      {selectedStrategies.includes(s.id) ? '✓' : '○'}
+                      {selectedStrategies.includes(s.id) ? <Check size={18} /> : '○'}
                     </span>
                   </button>
                 ))}
@@ -363,9 +412,9 @@ export default function CreateBotPage() {
                 Autonomy Level
                 <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-xs)' }}>
                   {[
-                    { id: 'manual', label: '🛑 Manual', desc: 'You control everything' },
-                    { id: 'suggest', label: '💡 Suggest', desc: 'Bot recommends, you approve' },
-                    { id: 'auto', label: '🤖 Auto', desc: 'Full autonomous operation' },
+                    { id: 'manual', label: 'Manual', desc: 'You control everything' },
+                    { id: 'suggest', label: 'Suggest', desc: 'Bot recommends, you approve' },
+                    { id: 'auto', label: 'Auto', desc: 'Full autonomous operation' },
                   ].map(a => (
                     <button
                       key={a.id}

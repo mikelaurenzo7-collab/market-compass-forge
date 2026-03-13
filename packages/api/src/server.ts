@@ -15,7 +15,17 @@ import { authRouter } from './routes/auth.js';
 import { onboardingRouter } from './routes/onboarding.js';
 import { credentialsRouter } from './routes/credentials.js';
 import { provisioningRouter } from './routes/provisioning.js';
+import { analyticsRouter } from './routes/analytics.js';
 import mcpRouter from './routes/mcp.js';
+import { templatesRouter } from './routes/templates.js';
+import { webhooksRouter } from './routes/webhooks.js';
+import { notificationsRouter } from './routes/notifications.js';
+import { mfaRouter } from './routes/mfa.js';
+import { federatedRouter } from './routes/federated.js';
+import { complianceRouter } from './routes/compliance.js';
+import { pushRouter } from './routes/push.js';
+import { performanceRouter } from './routes/performance.js';
+import { alertsRouter } from './routes/alerts.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
@@ -43,6 +53,22 @@ function ensureRequiredEnvs() {
     console.error('[CONFIG] Missing required env:', missing.join(', '));
     throw new Error(`Missing required env: ${missing.join(', ')}`);
   }
+
+  // Warn about recommended env vars so operators know what is unconfigured
+  const recommended = [
+    'RESEND_API_KEY',
+    'FRONTEND_URL',
+    'API_BASE_URL',
+    'WORKERS_BASE_URL',
+    'WORKER_AUTH_TOKEN',
+    'SHOPIFY_WEBHOOK_SECRET',
+    'COINBASE_WEBHOOK_SECRET',
+    'ALPACA_WEBHOOK_SECRET',
+  ];
+  const unset = recommended.filter((k) => !process.env[k]);
+  if (unset.length > 0) {
+    console.warn('[CONFIG] Recommended env vars not set (some features disabled):', unset.join(', '));
+  }
 }
 
 // Skip strict env enforcement during test runs so tests can set envs per-file
@@ -53,9 +79,11 @@ if (process.env.NODE_ENV !== 'test') {
 // ─── Rate Limiting ────────────────────────────────────────────
 function rateLimit(windowMs: number, maxRequests: number) {
   return async (c: any, next: any) => {
-    // In production behind Cloudflare, use cf-connecting-ip (cannot be spoofed).
-    // x-forwarded-for is used here for local dev; do NOT trust in production without a trusted proxy.
-    const key = c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip') ?? 'unknown';
+    // In production behind Cloudflare, cf-connecting-ip is set by CF edge and cannot be spoofed.
+    // In non-CF environments, fall back to the socket remote address via c.env to avoid header spoofing.
+    const key = c.req.header('cf-connecting-ip')
+      ?? (c.env?.incoming?.socket?.remoteAddress as string | undefined)
+      ?? 'unknown';
     const now = Date.now();
     const resetAt = now + windowMs;
     const db = getDb();
@@ -67,7 +95,7 @@ function rateLimit(windowMs: number, maxRequests: number) {
         reset_at = CASE WHEN reset_at < ? THEN ? ELSE reset_at END
     `).run(key, resetAt, now, now, resetAt);
 
-    const row = db.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').get(key) as any;
+    const row = db.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').get(key) as { count: number; reset_at: number } | undefined;
     if (row && row.count > maxRequests) {
       return c.json({ success: false, error: 'Too many requests' }, 429);
     }
@@ -91,6 +119,7 @@ app.use('*', async (c, next) => {
   c.res.headers.set('X-XSS-Protection', '0');
   c.res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   c.res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  c.res.headers.set('Content-Security-Policy', "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 });
 
 // Body size limit (1MB)
@@ -117,6 +146,7 @@ app.onError((err, c) => {
 app.get('/', (c) => c.json({ success: true, data: { name: 'BeastBots API', version: '0.1.0' } }));
 app.route('/api/health', healthRouter);
 app.route('/api/auth', authRouter);
+app.route('/api/auth/mfa', mfaRouter);
 app.route('/api/onboarding', onboardingRouter);
 app.route('/api/credentials', credentialsRouter);
 app.route('/api/integrations', integrationsRouter);
@@ -124,7 +154,16 @@ app.route('/api/pricing', pricingRouter);
 app.route('/api/bots', botsRouter);
 app.route('/api/safety', safetyRouter);
 app.route('/api/audit', auditRouter);
+app.route('/api/analytics', analyticsRouter);
 app.route('/api/provisioning', provisioningRouter);
+app.route('/api/templates', templatesRouter);
+app.route('/api/webhooks', webhooksRouter);
+app.route('/api/notifications', notificationsRouter);
+app.route('/api/federated', federatedRouter);
+app.route('/api/compliance', complianceRouter);
+app.route('/api/push', pushRouter);
+app.route('/api/performance', performanceRouter);
+app.route('/api/alerts', alertsRouter);
 app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
 
 const isDirectExecution = (() => {

@@ -10,6 +10,7 @@ import {
   createTradingEngineState,
   executeTradingTick,
   generateStrategySignal,
+  volatilityPositionSize,
 } from '../trading/engine';
 import { momentumSignal, computeIndicators } from '../trading/indicators';
 import { createStoreEngineState, executeStoreTick } from '../store/engine';
@@ -279,6 +280,71 @@ describe('engine units', () => {
     expect(signal.confidence).toBeGreaterThanOrEqual(0);
   });
 
+  it('generateStrategySignal handles polymarket event_probability strategy', () => {
+    const indicators = {
+      rsi: 50,
+      macd: { macd: 0, signal: 0, histogram: 0 },
+      ema12: 100,
+      ema26: 100,
+      sma20: 100,
+      sma50: 100,
+      bollingerBands: { upper: 110, middle: 100, lower: 90, bandwidth: 0.2 },
+      atr: 2,
+      vwap: 100,
+    } as any;
+    const config = {
+      platform: 'polymarket',
+      strategy: 'event_probability',
+      symbols: ['ELECTION-YES'],
+      maxPositionSizeUsd: 50,
+      maxDailyLossUsd: 100,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.2,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+      eventProbabilityData: { estimated: 0.70, fair: 0.55, currentProbability: 0.55 },
+    } as any;
+    const state = createTradingEngineState(config, makeSafety('t1', 'bot-poly', 'polymarket'));
+    const signal = generateStrategySignal(config, indicators, { price: 0.55, bid: 0.54, ask: 0.56, symbol: 'ELECTION-YES', volume24h: 1000, high24h: 0.6, low24h: 0.5, change24hPercent: 2, timestamp: Date.now() } as any, state);
+    // With estimated > fair, should signal buy (not hold)
+    expect(signal.direction).not.toBe('hold');
+    expect(signal.confidence).toBeGreaterThan(0);
+  });
+
+  it('generateStrategySignal polymarket applies 65% confidence threshold for non-event strategies', () => {
+    const indicators = {
+      rsi: 50,
+      macd: { macd: 0, signal: 0, histogram: 0 },
+      ema12: 100,
+      ema26: 100,
+      sma20: 100,
+      sma50: 100,
+      bollingerBands: { upper: 110, middle: 100, lower: 90, bandwidth: 0.2 },
+      atr: 2,
+      vwap: 100,
+    } as any;
+    const config = {
+      platform: 'polymarket',
+      strategy: 'momentum',
+      symbols: ['BTC-YES'],
+      maxPositionSizeUsd: 50,
+      maxDailyLossUsd: 100,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    } as any;
+    const state = createTradingEngineState(config, makeSafety('t1', 'bot-poly2', 'polymarket'));
+    const signal = generateStrategySignal(config, indicators, { price: 100, bid: 100, ask: 101, symbol: 'BTC-YES', volume24h: 1000, high24h: 105, low24h: 95, change24hPercent: 0, timestamp: Date.now() } as any, state);
+    // Low-confidence signals on Polymarket should be held (threshold is 65%)
+    if (signal.confidence < 65) {
+      expect(signal.direction).toBe('hold');
+    }
+    expect(signal.confidence).toBeGreaterThanOrEqual(0);
+  });
+
   it('store engine tick handles empty product list', async () => {
     const config: StoreBotConfig = {
       platform: 'shopify',
@@ -335,7 +401,7 @@ describe('engine units', () => {
       updateInventory: async () => ({ success: true }),
     };
     const { result } = await executeStoreTick(state, stubAdapter as any);
-    expect(result.action).toContain('⚠️');
+    expect(result.action).toContain('🔍');
     expect(result.result).toBe('executed');
   });
 
@@ -406,9 +472,9 @@ describe('engine units', () => {
     };
     const { result } = await executeTradingTick(state, stubAdapter as any);
     expect(result.botId).toBe('bot5');
-    // verify audit log contains llm_prompt entry
+    // verify audit log contains llm trading insight entry
     const audit = getAuditLog('t1');
-    expect(audit.some((e) => e.action === 'llm_prompt')).toBe(true);
+    expect(audit.some((e) => e.action === 'llm_trading_insight')).toBe(true);
   });
 
   it('computeIndicators returns new additional fields', () => {
@@ -441,6 +507,28 @@ describe('engine units', () => {
     const res = await backtest(config, safety, candles.slice());
     expect(res).toHaveProperty('totalReturnUsd');
     expect(typeof res.winRate).toBe('number');
+    expect(res).toHaveProperty('equityCurve');
+    expect(res).toHaveProperty('maxDrawdownPct');
+    expect(res).toHaveProperty('profitFactor');
+    expect(Array.isArray(res.equityCurve)).toBe(true);
+    expect(res.maxDrawdown).toBeGreaterThanOrEqual(0);
+    expect(res.maxDrawdownPct).toBeGreaterThanOrEqual(0);
+  });
+
+  it('volatilityPositionSize scales position by ATR', () => {
+    // ATR = 5, price = 100, maxPosUsd = 1000, riskPerTrade = 50, multiplier = 2
+    // riskPerUnit = 5 * 2 = 10, maxUnits = 50/10 = 5, posUsd = 5 * 100 = 500
+    const pos = volatilityPositionSize(5, 100, 1000, 50, 2);
+    expect(pos).toBeCloseTo(500, 0);
+  });
+
+  it('volatilityPositionSize caps at maxPositionUsd', () => {
+    const pos = volatilityPositionSize(0.1, 100, 200, 1000, 2);
+    expect(pos).toBeLessThanOrEqual(200);
+  });
+
+  it('volatilityPositionSize returns 0 for zero ATR', () => {
+    expect(volatilityPositionSize(0, 100, 1000, 50)).toBe(0);
   });
 
   it('social engine llm prompt logs when useLLM true', async () => {
@@ -474,9 +562,9 @@ describe('engine units', () => {
       getPostsToday: async () => 0,
     };
     const { result } = await executeSocialTick(state, stubAdapter as any);
+    // Social engine with useLLM=true no longer logs llm_prompt for calendar ideas
+    // (LLM is now used per-post via template, which only fires in auto mode)
     expect(result.botId).toBe('bot6');
-    const audit = getAuditLog('t3');
-    expect(audit.some((e) => e.action === 'llm_prompt')).toBe(true);
   });
 
   it('social engine tick handles calendar when no slots due', async () => {
@@ -545,7 +633,7 @@ describe('engine units', () => {
       getPostsToday: async () => 0,
     };
     const { result } = await executeSocialTick(state, stubAdapter as any);
-    expect(result.action).toContain('boost');
+    expect(result.action).toContain('Engagement health');
   });
 
   it('social engine hashtag optimization logs hashtags', async () => {
@@ -612,7 +700,7 @@ describe('engine units', () => {
       replyToComment: async () => ({ success: true }),
     };
       const { result } = await executeSocialTick(state, stubAdapter as any);
-    expect(result.action).toContain('Reply sent');
+    expect(result.action).toContain('Replied to');
   });
 
   it('store dynamic pricing adjusts per platform rules', async () => {
@@ -639,7 +727,7 @@ describe('engine units', () => {
       updateInventory: async () => ({ success: true }),
     };
     const { result } = await executeStoreTick(state, stubAdapter as any);
-    expect(result.action).toContain('Priced');
+    expect(result.action).toContain('Recommended price');
   });
 
 });

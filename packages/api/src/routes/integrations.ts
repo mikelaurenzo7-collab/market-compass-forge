@@ -138,7 +138,7 @@ integrationsRouter.get('/:id/callback', async (c) => {
   const state = c.req.query('state');
   if (!state) return c.text('Missing state', 400);
   const db = getDb();
-  const row = db.prepare('SELECT state, user_id, tenant_id, provider, expires_at, data FROM oauth_states WHERE state = ?').get(state) as any;
+  const row = db.prepare('SELECT state, user_id, tenant_id, provider, expires_at, data FROM oauth_states WHERE state = ?').get(state) as { state: string; user_id: string; tenant_id: string; provider: string; expires_at: number; data: string | null } | undefined;
   if (!row) return c.text('Invalid or expired state', 400);
   if (Date.now() > row.expires_at) return c.text('Expired state', 400);
 

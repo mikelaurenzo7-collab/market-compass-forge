@@ -19,11 +19,10 @@ export function binanceSign(secret: string, queryString: string): string {
   return crypto.createHmac('sha256', secret).update(queryString).digest('hex');
 }
 
-export function alpacaSign(secret: string, body: string): string {
-  return crypto.createHmac('sha256', secret).update(body).digest('hex');
-}
+// Note: Alpaca authenticates via APCA-API-KEY-ID + APCA-API-SECRET-KEY headers.
+// No request signing is needed.
 
-// ─── Shared HTTP helper ───────────────────────────────────────
+// ─── Shared HTTP helper with retry + rate-limit awareness ─────
 
 interface AdapterCredentials {
   apiKey: string;
@@ -32,13 +31,53 @@ interface AdapterCredentials {
   sandbox?: boolean;
 }
 
+const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
+const MAX_RETRIES = 3;
+
 async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`API ${res.status}: ${text.slice(0, 200)}`);
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url, init);
+
+      if (res.ok) return res.json() as Promise<T>;
+
+      // Rate-limited: respect Retry-After header
+      if (res.status === 429) {
+        const retryAfter = res.headers.get('Retry-After');
+        const waitMs = retryAfter
+          ? (Number(retryAfter) > 0 ? Number(retryAfter) * 1000 : 1000)
+          : 1000 * 2 ** attempt;
+        if (attempt < MAX_RETRIES) {
+          await sleep(Math.min(waitMs, 30_000));
+          continue;
+        }
+      }
+
+      // Retryable server errors: exponential backoff
+      if (RETRYABLE_STATUS.has(res.status) && attempt < MAX_RETRIES) {
+        await sleep(50 * 2 ** attempt); // 50ms → 100ms → 200ms
+        continue;
+      }
+
+      const text = await res.text();
+      throw new Error(`API ${res.status}: ${text.slice(0, 200)}`);
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      // Network errors (ECONNRESET, timeout) are retryable
+      if (attempt < MAX_RETRIES && !lastError.message.startsWith('API ')) {
+        await sleep(50 * 2 ** attempt);
+        continue;
+      }
+      throw lastError;
+    }
   }
-  return res.json() as Promise<T>;
+  throw lastError ?? new Error('jsonFetch: exhausted retries');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // ─── Coinbase Advanced Trade Adapter ──────────────────────────
@@ -347,10 +386,9 @@ export class AlpacaAdapter implements TradingAdapter {
     };
 
     const bodyStr = JSON.stringify(body);
-    const sig = alpacaSign(this.creds.apiSecret, bodyStr);
     const result = await jsonFetch<any>(`${this.baseUrl}/v2/orders`, {
       method: 'POST',
-      headers: { ...this.headers(), 'APCA-API-SIGNATURE': sig },
+      headers: { ...this.headers(), 'Content-Type': 'application/json' },
       body: bodyStr,
     });
 
@@ -538,13 +576,32 @@ export class PolymarketAdapter implements TradingAdapter {
   }
 
   async getPositions(): Promise<Position[]> {
-    // Polymarket positions are tracked on-chain; simplified view
-    return [];
+    const resp = await jsonFetch<any>('https://clob.polymarket.com/positions', {
+      headers: this.headers(),
+    });
+
+    return (resp.positions ?? []).map((p: any) => ({
+      platform: 'polymarket' as TradingPlatform,
+      symbol: p.asset?.token_id ?? p.market ?? 'unknown',
+      side: 'buy' as const,
+      entryPrice: parseFloat(p.avg_price_paid ?? '0'),
+      currentPrice: parseFloat(p.cur_price ?? p.avg_price_paid ?? '0'),
+      quantity: parseFloat(p.size ?? '0'),
+      unrealizedPnl:
+        (parseFloat(p.cur_price ?? '0') - parseFloat(p.avg_price_paid ?? '0')) *
+        parseFloat(p.size ?? '0'),
+      openedAt: Date.now(),
+    }));
   }
 
   async getBalance(): Promise<{ availableUsd: number; totalUsd: number }> {
-    // Polymarket balances are on-chain USDC
-    return { availableUsd: 0, totalUsd: 0 };
+    const resp = await jsonFetch<any>('https://clob.polymarket.com/balance', {
+      headers: this.headers(),
+    });
+
+    const available = parseFloat(resp.available_balance ?? resp.balance ?? '0');
+    const total = parseFloat(resp.total_balance ?? resp.balance ?? '0');
+    return { availableUsd: available, totalUsd: total };
   }
 }
 

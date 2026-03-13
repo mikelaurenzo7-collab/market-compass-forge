@@ -16,6 +16,10 @@ import {
   arbitrageSignal,
   marketMakingSignal,
   eventProbabilitySignal,
+  stochasticRsi,
+  adx,
+  computeIchimoku,
+  computeFibLevels,
 } from '../trading/indicators';
 
 // Helper: generate a simple price series
@@ -217,6 +221,99 @@ describe('Trading Indicators', () => {
       const signal = eventProbabilitySignal(0.6, 0.5);
       expect(signal.direction).toBe('buy');
       expect(signal.confidence).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Phase 2 Indicators', () => {
+    it('stochasticRsi returns 50 with insufficient data', () => {
+      expect(stochasticRsi([100, 101, 102], 14)).toBe(50);
+    });
+
+    it('stochasticRsi returns value between 0 and 100 with sufficient data', () => {
+      const prices = Array.from({ length: 60 }, (_, i) => 100 + Math.sin(i / 3) * 10);
+      const result = stochasticRsi(prices, 14);
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(100);
+    });
+
+    it('adx returns 25 (neutral) with insufficient data', () => {
+      expect(adx([100, 102], [98, 99], [101, 101], 14)).toBe(25);
+    });
+
+    it('adx computes positive value with sufficient trending data', () => {
+      const n = 60;
+      const highs = Array.from({ length: n }, (_, i) => 105 + i * 2);
+      const lows = Array.from({ length: n }, (_, i) => 95 + i * 2);
+      const closes = Array.from({ length: n }, (_, i) => 100 + i * 2);
+      const result = adx(highs, lows, closes, 14);
+      expect(result).toBeGreaterThan(0);
+    });
+
+    it('computeIchimoku returns cloud values with sufficient data', () => {
+      const prices = Array.from({ length: 60 }, (_, i) => 100 + i);
+      const result = computeIchimoku(prices);
+      expect(result).toHaveProperty('conversion');
+      expect(result).toHaveProperty('base');
+      expect(result).toHaveProperty('spanA');
+      expect(result).toHaveProperty('spanB');
+      expect(result.conversion).toBeGreaterThan(0);
+    });
+
+    it('computeIchimoku returns fallback for short data', () => {
+      const result = computeIchimoku([100, 101, 102]);
+      expect(result.conversion).toBe(102);
+      expect(result.base).toBe(102);
+    });
+
+    it('computeFibLevels returns 5 retracement levels', () => {
+      const prices = Array.from({ length: 50 }, (_, i) => 100 + i);
+      const result = computeFibLevels(prices);
+      expect(result.levels).toHaveLength(5);
+      expect(result.levels[0]).toBeLessThan(result.levels[4]);
+    });
+
+    it('computeFibLevels returns empty for no data', () => {
+      expect(computeFibLevels([]).levels).toHaveLength(0);
+    });
+  });
+
+  describe('Phase 2 Signal Integration', () => {
+    it('momentumSignal uses ADX to amplify strong trend signals', () => {
+      const strongTrend = computeIndicators(
+        Array.from({ length: 60 }, (_, i) => 90 + i * 3),
+        Array(60).fill(5000),
+        Array.from({ length: 60 }, (_, i) => 92 + i * 3),
+        Array.from({ length: 60 }, (_, i) => 88 + i * 3),
+      );
+      const signal = momentumSignal(strongTrend, 260);
+      expect(signal.reason).toContain('ADX');
+      expect(signal.indicators).toHaveProperty('adx');
+      expect(signal.indicators).toHaveProperty('stochRsi');
+    });
+
+    it('momentumSignal includes Ichimoku cloud in reasoning', () => {
+      const prices = Array.from({ length: 60 }, (_, i) => 90 + i * 2);
+      const indicators = computeIndicators(
+        prices,
+        Array(60).fill(5000),
+        prices.map(p => p + 3),
+        prices.map(p => p - 3),
+      );
+      const signal = momentumSignal(indicators, 200);
+      expect(signal.reason).toContain('Ichimoku');
+    });
+
+    it('meanReversionSignal uses ADX to filter trending markets', () => {
+      const indicators = computeIndicators(
+        Array.from({ length: 60 }, (_, i) => 100 + Math.sin(i / 2) * 5),
+        Array(60).fill(3000),
+        Array.from({ length: 60 }, (_, i) => 103 + Math.sin(i / 2) * 5),
+        Array.from({ length: 60 }, (_, i) => 97 + Math.sin(i / 2) * 5),
+      );
+      const signal = meanReversionSignal(indicators, 100);
+      expect(signal.reason).toContain('ADX');
+      expect(signal.indicators).toHaveProperty('adx');
+      expect(signal.indicators).toHaveProperty('stochRsi');
     });
   });
 });
