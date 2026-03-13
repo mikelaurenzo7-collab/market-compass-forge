@@ -20,7 +20,7 @@ integrationsRouter.get('/', (c) => {
 
   const withReadiness = results.map((integration) => ({
     ...integration,
-    oauthReady: integration.oauth ? isOAuthProviderConfigured(integration.id, 'authorize') : true,
+    oauthReady: integration.oauth ? isOAuthProviderConfigured(integration.id, 'exchange') : true,
   }));
 
   return c.json({
@@ -46,7 +46,7 @@ integrationsRouter.get('/:id', (c) => {
   if (!integration) {
     return c.json({ success: false, error: 'Integration not found' }, 404);
   }
-  const oauthReady = integration.oauth ? isOAuthProviderConfigured(integration.id, 'authorize') : true;
+  const oauthReady = integration.oauth ? isOAuthProviderConfigured(integration.id, 'exchange') : true;
   return c.json({ success: true, data: { ...integration, oauthReady } });
 });
 
