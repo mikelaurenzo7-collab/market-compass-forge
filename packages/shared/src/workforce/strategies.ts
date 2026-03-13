@@ -3,7 +3,7 @@ import type {
   WorkforceTask,
   TaskPriority,
   RiskLevel,
-} from '../index';
+} from '../index.js';
 
 // ─── Category Configuration ──────────────────────────────────
 

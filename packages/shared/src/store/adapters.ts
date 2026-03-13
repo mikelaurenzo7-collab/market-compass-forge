@@ -3,9 +3,9 @@
  * Each adapter implements StoreAdapter and wraps the platform's REST API.
  */
 
-import type { StorePlatform, Product } from '../index';
-import type { StoreAdapter } from './engine';
-import type { SalesHistory } from './strategies';
+import type { StorePlatform, Product } from '../index.js';
+import type { StoreAdapter } from './engine.js';
+import type { SalesHistory } from './strategies.js';
 
 interface StoreCredentials {
   apiKey: string;

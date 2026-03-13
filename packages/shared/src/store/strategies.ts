@@ -1,4 +1,4 @@
-import type { Product, PricingAction, InventoryForecast, StorePlatform } from '../index';
+import type { Product, PricingAction, InventoryForecast, StorePlatform } from '../index.js';
 
 // ─── Seasonal Factor Engine ───────────────────────────────────
 

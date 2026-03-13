@@ -1,6 +1,6 @@
-import type { TradingBotConfig, TickResult, SafetyContext } from '../index';
-import { createTradingEngineState, executeTradingTick } from './engine';
-import type { TradingAdapter } from './engine';
+import type { TradingBotConfig, TickResult, SafetyContext } from '../index.js';
+import { createTradingEngineState, executeTradingTick } from './engine.js';
+import type { TradingAdapter } from './engine.js';
 
 export interface Candle {
   timestamp: number;

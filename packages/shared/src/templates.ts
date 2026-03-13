@@ -6,7 +6,7 @@
  * that a user can deploy in under 60 seconds.
  */
 
-import type { BotFamily, TradingPlatform, StorePlatform, SocialPlatform } from './index';
+import type { BotFamily, TradingPlatform, StorePlatform, SocialPlatform } from './index.js';
 
 export interface BotTemplate {
   id: string;

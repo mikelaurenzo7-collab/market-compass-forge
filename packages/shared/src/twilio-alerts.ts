@@ -9,7 +9,7 @@
 // Security: Phone numbers are tenant-scoped and stored encrypted.
 // Message bodies never contain credentials or full account details.
 
-import type { BotFamily } from './index';
+import type { BotFamily } from './index.js';
 
 // ─── Types ────────────────────────────────────────────────────
 

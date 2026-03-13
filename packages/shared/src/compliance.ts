@@ -4,7 +4,7 @@
 // All reports are scoped to a single tenant — no cross-tenant data.
 
 import crypto from 'crypto';
-import type { AuditEntry, BotFamily, RiskLevel } from './index';
+import type { AuditEntry, BotFamily, RiskLevel } from './index.js';
 
 // ─── Types ────────────────────────────────────────────────────
 

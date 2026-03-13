@@ -6,7 +6,7 @@
 // Security: VAPID keys are server-side only. Subscriptions are tenant-scoped.
 // No PII in push payloads — generic action descriptions only.
 
-import type { BotFamily } from './index';
+import type { BotFamily } from './index.js';
 
 // ─── Types ────────────────────────────────────────────────────
 

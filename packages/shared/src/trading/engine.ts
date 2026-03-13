@@ -1,4 +1,4 @@
-import type { TradingPlatform, MarketData, TradeSignal, Position, TradingBotConfig, TickResult } from '../index';
+import type { TradingPlatform, MarketData, TradeSignal, Position, TradingBotConfig, TickResult } from '../index.js';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess, recordSpend } from '../safety.js';
 import { promptLLM, promptWithTemplate } from '../llm.js';

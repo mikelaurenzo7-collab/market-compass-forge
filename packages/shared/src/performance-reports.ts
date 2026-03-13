@@ -4,9 +4,9 @@
 // competitive benchmarking against anonymized federated data.
 
 import crypto from 'crypto';
-import type { BotFamily, BotMetrics } from './index';
-import type { StrategyBenchmark, PercentileStats } from './federated-learning';
-import { rankAgainstBenchmark } from './federated-learning';
+import type { BotFamily, BotMetrics } from './index.js';
+import type { StrategyBenchmark, PercentileStats } from './federated-learning.js';
+import { rankAgainstBenchmark } from './federated-learning.js';
 
 // ─── Types ────────────────────────────────────────────────────
 

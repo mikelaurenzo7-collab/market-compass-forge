@@ -5,7 +5,7 @@
 // Only aggregate statistical snapshots are contributed.
 
 import crypto from 'crypto';
-import type { BotFamily, BotMetrics } from './index';
+import type { BotFamily, BotMetrics } from './index.js';
 
 // ─── Types ────────────────────────────────────────────────────
 

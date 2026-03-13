@@ -4,8 +4,8 @@
  * Credentials are injected at construction — no hardcoded keys.
  */
 
-import type { TradingPlatform, MarketData, TradeSignal, Position } from '../index';
-import type { TradingAdapter } from './engine';
+import type { TradingPlatform, MarketData, TradeSignal, Position } from '../index.js';
+import type { TradingAdapter } from './engine.js';
 import crypto from 'crypto';
 
 // ─── Signing helpers ─────────────────────────────────────────

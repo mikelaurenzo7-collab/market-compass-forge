@@ -10,7 +10,7 @@
 // Uses Resend API (resend.com) for reliable transactional email.
 // Fallback: graceful no-op when RESEND_API_KEY is not set.
 
-import type { BotFamily } from './index';
+import type { BotFamily } from './index.js';
 
 // ─── Types ────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import type {
   ScheduledPost,
   AudienceMetrics,
   TrendSignal,
-} from '../index';
+} from '../index.js';
 
 // ─── Platform-Specific Content Strategy ───────────────────────
 

@@ -6,7 +6,7 @@ import type {
   SocialBotConfig,
   TickResult,
   ContentFormat,
-} from '../index';
+} from '../index.js';
 import type { SafetyContext } from '../safety.js';
 import { runSafetyPipeline, logAuditEntry, recordError, recordSuccess } from '../safety.js';
 import { promptLLM, promptWithTemplate } from '../llm.js';

@@ -17,7 +17,7 @@ import type {
   WorkforceTaskResult,
   TaskPriority,
   RiskLevel,
-} from '../index';
+} from '../index.js';
 
 // ─── Safety Config ─────────────────────────────────────────────────────────────
 

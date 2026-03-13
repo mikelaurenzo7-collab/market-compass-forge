@@ -1,4 +1,4 @@
-import type { MarketData } from '../index';
+import type { MarketData } from '../index.js';
 
 // ─── Technical Indicators ──────────────────────────────────────
 
