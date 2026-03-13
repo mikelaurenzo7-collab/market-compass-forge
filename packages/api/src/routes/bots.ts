@@ -71,6 +71,10 @@ function getWorkersBaseUrl(): string | null {
 }
 
 function isWorkerControlPlaneEnabled(): boolean {
+  // Keep route tests deterministic even when the host environment exports worker vars.
+  if (process.env.NODE_ENV === 'test' && process.env.ALLOW_WORKER_CONTROL_PLANE_IN_TEST !== 'true') {
+    return false;
+  }
   return Boolean(getWorkersBaseUrl() && process.env.WORKER_AUTH_TOKEN);
 }
 
@@ -551,7 +555,7 @@ botsRouter.patch('/:id', async (c) => {
   const newConfig = JSON.stringify(mergedConfig);
   const now = Date.now();
 
-  const shouldSyncRuntime = row.status !== 'idle';
+  const shouldSyncRuntime = row.status === 'running' || row.status === 'paused';
   if (shouldSyncRuntime) {
     try {
       await syncRuntimeConfig({
@@ -718,7 +722,18 @@ botsRouter.post('/:id/stop', async (c) => {
       const metrics = runtimeSnapshot.metrics;
       db.prepare(
         'INSERT INTO bot_metrics (bot_id, total_ticks, successful_actions, failed_actions, denied_actions, total_pnl_usd, uptime_ms, last_error_message, last_error_at, recorded_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-      ).run(id, metrics.totalTicks, metrics.successfulActions, metrics.failedActions, metrics.deniedActions, metrics.totalPnlUsd, metrics.uptimeMs, metrics.lastErrorMessage ?? null, metrics.lastErrorAt ?? null, Date.now());
+      ).run(
+        id,
+        Number(metrics.totalTicks ?? 0),
+        Number(metrics.successfulActions ?? 0),
+        Number(metrics.failedActions ?? 0),
+        Number(metrics.deniedActions ?? 0),
+        Number(metrics.totalPnlUsd ?? 0),
+        Number(metrics.uptimeMs ?? 0),
+        metrics.lastErrorMessage ?? null,
+        metrics.lastErrorAt ?? null,
+        Date.now(),
+      );
   }
 
   if (runtimeSnapshot.history.length > 0) {

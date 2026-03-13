@@ -23,6 +23,9 @@ export function getWorkersBaseUrl(): string | null {
 }
 
 export function isWorkerControlPlaneEnabled(): boolean {
+  if (process.env.NODE_ENV === 'test' && process.env.ALLOW_WORKER_CONTROL_PLANE_IN_TEST !== 'true') {
+    return false;
+  }
   return Boolean(getWorkersBaseUrl() && process.env.WORKER_AUTH_TOKEN);
 }
 

@@ -273,8 +273,10 @@ describe('bots endpoints (DB-backed)', () => {
 
     const previousWorkersBaseUrl = process.env.WORKERS_BASE_URL;
     const previousWorkerToken = process.env.WORKER_AUTH_TOKEN;
+    const previousAllowWorkerInTest = process.env.ALLOW_WORKER_CONTROL_PLANE_IN_TEST;
     process.env.WORKERS_BASE_URL = 'http://127.0.0.1:9';
     process.env.WORKER_AUTH_TOKEN = 'test-worker-token';
+    process.env.ALLOW_WORKER_CONTROL_PLANE_IN_TEST = 'true';
 
     try {
       const patchRes = await app.request(`/api/bots/${botId}`, {
@@ -293,6 +295,9 @@ describe('bots endpoints (DB-backed)', () => {
 
       if (previousWorkerToken === undefined) delete process.env.WORKER_AUTH_TOKEN;
       else process.env.WORKER_AUTH_TOKEN = previousWorkerToken;
+
+      if (previousAllowWorkerInTest === undefined) delete process.env.ALLOW_WORKER_CONTROL_PLANE_IN_TEST;
+      else process.env.ALLOW_WORKER_CONTROL_PLANE_IN_TEST = previousAllowWorkerInTest;
     }
   });
 });
