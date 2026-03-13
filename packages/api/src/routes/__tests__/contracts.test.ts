@@ -27,7 +27,7 @@ describe('API contracts and auth hardening', () => {
 
     db.prepare('INSERT INTO users (id, email, password_hash, display_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
       .run(userId, 'contracts@example.com', 'hashed', 'Contracts User', now, now);
-    db.prepare('INSERT INTO tenants (id, name, owner_user_id, plan, created_at) VALUES (?, ?, ?, ?, ?)')
+    db.prepare('INSERT INTO tenants (id, name, owner_id, plan, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(tenantId, 'Contracts Tenant', userId, 'starter', now);
     db.prepare('INSERT INTO tenant_members (tenant_id, user_id, role) VALUES (?, ?, ?)')
       .run(tenantId, userId, 'owner');
