@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: beastbots-api
+    runtime: node
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    branch: cursor/codebase-analysis-and-deployment-d4e6
+    buildCommand: npm ci && npm run build:shared && npm run build:workers && npm run build:api
+    startCommand: node packages/api/dist/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /var/data/beastbot.db
+      - key: FRONTEND_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: WORKERS_BASE_URL
+        sync: false
+      - key: WORKER_AUTH_TOKEN
+        sync: false
+    disks:
+      - name: beastbots-api-data
+        mountPath: /var/data
+        sizeGB: 1
+
+  - type: web
+    name: beastbots-web
+    runtime: node
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    branch: cursor/codebase-analysis-and-deployment-d4e6
+    buildCommand: npm ci && npm run build:shared && npm run build:web
+    startCommand: node packages/web/.next/standalone/packages/web/server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: INTERNAL_API_URL
+        sync: false
+      - key: NEXT_PUBLIC_API_URL
+        value: ""

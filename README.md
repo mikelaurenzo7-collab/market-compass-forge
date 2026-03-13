@@ -20,6 +20,7 @@ npm run dev:web
 ## Deployment
 - Docker-first deployment runbook: `docs/deployment.md`
 - Optional Cloudflare Workers hybrid runtime instructions: `docs/deployment.md`
+- Render blueprint for managed deployment: `render.yaml`
 
 ## Product lanes
 1. Trading Operator Bots (crypto, prediction markets, stocks)

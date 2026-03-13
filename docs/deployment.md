@@ -10,6 +10,9 @@ This repository supports two deployment modes:
    - Same `api` + `web` containers  
    - `@beastbots/workers` deployed with Wrangler  
    - API control plane configured to call Workers runtime
+3. **Managed (Render + Cloudflare)**  
+   - Render hosts `api` + `web` from this monorepo (`render.yaml`)  
+   - Cloudflare hosts Worker runtime with Durable Objects
 
 ---
 
@@ -103,6 +106,50 @@ WORKER_AUTH_TOKEN=<same-token-as-worker-secret>
 ```
 
 4. Redeploy `api` service and run smoke checks.
+
+### Cloudflare Worker Builds note (Durable Objects)
+
+If your Worker Build pipeline uses:
+
+```bash
+npx wrangler versions upload
+```
+
+Durable Object migrations cannot be applied and deploy will fail.  
+Use `wrangler deploy` for Worker deploys that include migrations.
+
+Recommended Worker Build settings:
+
+- **Build command**: `npm run build`
+- **Deploy command**: `npx wrangler deploy --env=""`
+- Ensure Worker Build token is valid (rotate/update token in Cloudflare dashboard if expired/deleted).
+
+---
+
+## Path C: Render + Cloudflare managed deployment
+
+### Render
+
+1. In Render dashboard, create from Blueprint using `render.yaml` in repo root.
+2. Create both services:
+   - `beastbots-api`
+   - `beastbots-web`
+3. Set required API secrets:
+   - `JWT_SECRET`
+   - `ENCRYPTION_KEY`
+   - `FRONTEND_URL` (your web service URL)
+4. Set web routing env:
+   - `INTERNAL_API_URL=https://<api-service>.onrender.com`
+   - leave `NEXT_PUBLIC_API_URL` empty for same-origin `/api` usage.
+
+### Cloudflare
+
+1. Deploy Worker with `wrangler deploy` (not versions upload for migrations).
+2. Set Worker secret:
+   - `WORKER_AUTH_TOKEN`
+3. Configure API service env vars in Render:
+   - `WORKERS_BASE_URL=https://<worker-domain>`
+   - `WORKER_AUTH_TOKEN=<same-secret>`
 
 ---
 
