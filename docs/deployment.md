@@ -153,6 +153,29 @@ Recommended Worker Build settings:
 
 ---
 
+## Path D: Cloudflare Workers (web app deploy without Pages)
+
+If your API token does not have Cloudflare Pages permissions, deploy the Next.js web app to Workers directly using OpenNext.
+
+From repo root:
+
+```bash
+npm run build:shared
+npm -w @beastbots/web run cf:build
+npm -w @beastbots/web run cf:deploy
+```
+
+Config file:
+
+- `packages/web/wrangler.jsonc`
+
+Notes:
+
+- Requires `CLOUDFLARE_API_TOKEN` with Workers edit permissions.
+- Set `INTERNAL_API_URL` before build if you want `/api/*` rewrites to hit a live API endpoint.
+
+---
+
 ## Operational checks
 
 - `GET /api/health` returns success

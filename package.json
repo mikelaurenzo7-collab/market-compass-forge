@@ -19,6 +19,7 @@
     "build:mcp": "npm -w @beastbots/mcp run build",
     "build:workers": "npm -w @beastbots/workers run build",
     "build:sdk": "npm -w @beastbots/sdk run build",
+    "deploy:web:cf": "npm run build:shared && npm -w @beastbots/web run cf:build && npm -w @beastbots/web run cf:deploy",
     "typecheck": "npm run typecheck:api && npm run typecheck:web && npm run typecheck:workers && npm run typecheck:shared && npm run typecheck:sdk && npm run typecheck:mcp",
     "typecheck:api": "npm -w @beastbots/api run typecheck",
     "typecheck:web": "npm -w @beastbots/web run typecheck",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260310.1",
+    "@opennextjs/cloudflare": "^1.17.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.1",
