@@ -31,6 +31,8 @@ describe('API contracts and auth hardening', () => {
       .run(tenantId, 'Contracts Tenant', userId, 'starter', now);
     db.prepare('INSERT INTO tenant_members (tenant_id, user_id, role) VALUES (?, ?, ?)')
       .run(tenantId, userId, 'owner');
+    db.prepare('INSERT INTO onboarding (user_id, completed, current_step) VALUES (?, 0, 0)')
+      .run(userId);
 
     const access = await signAccessToken({ userId, tenantId, email: 'contracts@example.com' });
     authHeader = `Bearer ${access}`;
@@ -99,5 +101,25 @@ describe('API contracts and auth hardening', () => {
       headers: { Authorization: `Bearer ${invalidTenantToken}` },
     });
     expect(res.status).toBe(401);
+  });
+
+  it('accepts workforce as onboarding selected family', async () => {
+    const patchRes = await app.request('/api/onboarding', {
+      method: 'PATCH',
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentStep: 1, selectedFamily: 'workforce' }),
+    });
+    expect(patchRes.status).toBe(200);
+    const patchJson = await patchRes.json() as any;
+    expect(patchJson.success).toBe(true);
+
+    const getRes = await app.request('/api/onboarding', {
+      headers: { Authorization: authHeader },
+    });
+    expect(getRes.status).toBe(200);
+    const getJson = await getRes.json() as any;
+    expect(getJson.success).toBe(true);
+    expect(getJson.data.currentStep).toBe(1);
+    expect(getJson.data.selectedFamily).toBe('workforce');
   });
 });

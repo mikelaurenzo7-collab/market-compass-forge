@@ -7,7 +7,7 @@ export const onboardingRouter = new Hono();
 
 const updateSchema = z.object({
   currentStep: z.number().min(0).max(4).optional(),
-  selectedFamily: z.enum(['trading', 'store', 'social']).optional(),
+  selectedFamily: z.enum(['trading', 'store', 'social', 'workforce']).optional(),
   firstIntegration: z.string().optional(),
   firstBotId: z.string().optional(),
   completed: z.boolean().optional(),
