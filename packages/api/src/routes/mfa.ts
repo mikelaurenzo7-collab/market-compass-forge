@@ -139,6 +139,7 @@ mfaRouter.post('/setup', async (c) => {
     data: {
       secret,
       otpauthUrl,
+      qrCodeUrl: otpauthUrl,
       // Frontend can generate a QR code from otpauthUrl
     },
   });

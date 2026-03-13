@@ -194,4 +194,33 @@ describe('BeastBotsClient', () => {
     await client.getSocialPlatforms();
     expect(mockFetch).toHaveBeenCalledWith('https://api.beastbots.io/api/bots/platforms/social', expect.anything());
   });
+
+  // ─── Federated Learning ────────────────────────
+
+  it('getFederatedStatus() calls compatibility endpoint', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ enabled: false }));
+    const result = await client.getFederatedStatus();
+    expect(result).toEqual({ enabled: false });
+    expect(mockFetch).toHaveBeenCalledWith('https://api.beastbots.io/api/federated/status', expect.anything());
+  });
+
+  it('optInFederated() posts to compatibility endpoint', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ enabled: true }));
+    const result = await client.optInFederated(true);
+    expect(result).toEqual({ enabled: true });
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.beastbots.io/api/federated/opt-in',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  // ─── MFA ───────────────────────────────────────
+
+  it('setupMfa() maps otpauthUrl to qrCodeUrl when needed', async () => {
+    mockFetch.mockResolvedValueOnce(mockResponse({ secret: 'abc', otpauthUrl: 'otpauth://totp/test' }));
+    const result = await client.setupMfa();
+    expect(result.secret).toBe('abc');
+    expect(result.qrCodeUrl).toBe('otpauth://totp/test');
+    expect(result.otpauthUrl).toBe('otpauth://totp/test');
+  });
 });

@@ -49,6 +49,13 @@ function payloadHash(input: string): string {
   return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
+function timingSafeTokenEquals(candidate: string, expected: string): boolean {
+  const a = Buffer.from(candidate);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
+
 function insertStoreRoiEvent(db: ReturnType<typeof getDb>, params: {
   tenantId: string;
   platform: string;
@@ -342,7 +349,7 @@ webhooksRouter.post('/:platform', async (c) => {
   }
 
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token || token !== expectedSecret) {
+  if (!token || !timingSafeTokenEquals(token, expectedSecret)) {
     return c.json({ success: false, error: 'Unauthorized' }, 401);
   }
 

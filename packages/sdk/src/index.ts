@@ -382,8 +382,17 @@ export class BeastBotsClient {
 
   // ─── MFA ──────────────────────────────────────
 
-  async setupMfa(): Promise<{ secret: string; qrCodeUrl: string }> {
-    return this.request('/api/auth/mfa/setup', { method: 'POST' });
+  async setupMfa(): Promise<{ secret: string; qrCodeUrl: string; otpauthUrl?: string }> {
+    const data = await this.request('/api/auth/mfa/setup', { method: 'POST' }) as {
+      secret: string;
+      qrCodeUrl?: string;
+      otpauthUrl?: string;
+    };
+    return {
+      secret: data.secret,
+      qrCodeUrl: data.qrCodeUrl ?? data.otpauthUrl ?? '',
+      otpauthUrl: data.otpauthUrl,
+    };
   }
 
   async verifyMfaSetup(code: string): Promise<{ success: boolean }> {

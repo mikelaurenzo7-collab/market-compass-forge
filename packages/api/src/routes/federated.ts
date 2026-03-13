@@ -20,6 +20,30 @@ interface ContribRow { id: string; family: string; strategy: string; window_ms: 
 interface BenchmarkRow { family: string; strategy: string; sample_size: number; success_rate: string; pnl_return_percent: string; error_rate: string; avg_tick_duration_ms: string; updated_at: number }
 interface BotRow { id: string; family: string; platform: string; config: string; created_at: number }
 
+function toConfig(row: FLConfigRow | undefined): FederatedLearningConfig {
+  if (!row) return createDefaultFederatedConfig();
+  return {
+    enabled: row.enabled === 1,
+    contributionIntervalMs: row.contribution_interval_ms,
+    lastContributedAt: row.last_contributed_at,
+    totalContributions: row.total_contributions,
+  };
+}
+
+function upsertConfig(tenantId: string, enabled: boolean, contributionIntervalMs?: number): FederatedLearningConfig {
+  const db = getDb();
+  const interval = contributionIntervalMs ?? 86_400_000;
+  const now = Date.now();
+  db.prepare(`
+    INSERT INTO federated_learning_config (tenant_id, enabled, contribution_interval_ms, last_contributed_at, total_contributions, updated_at)
+    VALUES (?, ?, ?, 0, 0, ?)
+    ON CONFLICT(tenant_id) DO UPDATE SET enabled = ?, contribution_interval_ms = ?, updated_at = ?
+  `).run(tenantId, enabled ? 1 : 0, interval, now, enabled ? 1 : 0, interval, now);
+
+  const updated = db.prepare('SELECT * FROM federated_learning_config WHERE tenant_id = ?').get(tenantId) as FLConfigRow | undefined;
+  return toConfig(updated);
+}
+
 // ─── GET /api/federated/config ─────────────────────────────────
 federatedRouter.get('/config', async (c) => {
   const auth = await verifyAuthHeader(c.req.header('Authorization'));
@@ -28,19 +52,7 @@ federatedRouter.get('/config', async (c) => {
   const db = getDb();
   const row = db.prepare('SELECT * FROM federated_learning_config WHERE tenant_id = ?').get(auth.tenantId) as FLConfigRow | undefined;
 
-  if (!row) {
-    return c.json({ success: true, data: createDefaultFederatedConfig() });
-  }
-
-  return c.json({
-    success: true,
-    data: {
-      enabled: row.enabled === 1,
-      contributionIntervalMs: row.contribution_interval_ms,
-      lastContributedAt: row.last_contributed_at,
-      totalContributions: row.total_contributions,
-    } satisfies FederatedLearningConfig,
-  });
+  return c.json({ success: true, data: toConfig(row) });
 });
 
 // ─── PUT /api/federated/config ─────────────────────────────────
@@ -57,17 +69,37 @@ federatedRouter.put('/config', async (c) => {
   const parsed = configSchema.safeParse(body);
   if (!parsed.success) return c.json({ success: false, error: parsed.error.issues }, 400);
 
+  const updatedConfig = upsertConfig(auth.tenantId, parsed.data.enabled, parsed.data.contributionIntervalMs);
+  return c.json({ success: true, data: updatedConfig });
+});
+
+// ─── Compatibility aliases for existing web + SDK clients ─────
+
+// GET /api/federated/status
+federatedRouter.get('/status', async (c) => {
+  const auth = await verifyAuthHeader(c.req.header('Authorization'));
+  if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
   const db = getDb();
-  const interval = parsed.data.contributionIntervalMs ?? 86_400_000;
-  const now = Date.now();
+  const row = db.prepare('SELECT * FROM federated_learning_config WHERE tenant_id = ?').get(auth.tenantId) as FLConfigRow | undefined;
+  return c.json({ success: true, data: toConfig(row) });
+});
 
-  db.prepare(`
-    INSERT INTO federated_learning_config (tenant_id, enabled, contribution_interval_ms, last_contributed_at, total_contributions, updated_at)
-    VALUES (?, ?, ?, 0, 0, ?)
-    ON CONFLICT(tenant_id) DO UPDATE SET enabled = ?, contribution_interval_ms = ?, updated_at = ?
-  `).run(auth.tenantId, parsed.data.enabled ? 1 : 0, interval, now, parsed.data.enabled ? 1 : 0, interval, now);
+const optInSchema = z.object({
+  enabled: z.boolean(),
+});
 
-  return c.json({ success: true });
+// POST /api/federated/opt-in
+federatedRouter.post('/opt-in', async (c) => {
+  const auth = await verifyAuthHeader(c.req.header('Authorization'));
+  if (!auth) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
+  const body = await c.req.json();
+  const parsed = optInSchema.safeParse(body);
+  if (!parsed.success) return c.json({ success: false, error: parsed.error.issues }, 400);
+
+  const updatedConfig = upsertConfig(auth.tenantId, parsed.data.enabled);
+  return c.json({ success: true, data: updatedConfig });
 });
 
 // ─── POST /api/federated/contribute ────────────────────────────

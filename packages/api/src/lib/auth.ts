@@ -104,14 +104,17 @@ export async function verifyAuthHeader(authHeader: string | undefined) {
   const payload = await verifyAccessToken(token);
   if (!payload?.sub) return null;
 
-  // Ensure user still exists and is member of tenant
+  // Ensure user still exists and token tenant context is still valid.
   const db = getDb();
   const userId = payload.sub as string;
-  const membership = db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ?').get(userId) as { tenant_id: string; role: string } | undefined;
+  const claimedTenantId = typeof payload.tenantId === 'string' ? payload.tenantId : '';
+  const membership = claimedTenantId
+    ? db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ? AND tenant_id = ?').get(userId, claimedTenantId) as { tenant_id: string; role: string } | undefined
+    : db.prepare('SELECT tenant_id, role FROM tenant_members WHERE user_id = ? ORDER BY created_at ASC LIMIT 1').get(userId) as { tenant_id: string; role: string } | undefined;
   const user = db.prepare('SELECT id, email FROM users WHERE id = ?').get(userId) as { id: string; email: string } | undefined;
-  if (!user) return null;
+  if (!user || !membership) return null;
 
-  return { userId, tenantId: membership?.tenant_id ?? '', email: user.email, role: membership?.role ?? 'member' };
+  return { userId, tenantId: membership.tenant_id, email: user.email, role: membership.role };
 }
 
 export async function revokeRefreshTokensForUser(userId: string) {

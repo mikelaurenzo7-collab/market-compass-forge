@@ -278,6 +278,7 @@ describe('MFA', () => {
     expect(json.success).toBe(true);
     expect(json.data.secret).toBeDefined();
     expect(json.data.otpauthUrl).toMatch(/otpauth:\/\/totp\//);
+    expect(json.data.qrCodeUrl).toBe(json.data.otpauthUrl);
     totpSecret = json.data.secret;
   });
 
