@@ -7,6 +7,7 @@
   ],
   "scripts": {
     "dev": "npm -w @beastbots/api run dev",
+    "dev:local": "powershell -ExecutionPolicy Bypass -File ./scripts/dev-local.ps1",
     "dev:api": "npm -w @beastbots/api run dev",
     "dev:web": "npm -w @beastbots/web run dev",
     "dev:workers": "npm -w @beastbots/workers run dev",

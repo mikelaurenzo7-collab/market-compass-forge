@@ -1,6 +1,9 @@
+import dotenv from 'dotenv';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { healthRouter } from './routes/health.js';
 import { integrationsRouter } from './routes/integrations.js';
 import { pricingRouter } from './routes/pricing.js';
@@ -16,6 +19,16 @@ import mcpRouter from './routes/mcp.js';
 import { closeDb, getDb } from './lib/db.js';
 import { setSafetyStore } from '@beastbots/shared';
 import { DbSafetyStore } from './lib/safety-store.js';
+
+// Load env vars from both cwd and monorepo root to support workspace npm scripts.
+dotenv.config();
+const serverDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(serverDir, '../../..');
+dotenv.config({ path: resolve(repoRoot, '.env') });
+
+if (process.env.DATABASE_PATH && !isAbsolute(process.env.DATABASE_PATH)) {
+  process.env.DATABASE_PATH = resolve(repoRoot, process.env.DATABASE_PATH);
+}
 
 // Wire DB-backed safety store for persistence
 setSafetyStore(new DbSafetyStore());
@@ -114,7 +127,17 @@ app.route('/api/audit', auditRouter);
 app.route('/api/provisioning', provisioningRouter);
 app.route('/api/mcp', mcpRouter); // proxy for MCP JSON-RPC
 
-if (process.argv[1] && import.meta.url.endsWith(process.argv[1])) {
+const isDirectExecution = (() => {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return false;
+  }
+})();
+
+if (isDirectExecution) {
   const port = Number(process.env.PORT ?? 4000);
   const server = serve({ fetch: app.fetch, port });
   console.log(`BeastBots API listening on http://localhost:${port}`);

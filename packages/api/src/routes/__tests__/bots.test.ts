@@ -126,12 +126,27 @@ describe('bots endpoints (DB-backed)', () => {
     const stopRes = await app.request(`/api/bots/${createdBotId}/stop`, { method: 'POST', headers: { Authorization: authHeader } });
     expect(stopRes.status).toBe(200);
 
+    // other tenant cannot start/stop this bot
+    const otherTenantId = `tenant-other-${Date.now()}`;
+    db.prepare('INSERT INTO tenants (id, name, owner_id, plan, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(otherTenantId, 'Other Tenant', userId, 'starter', Date.now());
+    db.prepare('INSERT INTO tenant_members (tenant_id, user_id, role) VALUES (?, ?, ?)')
+      .run(otherTenantId, userId, 'owner');
+    const otherToken = await signAccessToken({ userId, tenantId: otherTenantId, email: 'test@example.com' });
+    const otherAuth = `Bearer ${otherToken}`;
+
+    const badStart = await app.request(`/api/bots/${createdBotId}/start`, { method: 'POST', headers: { Authorization: otherAuth } });
+    expect(badStart.status).toBe(404);
+    const badStop = await app.request(`/api/bots/${createdBotId}/stop`, { method: 'POST', headers: { Authorization: otherAuth } });
+    expect(badStop.status).toBe(404);
+
     // ── Observability: history endpoint (persisted after stop) ──
     const historyRes = await app.request(`/api/bots/${createdBotId}/history`, { headers: { Authorization: authHeader } });
     expect(historyRes.status).toBe(200);
     const historyBody = await historyRes.json();
     expect(historyBody.data.botId).toBe(createdBotId);
     expect(Array.isArray(historyBody.data.metricsSnapshots)).toBe(true);
+    expect(Array.isArray(historyBody.data.decisions)).toBe(true);
 
     const delRes2 = await app.request(`/api/bots/${createdBotId}`, { method: 'DELETE', headers: { Authorization: authHeader } });
     expect(delRes2.status).toBe(200);

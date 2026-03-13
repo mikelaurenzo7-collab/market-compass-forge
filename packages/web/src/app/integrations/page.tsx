@@ -11,6 +11,7 @@ interface IntegrationInfo {
   category: string;
   oauth: boolean;
   status: string;
+  oauthReady?: boolean; // server indicates if env config exists for OAuth
 }
 
 // Bot platform categories — these power your bots directly
@@ -132,11 +133,17 @@ function IntegrationsPageContent() {
         headers: { Accept: 'application/json' },
       });
       const json = await res.json();
-      if (json.success && json.url) {
-        window.location.href = json.url;
+      if (!json.success) {
+        setNotification(json.error || 'Connection not configured');
+        return;
       }
-    } catch {
-      setNotification('Failed to initiate connection. Please try again.');
+      if (json.url) {
+        window.location.href = json.url;
+      } else {
+        setNotification('No redirect URL returned');
+      }
+    } catch (err: any) {
+      setNotification('Failed to initiate connection: ' + (err?.message || '')); 
     }
   }
 
@@ -188,6 +195,8 @@ function IntegrationsPageContent() {
             <button
               className="btn btn-primary btn-sm"
               onClick={() => handleOAuthConnect(p.id)}
+              disabled={!p['oauthReady']}
+              title={p['oauthReady'] ? '' : 'Not configured; check .env variables'}
             >
               Connect
             </button>

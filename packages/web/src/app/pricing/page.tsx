@@ -63,7 +63,12 @@ export default function PricingPage() {
   const [annual, setAnnual] = useState(false);
 
   useEffect(() => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+    let apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
+    if (typeof window !== 'undefined') {
+      const localhostApi = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(apiBase);
+      const pageOnLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+      if (localhostApi && !pageOnLocalhost) apiBase = '';
+    }
     fetch(`${apiBase}/api/pricing`).then(r => r.json()).then(json => {
       if (json.data) setPlans(json.data);
     }).catch(() => {});

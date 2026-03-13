@@ -34,7 +34,9 @@ export default function BotDetailPage() {
   const params = useParams();
   const botId = params.id as string;
   const [bot, setBot] = useState<BotDetail | null>(null);
-  const [metrics, setMetrics] = useState<MetricEntry[]>([]);
+  const [runtimeMetrics, setRuntimeMetrics] = useState<any | null>(null);
+  const [metricSnapshots, setMetricSnapshots] = useState<MetricEntry[]>([]);
+  const [decisions, setDecisions] = useState<any[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState('');
 
@@ -57,11 +59,22 @@ export default function BotDetailPage() {
     } finally {
       setFetching(false);
     }
-    // Fetch metrics
+    // Fetch runtime metrics
     try {
       const res = await apiFetch(`/api/bots/${botId}/metrics`);
       const json = await res.json();
-      if (json.success) setMetrics(json.data ?? []);
+      if (json.success) {
+        setRuntimeMetrics(json.data.metrics ?? null);
+      }
+    } catch { /* ignore */ }
+    // Fetch history + snapshots
+    try {
+      const res2 = await apiFetch(`/api/bots/${botId}/history?limit=100`);
+      const j2 = await res2.json();
+      if (j2.success) {
+        setDecisions(j2.data.decisions || []);
+        setMetricSnapshots(j2.data.metricsSnapshots || []);
+      }
     } catch { /* ignore */ }
   }, [apiFetch, botId]);
 
@@ -207,45 +220,115 @@ export default function BotDetailPage() {
             </div>
           )}
 
-          {/* Metrics */}
-          {metrics.length > 0 && (
+          {/* Runtime metrics (current) */}
+          {runtimeMetrics && (
             <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
-              <div className="settings-section-title">Performance Metrics</div>
+              <div className="settings-section-title">Live Performance</div>
               <div className="stats-grid" style={{ marginBottom: 'var(--space-md)' }}>
                 <div className="stat-card">
-                  <div className="stat-label">Latest Equity</div>
-                  <div className="stat-value blue">${metrics[metrics.length - 1].equity.toLocaleString()}</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-label">P&amp;L</div>
-                  <div className={`stat-value ${metrics[metrics.length - 1].pnl >= 0 ? 'green' : 'red'}`}>
-                    {metrics[metrics.length - 1].pnl >= 0 ? '+' : ''}${metrics[metrics.length - 1].pnl.toLocaleString()}
+                  <div className="stat-label">Total P&amp;L</div>
+                  <div className={`stat-value ${runtimeMetrics.totalPnlUsd >= 0 ? 'green' : 'red'}`}>
+                    {runtimeMetrics.totalPnlUsd >= 0 ? '+' : ''}${runtimeMetrics.totalPnlUsd.toLocaleString()}
                   </div>
                 </div>
-                <div className="stat-card">
-                  <div className="stat-label">Drawdown</div>
-                  <div className="stat-value gold">{metrics[metrics.length - 1].drawdown.toFixed(2)}%</div>
+                {runtimeMetrics.initialBalanceUsd > 0 && (
+                  <div className="stat-card">
+                    <div className="stat-label">ROI</div>
+                    <div className="stat-value gold">
+                      {(runtimeMetrics.totalPnlUsd / runtimeMetrics.initialBalanceUsd * 100).toFixed(2)}%
+                    </div>
+                  </div>
+                )}
+              {/* custom metrics */}
+              {runtimeMetrics.custom && Object.keys(runtimeMetrics.custom).length > 0 && (
+                <div className="stat-card" style={{ gridColumn: 'span 2' }}>
+                  <div className="stat-label">Other metrics</div>
+                  <div className="stat-value" style={{ fontSize: '0.75rem', textAlign: 'left' }}>
+                    {Object.entries(runtimeMetrics.custom).map(([k,v]) => `${k}: ${String(v)}`).join(', ')}
+                  </div>
                 </div>
+              )}
+                <div className="stat-card">
+                  <div className="stat-label">Ticks</div>
+                  <div className="stat-value blue">{runtimeMetrics.totalTicks}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Successes</div>
+                  <div className="stat-value green">{runtimeMetrics.successfulActions}</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Failures</div>
+                  <div className="stat-value red">{runtimeMetrics.failedActions}</div>
+                </div>
+                {bot.family === 'trading' && runtimeMetrics.totalTrades > 0 && (
+                  <>
+                    <div className="stat-card">
+                      <div className="stat-label">Trades</div>
+                      <div className="stat-value purple">{runtimeMetrics.totalTrades}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Win Rate</div>
+                      <div className="stat-value green">{(runtimeMetrics.winRate * 100).toFixed(1)}%</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-label">Consec. Losses</div>
+                      <div className="stat-value red">{runtimeMetrics.consecutiveLosses}</div>
+                    </div>
+                  </>
+                )}
               </div>
+            </div>
+          )}
+
+          {/* Historical snapshots */}
+          {metricSnapshots.length > 0 && (
+            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
+              <div className="settings-section-title">Metric History</div>
+              <div className="table-responsive">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Recorded At</th>
+                      <th>Ticks</th>
+                      <th>P&amp;L</th>
+                      <th>Uptime (ms)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metricSnapshots.map((m, i) => (
+                      <tr key={i} style={{ fontSize: '0.85rem' }}>
+                        <td>{new Date(m.recordedAt).toLocaleString()}</td>
+                        <td>{m.totalTicks}</td>
+                        <td>{m.totalPnlUsd >= 0 ? '+' : ''}${m.totalPnlUsd}</td>
+                        <td>{m.uptimeMs}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {decisions.length > 0 && (
+            <div className="settings-section" style={{ marginTop: 'var(--space-lg)' }}>
+              <div className="settings-section-title">Decision History</div>
               <div className="table-responsive">
                 <table className="data-table">
                   <thead>
                     <tr>
                       <th>Time</th>
-                      <th>Equity</th>
-                      <th>P&amp;L</th>
-                      <th>Drawdown</th>
+                      <th>Action</th>
+                      <th>Result</th>
+                      <th>Details</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {metrics.slice(-20).reverse().map((m, i) => (
-                      <tr key={i}>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{new Date(m.timestamp).toLocaleString()}</td>
-                        <td>${m.equity.toLocaleString()}</td>
-                        <td style={{ color: m.pnl >= 0 ? FAMILY_CONFIG[bot.family]?.color : 'var(--accent-red)' }}>
-                          {m.pnl >= 0 ? '+' : ''}${m.pnl.toLocaleString()}
-                        </td>
-                        <td>{m.drawdown.toFixed(2)}%</td>
+                    {decisions.map((h, i) => (
+                      <tr key={i} style={{ fontSize: '0.85rem' }}>
+                        <td>{new Date(h.timestamp).toLocaleString()}</td>
+                        <td>{h.action}</td>
+                        <td>{h.result}</td>
+                        <td><pre style={{ whiteSpace: 'pre-wrap', maxWidth: 400 }}>{JSON.stringify(h.details)}</pre></td>
                       </tr>
                     ))}
                   </tbody>

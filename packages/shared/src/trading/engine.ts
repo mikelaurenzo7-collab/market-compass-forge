@@ -96,6 +96,21 @@ export async function executeTradingTick(
   state: TradingEngineState,
   adapter: TradingAdapter
 ): Promise<{ result: TickResult; newState: TradingEngineState }> {
+  // map fields may have been serialized to plain objects (e.g. after restore);
+  // ensure they're proper Map instances so calls like .get() don't crash.
+  if (!(state.priceHistories instanceof Map)) {
+    state.priceHistories = new Map(Object.entries(state.priceHistories ?? {}));
+  }
+  if (!(state.secondaryHistories instanceof Map)) {
+    state.secondaryHistories = new Map(Object.entries(state.secondaryHistories ?? {}));
+  }
+  if (!(state.lastDcaBuy instanceof Map)) {
+    state.lastDcaBuy = new Map(Object.entries(state.lastDcaBuy ?? {}));
+  }
+  if (!(state.highWater instanceof Map)) {
+    state.highWater = new Map(Object.entries(state.highWater ?? {}));
+  }
+
   const startTime = Date.now();
   let newState = { ...state };
   let lastResult: TickResult = {
@@ -307,8 +322,12 @@ export async function executeTradingTick(
           action: `PAPER_${signal.direction.toUpperCase()} ${symbol}`,
           result: 'success',
           riskLevel: 'low',
-          details: { signal: tradeSignal, paperMode: true },
+          details: { signal: tradeSignal, paperMode: true, pnlUsd: 0 },
         });
+
+        // count this as a trade even though it's simulated
+        newState.totalTrades += 1;
+        // leaving winningTrades/consecutiveLosses unchanged (pnl assumed 0)
 
         lastResult = {
           botId: state.safety.botId,
@@ -384,7 +403,7 @@ export async function executeTradingTick(
         action: `${signal.direction.toUpperCase()} ${symbol}`,
         result: 'success',
         riskLevel: 'low',
-        details: { orderId: orderResult.orderId, signal: tradeSignal },
+        details: { orderId: orderResult.orderId, signal: tradeSignal, pnlUsd },
       });
 
       lastResult = {

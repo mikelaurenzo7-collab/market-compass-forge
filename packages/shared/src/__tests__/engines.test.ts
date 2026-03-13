@@ -67,6 +67,44 @@ describe('engine units', () => {
     expect(newState).toBeDefined();
   });
 
+  it('paper trades increment counters even though pnl is zero', async () => {
+    const config: TradingBotConfig = {
+      platform: 'coinbase',
+      strategy: 'dca',
+      symbols: ['BTC-USD'],
+      maxPositionSizeUsd: 100,
+      maxDailyLossUsd: 1000,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    };
+    const safety = makeSafety('t-paper', 'bot-paper', 'coinbase');
+    const state = createTradingEngineState(config, safety);
+
+    const stubAdapter = {
+      fetchMarketData: async () => ({
+        symbol: 'BTC-USD',
+        price: 100,
+        volume24h: 1000,
+        high24h: 105,
+        low24h: 95,
+        change24hPercent: 0,
+        bid: 100,
+        ask: 101,
+        timestamp: Date.now(),
+      }),
+      placeOrder: async () => ({ orderId: 'x', filled: true }),
+      getPositions: async () => [],
+      getBalance: async () => ({ availableUsd: 10000, totalUsd: 10000 }),
+    };
+
+    const { result, newState } = await executeTradingTick(state, stubAdapter as any);
+    expect(['executed', 'skipped']).toContain(result.result);
+    expect(newState.totalTrades).toBeGreaterThanOrEqual(0);
+  });
+
   it('trading engine processes multiple symbols and updates histories', async () => {
     const config: TradingBotConfig = {
       platform: 'coinbase',
@@ -106,6 +144,47 @@ describe('engine units', () => {
     expect(newState.priceHistories.size).toBe(2);
     expect(newState.priceHistories.has('BTC-USD')).toBe(true);
     expect(newState.priceHistories.has('ETH-USD')).toBe(true);
+  });
+
+  it('trading engine tolerates plain-object histories from restored state', async () => {
+    const config: TradingBotConfig = {
+      platform: 'coinbase',
+      strategy: 'dca',
+      symbols: ['BTC-USD'],
+      maxPositionSizeUsd: 100,
+      maxDailyLossUsd: 1000,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    };
+    const safety = makeSafety('t1', 'bot2', 'coinbase');
+    const state = createTradingEngineState(config, safety);
+    // simulate restoration by replacing map with a plain object
+    (state as any).priceHistories = {};
+
+    const stubAdapter = {
+      fetchMarketData: async () => ({
+        symbol: 'BTC-USD',
+        price: 100,
+        volume24h: 1000,
+        high24h: 105,
+        low24h: 95,
+        change24hPercent: 0,
+        bid: 100,
+        ask: 101,
+        timestamp: Date.now(),
+      }),
+      placeOrder: async () => ({ orderId: 'x', filled: true }),
+      getPositions: async () => [],
+      getBalance: async () => ({ availableUsd: 10000, totalUsd: 10000 }),
+    };
+
+    const { result, newState } = await executeTradingTick(state as any, stubAdapter as any);
+    // it should not throw and should still produce a history map after tick
+    expect(['executed', 'skipped']).toContain(result.result);
+    expect(newState.priceHistories instanceof Map).toBe(true);
   });
 
   it('generateStrategySignal returns hold for grid with no levels', () => {

@@ -3,7 +3,21 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+function resolveApiUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL ?? '';
+  if (!configured) return '';
+
+  if (typeof window !== 'undefined') {
+    const localhostApi = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(configured);
+    const pageOnLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+    // On forwarded hosts, avoid hard-coded localhost calls from the browser.
+    if (localhostApi && !pageOnLocalhost) return '';
+  }
+
+  return configured;
+}
+
+const API_URL = resolveApiUrl();
 
 interface User {
   id: string;
@@ -29,6 +43,30 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function storageGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage failures (private mode / restrictive browser settings).
+  }
+}
+
+function storageRemove(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 export function useAuth(): AuthContextType {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
@@ -46,22 +84,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore session from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem('bb_auth');
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored);
-        setState({
-          user: parsed.user,
-          tenantId: parsed.tenantId,
-          accessToken: parsed.accessToken,
-          loading: false,
-          onboardingRequired: parsed.onboardingRequired ?? false,
-        });
-      } catch {
-        localStorage.removeItem('bb_auth');
-        setState((s) => ({ ...s, loading: false }));
-      }
-    } else {
+    const stored = storageGet('bb_auth');
+    if (!stored) {
+      setState((s) => ({ ...s, loading: false }));
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(stored);
+      setState({
+        user: parsed.user,
+        tenantId: parsed.tenantId,
+        accessToken: parsed.accessToken,
+        loading: false,
+        onboardingRequired: parsed.onboardingRequired ?? false,
+      });
+    } catch {
+      storageRemove('bb_auth');
       setState((s) => ({ ...s, loading: false }));
     }
   }, []);
@@ -72,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: string;
     onboardingRequired: boolean;
   }) => {
-    localStorage.setItem('bb_auth', JSON.stringify({
+    storageSet('bb_auth', JSON.stringify({
       user: data.user,
       tenantId: data.tenantId,
       accessToken: data.accessToken,
@@ -88,11 +127,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const completeOnboarding = useCallback(() => {
-    const stored = localStorage.getItem('bb_auth');
+    const stored = storageGet('bb_auth');
     if (stored) {
       const parsed = JSON.parse(stored);
       parsed.onboardingRequired = false;
-      localStorage.setItem('bb_auth', JSON.stringify(parsed));
+      storageSet('bb_auth', JSON.stringify(parsed));
     }
     setState((s) => ({ ...s, onboardingRequired: false }));
   }, []);
@@ -148,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       credentials: 'include',
       headers: state.accessToken ? { Authorization: `Bearer ${state.accessToken}` } : {},
     }).catch(() => {});
-    localStorage.removeItem('bb_auth');
+    storageRemove('bb_auth');
     setState({ user: null, tenantId: null, accessToken: null, loading: false, onboardingRequired: false });
   }, [state.accessToken]);
 
@@ -180,12 +219,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         const jr = await r.json();
         if (jr?.success && jr.data?.accessToken) {
-          const stored = localStorage.getItem('bb_auth');
+          const stored = storageGet('bb_auth');
           if (stored) {
             try {
               const parsed = JSON.parse(stored);
               parsed.accessToken = jr.data.accessToken;
-              localStorage.setItem('bb_auth', JSON.stringify(parsed));
+              storageSet('bb_auth', JSON.stringify(parsed));
             } catch {}
           }
           setState((s) => ({ ...s, accessToken: jr.data.accessToken }));

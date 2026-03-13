@@ -96,4 +96,44 @@ describe('runtime durable object', () => {
     runtime.stop();
     destroyRuntime(tenant, botId);
   });
+
+  it('serializes and restores state, preserving map fields', async () => {
+    const botId = 'r-restore';
+    const tenant = 't-restore';
+    const config: TradingBotConfig = {
+      platform: 'coinbase',
+      strategy: 'dca',
+      symbols: ['BTC-USD'],
+      maxPositionSizeUsd: 100,
+      maxDailyLossUsd: 1000,
+      maxOpenPositions: 1,
+      stopLossPercent: 0.1,
+      takeProfitPercent: 0.1,
+      cooldownAfterLossMs: 0,
+      paperTrading: true,
+    };
+
+    const runtime1 = createRuntime({ botId, tenantId: tenant, family: 'trading', platform: 'coinbase', config, adapter: stubTradingAdapter });
+    runtime1.start();
+    await runtime1.tick();
+    // tick once to populate priceHistories map
+    const serialized = runtime1.serializeState();
+    expect(serialized).not.toBeNull();
+
+    // create a fresh runtime and restore state
+    const runtime2 = createRuntime({ botId, tenantId: tenant, family: 'trading', platform: 'coinbase', config, adapter: stubTradingAdapter });
+    runtime2.restoreState(serialized!);
+    // after restore, maps should be real Maps
+    const state = (runtime2 as any).getState();
+    expect(state.engineState.priceHistories instanceof Map).toBe(true);
+
+    // tick again without crashing
+    const tick = await runtime2.tick();
+    expect(['executed','skipped','error']).toContain(tick.result);
+
+    runtime1.stop();
+    destroyRuntime(tenant, botId);
+    runtime2.stop();
+    destroyRuntime(tenant, botId);
+  });
 });

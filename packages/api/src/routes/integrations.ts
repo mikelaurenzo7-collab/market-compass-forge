@@ -41,7 +41,19 @@ integrationsRouter.get('/:id', (c) => {
   if (!integration) {
     return c.json({ success: false, error: 'Integration not found' }, 404);
   }
-  return c.json({ success: true, data: integration });
+  // compute whether OAuth flow is actually configured (env vars present)
+  let oauthReady = false;
+  if (integration.oauth) {
+    try {
+      const adapter = getAdapter(integration.id);
+      // use dummy values; adapter should throw if config missing
+      adapter.authorizeUrl({ provider: integration.id, redirectUri: 'https://example.com', state: 'test' });
+      oauthReady = true;
+    } catch {
+      oauthReady = false;
+    }
+  }
+  return c.json({ success: true, data: { ...integration, oauthReady } });
 });
 
 // ─── OAuth connect/start ─────────────────────────────────────
@@ -72,19 +84,37 @@ integrationsRouter.get('/:id/connect', async (c) => {
     details: '',
   });
 
-  const adapter = getAdapter(id);
-  // ensure query params are object; Hono may return string when none
-  const rawQuery = c.req.query();
-  let queryObj: Record<string, string> = {};
-  if (rawQuery && typeof rawQuery === 'object') {
-    queryObj = rawQuery as Record<string, string>;
+  try {
+    const adapter = getAdapter(id);
+    // ensure query params are object; Hono may return string when none
+    const rawQuery = c.req.query();
+    let queryObj: Record<string, string> = {};
+    if (rawQuery && typeof rawQuery === 'object') {
+      queryObj = rawQuery as Record<string, string>;
+    }
+    const { url, stateData } = adapter.authorizeUrl({
+      provider: id,
+      redirectUri,
+      state,
+      query: queryObj,
+    });
+
+    const dataJson = stateData ? JSON.stringify(stateData) : null;
+    db.prepare('INSERT INTO oauth_states (state, user_id, tenant_id, provider, created_at, expires_at, data) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(state, auth.userId, auth.tenantId, id, now, expiresAt, dataJson);
+
+    const wantsJson =
+      (c.req.header('Accept') ?? '').includes('application/json') ||
+      c.req.query('format') === 'url';
+
+    if (wantsJson) {
+      return c.json({ success: true, url });
+    }
+    return c.redirect(url);
+  } catch (err) {
+    console.error('[OAuth init error]', err);
+    return c.json({ success: false, error: 'oauth_not_configured' }, 500);
   }
-  const { url, stateData } = adapter.authorizeUrl({
-    provider: id,
-    redirectUri,
-    state,
-    query: queryObj,
-  });
   const dataJson = stateData ? JSON.stringify(stateData) : null;
   db.prepare('INSERT INTO oauth_states (state, user_id, tenant_id, provider, created_at, expires_at, data) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .run(state, auth.userId, auth.tenantId, id, now, expiresAt, dataJson);

@@ -15,7 +15,7 @@ export default defineConfig({
   test: {
     globals: true,
     testTimeout: 15000,
-    include: ['packages/*/src/**/__tests__/**/*.test.ts'],
+    include: ['packages/*/src/**/__tests__/**/*.test.ts', 'openclaw/**/*.test.ts'],
     threads: false // run in single thread to avoid parser race conditions
   }
 });

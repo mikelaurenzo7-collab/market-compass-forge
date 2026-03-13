@@ -456,6 +456,27 @@ botsRouter.get('/:id/metrics', async (c) => {
   const status = runtime?.getStatus() ?? row.status;
   const heartbeat = runtime?.getHeartbeat() ?? null;
 
+  let enriched: any = metrics ?? {
+    totalTicks: 0,
+    successfulActions: 0,
+    failedActions: 0,
+    deniedActions: 0,
+    totalPnlUsd: 0,
+    initialBalanceUsd: 0,
+    uptimeMs: 0,
+    totalTrades: 0,
+    winningTrades: 0,
+    consecutiveLosses: 0,
+    custom: {},
+  };
+  if (enriched.initialBalanceUsd && enriched.initialBalanceUsd !== 0) {
+    enriched.roiPercent = (enriched.totalPnlUsd / enriched.initialBalanceUsd) * 100;
+  }
+  // compute win rate if trades present
+  if (enriched.totalTrades && enriched.totalTrades > 0) {
+    enriched.winRate = enriched.winningTrades / enriched.totalTrades;
+  }
+
   return c.json({
     success: true,
     data: {
@@ -463,14 +484,7 @@ botsRouter.get('/:id/metrics', async (c) => {
       family: row.family,
       status,
       heartbeat,
-      metrics: metrics ?? {
-        totalTicks: 0,
-        successfulActions: 0,
-        failedActions: 0,
-        deniedActions: 0,
-        totalPnlUsd: 0,
-        uptimeMs: 0,
-      },
+      metrics: enriched,
     },
   });
 });

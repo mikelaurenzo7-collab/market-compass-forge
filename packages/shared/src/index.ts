@@ -418,7 +418,13 @@ export interface BotMetrics {
   failedActions: number;
   deniedActions: number;
   totalPnlUsd: number;
+  /** balance captured on first tick to compute ROI */
+  initialBalanceUsd?: number;
+  /** computed percentage return on investment */
+  roiPercent?: number;
   uptimeMs: number;
+  /** platform-specific additional metrics */
+  custom?: Record<string, unknown>;
   lastErrorMessage?: string;
   lastErrorAt?: number;
 }
