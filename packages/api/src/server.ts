@@ -104,6 +104,22 @@ function rateLimit(windowMs: number, maxRequests: number) {
   };
 }
 
+// ─── Cloud Run Health Probes (no auth, no rate limiting) ──────
+app.get('/healthz', (c) => c.json({ status: 'ok' }));
+
+app.get('/readyz', (c) => {
+  try {
+    const row = getDb().prepare('SELECT 1 AS ok').get() as { ok: number } | undefined;
+    if (row?.ok === 1) {
+      return c.json({ status: 'ready' });
+    }
+    return c.json({ status: 'not_ready', reason: 'DB check returned unexpected result' }, 503);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return c.json({ status: 'not_ready', reason: message }, 503);
+  }
+});
+
 // ─── Middleware ────────────────────────────────────────────────
 app.use('*', cors({
   origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
@@ -134,8 +150,11 @@ app.use('*', async (c, next) => {
 
 // Rate limit auth endpoints: 20 requests per minute
 app.use('/api/auth/*', rateLimit(60_000, 20));
-// Global rate limiter: 100 requests per minute per IP
-app.use('*', rateLimit(60_000, 100));
+// Global rate limiter: 100 requests per minute per IP (skip health probes)
+app.use('*', async (c, next) => {
+  if (c.req.path === '/healthz' || c.req.path === '/readyz') return next();
+  return rateLimit(60_000, 100)(c, next);
+});
 
 // ─── Error Handler ────────────────────────────────────────────
 app.onError((err, c) => {

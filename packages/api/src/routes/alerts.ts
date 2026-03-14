@@ -75,14 +75,23 @@ const updateRecipientSchema = createRecipientSchema.partial();
 
 // ─── Helpers ──────────────────────────────────────────────────
 
+function safeParseJsonArray<T>(raw: unknown, fallback: T[], label: string): T[] {
+  try {
+    return JSON.parse(raw as string) as T[];
+  } catch (err) {
+    console.warn(`[Alerts] Failed to parse ${label}:`, err instanceof Error ? err.message : err);
+    return fallback;
+  }
+}
+
 function rowToRecipient(row: Record<string, unknown>): AlertRecipient {
   return {
     id: row.id as string,
     tenantId: row.tenant_id as string,
     userId: row.user_id as string,
     phone: row.phone as string,
-    channels: JSON.parse(row.channels as string) as AlertChannel[],
-    eventTypes: JSON.parse(row.event_types as string) as AlertEventType[],
+    channels: safeParseJsonArray<AlertChannel>(row.channels, ['sms'], 'channels'),
+    eventTypes: safeParseJsonArray<AlertEventType>(row.event_types, [], 'event_types'),
     minPriority: row.min_priority as AlertRecipient['minPriority'],
     enabled: (row.enabled as number) === 1,
     createdAt: row.created_at as number,
@@ -107,8 +116,8 @@ alertsRouter.get('/recipients', async (c) => {
       id: r.id,
       name: r.name,
       phone: r.phone,
-      channels: JSON.parse(r.channels as string),
-      eventTypes: JSON.parse(r.event_types as string),
+      channels: safeParseJsonArray<AlertChannel>(r.channels, ['sms'], 'channels'),
+      eventTypes: safeParseJsonArray<AlertEventType>(r.event_types, [], 'event_types'),
       minPriority: r.min_priority,
       createdAt: r.created_at,
     })),
