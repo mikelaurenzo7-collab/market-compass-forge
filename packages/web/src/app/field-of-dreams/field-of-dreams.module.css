@@ -1,0 +1,389 @@
+.page {
+  min-height: 100vh;
+  padding: 2rem 1.25rem 4rem;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(0, 232, 123, 0.08), transparent 36%),
+    radial-gradient(circle at 90% 20%, rgba(139, 92, 246, 0.1), transparent 30%),
+    var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.hero {
+  position: relative;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  border: 1px solid var(--border-default);
+  border-radius: 1.25rem;
+  background: linear-gradient(150deg, rgba(18, 19, 26, 0.92), rgba(12, 13, 18, 0.96));
+  overflow: hidden;
+}
+
+.heroGlow {
+  position: absolute;
+  width: 460px;
+  height: 460px;
+  right: -120px;
+  top: -180px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.32), transparent 70%);
+  pointer-events: none;
+}
+
+.badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 232, 123, 0.25);
+  background: rgba(0, 232, 123, 0.12);
+  color: var(--green);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.title {
+  margin-top: 1rem;
+  font-size: clamp(1.8rem, 4.8vw, 3.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.title span {
+  display: block;
+  margin-top: 0.45rem;
+  background: linear-gradient(120deg, var(--green), var(--cyan), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  margin-top: 1rem;
+  max-width: 720px;
+  color: var(--text-secondary);
+  font-size: clamp(0.95rem, 1.6vw, 1.08rem);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+}
+
+.primaryCta,
+.secondaryCta {
+  min-height: 44px;
+  padding: 0.72rem 1rem;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.primaryCta {
+  background: var(--green);
+  color: #06120d;
+}
+
+.primaryCta:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow-green);
+}
+
+.secondaryCta {
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.secondaryCta:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.metricsGrid {
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.metricCard {
+  padding: 0.9rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.metricCard p {
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.metricCard span {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.section {
+  max-width: 1120px;
+  margin: 2rem auto 0;
+}
+
+.sectionHeader h2 {
+  font-size: clamp(1.25rem, 2.6vw, 2rem);
+  letter-spacing: -0.02em;
+}
+
+.sectionHeader p {
+  margin-top: 0.35rem;
+  color: var(--text-secondary);
+  max-width: 760px;
+}
+
+.analysisGrid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.analysisCard {
+  padding: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  background: linear-gradient(165deg, rgba(18, 19, 26, 0.92), rgba(13, 14, 20, 0.95));
+}
+
+.analysisCard h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0.65rem;
+}
+
+.listBlock p {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--green);
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.listBlock ul {
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0 0 0.65rem;
+}
+
+.listBlock li {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  border-left: 2px solid rgba(255, 255, 255, 0.08);
+  padding-left: 0.5rem;
+}
+
+.riskTitle {
+  color: #ff8fb0 !important;
+}
+
+.dreamPattern {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.55rem;
+  display: flex;
+  gap: 0.4rem;
+  color: var(--blue);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.pillarGrid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.pillarCard {
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.95rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pillarIcon {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.62rem;
+  display: grid;
+  place-items: center;
+  background: rgba(59, 130, 246, 0.14);
+  color: var(--blue);
+}
+
+.pillarCard h3 {
+  margin-top: 0.7rem;
+  font-size: 1rem;
+}
+
+.pillarCard p {
+  margin-top: 0.35rem;
+  color: var(--text-secondary);
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+.labWrap {
+  margin-top: 1rem;
+  border: 1px solid var(--border-default);
+  border-radius: 1rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(30, 32, 48, 0.52), rgba(12, 13, 18, 0.96));
+}
+
+.tabBar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.tabButton {
+  border: 1px solid var(--border-default);
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-secondary);
+  border-radius: 0.7rem;
+  min-height: 40px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tabButton:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+}
+
+.activeTab {
+  color: var(--green);
+  border-color: rgba(0, 232, 123, 0.35);
+  background: rgba(0, 232, 123, 0.1);
+}
+
+.blueprintCard {
+  padding: 1rem;
+}
+
+.blueprintTarget {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--cyan);
+  font-size: 0.78rem;
+  margin-bottom: 0.5rem;
+}
+
+.blueprintCard h3 {
+  font-size: 1.1rem;
+}
+
+.blueprintCard ol {
+  margin-top: 0.65rem;
+  padding-left: 1.2rem;
+  display: grid;
+  gap: 0.38rem;
+}
+
+.blueprintCard li {
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
+.qualityGate {
+  margin-top: 0.85rem;
+  border: 1px solid rgba(0, 232, 123, 0.2);
+  border-radius: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--green);
+  background: rgba(0, 232, 123, 0.08);
+  font-size: 0.8rem;
+  display: flex;
+  gap: 0.38rem;
+}
+
+.antiPatternList {
+  margin-top: 1rem;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.antiPatternList li {
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.8rem;
+  padding: 0.7rem 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-secondary);
+  background: rgba(255, 59, 107, 0.06);
+}
+
+.antiPatternList li svg {
+  color: #ff8fb0;
+  flex-shrink: 0;
+}
+
+@media (max-width: 980px) {
+  .metricsGrid,
+  .analysisGrid,
+  .pillarGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 1.1rem 0.85rem 3rem;
+  }
+
+  .hero {
+    padding: 1.45rem 1rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .primaryCta,
+  .secondaryCta {
+    justify-content: center;
+  }
+
+  .metricsGrid,
+  .analysisGrid,
+  .pillarGrid,
+  .tabBar {
+    grid-template-columns: 1fr;
+  }
+
+  .metricCard p {
+    font-size: 0.98rem;
+  }
+}

@@ -126,6 +126,7 @@ export default function LandingPage() {
       <nav className="landing-nav">
         <Link href="/" className="landing-brand">BeastBots</Link>
         <div className="landing-nav-links">
+          <Link href="/field-of-dreams" className="landing-nav-link">Field of Dreams</Link>
           <Link href="/pricing" className="landing-nav-link">Pricing</Link>
           <Link href="/login" className="landing-nav-link">Log in</Link>
           <Link href="/signup" className="btn btn-primary" style={{ padding: '8px 20px', fontSize: '0.82rem' }}>
@@ -167,6 +168,9 @@ export default function LandingPage() {
               <Sparkles size={16} />
               See Your ROI
               <ArrowRight size={16} />
+            </Link>
+            <Link href="/field-of-dreams" className="hero-btn-secondary">
+              Enter Field of Dreams
             </Link>
             <Link href="/safety" className="hero-btn-secondary">
               Explore the Safety Model
