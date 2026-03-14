@@ -24,7 +24,7 @@ COPY packages/mcp/ packages/mcp/
 COPY packages/web/ packages/web/
 
 # Build shared → api, workers, sdk, mcp, web
-RUN npm run build && npm --workspace=@beastbots/web run build
+RUN npm run build
 
 # ─── Stage 2: API production image ────────────────────────────
 FROM node:20-alpine AS api
@@ -59,14 +59,11 @@ WORKDIR /app
 
 RUN apk add --no-cache dumb-init
 
-# Build Next.js web output if not already present
-COPY --from=builder /app/packages/web .
-RUN npm --workspace=@beastbots/web run build || true
-
-# Copy standalone output if present
+# Copy pre-built Next.js standalone output from builder
+# In a monorepo, standalone output preserves the package path structure
 COPY --from=builder /app/packages/web/.next/standalone ./
-COPY --from=builder /app/packages/web/.next/static ./.next/static
-COPY --from=builder /app/packages/web/public ./public
+COPY --from=builder /app/packages/web/.next/static ./packages/web/.next/static
+COPY --from=builder /app/packages/web/public ./packages/web/public
 
 ENV NODE_ENV=production
 ENV PORT=8080
@@ -74,4 +71,4 @@ EXPOSE 8080
 
 USER node
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "server.js"]
+CMD ["node", "packages/web/server.js"]

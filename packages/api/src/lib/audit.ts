@@ -16,13 +16,13 @@ function sanitizeDetails(raw?: string): string {
   try {
     // attempt JSON parse and redact tokens
     const obj = JSON.parse(raw);
-    function recurse(o: any) {
+    function recurse(o: Record<string, unknown>) {
       if (typeof o !== 'object' || o === null) return;
       for (const k of Object.keys(o)) {
         if (/token|secret|password|apikey/i.test(k)) {
           o[k] = '[REDACTED]';
-        } else {
-          recurse(o[k]);
+        } else if (typeof o[k] === 'object' && o[k] !== null) {
+          recurse(o[k] as Record<string, unknown>);
         }
       }
     }

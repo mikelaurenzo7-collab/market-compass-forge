@@ -17,10 +17,12 @@ out.js
 packages/shared/src/**/*.js
 packages/shared/src/**/*.d.ts
 
-beastbot.db
-beastbot.db-wal
-beastbot.db-shm
+# OS files
+.DS_Store
+Thumbs.db
 
-beastbot.db
-beastbot.db-wal
-beastbot.db-shm
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
