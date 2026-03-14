@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           credentials: 'include',
           body: JSON.stringify({}),
         })
-          .then((r) => r.json())
+          .then((r) => { if (!r.ok) throw new Error('refresh failed'); return r.json(); })
           .then((jr) => {
             if (jr?.success && jr.data?.accessToken) {
               setState((s) => ({ ...s, accessToken: jr.data.accessToken, loading: false }));
