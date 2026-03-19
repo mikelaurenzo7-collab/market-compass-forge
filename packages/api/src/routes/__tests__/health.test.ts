@@ -3,9 +3,23 @@ process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY ?? 'test-encryption-key-
 
 import app from '../../server';
 
-describe('health route', () => {
-  it('returns healthy status', async () => {
+describe('health routes', () => {
+  it('returns healthy API status', async () => {
     const response = await app.request('/api/health');
     expect(response.status).toBe(200);
+  });
+
+  it('returns liveness probe status', async () => {
+    const response = await app.request('/healthz');
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json).toEqual({ status: 'ok' });
+  });
+
+  it('returns readiness probe status when DB is available', async () => {
+    const response = await app.request('/readyz');
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json).toEqual({ status: 'ready' });
   });
 });
