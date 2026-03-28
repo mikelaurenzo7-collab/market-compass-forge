@@ -23,6 +23,12 @@ npm run dev:web
 3. Social Operator Bots (X, TikTok, Instagram, Facebook, LinkedIn)
 4. Workforce Agent Pods (SMB + enterprise)
 
+## Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+The repo includes a `render.yaml` blueprint that creates both services (API + Web) with a persistent disk for SQLite. See **[docs/render-deploy.md](docs/render-deploy.md)** for the full list of environment variables and setup instructions.
+
 ## Core safety model
 - policy checks
 - approval queue for high-risk actions
